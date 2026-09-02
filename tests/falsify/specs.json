@@ -376,12 +376,36 @@
       "test": "tests/unit/outillage/test_verdicts.py::test_un_plugin_dinventaire_sans_options_nest_pas_charge"
     },
     {
-      "name": "exemption-de-suivi-trop-large",
-      "why": "Une exemption qui accepte n'importe quel fichier non suivi rend la porte de l'arbre propre inutile.",
-      "file": "scripts/check_generated.py",
-      "find": "    return status == \"??\" and path.strip() in UNTRACKED_BY_DESIGN",
-      "replace": "    return status == \"??\" and (path.strip() in UNTRACKED_BY_DESIGN or True)",
-      "test": "tests/unit/outillage/test_verdicts.py::test_lexemption_ne_couvre_que_la_forme_non_suivie"
+      "name": "site-sans-module",
+      "why": "Sphinx construit très bien un site vide, et ce vert ressemble exactement au vrai.",
+      "file": "scripts/docsite.py",
+      "find": "    if not modules:",
+      "replace": "    if not modules and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_un_site_construit_sur_zero_module_est_un_echec"
+    },
+    {
+      "name": "site-module-non-documente",
+      "why": "Un module livré sans page rend une documentation qui ne couvre pas ce que la collection livre.",
+      "file": "scripts/docsite.py",
+      "find": "    if manquants:\n        raise SiteError(",
+      "replace": "    if manquants and False:\n        raise SiteError(",
+      "test": "tests/unit/outillage/test_verdicts.py::test_un_module_sans_page_fait_echouer_le_site"
+    },
+    {
+      "name": "site-sans-page-de-mesure",
+      "why": "La page dérivée de la représentation intermédiaire est l'angle du dépôt : la perdre en silence vide le site de sa substance.",
+      "file": "scripts/docsite.py",
+      "find": "    if not produits:\n        raise SiteError(\"aucune page de mesure",
+      "replace": "    if not produits and False:\n        raise SiteError(\"aucune page de mesure",
+      "test": "tests/unit/outillage/test_verdicts.py::test_un_site_sans_page_de_mesure_est_un_echec"
+    },
+    {
+      "name": "documentation-sans-exemple",
+      "why": "Un extracteur cassé et une documentation sans exemple rendent le même vert.",
+      "file": "scripts/doc_examples.py",
+      "find": "    if not playbooks:",
+      "replace": "    if not playbooks and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_une_documentation_sans_exemple_est_un_echec"
     }
   ]
 }

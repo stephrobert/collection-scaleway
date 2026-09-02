@@ -14,7 +14,8 @@ import subprocess
 import tarfile
 from pathlib import Path
 
-import check_generated
+import doc_examples
+import docsite
 import integration
 import package
 import pytest
@@ -458,16 +459,16 @@ def test_un_plugin_dinventaire_complet_est_accepte(
     package.check_inventory_plugin(tmp_path, collection)
 
 
-# --- le fichier d'instructions : ni commité, ni ignoré ---------------------
+# --- ce que le dépôt publie de ses fichiers de bureau ----------------------
 
 
 def _depot_git() -> Path:
     """La racine du dépôt, ou un saut explicite hors dépôt.
 
     `scripts/falsify.py` copie l'arbre **sans** `.git` pour jouer les tests dans
-    une copie hors dépôt. Ces deux contrôles portent sur ce que git enregistre :
-    là-bas ils n'ont rien à mesurer, et le dire vaut mieux que de faire rougir
-    la falsification sur une absence de dépôt.
+    une copie hors dépôt. Ce contrôle porte sur ce que git enregistre : là-bas
+    il n'a rien à mesurer, et le dire vaut mieux que de faire rougir la
+    falsification sur une absence de dépôt.
     """
     racine = load_collection().collections_root
     if not (racine / ".git").exists():
@@ -475,45 +476,132 @@ def _depot_git() -> Path:
     return racine
 
 
-def test_le_fichier_dinstructions_nest_pas_versionne() -> None:
-    """Décision du mainteneur, et elle se vérifie plutôt qu'elle ne se rappelle."""
+def test_les_notes_de_bureau_ne_sont_ni_suivies_ni_nommees_dans_le_gitignore() -> None:
+    """Deux propriétés distinctes, et la seconde est celle qu'on oublie.
+
+    Ne pas suivre le fichier empêche de le publier. Ne pas le **nommer** dans
+    le `.gitignore` versionné empêche de publier son existence et son nom :
+    une ligne `CLAUDE.md` dans un fichier public dit à tout le monde qu'un
+    document privé porte ce nom.
+
+    L'exclusion vit donc dans `.git/info/exclude`, qui n'est jamais poussé.
+    Ce test est ce qui empêche qu'elle remonte dans le `.gitignore` un jour où
+    quelqu'un trouvera ça plus simple, ce qui est arrivé une fois.
+    """
+    racine = _depot_git()
+
     suivi = subprocess.run(
-        ["git", "ls-files", "--", "CLAUDE.md"],
-        cwd=_depot_git(),
+        ["git", "ls-files", "--", "CLAUDE.md", "BRIEF.md"],
+        cwd=racine,
         capture_output=True,
         text=True,
         check=False,
     )
     assert suivi.returncode == 0
-    assert suivi.stdout.strip() == "", "CLAUDE.md est suivi par git, il ne doit pas l'être"
+    assert suivi.stdout.strip() == "", "un fichier de bureau est suivi par git"
+
+    versionne = (racine / ".gitignore").read_text(encoding="utf-8")
+    for nom in ("CLAUDE.md", "BRIEF.md"):
+        assert nom not in versionne, (
+            f"{nom} est nommé dans le .gitignore versionné : l'exclusion doit "
+            "vivre dans .git/info/exclude, qui ne part pas dans le dépôt"
+        )
 
 
-def test_le_fichier_dinstructions_nest_pas_ignore_non_plus() -> None:
-    """L'autre moitié de la décision.
+# --- un site de documentation peut se construire sur rien ------------------
 
-    Un fichier listé dans `.gitignore` sort de `git status` : plus personne ne
-    voit qu'il change ou qu'il manque. Non suivi et non ignoré, il reste sous
-    les yeux.
+
+def _site_factice(tmp_path: Path, modules: list[str], pages: list[str]) -> None:
+    """Un dépôt de laboratoire : des modules d'un côté, des pages de l'autre."""
+    (tmp_path / "modules").mkdir(parents=True, exist_ok=True)
+    for nom in modules:
+        (tmp_path / "modules" / f"{nom}.py").write_text("", encoding="utf-8")
+    reference = tmp_path / "src" / "collections" / "local" / "scaleway"
+    reference.mkdir(parents=True, exist_ok=True)
+    for nom in pages:
+        (reference / f"{nom}_module.rst").write_text("", encoding="utf-8")
+
+
+@pytest.fixture
+def site_isole(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    monkeypatch.setattr(docsite, "MODULES", tmp_path / "modules")
+    monkeypatch.setattr(docsite, "SITE_SRC", tmp_path / "src")
+    return tmp_path
+
+
+def test_un_site_construit_sur_zero_module_est_un_echec(site_isole: Path) -> None:
+    """Sphinx construit très bien un site vide, et le vert ressemble au vrai."""
+    _site_factice(site_isole, modules=[], pages=[])
+
+    paquets = tuple(nom for nom, _ in docsite.GENERATOR_PACKAGES)
+    with pytest.raises(docsite.SiteError) as erreur:
+        docsite.check_population(("instance.v1",), paquets)
+
+    assert "aucun module" in str(erreur.value)
+
+
+def test_un_module_sans_page_fait_echouer_le_site(site_isole: Path) -> None:
+    """La documentation doit couvrir ce que la collection livre, pas moins."""
+    _site_factice(site_isole, modules=["a_info", "b_action"], pages=["a_info"])
+
+    paquets = tuple(nom for nom, _ in docsite.GENERATOR_PACKAGES)
+    with pytest.raises(docsite.SiteError) as erreur:
+        docsite.check_population(("instance.v1",), paquets)
+
+    assert "b_action" in str(erreur.value)
+
+
+def test_un_site_sans_page_de_mesure_est_un_echec(site_isole: Path) -> None:
+    """La page que seule la représentation intermédiaire sait écrire."""
+    _site_factice(site_isole, modules=["a_info"], pages=["a_info"])
+
+    paquets = tuple(nom for nom, _ in docsite.GENERATOR_PACKAGES)
+    with pytest.raises(docsite.SiteError) as erreur:
+        docsite.check_population((), paquets)
+
+    assert "mesure" in str(erreur.value)
+
+
+def test_un_site_complet_est_accepte(site_isole: Path) -> None:
+    """Le contre-exemple, sans lequel les trois tests ci-dessus passeraient
+    aussi sur une fonction qui refuserait tout."""
+    _site_factice(site_isole, modules=["a_info", "b_action"], pages=["a_info", "b_action"])
+    paquets = tuple(nom for nom, _ in docsite.GENERATOR_PACKAGES)
+    docsite.check_population(("instance.v1",), paquets)
+
+
+# --- les exemples de la documentation ---------------------------------------
+
+
+def test_un_bloc_de_configuration_nest_pas_pris_pour_un_playbook(tmp_path: Path) -> None:
+    """Un fichier d'inventaire dans un guide n'est pas un playbook.
+
+    `--syntax-check` le refuserait pour de mauvaises raisons, et la porte
+    rougirait sur un exemple parfaitement correct.
     """
-    ignore = subprocess.run(
-        ["git", "check-ignore", "--quiet", "CLAUDE.md"],
-        cwd=_depot_git(),
-        capture_output=True,
-        text=True,
-        check=False,
+    page = tmp_path / "guide.md"
+    page.write_text(
+        "```yaml\nplugin: local.scaleway.scaleway\nproducts:\n  - instance\n```\n",
+        encoding="utf-8",
     )
-    # `git check-ignore --quiet` sort en 0 quand le chemin est ignoré.
-    assert ignore.returncode != 0, "CLAUDE.md est dans .gitignore, il ne doit pas y être"
+    assert doc_examples.extract(page) == []
 
 
-def test_lexemption_ne_couvre_que_la_forme_non_suivie() -> None:
-    """Une exemption large rendrait la porte inutile.
+def test_un_playbook_est_reconnu_dans_un_guide(tmp_path: Path) -> None:
+    page = tmp_path / "guide.md"
+    page.write_text(
+        "```yaml\n- name: Un jeu\n  hosts: all\n  tasks: []\n```\n",
+        encoding="utf-8",
+    )
+    (bloc,) = doc_examples.extract(page)
+    assert "hosts: all" in bloc
 
-    Elle accepte `?? CLAUDE.md` et rien d'autre : ni un autre fichier non
-    suivi, ni le même fichier remis dans l'index, ce qui serait justement le
-    commit qu'on ne veut pas.
-    """
-    assert check_generated.exempted("?? CLAUDE.md")
-    assert not check_generated.exempted("?? build/dist/collection.tar.gz")
-    assert not check_generated.exempted("A  CLAUDE.md")
-    assert not check_generated.exempted(" M CLAUDE.md")
+
+def test_une_documentation_sans_exemple_est_un_echec(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Zéro exemple et un extracteur cassé rendent le même vert."""
+    monkeypatch.setattr(doc_examples, "sources", list)
+
+    with pytest.raises(doc_examples.ExampleError) as erreur:
+        doc_examples.main()
+
+    assert "extraction est cassée" in str(erreur.value)

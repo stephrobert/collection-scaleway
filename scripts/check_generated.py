@@ -23,28 +23,6 @@ ROOT = Path(__file__).resolve().parents[1]
 #: Chemins dont le contenu est produit par le générateur.
 DEFAULT_PATHS: tuple[str, ...] = ("tests/fixtures", "ansible_collections")
 
-#: Les fichiers volontairement ni suivis par git, ni ignorés.
-#:
-#: `CLAUDE.md` porte les instructions de travail de ce dépôt, `BRIEF.md` l'état
-#: d'avancement tenu à la main. Le mainteneur a tranché : ils ne sont pas
-#: versionnés, et ils ne sont pas non plus listés dans `.gitignore`. Cette
-#: seconde moitié n'est pas un oubli, et elle a un effet
-#: mesurable : un fichier ignoré disparaît de `git status`, donc personne ne
-#: voit s'il change ou s'il manque, alors qu'un fichier simplement non suivi
-#: reste sous les yeux à chaque commande.
-#:
-#: L'exemption est donc **étroite à dessein** : seule la forme « non suivi »
-#: (`??`) est acceptée. Si l'un d'eux réapparaissait dans l'index, `A ` ou
-#: `M `, ce script échouerait comme avant, ce qui est bien ce qu'on veut :
-#: la décision est de ne pas les commiter, pas de ne plus les regarder.
-UNTRACKED_BY_DESIGN: frozenset[str] = frozenset({"CLAUDE.md", "BRIEF.md"})
-
-
-def exempted(line: str) -> bool:
-    """Vrai pour la seule forme exemptée : un non-suivi nommé dans la table."""
-    status, _, path = line.partition(" ")
-    return status == "??" and path.strip() in UNTRACKED_BY_DESIGN
-
 
 def modified(paths: tuple[str, ...]) -> str:
     """Ce que git voit de différent, fichiers non suivis compris."""
@@ -55,10 +33,7 @@ def modified(paths: tuple[str, ...]) -> str:
         text=True,
         check=True,
     )
-    lignes = [
-        ligne for ligne in result.stdout.splitlines() if ligne.strip() and not exempted(ligne)
-    ]
-    return "\n".join(lignes)
+    return result.stdout.strip()
 
 
 def main(argv: list[str]) -> int:

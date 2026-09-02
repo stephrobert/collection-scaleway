@@ -186,6 +186,38 @@ description = "Juger la documentation, puis produire les pages RST"
 depends = ["generate"]
 run = "python scripts/docs.py"
 
+[tasks."docs:site"]
+description = "Assembler et construire le site de documentation sous build/site"
+# Trois sources, une seule sortie, et rien de dérivé dans le dépôt : les pages
+# des plugins viennent d'antsibull, les pages de mesure de la représentation
+# intermédiaire, les guides de `docs/`. La péremption est impossible plutôt que
+# surveillée, puisqu'il n'existe aucun état intermédiaire versionné.
+#
+# `-W` fait de cette tâche une porte : référence croisée morte, module
+# documenté qui n'existe plus, page hors toctree. Et `scripts/docsite.py` refuse
+# en plus un vert obtenu sur un site vide.
+depends = ["docs", "report"]
+run = "python scripts/docsite.py"
+
+[tasks."docs:linkcheck"]
+description = "Vérifier les liens externes du site (demande le réseau)"
+# Séparée de `docs:site`, et pas sur les pull requests : un lien externe casse
+# pour des raisons qui n'ont rien à voir avec le changement en cours, et une
+# porte qui rougit sans rapport avec le code finit par ne plus être lue.
+depends = ["docs", "report"]
+run = "python scripts/docsite.py --linkcheck"
+
+[tasks."docs:examples"]
+description = "Faire analyser par Ansible les playbooks cités dans la documentation"
+# Les `EXAMPLES` des modules sont déjà joués contre l'émulateur par
+# `mise run integration`. Cette tâche couvre l'autre moitié : les playbooks
+# écrits à la main dans les guides, qu'aucun scénario n'exécute. Elle ne les
+# joue pas, elle les fait analyser : ils désignent des machines qui n'existent
+# pas ici, et `--syntax-check` attrape déjà ce qu'une documentation produit
+# vraiment, un module renommé ou un paramètre disparu.
+depends = ["generate"]
+run = "python scripts/doc_examples.py"
+
 [tasks."lint:docs"]
 description = "Juger la documentation sans produire de pages"
 depends = ["generate"]

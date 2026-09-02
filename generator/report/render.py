@@ -11,6 +11,7 @@ jamais sur un dénominateur choisi pour flatter le résultat.
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from typing import Any
 
 from generator.ir.enums import GenerationMode, OperationKind
@@ -201,6 +202,62 @@ def to_text(plan: ProductPlan) -> str:
     if service.warnings:
         lines += ["", f"{len(service.warnings)} limite(s) du contrat :"]
         lines += [f"  {warning}" for warning in service.warnings]
+
+    return "\n".join(lines) + "\n"
+
+
+def to_generation_markdown(
+    plan: ProductPlan,
+    written: Sequence[str],
+    skipped: Sequence[tuple[str, str]],
+    limits: Sequence[str],
+) -> str:
+    """Ce que la génération a produit, écarté, et ce que le contrat lui a caché.
+
+    Ces trois listes existaient déjà, mais seulement sur la sortie standard de
+    `generate` : elles disparaissaient avec le terminal. Or elles disent
+    exactement ce qu'un lecteur veut savoir de la collection, à savoir pourquoi
+    tel module n'existe pas, et le générateur est le seul à pouvoir le dire.
+    """
+    service = plan.service
+    lines: list[str] = [
+        f"# Génération : {service.name} {service.version}",
+        "",
+        f"Contrat : `{service.source}`  ",
+        f"Modules écrits : **{len(written)}**, écartés : **{len(skipped)}**",
+        "",
+        "## Ce qui est écrit",
+        "",
+    ]
+    lines += [f"- `{nom}`" for nom in sorted(written)] or ["Aucun module écrit."]
+
+    if skipped:
+        groupes: dict[str, list[str]] = {}
+        for nom, raison in skipped:
+            groupes.setdefault(raison, []).append(nom)
+        lines += [
+            "",
+            "## Ce qui est écarté, et pourquoi",
+            "",
+            "Un module absent sans explication serait indiscernable d'un module",
+            "oublié. Chaque écart porte sa raison.",
+            "",
+            "| raison | modules |",
+            "|---|---|",
+        ]
+        for raison, noms in sorted(groupes.items()):
+            liste = ", ".join(f"`{nom}`" for nom in sorted(noms))
+            lines.append(f"| {raison} ({len(noms)}) | {liste} |")
+
+    if limits:
+        lines += [
+            "",
+            "## Ce que le contrat ne dit pas",
+            "",
+            "Rencontré au rendu, et signalé plutôt que comblé par une supposition.",
+            "",
+        ]
+        lines += [f"- {limite}" for limite in sorted(limits)]
 
     return "\n".join(lines) + "\n"
 

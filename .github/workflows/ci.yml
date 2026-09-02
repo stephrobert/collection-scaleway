@@ -200,6 +200,27 @@ jobs:
       - name: Construire et vérifier l'archive
         run: mise run package
 
+      # Le site est construit ici, sur chaque pull request, mais publié
+      # ailleurs : une documentation qui ne se construit plus doit rougir avant
+      # la fusion, pas au moment de publier. `-W` transforme en échec une
+      # référence croisée morte ou un module documenté qui n'existe plus.
+      - name: Le site de documentation se construit
+        run: mise run docs:site
+
+      # Un exemple faux dans une documentation coûte plus cher qu'une
+      # documentation absente : le lecteur le copie, il échoue, et il conclut
+      # que le produit est cassé.
+      - name: Les playbooks de la documentation s'analysent
+        run: mise run docs:examples
+
+      # Les liens externes cassent pour des raisons qui n'ont rien à voir avec
+      # le changement en cours. Sur le déclenchement hebdomadaire seulement :
+      # une porte qui rougit sans rapport avec le code finit par ne plus être
+      # lue.
+      - name: Liens externes du site
+        if: github.event_name == 'schedule'
+        run: mise run docs:linkcheck
+
       # Ce que les tâches construisent doit être ignoré par git. Un artefact
       # qui apparaît ici est un fichier que quelqu'un commitera sans le vouloir.
       - name: L'arbre de travail est resté propre

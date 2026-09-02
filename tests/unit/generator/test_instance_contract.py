@@ -119,3 +119,39 @@ def test_le_rapport_expose_les_limites_du_contrat(instance_plan: ProductPlan) ->
     """Ce que le contrat ne dit pas doit rester visible, pas être absorbé."""
     charge = json.loads(render.to_json(instance_plan))
     assert charge["parser_warnings"], "les tableaux sans `items` doivent être signalés"
+
+
+def test_le_compte_rendu_de_generation_dit_ce_qui_est_ecarte(instance_plan) -> None:
+    """Un module absent sans explication est indiscernable d'un module oublié.
+
+    Ces trois listes ne vivaient que sur la sortie standard de `generate` :
+    elles mouraient avec le terminal, alors qu'elles disent exactement ce qu'un
+    lecteur veut savoir de la collection.
+    """
+    rendu = render.to_generation_markdown(
+        instance_plan,
+        written=["instance_server_info"],
+        skipped=[
+            ("instance_volume", "classe non rendable"),
+            ("instance_image", "classe non rendable"),
+        ],
+        limits=["tags : tableau sans items"],
+    )
+
+    assert "Modules écrits : **1**, écartés : **2**" in rendu
+    assert "`instance_server_info`" in rendu
+    # La raison est portée une fois, avec les deux modules qu'elle écarte.
+    assert "classe non rendable (2)" in rendu
+    assert "`instance_image`, `instance_volume`" in rendu
+    assert "tags : tableau sans items" in rendu
+
+
+def test_un_compte_rendu_sans_ecart_ne_fabrique_pas_de_section_vide(instance_plan) -> None:
+    """Une section « ce qui est écarté » vide se lirait comme « rien n'a été
+    écarté », ce qui est vrai ici, mais elle n'a pas à être écrite pour le dire."""
+    rendu = render.to_generation_markdown(
+        instance_plan, written=["instance_server_info"], skipped=[], limits=[]
+    )
+
+    assert "Ce qui est écarté" not in rendu
+    assert "Ce que le contrat ne dit pas" not in rendu

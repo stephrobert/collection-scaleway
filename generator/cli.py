@@ -79,6 +79,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     generate = subcommands.choices["generate"]
     generate.add_argument(
+        "--report-dir",
+        type=Path,
+        default=Path("build/reports"),
+        help="répertoire où verser le compte rendu de génération",
+    )
+    generate.add_argument(
         "--output-dir",
         type=Path,
         default=None,
@@ -191,6 +197,21 @@ def _generate(plan: ProductPlan, arguments: argparse.Namespace) -> int:
             print(f"  {limit}")
 
     print(f"\n{len(written)} module(s) écrit(s).")
+
+    # Ces trois listes ne vivaient que sur la sortie standard, donc elles
+    # mouraient avec le terminal. Elles sont ce qu'un lecteur veut savoir de la
+    # collection : pourquoi tel module n'existe pas.
+    arguments.report_dir.mkdir(parents=True, exist_ok=True)
+    compte_rendu = arguments.report_dir / f"{plan.service.slug}.generation.md"
+    compte_rendu.write_text(
+        render.to_generation_markdown(
+            plan,
+            written=[spec.name for spec in specs],
+            skipped=skipped,
+            limits=limits,
+        ),
+        encoding="utf-8",
+    )
     return EXIT_OK
 
 

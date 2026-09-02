@@ -1,0 +1,79 @@
+# Le site de documentation, publié sur GitHub Pages.
+#
+# Il n'est pas versionné : `mise run docs:site` l'assemble à chaque publication
+# depuis trois sources que la CI garde déjà, les contrats versionnés, les
+# modules générés et les guides. La péremption est donc impossible plutôt que
+# surveillée, puisqu'il n'existe aucun état intermédiaire qui puisse dériver.
+#
+# Deux jobs pour une raison de droits, et pas de rangement : construire ne
+# demande que de lire, publier demande d'écrire sur Pages et de signer un jeton
+# OIDC. Un seul job porterait ces droits pendant toute la construction, c'est-à-
+# dire pendant qu'il exécute des dépendances tierces.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+# Une seule publication à la fois, et la dernière gagne. `cancel-in-progress`
+# est faux : une publication interrompue à mi-chemin laisserait un site
+# partiel en ligne.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Construire le site
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Installer mise
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
+        with:
+          version: 2026.2.23
+
+      - name: Installer
+        run: mise run setup
+
+      # `-W` fait de cette étape une porte : référence croisée morte, module
+      # documenté qui n'existe plus, page hors toctree. Le script refuse en
+      # plus un site vert obtenu sur zéro module.
+      - name: Assembler et construire
+        run: mise run docs:site
+
+      - name: Préparer l'artefact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: build/site/html
+
+  deploy:
+    name: Publier
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - name: Publier sur GitHub Pages
+        id: deploiement
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

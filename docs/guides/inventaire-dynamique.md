@@ -5,9 +5,9 @@ Scaleway. Il découvre les machines produit par produit, puis les relie à leurs
 réseaux privés et à leurs VPC.
 
 Tout ce que ce document affirme est mesuré : les tests unitaires vivent dans
-[tests/unit/inventory/](../../tests/unit/inventory/), et le scénario joué à
+[tests/unit/inventory/](https://github.com/stephrobert/collection-scaleway/blob/main/tests/unit/inventory/), et le scénario joué à
 chaque `mise run integration` est
-[tests/integration/feint/inventaire.scaleway.yml](../../tests/integration/feint/inventaire.scaleway.yml).
+[tests/integration/feint/inventaire.scaleway.yml](https://github.com/stephrobert/collection-scaleway/blob/main/tests/integration/feint/inventaire.scaleway.yml).
 
 ## Le fichier de configuration
 

@@ -36,6 +36,12 @@ dev = [
     # Le changelog n'est pas ecrit a la main : chaque changement depose un
     # fragment, et `antsibull-changelog lint` les juge avant la publication.
     "antsibull-changelog>=0.24",
+    # Le site de documentation. Sphinx lui-même vient déjà d'antsibull-docs :
+    # ces paquets ajoutent le thème de l'écosystème Ansible et la lecture du
+    # Markdown, pour que les pages RST produites par antsibull et les guides
+    # écrits à la main tiennent dans un seul site plutôt que dans deux.
+    "sphinx-ansible-theme>=0.10",
+    "myst-parser>=4.0",
 ]
 
 [tool.setuptools.packages.find]
