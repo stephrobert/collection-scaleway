@@ -136,7 +136,10 @@ operations:
         poweron: running
         reboot: running
         poweroff: stopped
-        stop_in_place: stopped
+        # `stopped in place` et non `stopped` : le contrat déclare les deux,
+        # et ce sont des états distincts. Attendre `stopped` faisait échouer
+        # l'action après `wait_timeout` sur une Instance pourtant arrêtée.
+        stop_in_place: stopped in place
       reason: >-
         Le contrat dit ce qu'une action fait, jamais dans quel état elle laisse
         l'Instance. La correspondance est une décision, écrite ici pour que le

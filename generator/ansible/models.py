@@ -467,12 +467,79 @@ def _wait_contract(
             f"de la ressource '{item.resource}' n'existe pour les observer"
         )
 
+    _check_states_exist(name, service, item.resource, override.wait.field, override.wait.states)
+
     etats = tuple(sorted(override.wait.states.items()))
     return etats, override.wait.field, lecture
 
 
+def _check_states_exist(
+    name: str,
+    service: ApiService,
+    resource: str,
+    field: str,
+    states: dict[str, str],
+) -> None:
+    """Refuse un état attendu que le contrat ne déclare pas.
+
+    Un override d'attente est écrit à la main : rien n'empêchait jusqu'ici d'y
+    poser un état qui n'existe pas. Le module rendu attendait alors un état
+    jamais atteint, et échouait après `wait_timeout` sur une ressource qui
+    avait pourtant bien changé.
+
+    Ce n'est pas une hypothèse : `stop_in_place` attendait `stopped`, alors que
+    le contrat déclare `stopped in place`, un état **distinct**. La faute a
+    vécu jusqu'à ce qu'on la cherche.
+
+    L'enum se déduit mécaniquement, sans deviner : le contrat nomme l'enum d'un
+    champ `<schéma de la ressource>.<Champ>`. Quand il est introuvable, ce
+    n'est pas une raison de laisser passer : le générateur ne devine pas, il
+    refuse et le dit.
+    """
+    operation = _unitary_read_operation(service, resource)
+    schema = operation.response.payload_schema if operation and operation.response else None
+    if not schema:
+        raise UnreachableState(
+            f"{name} : `wait` déclare des états attendus, et la lecture unitaire de "
+            f"'{resource}' ne dit pas quel schéma elle rend : impossible de vérifier "
+            "que ces états existent"
+        )
+
+    attendu = f"{schema}.{_pascal(field)}"
+    declares = next((e.values for e in service.enums if e.name == attendu), None)
+    if declares is None:
+        raise UnreachableState(
+            f"{name} : `wait` porte sur le champ '{field}', dont le contrat ne "
+            f"déclare aucun enum ({attendu} introuvable) : les états attendus ne "
+            "peuvent pas être vérifiés"
+        )
+
+    inconnus = sorted({etat for etat in states.values() if etat not in declares})
+    if inconnus:
+        raise UnreachableState(
+            f"{name} : `wait` attend {inconnus}, que le contrat ne déclare pas. "
+            f"Le champ '{field}' vaut {list(declares)}"
+        )
+
+
+def _pascal(field: str) -> str:
+    """`state` -> `State`, `ping_status` -> `PingStatus`.
+
+    C'est la convention de nommage des enums du contrat, pas une invention :
+    `scaleway.instance.v1.Server.State` porte les valeurs du champ `state` de
+    `scaleway.instance.v1.Server`.
+    """
+    return "".join(morceau.capitalize() for morceau in field.split("_"))
+
+
 def _unitary_read(service: ApiService, resource: str) -> OperationBinding | None:
     """La lecture unitaire de la ressource, celle qui sert à observer un état."""
+    operation = _unitary_read_operation(service, resource)
+    return _bind(operation) if operation is not None else None
+
+
+def _unitary_read_operation(service: ApiService, resource: str) -> ApiOperation | None:
+    """La même, non aplatie : la vérification des états a besoin de sa réponse."""
     for operation in service.operations:
         if operation.resource != resource:
             continue
@@ -480,7 +547,7 @@ def _unitary_read(service: ApiService, resource: str) -> OperationBinding | None
             continue
         if operation.response is None or not operation.response.payload_field:
             continue
-        return _bind(operation)
+        return operation
     return None
 
 

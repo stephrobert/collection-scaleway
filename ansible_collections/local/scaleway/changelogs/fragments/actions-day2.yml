@@ -1,0 +1,22 @@
+---
+bugfixes:
+  - "``instance_server_action`` attendait l'état ``stopped`` après
+    ``stop_in_place``, alors que le contrat déclare ``stopped in place``, un
+    état **distinct**. L'action échouait donc après ``wait_timeout`` sur une
+    Instance pourtant bien arrêtée. Elle est jouée depuis contre l'émulateur,
+    ce qui est le seul contrôle qui pouvait l'attraper : le défaut était dans
+    la valeur, pas dans la forme."
+  - "``instance_server_action`` rendait la main immédiatement sur ``reboot``,
+    sans avoir rien observé : l'état visé est celui de départ, donc la première
+    lecture satisfaisait l'attente en zéro seconde et la tâche suivante
+    s'exécutait pendant le redémarrage. Le module exige désormais d'observer
+    une transition, et le dit quand il n'en voit aucune."
+  - "Un module d'action dont l'attente échouait rapportait ``changed=false``
+    alors que l'API avait accepté l'action et que la ressource avait changé.
+    Un playbook rejoué croyait n'avoir rien fait. Le résultat porte maintenant
+    ``changed=true`` dès l'acceptation, quelle que soit l'issue de l'attente."
+minor_changes:
+  - "Le générateur refuse un override d'attente qui promet un état absent du
+    contrat. L'enum se déduit sans deviner, du schéma de la ressource et du nom
+    du champ, et une faute de frappe ne peut plus produire un module qui attend
+    un état que l'API n'atteindra jamais."

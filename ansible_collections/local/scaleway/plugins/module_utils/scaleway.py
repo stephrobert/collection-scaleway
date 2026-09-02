@@ -226,22 +226,46 @@ def poll_until(
     field_name: str,
     timeout: float,
     interval: float = 2.0,
+    leave_first: str | None = None,
 ) -> str:
     """Lit la ressource jusqu'à l'état attendu, ou échoue en le disant.
 
     Rendre la main avant d'avoir vu l'état ferait passer une attente pour une
     confirmation : le playbook suivant agirait sur une machine qui n'a pas fini
     de basculer.
+
+    `leave_first` traite le cas où **l'état visé est déjà celui de départ**.
+    C'est celui de `reboot` : la machine est `running` avant, et `running`
+    après. Sans cette garde, la première lecture satisfait l'attente en zéro
+    seconde, et la tâche suivante s'exécute pendant que la machine redémarre.
+    Une attente qui ne fait rien est pire que pas d'attente : elle promet.
+
+    Le contrat ne dit pas sous quel délai l'état bascule. Cette fonction ne
+    suppose donc rien : elle exige d'**observer** une valeur différente, et si
+    elle n'en voit aucune dans le temps imparti, elle le dit au lieu de
+    conclure que tout va bien.
     """
     limite = time.monotonic() + timeout
     observe = "inconnu"
+    quitte = leave_first is None
     while True:
         ressource = read()
         if isinstance(ressource, dict):
             observe = str(ressource.get(field_name, "inconnu"))
-        if observe == expected:
+        if not quitte and observe != leave_first:
+            quitte = True
+        if quitte and observe == expected:
             return observe
         if time.monotonic() >= limite:
+            if not quitte:
+                raise ScalewayApiError(
+                    operation=field_name,
+                    message=(
+                        f"l'état n'a jamais quitté '{leave_first}' en {timeout:.0f} s : "
+                        "l'action a été acceptée, et rien ne permet de confirmer "
+                        "qu'elle a eu lieu"
+                    ),
+                )
             raise ScalewayApiError(
                 operation=field_name,
                 message=(
@@ -590,24 +614,49 @@ def run_action_module(module: AnsibleModule, spec: ActionModule) -> None:
         )
 
     api = ScalewayApi(module)
+    attente = bool(attendu and spec.read_operation is not None and module.params.get("wait"))
+
+    # L'état avant l'action, et une seule raison de le lire : savoir si l'état
+    # visé est déjà celui de départ. C'est le cas de `reboot`, où une attente
+    # naïve se satisfait de la première lecture sans rien avoir observé.
+    depart: str | None = None
+    if attente and spec.read_operation is not None:
+        read_operation = spec.read_operation
+        try:
+            avant = api.fetch_one(read_operation)
+        except ScalewayApiError as error:
+            module.fail_json(msg=error.message, **error.details())
+            return
+        if isinstance(avant, dict):
+            depart = str(avant.get(spec.state_field, "")) or None
+
     try:
         payload = api.request(
             spec.operation,
             params=build_query(spec.operation, module.params),
             body=build_body(spec.operation, module.params),
         )
-        etat: str | None = None
-        if attendu and spec.read_operation is not None and module.params.get("wait"):
-            read_operation = spec.read_operation
-            etat = poll_until(
-                lambda: api.fetch_one(read_operation),
-                expected=attendu,
-                field_name=spec.state_field,
-                timeout=float(module.params.get("wait_timeout") or 300),
-            )
     except ScalewayApiError as error:
         module.fail_json(msg=error.message, **error.details())
         return
+
+    # À partir d'ici l'API a **accepté** : la ressource a changé, et tout échec
+    # ultérieur doit le dire. Un `fail_json` sans `changed` ferait croire à un
+    # playbook rejoué qu'il n'a rien fait, alors que la machine a bougé.
+    etat: str | None = None
+    if attente and spec.read_operation is not None:
+        read_operation = spec.read_operation
+        try:
+            etat = poll_until(
+                lambda: api.fetch_one(read_operation),
+                expected=str(attendu),
+                field_name=spec.state_field,
+                timeout=float(module.params.get("wait_timeout") or 300),
+                leave_first=depart if depart == attendu else None,
+            )
+        except ScalewayApiError as error:
+            module.fail_json(changed=True, msg=error.message, **error.details())
+            return
 
     resultat: dict[str, Any] = {"changed": True, "action": action}
     if etat is not None:

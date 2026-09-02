@@ -235,8 +235,8 @@
       "name": "attente-sans-preuve",
       "why": "Rendre la main sans avoir vu l'etat ferait passer une attente pour une confirmation.",
       "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
-      "find": "        if time.monotonic() >= limite:\n            raise ScalewayApiError(",
-      "replace": "        if time.monotonic() >= limite:\n            return observe\n            raise ScalewayApiError(",
+      "find": "            raise ScalewayApiError(\n                operation=field_name,\n                message=(\n                    f\"état '{observe}' après",
+      "replace": "            return observe\n            raise ScalewayApiError(\n                operation=field_name,\n                message=(\n                    f\"état '{observe}' après",
       "test": "tests/unit/collection/test_runtime.py::test_une_attente_qui_expire_nomme_le_dernier_etat_vu"
     },
     {
@@ -406,6 +406,30 @@
       "find": "    if not playbooks:",
       "replace": "    if not playbooks and False:",
       "test": "tests/unit/outillage/test_verdicts.py::test_une_documentation_sans_exemple_est_un_echec"
+    },
+    {
+      "name": "etat-attendu-hors-contrat",
+      "why": "Une faute de frappe dans un override d'attente produit un module qui attend un état que l'API n'atteindra jamais.",
+      "file": "generator/ansible/models.py",
+      "find": "    inconnus = sorted({etat for etat in states.values() if etat not in declares})\n    if inconnus:",
+      "replace": "    inconnus = sorted({etat for etat in states.values() if etat not in declares})\n    if inconnus and False:",
+      "test": "tests/unit/generator/test_models.py::test_un_etat_attendu_hors_du_contrat_est_refuse"
+    },
+    {
+      "name": "attente-sans-transition",
+      "why": "Une action dont l'état visé est l'état de départ verrait sa première lecture satisfaire l'attente, sans rien avoir observé.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        if not quitte and observe != leave_first:\n            quitte = True",
+      "replace": "        if not quitte and observe != leave_first:\n            quitte = True\n        quitte = True",
+      "test": "tests/unit/collection/test_runtime.py::test_un_etat_qui_ne_bouge_jamais_est_dit_comme_tel"
+    },
+    {
+      "name": "changement-perdu-en-echec-dattente",
+      "why": "Un fail_json sans changed fait croire à un playbook rejoué qu'il n'a rien fait, alors que l'API a accepté l'action.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "            module.fail_json(changed=True, msg=error.message, **error.details())",
+      "replace": "            module.fail_json(msg=error.message, **error.details())",
+      "test": "tests/unit/collection/test_runtime.py::test_une_attente_qui_echoue_rapporte_quand_meme_le_changement"
     }
   ]
 }

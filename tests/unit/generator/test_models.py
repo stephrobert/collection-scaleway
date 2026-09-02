@@ -325,17 +325,51 @@ def test_la_description_ne_promet_que_les_actions_exposees(
 
 
 def test_letat_attendu_vient_de_loverride(instance_plan: ProductPlan) -> None:
-    """Le contrat ne dit jamais dans quel état une action laisse la ressource."""
+    """Le contrat ne dit jamais dans quel état une action laisse la ressource.
+
+    `stop_in_place` attend `stopped in place` et non `stopped` : le contrat
+    déclare les deux, et ce sont des états **distincts**. Ce test affirmait
+    `stopped` jusqu'à ce qu'on joue l'action : le module échouait alors après
+    `wait_timeout` sur une Instance pourtant bien arrêtée. Un test peut encoder
+    un bug aussi fidèlement qu'il encode une décision.
+    """
     spec = _spec(instance_plan, "instance_server_action")
     assert dict(spec.wait_states) == {
         "poweron": "running",
         "reboot": "running",
         "poweroff": "stopped",
-        "stop_in_place": "stopped",
+        "stop_in_place": "stopped in place",
     }
     assert spec.read_operation is not None
     assert spec.read_operation.id == "GetServer"
     assert spec.waitable is True
+
+
+def test_un_etat_attendu_hors_du_contrat_est_refuse(instance_plan: ProductPlan) -> None:
+    """Une faute de frappe dans un override produit une attente jamais satisfaite.
+
+    Le module rendu attend alors un état que l'API n'atteindra jamais, et
+    échoue après `wait_timeout` sur une ressource qui a pourtant bien changé.
+    L'enum se déduit du contrat sans deviner : `<schéma>.<Champ>`.
+    """
+    from dataclasses import replace
+
+    plan = instance_plan
+    override = plan.overrides.operations["instance.v1.Server.ServerAction"]
+    faute = replace(override, wait=replace(override.wait, states={"poweroff": "stoped"}))
+    casse = replace(
+        plan,
+        overrides=replace(
+            plan.overrides,
+            operations={**plan.overrides.operations, "instance.v1.Server.ServerAction": faute},
+        ),
+    )
+
+    with pytest.raises(UnreachableState) as erreur:
+        _spec(casse, "instance_server_action")
+
+    assert "stoped" in str(erreur.value)
+    assert "stopped in place" in str(erreur.value)
 
 
 def test_un_module_daction_sans_override_expose_le_contrat(widget_plan: ProductPlan) -> None:
