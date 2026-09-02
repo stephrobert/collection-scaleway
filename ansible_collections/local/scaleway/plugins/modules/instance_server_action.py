@@ -195,7 +195,7 @@ MODULE = ActionModule(
         "poweroff": "stopped",
         "poweron": "running",
         "reboot": "running",
-        "stop_in_place": "stopped",
+        "stop_in_place": "stopped in place",
     },
 )
 

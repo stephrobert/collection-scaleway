@@ -246,7 +246,7 @@ class _ModuleFactice:
         self.resultat = resultat
         raise SystemExit(0)
 
-    def fail_json(self, **resultat: Any) -> None:  # pragma: no cover - non atteint ici
+    def fail_json(self, **resultat: Any) -> None:
         self.resultat = resultat
         raise SystemExit(1)
 
@@ -277,3 +277,115 @@ def test_en_check_mode_rien_nest_declenche(runtime: Any, monkeypatch: Any) -> No
     assert module.resultat["changed"] is True
     assert module.resultat["action"] == "poweroff"
     assert module.resultat["expected_state"] == "stopped"
+
+
+# --- ce que l'attente doit observer avant de conclure ----------------------
+
+
+def test_une_action_qui_revient_a_son_etat_de_depart_exige_une_transition(
+    runtime: Any,
+) -> None:
+    """Le cas de `reboot` : la machine est `running` avant, et `running` après.
+
+    Sans cette exigence, la première lecture satisfait l'attente en zéro
+    seconde et la tâche suivante s'exécute pendant que la machine redémarre.
+    Une attente qui ne fait rien est pire que pas d'attente : elle promet.
+    """
+    lectures = iter(["running", "stopping", "starting", "running"])
+    vues: list[str] = []
+
+    def lire() -> dict[str, str]:
+        etat = next(lectures)
+        vues.append(etat)
+        return {"state": etat}
+
+    observe = runtime.poll_until(
+        lire,
+        expected="running",
+        field_name="state",
+        timeout=5,
+        interval=0,
+        leave_first="running",
+    )
+
+    assert observe == "running"
+    # La première lecture, identique à l'état de départ, n'a pas suffi.
+    assert vues == ["running", "stopping", "starting", "running"]
+
+
+def test_un_etat_qui_ne_bouge_jamais_est_dit_comme_tel(runtime: Any) -> None:
+    """Ne pas confondre « c'est revenu » et « ça n'est jamais parti »."""
+    with pytest.raises(runtime.ScalewayApiError) as erreur:
+        runtime.poll_until(
+            lambda: {"state": "running"},
+            expected="running",
+            field_name="state",
+            timeout=0.05,
+            interval=0,
+            leave_first="running",
+        )
+
+    message = str(erreur.value)
+    assert "n'a jamais quitté" in message
+    assert "rien ne permet de confirmer" in message
+
+
+def test_sans_transition_a_exiger_la_premiere_lecture_suffit(runtime: Any) -> None:
+    """Le contre-exemple : `poweroff` part de `running`, donc rien à exiger."""
+    observe = runtime.poll_until(
+        lambda: {"state": "stopped"},
+        expected="stopped",
+        field_name="state",
+        timeout=5,
+        interval=0,
+        leave_first=None,
+    )
+    assert observe == "stopped"
+
+
+# --- ce qu'une action rapporte quand l'attente échoue ----------------------
+
+
+class _ApiFactice:
+    """Un client qui accepte l'action, puis ne bouge plus."""
+
+    def __init__(self, etat: str = "running") -> None:
+        self.etat = etat
+        self.actions = 0
+
+    def request(self, *_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        self.actions += 1
+        return {}
+
+    def fetch_one(self, *_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        return {"state": self.etat}
+
+
+def test_une_attente_qui_echoue_rapporte_quand_meme_le_changement(
+    runtime: Any, monkeypatch: Any
+) -> None:
+    """L'API a accepté, donc la ressource a changé, quoi qu'il arrive ensuite.
+
+    Un `fail_json` sans `changed` fait croire à un playbook rejoué qu'il n'a
+    rien fait, alors que la machine a bougé. Ce chemin n'avait aucun test :
+    c'est pour ça que le défaut a vécu.
+    """
+    api = _ApiFactice(etat="running")
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
+
+    spec = runtime.ActionModule(
+        operation=runtime.Operation(id="ServerAction", method="POST", path="/x"),
+        read_operation=runtime.Operation(id="GetServer", method="GET", path="/x"),
+        wait_states={"poweroff": "stopped"},
+    )
+    module = _ModuleFactice(action="poweroff", wait_timeout=0.05)
+
+    with pytest.raises(SystemExit):
+        runtime.run_action_module(module, spec)
+
+    assert api.actions == 1, "l'action a bien été envoyée"
+    assert module.resultat is not None
+    assert module.resultat.get("changed") is True, (
+        "l'API a accepté l'action : le résultat doit le dire, même en échec"
+    )
+    assert "stopped" in module.resultat["msg"]

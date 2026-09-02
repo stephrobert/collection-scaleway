@@ -172,6 +172,58 @@
           - relu.server.state == 'stopped'
         success_msg: "l'API rend bien {{ relu.server.state }}"
 
+    # `reboot` n'est pas joué ici, et c'est mesuré plutôt que supposé : en
+    # `--vm off`, l'émulateur bascule l'état sans passer par `stopping` ni
+    # `starting`, donc la machine ne quitte jamais `running`. Le module exige
+    # désormais d'observer une transition avant de confirmer un redémarrage,
+    # et il échouerait ici pour une raison qui n'est pas la sienne. La garde
+    # est prouvée par les tests unitaires ; l'émulateur ne peut pas la juger
+    # (feint#637).
+    #
+    # `stop_in_place` attendait `stopped` jusqu'à ce que quelqu'un la joue :
+    # le contrat déclare `stopped in place`, un état **distinct**, et le module
+    # échouait après `wait_timeout` sur une Instance pourtant bien arrêtée.
+    # Aucun test hors ligne ne pouvait l'attraper, parce que le défaut était
+    # dans la valeur, pas dans la forme. Celui-ci l'attrape.
+    - name: Rallumer pour éprouver la seconde forme d'arrêt
+      local.scaleway.instance_server_action:
+        zone: "{{ zone }}"
+        server_id: "{{ server_id }}"
+        action: poweron
+        wait: true
+
+    - name: Arrêter en gardant la place sur l'hyperviseur
+      local.scaleway.instance_server_action:
+        zone: "{{ zone }}"
+        server_id: "{{ server_id }}"
+        action: stop_in_place
+        wait: true
+      register: fige
+
+    - name: L'état atteint est bien « stopped in place », et pas « stopped »
+      ansible.builtin.assert:
+        that:
+          - fige is changed
+          - fige.state == 'stopped in place'
+        success_msg: >-
+          stop_in_place atteint '{{ fige.state }}', l'état que le contrat
+          déclare pour cette action
+        fail_msg: >-
+          stop_in_place a rendu '{{ fige.state | default("rien") }}' :
+          l'override d'attente ne correspond plus au contrat
+
+    - name: Relire l'Instance plutôt que croire le module
+      local.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+        server_id: "{{ server_id }}"
+      register: apres_fige
+
+    - name: L'API confirme l'état distinct
+      ansible.builtin.assert:
+        that:
+          - apres_fige.server.state == 'stopped in place'
+        quiet: true
+
     - name: Une action que la collection n'expose pas est refusée par Ansible
       local.scaleway.instance_server_action:
         zone: "{{ zone }}"
