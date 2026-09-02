@@ -167,7 +167,14 @@ def _environment() -> Environment:
         trim_blocks=True,
         lstrip_blocks=True,
         keep_trailing_newline=True,
-        autoescape=False,
+        # CodeQL signale `py/jinja2/autoescape-false` en gravité haute, et il a
+        # raison de le signaler : la règle vise le rendu de HTML, où ne pas
+        # échapper ouvre une injection. Ici la sortie est du **code Python**.
+        # Échapper y serait le défaut : `&` deviendrait `&amp;` et un guillemet
+        # une entité, dans un fichier que l'interpréteur doit lire. Les valeurs
+        # rendues ne viennent d'ailleurs pas d'un utilisateur mais d'un contrat
+        # OpenAPI versionné, relu en revue avant d'entrer dans le dépôt.
+        autoescape=False,  # codeql[py/jinja2/autoescape-false]
     )
 
 

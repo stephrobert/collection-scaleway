@@ -203,6 +203,20 @@ jobs:
             exit 1
           fi
           applique="$(gh api "repos/${DEPOT}/rulesets/${id}" | jq -S '{name, target, enforcement, bypass_actors, rules}')"
+
+          # `bypass_actors` n'est lisible qu'avec un jeton administrateur : le
+          # `GITHUB_TOKEN` par défaut rend `null` quoi que le ruleset contienne.
+          # Mesuré au premier passage réel, où la porte a rapporté un écart qui
+          # n'existait pas. Une garde qui invente une différence use la
+          # confiance qu'on lui accorde aussi sûrement qu'une garde qui en rate
+          # une : cette moitié est donc retirée de la comparaison **et dite**.
+          if [ "$(printf '%s' "${applique}" | jq -c '.bypass_actors')" = "null" ]; then
+            echo "note : les contournements ne sont pas lisibles avec ce jeton," >&2
+            echo "       cette moitié de la comparaison n'est pas vérifiée." >&2
+            declare="$(printf '%s' "${declare}" | jq -S 'del(.bypass_actors)')"
+            applique="$(printf '%s' "${applique}" | jq -S 'del(.bypass_actors)')"
+          fi
+
           diff <(printf '%s\n' "${declare}") <(printf '%s\n' "${applique}") \
             || { echo "le ruleset appliqué diffère de .github/rulesets/main.json" >&2; exit 1; }
           echo "le ruleset appliqué correspond au fichier"

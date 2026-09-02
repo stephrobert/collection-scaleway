@@ -327,3 +327,26 @@ Les deux sont falsifiées (`sanity-sur-collection-invisible`,
 `sanity-qui-ne-mesure-rien`). Hors d'un dépôt git, la première ne s'applique
 pas : `ansible-test` parcourt alors le disque, et refuser là serait refuser une
 mesure qui a bien lieu.
+
+## Le moteur de l'inventaire, couche par couche
+
+Le plugin `plugins/inventory/scaleway.py` ne porte que le dialogue avec
+Ansible. Tout ce qui décide vit sous `plugins/module_utils/inventory/`, en
+couches qui se testent seules :
+
+| couche | ce qu'elle décide |
+|---|---|
+| `config` | lire et valider ce que l'utilisateur a demandé |
+| `providers` | traduire une API Scaleway en modèle normalisé |
+| `network` | indexer IPAM, réseaux privés et VPC, puis joindre |
+| `address` | choisir `ansible_host`, et savoir l'expliquer |
+| `hostname` | choisir `inventory_hostname`, et refuser les collisions |
+| `groups` | nommer les groupes, et assainir ces noms |
+| `models` | le modèle normalisé, seul objet qui traverse les couches |
+| `errors` | distinguer un droit refusé d'une panne et d'une absence |
+
+Cette carte vivait dans la docstring de `inventory/__init__.py`, jusqu'à ce
+qu'`ansible-test sanity` la refuse : sous `module_utils`, les `__init__.py`
+doivent être **vides** pour ansible-core 2.17 et 2.18, que `meta/runtime.yml`
+déclare supporter. Les versions récentes l'acceptent, et c'est le genre
+d'écart qu'une matrice existe pour attraper.
