@@ -53,6 +53,7 @@ COMMON_PARAMETERS: frozenset[str] = frozenset(
         "secret_key",
         "api_url",
         "api_allow_insecure",
+        "api_timeout",
         "user_agent",
         "organization_id",
         "project_id",

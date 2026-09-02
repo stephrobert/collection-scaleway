@@ -10,8 +10,9 @@ La preuve de bout en bout, elle, se joue contre un émulateur local :
 
 from __future__ import annotations
 
-import inspect
+import dataclasses
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -191,18 +192,32 @@ def test_lattente_a_les_valeurs_de_la_collection_officielle(runtime: Any) -> Non
 # --- la surface du SDK sur laquelle le runtime s'appuie --------------------
 
 
-def test_le_sdk_expose_toujours_le_point_dexecution_attendu(runtime: Any) -> None:
-    """Garde de dérive : le runtime exécute la méthode et le chemin du contrat.
+def test_le_runtime_ne_depend_plus_du_point_dexecution_prive_du_sdk(runtime: Any) -> None:
+    """Le runtime composait sa requête par `API._request`, méthode privée.
 
-    C'est ce qui évite de deviner un nom de méthode SDK depuis un
-    `operationId`. Le prix est une dépendance à `API._request` ; si le SDK la
-    déplace, c'est ce test qui doit le dire, pas un playbook en production.
+    Elle n'a jamais été un contrat public, et surtout elle appelle
+    `requests.request()` **sans timeout** : une connexion muette figeait le
+    module indéfiniment. La collection compose donc sa requête elle-même.
+
+    Ce test garde le sens du changement : `API` ne doit plus être importé.
     """
-    from scaleway_core.api import API
-
-    signature = inspect.signature(API._request)
-    assert list(signature.parameters) == ["self", "method", "path", "params", "headers", "body"]
+    source = Path(runtime.__file__).read_text(encoding="utf-8")
+    assert "_request(" not in source, "le runtime rappelle la méthode privée du SDK"
+    assert not hasattr(runtime, "API"), "le runtime importe encore API"
     assert runtime.HAS_SDK is True
+
+
+def test_le_runtime_depend_du_client_du_sdk_et_le_dit(runtime: Any) -> None:
+    """Ce dont il dépend désormais : les champs du client, qui sont publics.
+
+    Garde de dérive : si le SDK renomme l'un d'eux, c'est ce test qui doit le
+    dire, pas un playbook en production.
+    """
+    from scaleway_core.client import Client
+
+    champs = {champ.name for champ in dataclasses.fields(Client)}
+    for attendu in ("api_url", "secret_key", "user_agent", "api_allow_insecure"):
+        assert attendu in champs, f"le SDK n'expose plus Client.{attendu}"
 
 
 # --- ce qu'une action attend, et ce qu'elle refuse d'attendre --------------
@@ -389,3 +404,134 @@ def test_une_attente_qui_echoue_rapporte_quand_meme_le_changement(
         "l'API a accepté l'action : le résultat doit le dire, même en échec"
     )
     assert "stopped" in module.resultat["msg"]
+
+
+# --- ce qui borne un appel, et ce qu'il fait d'une panne réseau ------------
+
+
+class _ReponseFactice:
+    """Le strict nécessaire d'une réponse `requests`."""
+
+    def __init__(self, contenu: bytes = b"{}", entetes: dict[str, str] | None = None) -> None:
+        self.status_code = 200
+        self.headers = entetes or {}
+        self._content = contenu
+
+    @property
+    def content(self) -> bytes:
+        return self._content
+
+    def json(self) -> Any:
+        import json as _json
+
+        return _json.loads(self._content)
+
+
+def _api_factice(runtime: Any, monkeypatch: Any, module: Any) -> Any:
+    """Un `ScalewayApi` dont le client est posé à la main, sans réseau."""
+    api = runtime.ScalewayApi.__new__(runtime.ScalewayApi)
+    api._module = module
+    api._client = SimpleNamespace(
+        api_url="http://127.0.0.1:1",
+        secret_key="secret",
+        user_agent="test",
+        api_allow_insecure=False,
+    )
+    return api
+
+
+def test_un_appel_dapi_est_borne_dans_le_temps(runtime: Any, monkeypatch: Any) -> None:
+    """Le SDK appelait `requests` sans timeout : une connexion muette figeait
+    le module indéfiniment. Le délai est désormais passé, et configurable."""
+    vus: dict[str, Any] = {}
+
+    def faux_request(**kwargs: Any) -> Any:
+        vus.update(kwargs)
+        return _ReponseFactice()
+
+    monkeypatch.setattr(runtime.requests, "request", faux_request)
+    module = _ModuleFactice(api_timeout=7)
+    api = _api_factice(runtime, monkeypatch, module)
+
+    api._send(runtime.Operation(id="X", method="GET", path="/x"), "/x", {}, None)
+
+    assert vus["timeout"] == 7
+
+
+def test_le_delai_a_un_defaut_quand_le_module_ne_le_dit_pas(runtime: Any, monkeypatch: Any) -> None:
+    vus: dict[str, Any] = {}
+    monkeypatch.setattr(
+        runtime.requests, "request", lambda **kw: (vus.update(kw), _ReponseFactice())[1]
+    )
+    api = _api_factice(runtime, monkeypatch, _ModuleFactice())
+
+    api._send(runtime.Operation(id="X", method="GET", path="/x"), "/x", {}, None)
+
+    assert vus["timeout"] == runtime.DEFAULT_REQUEST_TIMEOUT
+
+
+def test_une_api_injoignable_donne_une_erreur_nommee_pas_une_trace(
+    runtime: Any, monkeypatch: Any
+) -> None:
+    """Sans traduction, Ansible affiche MODULE FAILURE et l'utilisateur ne sait
+    pas si son playbook est fautif ou si le réseau l'est."""
+
+    def refuse(**_kwargs: Any) -> Any:
+        raise runtime.requests.exceptions.ConnectionError("connexion refusée")
+
+    monkeypatch.setattr(runtime.requests, "request", refuse)
+    api = _api_factice(runtime, monkeypatch, _ModuleFactice())
+
+    with pytest.raises(runtime.ScalewayApiError) as erreur:
+        api._send(runtime.Operation(id="X", method="GET", path="/x"), "/x", {}, None)
+
+    assert "injoignable" in str(erreur.value)
+
+
+def test_un_depassement_de_delai_nomme_le_delai(runtime: Any, monkeypatch: Any) -> None:
+    def trop_long(**_kwargs: Any) -> Any:
+        raise runtime.requests.exceptions.Timeout("trop long")
+
+    monkeypatch.setattr(runtime.requests, "request", trop_long)
+    api = _api_factice(runtime, monkeypatch, _ModuleFactice(api_timeout=3))
+
+    with pytest.raises(runtime.ScalewayApiError) as erreur:
+        api._send(runtime.Operation(id="X", method="GET", path="/x"), "/x", {}, None)
+
+    assert "3 s" in str(erreur.value)
+
+
+def test_le_total_est_reverse_de_lentete_vers_le_corps(runtime: Any) -> None:
+    """Le contrat ne déclare pas `total_count` sur les listes : c'est l'en-tête
+    qui le porte, et la pagination s'en sert comme garde-fou. Le SDK le
+    reversait discrètement ; ici c'est explicite, donc testable."""
+    reponse = _ReponseFactice(b'{"servers": []}', {"x-total-count": "150"})
+
+    runtime._carry_total_count(reponse)
+
+    assert reponse.json()["total_count"] == "150"
+
+
+def test_un_total_deja_present_dans_le_corps_nest_pas_ecrase(runtime: Any) -> None:
+    reponse = _ReponseFactice(b'{"servers": [], "total_count": 7}', {"x-total-count": "150"})
+
+    runtime._carry_total_count(reponse)
+
+    assert reponse.json()["total_count"] == 7
+
+
+def test_une_valeur_de_liste_devient_des_paires_repetees(runtime: Any, monkeypatch: Any) -> None:
+    vus: dict[str, Any] = {}
+    monkeypatch.setattr(
+        runtime.requests, "request", lambda **kw: (vus.update(kw), _ReponseFactice())[1]
+    )
+    api = _api_factice(runtime, monkeypatch, _ModuleFactice())
+
+    api._send(
+        runtime.Operation(id="X", method="GET", path="/x"),
+        "/x",
+        {"tags": ["a", "b"], "zone": "fr-par-1", "vide": None},
+        None,
+    )
+
+    assert vus["params"] == [("tags", "a"), ("tags", "b"), ("zone", "fr-par-1")]

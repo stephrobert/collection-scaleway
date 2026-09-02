@@ -29,6 +29,7 @@ un playbook contre un émulateur local, sans credentials Scaleway.
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 import traceback
@@ -39,7 +40,7 @@ from urllib.parse import quote
 from ansible.module_utils.basic import AnsibleModule, env_fallback, missing_required_lib
 
 try:
-    from scaleway_core.api import API
+    import requests
     from scaleway_core.client import Client
     from scaleway_core.profile import Profile
 except ImportError:
@@ -65,6 +66,14 @@ DEFAULT_PAGE_SIZE = 100
 #: rendrait indéfiniment la même page ; mieux vaut échouer bruyamment que
 #: boucler en silence.
 MAX_PAGES = 1000
+
+#: Secondes accordées à un appel d'API, connexion et lecture. Sans limite, une
+#: connexion muette fige un playbook indéfiniment : mesuré, le SDK appelle
+#: `requests.request()` sans `timeout`, donc rien ne borne l'attente.
+#:
+#: 60 s est large pour une liste de cent ressources et court devant les 300 s
+#: de `wait_timeout`, qui borne une attente entière et non un appel.
+DEFAULT_REQUEST_TIMEOUT = 60
 
 #: Correspondance des paramètres du module vers les champs du profil SDK.
 #: Elle est explicite : un paramètre commun ajouté ici sans être ajouté à
@@ -106,6 +115,7 @@ def scaleway_argument_spec() -> dict[str, dict[str, Any]]:
             "fallback": (env_fallback, ["SCW_API_URL"]),
         },
         "api_allow_insecure": {"type": "bool", "default": False},
+        "api_timeout": {"type": "int", "default": DEFAULT_REQUEST_TIMEOUT},
         "user_agent": {"type": "str"},
         "organization_id": {
             "type": "str",
@@ -446,6 +456,26 @@ def _validate_client(module: AnsibleModule, client: Client) -> None:
             module.fail_json(msg=f"configuration Scaleway invalide : {error}")
 
 
+def _carry_total_count(response: Any) -> None:
+    """Reverse `x-total-count` dans le corps, comme le SDK le faisait.
+
+    Le contrat ne déclare pas `total_count` dans ses réponses de liste : c'est
+    l'en-tête qui le porte. La pagination s'en sert comme garde-fou, donc ne
+    pas le reverser rendrait une liste tronquée sans le dire.
+    """
+    total = response.headers.get("x-total-count")
+    if not total or not response.content:
+        return
+    try:
+        charge = response.json()
+    except ValueError:
+        return
+    if not isinstance(charge, dict) or "total_count" in charge:
+        return
+    charge["total_count"] = total
+    response._content = json.dumps(charge).encode("utf-8")
+
+
 class ScalewayApi:
     """Le point d'exécution unique des modules de la collection."""
 
@@ -458,9 +488,6 @@ class ScalewayApi:
         self._module = module
         self._client = build_client(module)
         _validate_client(module, self._client)
-        # `bypass_validation` : la validation a déjà été faite ci-dessus, et
-        # elle tient compte de la cible. La refaire ici interdirait l'émulateur.
-        self._api = API(self._client, bypass_validation=True)
 
     @property
     def client(self) -> Client:
@@ -475,12 +502,7 @@ class ScalewayApi:
     ) -> dict[str, Any]:
         """Exécute une opération et rend la charge utile JSON de la réponse."""
         path = render_path(operation.path, self._module.params)
-        response = self._api._request(
-            operation.method,
-            path,
-            params=params or {},
-            body=body,
-        )
+        response = self._send(operation, path, params or {}, body)
 
         if response.status_code >= 400:
             raise _error_from_response(operation, response)
@@ -497,6 +519,82 @@ class ScalewayApi:
                 request_id=response.headers.get("x-request-id"),
             ) from error
         return payload if isinstance(payload, dict) else {"result": payload}
+
+    def _send(
+        self,
+        operation: Operation,
+        path: str,
+        params: dict[str, Any],
+        body: dict[str, Any] | None,
+    ) -> Any:
+        """Envoie la requête, et borne l'attente.
+
+        Cette méthode a longtemps été `API._request` du SDK. Deux raisons de ne
+        plus l'être, et la première est celle qui compte :
+
+        * **le SDK n'y passe aucun `timeout`.** Mesuré dans son source : une
+          connexion muette fige le module indéfiniment, ce qu'aucun playbook ne
+          devrait risquer ;
+        * `_request` commence par un souligné. Ce n'est pas un contrat public,
+          et le runtime n'en utilisait que la méthode et le chemin.
+
+        Ce qui est reproduit ici l'est **délibérément**, pas par recopie :
+
+        * une valeur de liste devient des paires répétées, `?tags=a&tags=b`,
+          comme le SDK. Ce que l'API réelle attend n'est pas tranché ;
+        * `x-total-count` est reversé dans le corps sous `total_count`. Sans
+          ce report, la pagination perdrait son garde-fou, parce que le contrat
+          ne déclare pas `total_count` dans les réponses de liste. C'était le
+          comportement le plus discret du SDK, et il est ici explicite.
+        """
+        client = self._client
+        methode = operation.method.upper()
+
+        entetes: dict[str, str] = {
+            "accept": "application/json",
+            "user-agent": client.user_agent or DEFAULT_USER_AGENT,
+        }
+        if methode in ("POST", "PUT", "PATCH"):
+            entetes["Content-Type"] = "application/json; charset=utf-8"
+        if client.secret_key is not None:
+            entetes["x-auth-token"] = client.secret_key
+
+        paires: list[tuple[str, Any]] = []
+        for nom, valeur in params.items():
+            if valeur is None:
+                continue
+            if isinstance(valeur, list):
+                paires.extend((nom, item) for item in valeur)
+            else:
+                paires.append((nom, valeur))
+
+        delai = int(self._module.params.get("api_timeout") or DEFAULT_REQUEST_TIMEOUT)
+        try:
+            response = requests.request(
+                method=methode,
+                url=f"{client.api_url}{path}",
+                params=paires,
+                headers=entetes,
+                data=json.dumps(body) if body is not None else None,
+                verify=not client.api_allow_insecure,
+                timeout=delai,
+            )
+        except requests.exceptions.Timeout as erreur:
+            raise ScalewayApiError(
+                operation=operation.id,
+                message=f"l'API n'a pas répondu en {delai} s : {erreur}",
+            ) from erreur
+        except requests.exceptions.RequestException as erreur:
+            # Sans cette traduction, une panne réseau sort en trace Python et
+            # Ansible affiche MODULE FAILURE : l'utilisateur ne sait pas si son
+            # playbook est fautif ou si le réseau l'est.
+            raise ScalewayApiError(
+                operation=operation.id,
+                message=f"l'API est injoignable : {erreur}",
+            ) from erreur
+
+        _carry_total_count(response)
+        return response
 
     def fetch_one(self, operation: Operation) -> Any:
         """Lit une ressource unique, et rend le champ que le contrat désigne."""

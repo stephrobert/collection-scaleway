@@ -42,6 +42,17 @@ options:
       - Allow the API endpoint to be reached without verifying its TLS certificate.
     type: bool
     default: false
+  api_timeout:
+    description:
+      - Seconds allowed for a single API call, connection and read.
+      - >-
+        Without a limit a silent connection would hang the module forever: the
+        Scaleway SDK issues its requests with no timeout at all.
+      - >-
+        This bounds a single call, not a whole wait. Modules that can wait for
+        a state bound the overall wait separately.
+    type: int
+    default: 60
   user_agent:
     description:
       - Value of the User-Agent header sent to the API.

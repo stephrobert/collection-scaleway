@@ -1,0 +1,16 @@
+---
+bugfixes:
+  - "Les appels d'API sont désormais bornés dans le temps. Le SDK Scaleway
+    émet ses requêtes **sans aucun timeout** : une connexion muette figeait un
+    playbook indéfiniment. Un paramètre ``api_timeout`` borne chaque appel, à
+    60 secondes par défaut."
+  - "Une panne réseau produit maintenant une erreur nommée au lieu d'une trace
+    Python. Les exceptions de ``requests`` étaient laissées telles quelles, et
+    Ansible affichait ``MODULE FAILURE`` : l'utilisateur ne pouvait pas savoir
+    si son playbook était fautif ou si le réseau l'était."
+minor_changes:
+  - "La collection compose elle-même ses requêtes HTTP et n'appelle plus
+    ``API._request``, une méthode privée du SDK. Le report de l'en-tête
+    ``x-total-count`` vers le champ ``total_count`` du corps, dont dépend le
+    garde-fou de pagination, était le comportement le plus discret de cette
+    méthode : il est désormais explicite et testé."

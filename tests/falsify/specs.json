@@ -430,6 +430,30 @@
       "find": "            module.fail_json(changed=True, msg=error.message, **error.details())",
       "replace": "            module.fail_json(msg=error.message, **error.details())",
       "test": "tests/unit/collection/test_runtime.py::test_une_attente_qui_echoue_rapporte_quand_meme_le_changement"
+    },
+    {
+      "name": "appel-sans-delai",
+      "why": "Sans timeout, une connexion muette fige un playbook indéfiniment, ce que le SDK faisait.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "                timeout=delai,",
+      "replace": "                timeout=None,",
+      "test": "tests/unit/collection/test_runtime.py::test_un_appel_dapi_est_borne_dans_le_temps"
+    },
+    {
+      "name": "panne-reseau-en-trace",
+      "why": "Une exception réseau non traduite sort en MODULE FAILURE : l'utilisateur ne sait pas qui est fautif.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        except requests.exceptions.RequestException as erreur:",
+      "replace": "        except _JamaisLevee as erreur:",
+      "test": "tests/unit/collection/test_runtime.py::test_une_api_injoignable_donne_une_erreur_nommee_pas_une_trace"
+    },
+    {
+      "name": "total-non-reverse",
+      "why": "Sans le report de x-total-count, la pagination perd son garde-fou et rend une liste tronquée sans le dire.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    charge[\"total_count\"] = total",
+      "replace": "    charge[\"total_count\"] = total if False else None\n    return",
+      "test": "tests/unit/collection/test_runtime.py::test_le_total_est_reverse_de_lentete_vers_le_corps"
     }
   ]
 }
