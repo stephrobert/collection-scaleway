@@ -4,3 +4,11 @@
 # La borne basse est celle de la collection officielle Scaleway, pour qu'un
 # utilisateur qui a déjà l'une n'ait pas à arbitrer entre les deux.
 scaleway>=2.9.0
+
+# Borne posée pour une vulnérabilité, pas pour une fonctionnalité.
+#
+# `idna` est une dépendance transitive du SDK. Sans borne, un résolveur
+# prend la plus ancienne version qui satisfait les contraintes, et
+# OSV-Scanner l'a signalé dès sa première exécution : idna 3.9.0 est
+# vulnérable à CVE-2026-45409 (GHSA-65pc-fj4g-8rjx), corrigée en 3.15.
+idna>=3.15

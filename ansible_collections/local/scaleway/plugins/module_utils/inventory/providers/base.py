@@ -73,7 +73,15 @@ class InventoryProvider(Protocol):
 
     name: str
 
-    def discover(self, context: DiscoveryContext) -> ProviderResult: ...
+    def discover(self, context: DiscoveryContext) -> ProviderResult:
+        """Découvre les machines de ce produit et rend un résultat.
+
+        Le corps est une docstring et non le `...` habituel d'un `Protocol` :
+        `ansible-test sanity` refuse `def f(): ...` en E704 sur ansible-core
+        2.17 et 2.18, que `meta/runtime.yml` déclare supporter. Les versions
+        récentes l'acceptent, ce qui est exactement le genre d'écart qu'une
+        matrice existe pour attraper.
+        """
 
 
 @dataclass

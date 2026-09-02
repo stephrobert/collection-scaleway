@@ -23,6 +23,10 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.6",
     "mypy>=1.11",
+    # Sans ces stubs, mypy voit `yaml.dump` rendre `Any`, et le renderer ne
+    # type plus. Ils étaient présents par accident dans un venv plus ancien :
+    # un venv reconstruit depuis le seul verrou l'a montré.
+    "types-PyYAML>=6.0",
     # Le SDK et ansible-core ne sont pas des dépendances du générateur : ils
     # sont des dépendances de ce que le générateur produit. Les tests en ont
     # besoin pour prouver que le module produit s'importe, que son

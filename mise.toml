@@ -53,9 +53,15 @@ description = "Installer les dépendances de développement depuis le verrou"
 # le backend de construction dans un environnement isolé, hors du verrou, et
 # rouvre exactement la porte que le verrou ferme. setuptools est verrouillé,
 # donc l'installation éditable s'en sert.
+#
+# `uv pip` et non `python -m pip`, et ce n'est pas une préférence : mise crée le
+# venv **avec uv** dès qu'uv est dans `[tools]`, et un venv créé par uv ne
+# contient pas `pip`. Mesuré au premier passage en CI, où `python -m pip` a
+# répondu « No module named pip » alors que tout marchait en local, sur un venv
+# plus ancien qui en avait un. C'est le cas d'école du « ça marche chez moi ».
 run = """
-python -m pip install --require-hashes --requirement requirements-dev.lock
-python -m pip install --editable . --no-deps --no-build-isolation
+uv pip install --require-hashes --requirement requirements-dev.lock
+uv pip install --editable . --no-deps --no-build-isolation
 """
 
 [tasks.lock]
@@ -74,7 +80,12 @@ description = "Épingler une version d'ansible-core (ANSIBLE_CORE='>=2.17,<2.18'
 # la plage de versions **est** le sujet du test. La verrouiller reviendrait à
 # tenir quatre verrous, un par borne de la matrice, pour éprouver quatre
 # versions figées au lieu des quatre plages que `meta/runtime.yml` promet.
-run = "python -m pip install 'ansible-core${ANSIBLE_CORE:->=2.17}'"
+#
+# Guillemets et non apostrophes : dans `sh`, `${VAR:-défaut}` ne s'expanse pas
+# entre apostrophes, et la chaîne partait littérale vers le résolveur. Défaut
+# latent depuis l'écriture de la tâche, que personne n'avait vu parce que la
+# matrice de CI échouait avant d'y arriver.
+run = 'uv pip install "ansible-core${ANSIBLE_CORE:->=2.17}"' 
 
 [tasks.security]
 description = "Juger les workflows : actionlint, zizmor, poutine"
