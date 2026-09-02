@@ -1,0 +1,11 @@
+---
+# Ce que doit installer un environnement d'exécution construit pour cette
+# collection. `ansible-builder` lit ce fichier ; sans lui, il retomberait sur
+# `requirements.txt` et `bindep.txt` à la racine, qui décrivent l'outillage de
+# développement de ce dépôt et n'ont rien à faire dans une image.
+#
+# La dépendance déclarée ici est la vraie : les modules exécutent leurs appels
+# par le SDK Scaleway, et sans lui ils échouent avec `missing_required_lib`.
+dependencies:
+  python: meta/ee-requirements.txt
+  system: meta/ee-bindep.txt

@@ -1,0 +1,40 @@
+# Le fichier d'inventaire joué par `mise run integration`.
+#
+# Il n'invente aucun identifiant : `SCW_ACCESS_KEY`, `SCW_SECRET_KEY` et
+# surtout `SCW_API_URL` viennent de `feint env scaleway`, et c'est cette
+# dernière variable qui fait parler le plugin à l'émulateur plutôt qu'à
+# l'API Scaleway réelle. Elle est déclarée comme option `env:` du plugin,
+# et pas héritée d'un fragment de documentation de module : un fragment de
+# module ne porte pas de clé `env`, donc son défaut l'emporterait en
+# silence, et ce scénario partirait vers la vraie API avec de vrais
+# identifiants. C'est arrivé une fois, avant que le plugin déclare ses
+# propres options.
+plugin: local.scaleway.scaleway
+
+products:
+  - instance
+zones:
+  - fr-par-1
+
+# Les six axes qui ont un sens sur le parc que ce scénario amorce. `vpc` et
+# `private_network` en sont absents à dessein : les serveurs amorcés ici n'ont
+# pas de carte réseau privée, et un axe qui ne produirait aucun groupe ne
+# prouverait rien.
+group_by:
+  - product
+  - project
+  - region
+  - zone
+  - state
+  - tags
+
+hostnames:
+  - name
+  - id
+
+# Le mode strict : un provider qui échoue fait échouer l'inventaire au lieu
+# de rendre un parc incomplet avec un code de retour 0.
+strict: true
+
+# Sans cache : ce scénario mesure ce que l'API rend maintenant.
+cache: false

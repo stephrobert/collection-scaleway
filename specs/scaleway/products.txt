@@ -1,0 +1,14 @@
+# Produits Scaleway suivis par le générateur, un par ligne.
+#
+#   <slug-portail> [<nom-produit>] <version>
+#
+# Le slug est celui de l'URL du portail developers, et il ne coïncide pas
+# toujours avec le nom du produit dans les SDK. Mesuré sur le portail :
+# baremetal s'y appelle elastic-metal, k8s s'y appelle kubernetes, lb s'y
+# appelle load-balancer/zoned. Un produit ajouté ici se vérifie sur sa page,
+# il ne se devine pas depuis le SDK.
+#
+# Le MVP ne suit qu'Instance : la chaîne complète doit fonctionner sur un
+# produit avant d'en ajouter un second.
+
+instance v1

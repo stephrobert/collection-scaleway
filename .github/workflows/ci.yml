@@ -1,0 +1,262 @@
+# CI du générateur et de la collection. Aucun credential Scaleway n'est
+# nécessaire : les contrats sont versionnés, et rien ne va sur le réseau.
+#
+# Les étapes appellent les tâches de `mise.toml` plutôt que de recopier leurs
+# commandes : le périmètre de génération (`MODULES`) n'a qu'une seule
+# définition, et une CI qui diverge du lanceur ne mesure pas ce qu'on croit.
+#
+# Trois règles tiennent la sécurité de ce fichier, et elles valent pour tous
+# les workflows du dépôt :
+#
+# 1. **Aucun droit par défaut.** `permissions: {}` au niveau du workflow, puis
+#    chaque job déclare le strict nécessaire. Un job qui n'a besoin de rien
+#    n'obtient rien.
+# 2. **Aucune action par tag.** Un tag est mobile : `@v4` est du code qui peut
+#    changer sans revue, et c'est exactement le scénario tj-actions de mars
+#    2025. Tout est épinglé par SHA de commit, avec la version en commentaire
+#    pour que quarante caractères restent lisibles.
+# 3. **Aucun jeton laissé derrière.** `persist-credentials: false` sur chaque
+#    checkout : sans lui, `actions/checkout` laisse le `GITHUB_TOKEN` dans
+#    `.git/config`, à portée de tout ce que la suite du job exécute.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # La liste de contrôle d'inclusion des collections demande que la CI tourne
+  # régulièrement, pas seulement sur les pull requests : une dépendance qui
+  # casse toute seule ne se voit pas autrement.
+  schedule:
+    - cron: "0 4 * * 1"
+
+permissions: {}
+
+# Une pull request repoussée annule la série précédente. Sur `main`, rien n'est
+# annulé : ce qui a été poussé doit avoir été mesuré.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  generator:
+    name: Générateur
+    # Image épinglée plutôt que `ubuntu-latest` : une CI dont le socle change
+    # sous elle ne dit pas si une régression vient du code ou de la machine.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          # `audit` et non `block` : la politique se mesure avant de se
+          # fermer. Une allowlist écrite sans avoir observé le trafic réel
+          # casse la CI sans rien prouver.
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Épinglé par SHA : une action référencée par un tag mobile est du code
+      # qui change sans revue. `version` épingle mise lui-même, sans quoi
+      # l'action télécharge la dernière release publiée : mise installe Python
+      # et ruff et lance toutes les tâches, donc le laisser flotter annulerait
+      # l'épinglage de tout le reste.
+      - name: Installer mise
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
+        with:
+          version: 2026.2.23
+
+      - name: Installer
+        run: mise run setup
+
+      - name: Style
+        run: mise run lint
+
+      - name: Types
+        run: mise run typecheck
+
+      - name: Tests
+        run: mise run test
+
+      # Sort en code 2 sur toute opération non classée ou tout override
+      # orphelin : une API qui bouge ne passe pas en silence.
+      - name: Rapport de couverture
+        run: mise run report
+
+      # Les artefacts versionnés doivent être ceux que le générateur produit,
+      # golden de l'IR, modules rendus et modules de la collection compris.
+      - name: Dérive des artefacts générés
+        run: mise run check:generated
+
+      - name: Fragments de changelog
+        run: mise run lint:changelog
+
+      # Une garde dont la suppression laisse les tests verts est un commentaire.
+      - name: Falsification des gardes
+        run: mise run falsify
+
+      - name: Publier les rapports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rapports
+          path: build/reports/
+          if-no-files-found: warn
+
+  collection:
+    # Ce qu'Ansible dit du fichier produit : documentation, types, en-têtes,
+    # import. Le travail du générateur n'est pas jugé par le générateur.
+    #
+    # La matrice couvre chaque version d'ansible-core que `meta/runtime.yml`
+    # déclare supporter. Une version déclarée et jamais testée est une promesse
+    # sans preuve : c'est ainsi que la borne basse est passée de 2.16 à 2.17,
+    # après avoir mesuré que 2.16 échouait sur deux contrôles.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    name: collection (ansible-core ${{ matrix.ansible }})
+    strategy:
+      fail-fast: false
+      matrix:
+        ansible:
+          - ">=2.17,<2.18"
+          - ">=2.18,<2.19"
+          - ">=2.19,<2.20"
+          - ">=2.20,<2.21"
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Installer mise
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
+        with:
+          version: 2026.2.23
+
+      - name: Installer
+        run: mise run setup
+
+      # La valeur de matrice passe par `env:` et non par une interpolation dans
+      # le `run:` : une donnée interpolée directement dans un shell est une
+      # injection de template, et c'est le premier défaut que zizmor cherche.
+      - name: Épingler ansible-core
+        env:
+          ANSIBLE_CORE: ${{ matrix.ansible }}
+        run: mise run setup:ansible
+
+      # Le script assemble la collection hors du dépôt : sous `build/`,
+      # ansible-test interroge git, ne reçoit rien, saute toutes ses cibles et
+      # sort en 0. Il refuse ce vert-là.
+      - name: ansible-test sanity
+        run: mise run sanity
+
+      # L'outil officiel de documentation voit ce que sanity laisse passer :
+      # sur une référence croisée invalide, sanity sort en 0 et lui en 3.
+      # Le script refuse aussi un vert obtenu sur une collection sans module,
+      # que le linter rendrait sans rien dire.
+      - name: Documentation de la collection
+        run: mise run lint:docs
+
+  package:
+    # L'archive installable, et la preuve qu'elle sert : contenu contrôlé,
+    # installation réelle, puis `ansible-doc` et `ansible-playbook` interrogés
+    # depuis la collection installée.
+    name: Archive
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Installer mise
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
+        with:
+          version: 2026.2.23
+
+      - name: Installer
+        run: mise run setup
+
+      - name: Construire et vérifier l'archive
+        run: mise run package
+
+      # Ce que les tâches construisent doit être ignoré par git. Un artefact
+      # qui apparaît ici est un fichier que quelqu'un commitera sans le vouloir.
+      - name: L'arbre de travail est resté propre
+        run: mise run check:worktree
+
+      - name: Publier l'archive
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: collection
+          path: build/dist/*.tar.gz
+          if-no-files-found: error
+
+  integration:
+    # La preuve de comportement : le module généré, le vrai SDK, un vrai
+    # serveur HTTP. Aucun compte Scaleway, aucune dépense.
+    #
+    # L'émulateur est démarré par l'action que feint publie et vérifie : un job
+    # de son propre workflow-security compare `stephrobert/setup-feint@v1` à
+    # `.github/actions/setup-feint/action.yml` de son dépôt et échoue tant que
+    # les deux diffèrent. L'action télécharge le binaire, contrôle sa somme
+    # SHA-256 contre `checksums.txt`, puis lance `feint start`.
+    #
+    # `scripts/integration.py` adopte l'émulateur déjà en écoute et ne l'arrête
+    # pas : le cycle de vie appartient à qui l'a démarré.
+    name: Intégration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          # L'émulateur écoute en local et le job télécharge son binaire :
+          # `audit` documente ce trafic au lieu de le deviner.
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Installer mise
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
+        with:
+          version: 2026.2.23
+
+      - name: Installer
+        run: mise run setup
+
+      # Épinglé par SHA : `v1` est une référence mobile, et une action mobile
+      # est du code qui change sans revue.
+      - name: Démarrer l'émulateur
+        uses: stephrobert/setup-feint@b7eba1d4fcaccf65cf9124bf97a0d995996709b9 # v1
+        with:
+          version: "0.12.1"
+          addr: 127.0.0.1:4599
+
+      - name: Playbooks contre l'émulateur
+        run: mise run integration

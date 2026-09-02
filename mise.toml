@@ -1,0 +1,229 @@
+# mise : outillage épinglé et lanceur de tâches, en remplacement du Makefile.
+#
+#   mise install        installe l'outillage et crée le venv
+#   mise tasks          liste ce qui est lançable
+#   mise run check      ce qu'une pull request doit passer
+#
+# Une seule définition par tâche, et la CI appelle ces tâches plutôt que de
+# recopier leurs commandes : une CI qui diverge du lanceur ne mesure pas ce
+# qu'on croit.
+
+[tools]
+python = "3.12"
+# Le style et le typage sont épinglés ici plutôt que laissés à la version
+# installée sur la machine : un lint qui change d'avis d'un poste à l'autre
+# n'est pas un contrôle, c'est une loterie.
+ruff = "0.16.5"
+# uv ne sert qu'à recalculer le verrou des dépendances. Il est épinglé pour la
+# même raison que ruff : l'outil qui décide quelles versions entrent dans le
+# projet ne doit pas changer d'avis tout seul.
+uv = "0.11.26"
+
+[env]
+# Le venv du projet, créé et activé par mise. Les dépendances de développement
+# s'y installent par `mise run setup`.
+_.python.venv = { path = ".venv", create = true }
+
+# `get_env` et non une valeur littérale : une valeur déclarée en dur ici
+# gagnerait contre une variable exportée, et un réglage qui se lit comme
+# configurable sans l'être est pire que pas de réglage du tout. La leçon vient
+# de feint, qui l'a mesurée.
+PRODUCT = "{{ get_env(name='PRODUCT', default='instance') }}"
+
+# Périmètre de génération : les modules nommés ici, pas ceux que le générateur
+# saurait écrire. Le vider produit toutes les classes rendables (INFO, ACTION),
+# ce que rien ne prouve encore module par module.
+MODULES = "{{ get_env(name='MODULES', default='instance_server_info instance_server_action') }}"
+
+# Ce qui porte un serveur allumé pendant la cible d'intégration : off, incus,
+# incus-vm, incus-ovn. Démarrer des machines est un effet de bord qui se
+# demande, jamais un défaut.
+FEINT_VM = "{{ get_env(name='FEINT_VM', default='off') }}"
+
+# ---- Environnement ---------------------------------------------------------
+
+[tasks.setup]
+description = "Installer les dépendances de développement depuis le verrou"
+# `--require-hashes` change la nature de l'installation : pip refuse une archive
+# dont l'empreinte ne correspond pas, et refuse aussi toute dépendance qui
+# n'est pas dans le verrou. Une release compromise sur PyPI ne s'installe donc
+# pas en silence dans la CI, où elle tournerait à côté du jeton GitHub.
+#
+# `--no-build-isolation` n'est pas une optimisation : sans lui, pip télécharge
+# le backend de construction dans un environnement isolé, hors du verrou, et
+# rouvre exactement la porte que le verrou ferme. setuptools est verrouillé,
+# donc l'installation éditable s'en sert.
+run = """
+python -m pip install --require-hashes --requirement requirements-dev.lock
+python -m pip install --editable . --no-deps --no-build-isolation
+"""
+
+[tasks.lock]
+description = "Recalculer le verrou des dépendances après un changement de pyproject.toml"
+# Le verrou se relit comme un diff : c'est là qu'une dépendance qui apparaît se
+# voit. Le régénérer sans lire son diff annule le mécanisme, exactement comme
+# pour les golden.
+run = "uv pip compile pyproject.toml --extra dev --generate-hashes --quiet -o requirements-dev.lock"
+
+[tasks."setup:ansible"]
+description = "Épingler une version d'ansible-core (ANSIBLE_CORE='>=2.17,<2.18')"
+# La matrice de CI s'en sert pour éprouver chaque version que `meta/runtime.yml`
+# déclare. Une version déclarée et jamais testée est une promesse sans preuve.
+#
+# C'est la seule installation du dépôt qui sorte du verrou, et c'est assumé :
+# la plage de versions **est** le sujet du test. La verrouiller reviendrait à
+# tenir quatre verrous, un par borne de la matrice, pour éprouver quatre
+# versions figées au lieu des quatre plages que `meta/runtime.yml` promet.
+run = "python -m pip install 'ansible-core${ANSIBLE_CORE:->=2.17}'"
+
+[tasks.security]
+description = "Juger les workflows : actionlint, zizmor, poutine"
+# Les mêmes portes que la CI, lançables avant de pousser. Elles échouent quand
+# l'outil est absent au lieu de se sauter : un contrôle qui se saute tout seul
+# finit par ne plus jamais tourner, et c'est la leçon que la cible
+# d'intégration a déjà coûtée à ce dépôt.
+run = """
+actionlint -color
+zizmor --no-progress --persona regular --min-severity low .github/workflows/
+poutine analyze_local . --fail-on-violation --quiet
+"""
+
+[tasks."security:trust"]
+description = "Juger la politique de confiance du pipeline : plumber"
+# Séparé des trois autres, et pas par goût du rangement : plumber déduit le
+# fournisseur du remote git et refuse une copie de travail qui n'en a pas. Tant
+# que ce dépôt n'a pas de remote, cette tâche échoue avec ce message, et les
+# trois scanners qui ne lisent que des fichiers restent lançables.
+#
+# Mesurée malgré tout, sur un clone jetable pourvu d'une origine GitHub :
+# A, 100.0/100, zéro constat à toutes les gravités.
+run = "plumber analyze --min-score B"
+
+# ---- Contrôles rapides -----------------------------------------------------
+
+[tasks.test]
+description = "Lancer les tests du générateur et de la collection"
+run = "python -m pytest tests/unit"
+
+[tasks.lint]
+description = "Vérifier le style"
+run = """
+ruff check generator scripts tests
+ruff format --check generator scripts tests
+"""
+
+[tasks.typecheck]
+description = "Vérifier les types"
+run = "python -m mypy"
+
+[tasks."lint:changelog"]
+description = "Juger les fragments de changelog"
+# L'outil veut tourner dans la collection ; le script l'y emmène en découvrant
+# son chemin, pour que le namespace n'ait qu'une source.
+# Un fragment mal formé ne se voit qu'au moment de publier, c'est-à-dire au pire
+# moment. Une valeur commençant par un backtick, par exemple, n'est pas du YAML
+# valide, et le linter le dit tout de suite.
+run = "python scripts/changelog.py lint"
+
+[tasks.falsify]
+description = "Prouver que les gardes mordent, en les neutralisant hors dépôt"
+run = "python scripts/falsify.py"
+
+# ---- Générateur ------------------------------------------------------------
+
+[tasks.report]
+description = "Rapport de couverture d'un produit, en mode strict"
+run = "python -m generator report $PRODUCT --strict"
+
+[tasks.generate]
+description = "Écrire les modules dans plugins/modules"
+# `MODULES` porte une liste séparée par des espaces ; le shell la découpe, et
+# chaque nom devient un `--module`.
+run = """
+flags=""
+for module in $MODULES; do flags="$flags --module $module"; done
+python -m generator generate $PRODUCT $flags
+"""
+
+[tasks."sync:api"]
+description = "Retélécharger les contrats depuis le portail Scaleway"
+run = "python scripts/sync_specs.py"
+
+[tasks."golden:update"]
+description = "Régénérer les golden fixtures, après lecture du diff"
+run = "python scripts/update_golden.py"
+
+# ---- Dérive ----------------------------------------------------------------
+
+[tasks."check:generated"]
+description = "Échouer si un artefact versionné n'est plus à jour"
+# `git diff --exit-code` seul ne verrait pas un module tout neuf, produit et
+# jamais commité : le script regarde aussi les fichiers non suivis.
+depends = ["golden:update", "generate"]
+run = "python scripts/check_generated.py tests/fixtures ansible_collections"
+
+[tasks."check:worktree"]
+description = "Échouer si un build a laissé un fichier non ignoré"
+# Ce qu'une commande peut reproduire ne se versionne pas. Un artefact qui
+# apparaît dans `git status` après un build est un fichier que quelqu'un
+# finira par commiter sans le vouloir.
+run = "python scripts/check_generated.py ."
+
+# ---- Collection ------------------------------------------------------------
+
+[tasks.sanity]
+description = "Lancer ansible-test sanity sur la collection"
+# Le script assemble la collection hors du dépôt : sous `build/`, ansible-test
+# demande la liste des fichiers à git, ne reçoit rien, saute toutes les cibles
+# et sort en 0. Il refuse ce vert-là.
+depends = ["generate"]
+run = "python scripts/sanity.py"
+
+[tasks.docs]
+description = "Juger la documentation, puis produire les pages RST"
+# `antsibull-docs` voit ce qu'`ansible-test sanity` laisse passer : sur une
+# référence croisée invalide, sanity sort en 0 et lui en 3.
+depends = ["generate"]
+run = "python scripts/docs.py"
+
+[tasks."lint:docs"]
+description = "Juger la documentation sans produire de pages"
+depends = ["generate"]
+run = "python scripts/docs.py --lint"
+
+[tasks.package]
+description = "Construire l'archive installable, et la vérifier"
+# Une archive qui existe ne prouve rien : le script contrôle son contenu,
+# l'installe dans un répertoire jetable, puis demande sa documentation à
+# `ansible-doc` et fait résoudre ses playbooks par `ansible-playbook`.
+depends = ["generate"]
+run = "python scripts/package.py"
+
+[tasks.integration]
+description = "Jouer les playbooks contre un émulateur local (FEINT_VM=off)"
+# Volontairement hors de `check` : l'émulateur est un backend de test, pas une
+# dépendance. `FEINT_VM=incus-ovn mise run integration` démarre de vraies
+# machines ; `feint doctor --vm incus-ovn` dit avant tout si l'hôte peut.
+depends = ["generate"]
+run = "python scripts/integration.py"
+
+# ---- Le tout ---------------------------------------------------------------
+
+[tasks.check]
+description = "Ce qu'une pull request doit passer"
+depends = ["lint", "typecheck", "test", "report", "check:generated", "lint:changelog", "falsify"]
+
+[tasks.clean]
+description = "Supprimer les artefacts d'exécution"
+# Le motif est quoté et passé à `find` : un glob non quoté sans correspondance
+# est une erreur fatale sous zsh, pas un argument transmis.
+#
+# `*.egg-info` est un reliquat que le backend de construction laisse à la
+# racine. Le retirer n'a aucune conséquence, mesuré après coup : le générateur
+# s'importe encore, `pip show` répond encore, et `mise run check` reste vert.
+# La métadonnée qui compte pour une installation éditable vit dans le venv,
+# sous `dist-info`, pas ici.
+run = """
+rm -rf build .pytest_cache .ruff_cache .mypy_cache
+find . -maxdepth 1 -name '*.egg-info' -exec rm -rf {} +
+"""

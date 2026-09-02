@@ -1,0 +1,59 @@
+# OpenSSF Scorecard : un audit de l'extérieur de la posture du dépôt, protection
+# de branche, épinglage des actions, motifs de workflow dangereux.
+#
+# Le résultat part dans l'onglet de code scanning, pour qu'une régression
+# apparaisse comme une alerte plutôt que comme un nombre que personne ne relit.
+#
+# Le nombre n'est pas l'objectif. Cinq contrôles ne se règlent pas par une
+# configuration : ils mesurent le nombre de relecteurs et l'âge du dépôt.
+# `docs/scorecard.md` dit lesquels, et pourquoi les gonfler serait pire que de
+# les laisser tels quels.
+name: Scorecard
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: "31 5 * * 3"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  analysis:
+    name: Analyse Scorecard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Aucun `repo_token` ici. Le contrôle Branch-Protection réclame un PAT à
+      # portée Administration quand un dépôt utilise la protection *classique* ;
+      # `main` est protégée par un **ruleset** (.github/rulesets/main.json), que
+      # le `GITHUB_TOKEN` par défaut sait déjà lire. Ajouter un jeton privilégié
+      # serait une capacité permanente dont rien n'a besoin.
+      - name: Lancer l'analyse
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Publier vers le code scanning
+        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          sarif_file: results.sarif

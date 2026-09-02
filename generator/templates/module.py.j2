@@ -1,0 +1,54 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+# Copyright: (c) {{ authors }}
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+{{ generated_header }}
+#
+# Contrat    : {{ source }}
+# Opérations : {{ operations }}
+# Régénérer  : mise run generate
+
+from __future__ import annotations
+
+DOCUMENTATION = r"""
+{{ documentation }}
+"""
+
+EXAMPLES = r"""
+{{ examples }}
+"""
+
+RETURN = r"""
+{{ returns }}
+"""
+
+from ansible.module_utils.basic import AnsibleModule  # noqa: E402
+
+from {{ module_utils_import }} import (  # noqa: E402
+{% for name in runtime_imports %}
+    {{ name }},
+{% endfor %}
+)
+
+#: Options propres au module, traduites depuis le contrat.
+MODULE_ARGUMENT_SPEC = {{ argument_spec }}
+
+#: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
+ARGUMENT_SPEC: dict = {}
+{% for call in common_argument_specs %}
+ARGUMENT_SPEC.update({{ call }})
+{% endfor %}
+ARGUMENT_SPEC.update(MODULE_ARGUMENT_SPEC)
+
+#: Ce que le module exécute, et les décisions que le générateur a prises.
+MODULE = {{ module_literal }}
+
+
+def main() -> None:
+    module = AnsibleModule(argument_spec=ARGUMENT_SPEC, supports_check_mode=True)
+    {{ run_call }}
+
+
+if __name__ == "__main__":
+    main()

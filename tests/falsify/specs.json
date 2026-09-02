@@ -1,0 +1,387 @@
+{
+  "_comment": [
+    "Mutations déclarées à côté des gardes qu'elles neutralisent.",
+    "Chaque entrée neutralise une condition en gardant tous les noms évalués :",
+    "une mutation qui supprime le terme casserait l'import, tous les tests",
+    "rougiraient, et ça ressemblerait exactement à une garde prouvée.",
+    "Lancer : python scripts/falsify.py"
+  ],
+  "mutations": [
+    {
+      "name": "no_log",
+      "why": "Un paramètre sensible qui perd no_log écrit un secret dans le journal d'Ansible.",
+      "file": "generator/ansible/mapping.py",
+      "find": "    return any(fragment in name for fragment in _SENSITIVE_FRAGMENTS)",
+      "replace": "    return any(fragment in name for fragment in _SENSITIVE_FRAGMENTS) and False",
+      "test": "tests/unit/generator/test_mapping.py::test_un_champ_sensible_recoit_no_log"
+    },
+    {
+      "name": "override-sans-raison",
+      "why": "Un override qui change une classification sans raison est indéfendable à la relecture.",
+      "file": "generator/overrides/loader.py",
+      "find": "    if generation is not None and not raw.get(\"reason\"):",
+      "replace": "    if generation is not None and not raw.get(\"reason\") and False:",
+      "test": "tests/unit/generator/test_overrides.py::test_une_classification_sans_raison_est_refusee"
+    },
+    {
+      "name": "override-champ-inconnu",
+      "why": "Une faute de frappe dans un champ produirait un override silencieusement inerte.",
+      "file": "generator/overrides/loader.py",
+      "find": "    unknown = set(raw) - KNOWN_FIELDS\n    if unknown:",
+      "replace": "    unknown = set(raw) - KNOWN_FIELDS\n    if unknown and False:",
+      "test": "tests/unit/generator/test_overrides.py::test_un_champ_inconnu_est_refuse"
+    },
+    {
+      "name": "override-orphelin",
+      "why": "Un override qui ne désigne rien décrit une API qui n'existe pas, et il est inerte.",
+      "file": "generator/overrides/loader.py",
+      "find": "        return tuple(sorted(key for key in self.operations if key not in known))",
+      "replace": "        return tuple(sorted(key for key in self.operations if key not in known and False))",
+      "test": "tests/unit/generator/test_overrides.py::test_un_override_orphelin_est_signale"
+    },
+    {
+      "name": "tableau-sans-items",
+      "why": "Deviner le type des éléments effacerait la différence entre « c'est une chaîne » et « personne ne sait ».",
+      "file": "generator/parser/openapi.py",
+      "find": "            return _ResolvedType(ApiType.ARRAY, item_type=None)",
+      "replace": "            return _ResolvedType(ApiType.ARRAY, item_type=ApiType.STRING)",
+      "test": "tests/unit/generator/test_parser.py::test_un_tableau_sans_items_est_signale_et_non_devine"
+    },
+    {
+      "name": "type-non-mappe",
+      "why": "Un type inconnu qui retombe sur str produit un argument_spec faux que rien ne signale.",
+      "file": "generator/ansible/mapping.py",
+      "find": "    if ansible_type is None:\n        raise UnmappedType(parameter=parameter.name, type=parameter.type)",
+      "replace": "    if ansible_type is None:\n        ansible_type = \"str\"",
+      "test": "tests/unit/generator/test_mapping.py::test_un_type_inconnu_leve_plutot_que_de_deviner"
+    },
+    {
+      "name": "couverture-sans-denominateur",
+      "why": "Un ratio sans population est indéfini, et l'afficher comme 0 % est une affirmation fausse.",
+      "file": "generator/plan.py",
+      "find": "        if not day2:\n            return None",
+      "replace": "        if not day2:\n            return 0.0",
+      "test": "tests/unit/generator/test_plan.py::test_une_couverture_sans_operation_day2_est_indefinie"
+    },
+    {
+      "name": "default-denum",
+      "why": "Le `default` d'un enum est la valeur zéro du protobuf : le recopier ferait filtrer une liste que personne n'a demandé de filtrer.",
+      "file": "generator/ansible/mapping.py",
+      "find": "    if parameter.default is not None and parameter.type is not ApiType.ENUM:",
+      "replace": "    if parameter.default is not None and parameter.type is not ApiType.UNKNOWN:",
+      "test": "tests/unit/generator/test_mapping.py::test_un_default_denum_du_contrat_nest_pas_un_default_ansible"
+    },
+    {
+      "name": "selecteur-ambigu",
+      "why": "Choisir un identifiant au hasard produirait un module qui bascule sur le mauvais paramètre.",
+      "file": "generator/ansible/models.py",
+      "find": "    if len(candidates) != 1:",
+      "replace": "    if len(candidates) != 1 and False:",
+      "test": "tests/unit/generator/test_models.py::test_un_identifiant_ambigu_est_refuse_plutot_que_choisi"
+    },
+    {
+      "name": "module-demande-inconnu",
+      "why": "Une faute de frappe dans la liste des modules produirait zéro module et un succès.",
+      "file": "generator/ansible/models.py",
+      "find": "    if unknown:\n        raise ModuleModelError(",
+      "replace": "    if unknown and False:\n        raise ModuleModelError(",
+      "test": "tests/unit/generator/test_models.py::test_un_module_demande_mais_inconnu_leve"
+    },
+    {
+      "name": "pagination-incomplete",
+      "why": "Rendre la première page en silence donne une liste plausible et fausse.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        if len(batch) < per_page:\n            return items",
+      "replace": "        if len(batch) <= per_page:\n            return items",
+      "test": "tests/unit/collection/test_runtime.py::test_la_pagination_va_jusquau_bout"
+    },
+    {
+      "name": "pagination-sans-fin",
+      "why": "Une API qui ignorerait per_page ferait boucler le module indéfiniment, sans rien dire.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    raise ScalewayApiError(\n        operation=payload_field,",
+      "replace": "    return items\n    raise ScalewayApiError(\n        operation=payload_field,",
+      "test": "tests/unit/collection/test_runtime.py::test_une_api_qui_ignore_la_taille_de_page_fait_echouer"
+    },
+    {
+      "name": "secret-dans-un-message",
+      "why": "Un message de module finit dans un journal, et un journal se partage.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        message = str(payload.get(\"message\") or message)",
+      "replace": "        message = str(payload or message)",
+      "test": "tests/unit/collection/test_runtime.py::test_une_erreur_ne_recopie_pas_le_corps_de_la_reponse"
+    },
+    {
+      "name": "chemin-non-resolu",
+      "why": "Un chemin qui garde un segment `{...}` produit une requête sur une URL littérale, et une erreur incompréhensible.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    if \"{\" in rendered:",
+      "replace": "    if \"{\" in rendered and False:",
+      "test": "tests/unit/collection/test_runtime.py::test_un_segment_non_resolu_est_refuse"
+    },
+    {
+      "name": "sanity-qui-ne-mesure-rien",
+      "why": "ansible-test saute toutes les cibles et sort en 0 quand git ne liste rien : le vert est indiscernable d'une collection saine.",
+      "file": "scripts/sanity.py",
+      "find": "    return NOTHING_TESTED not in output",
+      "replace": "    return NOTHING_TESTED not in output or True",
+      "test": "tests/unit/outillage/test_verdicts.py::test_une_sanity_qui_na_rien_examine_est_un_echec"
+    },
+    {
+      "name": "integration-qui-se-saute",
+      "why": "Une cible d'intégration qui se saute quand l'émulateur manque finit par ne plus jamais tourner.",
+      "file": "scripts/integration.py",
+      "find": "    if not candidate:\n        raise IntegrationError(",
+      "replace": "    if not candidate and False:\n        raise IntegrationError(",
+      "test": "tests/unit/outillage/test_verdicts.py::test_une_integration_sans_emulateur_echoue_au_lieu_de_se_sauter"
+    },
+    {
+      "name": "integration-hors-emulateur",
+      "why": "Un environnement mal lu ferait partir le playbook vers l'API Scaleway reelle, avec de vrais identifiants et de vraies ressources.",
+      "file": "scripts/integration.py",
+      "find": "    if environment.get(\"SCW_API_URL\") != ENDPOINT:",
+      "replace": "    if environment.get(\"SCW_API_URL\") != ENDPOINT and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_un_environnement_sans_url_demulateur_arrete_le_scenario"
+    },
+    {
+      "name": "machine-qui-fuit",
+      "why": "Sans --cleanup, une execution sous incus-ovn laisse derriere elle le conteneur qu'elle a demarre.",
+      "file": "scripts/integration.py",
+      "find": "        \"--cleanup\",",
+      "replace": "        \"--cleanup-desactive\",",
+      "test": "tests/unit/outillage/test_verdicts.py::test_le_demarrage_range_les_machines_quil_cree"
+    },
+    {
+      "name": "demarrage-jamais-atteint",
+      "why": "Un serveur qui n'atteint jamais running doit le dire avec son dernier etat, pas laisser le playbook echouer plus loin.",
+      "file": "scripts/integration.py",
+      "find": "    raise IntegrationError(\n        f\"le serveur {server_id} est resté en '{etat}'",
+      "replace": "    return\n    raise IntegrationError(\n        f\"le serveur {server_id} est resté en '{etat}'",
+      "test": "tests/unit/outillage/test_verdicts.py::test_un_serveur_qui_ne_demarre_pas_fait_echouer"
+    },
+    {
+      "name": "mode-machine-ignore",
+      "why": "Adopter un emulateur dans un autre mode fait passer au vert un run qui n'a demarre aucune machine.",
+      "file": "scripts/integration.py",
+      "find": "    if trouve != attendu:",
+      "replace": "    if trouve != attendu and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_un_emulateur_dans_le_mauvais_mode_nest_pas_adopte"
+    },
+    {
+      "name": "doc-jugee-sur-rien",
+      "why": "antsibull-docs sort en 0 sur une collection sans plugin : le vert serait indiscernable d'une documentation irreprochable.",
+      "file": "scripts/docs.py",
+      "find": "    modules = documented_modules(collection)\n    if not modules:",
+      "replace": "    modules = documented_modules(collection)\n    if not modules and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_un_linter_de_doc_sans_module_est_un_echec"
+    },
+    {
+      "name": "exemple-jamais-joue",
+      "why": "Un playbook livre que personne n'execute pourrit, et un exemple faux coute plus cher qu'une documentation absente.",
+      "file": "scripts/integration.py",
+      "find": "    if not livres:",
+      "replace": "    if not livres and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_un_scenario_sans_exemple_est_un_echec"
+    },
+    {
+      "name": "archive-qui-fuit",
+      "why": "Une archive qui emporte le generateur, les contrats ou les tests livre a l'utilisateur ce qui doit rester au depot.",
+      "file": "scripts/package.py",
+      "find": "    if fuites:",
+      "replace": "    if fuites and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_une_archive_qui_emporte_le_generateur_est_refusee"
+    },
+    {
+      "name": "archive-coquille",
+      "why": "Sans ce controle, une archive vide passerait tous les autres : elle n'emporte rien d'interdit.",
+      "file": "scripts/package.py",
+      "find": "    if manquants:",
+      "replace": "    if manquants and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_une_archive_qui_oublie_un_module_est_refusee"
+    },
+    {
+      "name": "collection-mal-rangee",
+      "why": "Ansible charge une collection par son chemin et la decrit par son manifeste : les deux qui divergent donnent une collection qui repond a un nom et s'annonce sous un autre.",
+      "file": "generator/ansible/collection.py",
+      "find": "    if trouve != attendu:",
+      "replace": "    if trouve != attendu and False:",
+      "test": "tests/unit/generator/test_collection.py::test_un_chemin_qui_ment_sur_le_namespace_est_refuse"
+    },
+    {
+      "name": "sanity-sur-collection-invisible",
+      "why": "Dans un depot git, une collection non suivie donne zero cible a ansible-test, qui sort en 0 sans rien examiner.",
+      "file": "scripts/sanity.py",
+      "find": "    if under_git and tracked == 0:",
+      "replace": "    if under_git and tracked == 0 and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_une_collection_que_git_ne_suit_pas_ne_se_teste_pas"
+    },
+    {
+      "name": "action-hors-contrat",
+      "why": "Un override qui retient une valeur absente du contrat decrit une API qui n'existe plus, et le module l'exposerait quand meme.",
+      "file": "generator/ansible/models.py",
+      "find": "            if inconnues:\n                raise UnknownChoice(",
+      "replace": "            if inconnues and False:\n                raise UnknownChoice(",
+      "test": "tests/unit/generator/test_models.py::test_une_valeur_hors_du_contrat_est_refusee"
+    },
+    {
+      "name": "etat-inatteignable",
+      "why": "Attendre un etat apres une action que le module n'expose pas est une promesse que rien ne tiendra.",
+      "file": "generator/ansible/models.py",
+      "find": "    if inconnues:\n        raise UnreachableState(",
+      "replace": "    if inconnues and False:\n        raise UnreachableState(",
+      "test": "tests/unit/generator/test_models.py::test_un_etat_promis_pour_une_action_non_exposee_est_refuse"
+    },
+    {
+      "name": "attente-sans-preuve",
+      "why": "Rendre la main sans avoir vu l'etat ferait passer une attente pour une confirmation.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        if time.monotonic() >= limite:\n            raise ScalewayApiError(",
+      "replace": "        if time.monotonic() >= limite:\n            return observe\n            raise ScalewayApiError(",
+      "test": "tests/unit/collection/test_runtime.py::test_une_attente_qui_expire_nomme_le_dernier_etat_vu"
+    },
+    {
+      "name": "check-mode-qui-agit",
+      "why": "Un module qui declenche en check mode rend le mode inutile, et personne ne s'en apercoit avant le jour ou ca compte.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    if module.check_mode:\n        module.exit_json(",
+      "replace": "    if module.check_mode and False:\n        module.exit_json(",
+      "test": "tests/unit/collection/test_runtime.py::test_en_check_mode_rien_nest_declenche"
+    },
+    {
+      "name": "parametre-masque-sans-raison",
+      "why": "Masquer, exiger ou restreindre un parametre du contrat sans raison est indefendable a la relecture.",
+      "file": "generator/overrides/loader.py",
+      "find": "        if decide and not declaration.get(\"reason\"):",
+      "replace": "        if decide and not declaration.get(\"reason\") and False:",
+      "test": "tests/unit/generator/test_overrides.py::test_un_parametre_arbitre_sans_raison_est_refuse"
+    },
+    {
+      "name": "inventaire-authentification-fatale",
+      "why": "Un jeton révoqué qui devient un avertissement rend un inventaire vide qui se présente comme complet.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/providers/instance.py",
+      "find": "                        if categorie is AuthenticationFailed:",
+      "replace": "                        if categorie is AuthenticationFailed and False:",
+      "test": "tests/unit/inventory/test_discovery.py::test_un_echec_dauthentification_arrete_tout_meme_hors_mode_strict"
+    },
+    {
+      "name": "inventaire-produit-absent-nest-pas-une-panne",
+      "why": "Un produit absent d'une zone signalé comme erreur rendrait le mode strict inutilisable.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/errors.py",
+      "find": "    if status_code in (404, 501):",
+      "replace": "    if status_code in (404, 501) and False:",
+      "test": "tests/unit/inventory/test_providers.py::test_une_zone_qui_ne_sert_pas_le_produit_est_un_avertissement"
+    },
+    {
+      "name": "inventaire-collision-de-noms",
+      "why": "Deux machines du même nom : la seconde écrase la première, ses variables et ses groupes, sans un mot.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/hostname.py",
+      "find": "        if nom not in pris:",
+      "replace": "        if nom not in pris or True:",
+      "test": "tests/unit/inventory/test_hostname.py::test_deux_machines_du_meme_nom_ne_secrasent_pas"
+    },
+    {
+      "name": "inventaire-assainissement-de-groupe",
+      "why": "Remplacer trois caractères comme le plugin officiel laisse passer 'production/web', qu'Ansible réécrit ensuite lui-même.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/groups.py",
+      "find": "_INVALIDES = re.compile(r\"[^A-Za-z0-9_]+\")",
+      "replace": "_INVALIDES = re.compile(r\"[-: ]+\")",
+      "test": "tests/unit/inventory/test_groups.py::test_un_nom_assaini_est_un_point_fixe_pour_ansible"
+    },
+    {
+      "name": "inventaire-masque-de-sous-reseau",
+      "why": "IPAM rend un CIDR : garder le masque produit un ansible_host que SSH ne sait pas joindre.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/network.py",
+      "find": "    return address.split(\"/\", 1)[0]",
+      "replace": "    return address",
+      "test": "tests/unit/inventory/test_network.py::test_la_jointure_conserve_le_reseau_et_le_vpc"
+    },
+    {
+      "name": "inventaire-reseau-prive-nomme",
+      "why": "Ignorer le réseau demandé rendrait l'adresse d'un autre réseau, et le playbook joindrait la mauvaise interface.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/address.py",
+      "find": "    if policy.private_network is not None:",
+      "replace": "    if policy.private_network is not None and False:",
+      "test": "tests/unit/inventory/test_address.py::test_un_reseau_nomme_impose_son_adresse"
+    },
+    {
+      "name": "inventaire-tags-match-all",
+      "why": "Traiter 'all' comme 'any' élargit silencieusement le parc ciblé par un playbook.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/filtering.py",
+      "find": "        if filters.tags_match == \"all\":",
+      "replace": "        if filters.tags_match == \"all\" and False:",
+      "test": "tests/unit/inventory/test_filtering.py::test_tags_match_all_les_exige_tous"
+    },
+    {
+      "name": "inventaire-produit-inconnu-en-configuration",
+      "why": "Un produit mal orthographié qui passe produit un inventaire silencieusement partiel.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/config.py",
+      "find": "    if inconnus:\n        raise ConfigError(",
+      "replace": "    if inconnus and False:\n        raise ConfigError(",
+      "test": "tests/unit/inventory/test_config.py::test_un_produit_inconnu_est_refuse_avec_la_liste_des_connus"
+    },
+    {
+      "name": "inventaire-cle-de-cache-complete",
+      "why": "Une clé qui ignore les filtres fait servir l'inventaire de production depuis le cache de la préproduction.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/config.py",
+      "find": "        serialise = json.dumps(materiel, sort_keys=True, default=list)",
+      "replace": "        serialise = json.dumps({\"profile\": materiel[\"profile\"]}, sort_keys=True, default=list)",
+      "test": "tests/unit/inventory/test_config.py::test_deux_filtrages_differents_ne_partagent_pas_leur_cache"
+    },
+    {
+      "name": "inventaire-coeur-sans-produit",
+      "why": "Un nom de produit qui fuite hors de son provider fait payer le suivant en modifications du coeur.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/address.py",
+      "find": "    familles = policy.families()",
+      "replace": "    familles = policy.families() if host.product != \"instance\" else policy.families()",
+      "test": "tests/unit/inventory/test_providers.py::test_aucune_couche_du_coeur_ne_nomme_un_produit"
+    },
+    {
+      "name": "inventaire-compte-non-verifie",
+      "why": "Un inventaire qui rend cent machines sur mille ressemble à un parc, et le scénario passerait au vert.",
+      "file": "scripts/integration.py",
+      "find": "    if len(hostvars) != expected:",
+      "replace": "    if len(hostvars) != expected and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_un_inventaire_incomplet_arrete_le_scenario"
+    },
+    {
+      "name": "inventaire-identite-non-verifiee",
+      "why": "Une machine sans scaleway_id est inutilisable par les modules Day-2, et rien ne le dirait.",
+      "file": "scripts/integration.py",
+      "find": "    if sans_identite:",
+      "replace": "    if sans_identite and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_une_machine_sans_identite_arrete_le_scenario"
+    },
+    {
+      "name": "inventaire-etat-non-verifie",
+      "why": "Sans ce contrôle, un groupe d'état pourrait recopier une valeur au lieu de suivre l'API.",
+      "file": "scripts/integration.py",
+      "find": "    if running_id not in identifiants:",
+      "replace": "    if running_id not in identifiants and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_le_serveur_allume_doit_se_retrouver_dans_son_groupe_detat"
+    },
+    {
+      "name": "mode-strict-affirme-sans-mesure",
+      "why": "La documentation affirme qu'Ansible déclasse l'échec en avertissement ; si ça change, il faut la relire, pas le taire.",
+      "file": "scripts/integration.py",
+      "find": "    if sans_garde.returncode != 0:",
+      "replace": "    if sans_garde.returncode != 0 and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_le_scenario_mesure_le_mode_strict_dans_les_deux_sens"
+    },
+    {
+      "name": "plugin-dinventaire-non-charge",
+      "why": "Un module_utils oublié au build laisse le fichier dans l'archive et perd le plugin, sans que la liste des fichiers le montre.",
+      "file": "scripts/package.py",
+      "find": "    if manquantes:",
+      "replace": "    if manquantes and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_un_plugin_dinventaire_sans_options_nest_pas_charge"
+    },
+    {
+      "name": "exemption-de-suivi-trop-large",
+      "why": "Une exemption qui accepte n'importe quel fichier non suivi rend la porte de l'arbre propre inutile.",
+      "file": "scripts/check_generated.py",
+      "find": "    return status == \"??\" and path.strip() in UNTRACKED_BY_DESIGN",
+      "replace": "    return status == \"??\" and (path.strip() in UNTRACKED_BY_DESIGN or True)",
+      "test": "tests/unit/outillage/test_verdicts.py::test_lexemption_ne_couvre_que_la_forme_non_suivie"
+    }
+  ]
+}

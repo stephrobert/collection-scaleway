@@ -1,0 +1,141 @@
+"""Le parser traduit le contrat sans rien perdre ni rien inventer."""
+
+from __future__ import annotations
+
+import pytest
+
+from generator.ir.enums import ApiType, ParameterLocation, Scope
+from generator.ir.models import ApiService
+from generator.parser.openapi import ParseError, parse_document
+from generator.source.base import SpecDocument, VendoredSpecSource
+
+from .conftest import WIDGET_SPECS
+
+
+def test_toutes_les_operations_du_contrat_sont_dans_lir(widget_service: ApiService) -> None:
+    assert {operation.id for operation in widget_service.operations} == {
+        "ListWidgets",
+        "CreateWidget",
+        "GetWidget",
+        "UpdateWidget",
+        "DeleteWidget",
+        "WidgetAction",
+        "ListWidgetGizmos",
+    }
+
+
+def test_la_portee_se_lit_dans_le_chemin(widget_service: ApiService) -> None:
+    for operation in widget_service.operations:
+        assert operation.scope is Scope.ZONE
+        assert operation.scope_parameter == "zone"
+
+
+def test_les_parametres_de_chemin_sont_requis(widget_service: ApiService) -> None:
+    operation = widget_service.operation("GetWidget")
+    assert operation is not None
+    zone = operation.parameter("zone")
+    assert zone is not None
+    assert zone.required is True
+    assert zone.location is ParameterLocation.PATH
+    assert zone.type is ApiType.ENUM
+    assert zone.enum_values == ("fr-par-1", "nl-ams-1")
+
+
+def test_un_enum_reference_est_enregistre_une_fois(widget_service: ApiService) -> None:
+    names = [enum.name for enum in widget_service.enums]
+    assert names == sorted(names), "les enums doivent sortir triés, pour un IR déterministe"
+    assert "scaleway.widget.v1.Widget.Action" in names
+
+    action = widget_service.operation("WidgetAction")
+    assert action is not None
+    parameter = action.parameter("action")
+    assert parameter is not None
+    assert parameter.type is ApiType.ENUM
+    assert parameter.enum_name == "scaleway.widget.v1.Widget.Action"
+    assert parameter.enum_values == ("poweron", "poweroff", "reboot")
+    assert parameter.location is ParameterLocation.BODY
+
+
+def test_un_champ_de_corps_devient_un_parametre(widget_service: ApiService) -> None:
+    operation = widget_service.operation("UpdateWidget")
+    assert operation is not None
+    noms = {parameter.name for parameter in operation.parameters}
+    assert {"zone", "widget_id", "tags", "protected", "secret_token"} <= noms
+
+
+def test_un_type_nullable_openapi_31_garde_son_type_utile(widget_service: ApiService) -> None:
+    """`["boolean", "null"]` est un booléen optionnel, pas un type inconnu."""
+    operation = widget_service.operation("UpdateWidget")
+    assert operation is not None
+    protege = operation.parameter("protected")
+    assert protege is not None
+    assert protege.type is ApiType.BOOLEAN
+
+
+def test_un_tableau_sans_items_est_signale_et_non_devine(widget_service: ApiService) -> None:
+    operation = widget_service.operation("UpdateWidget")
+    assert operation is not None
+    tags = operation.parameter("tags")
+    assert tags is not None
+    assert tags.type is ApiType.ARRAY
+    assert tags.item_type is None, "le contrat ne dit pas le type des éléments"
+    assert any("tags" in warning and "items" in warning for warning in widget_service.warnings)
+
+
+def test_la_pagination_se_deduit_des_parametres(widget_service: ApiService) -> None:
+    liste = widget_service.operation("ListWidgets")
+    unite = widget_service.operation("GetWidget")
+    assert liste is not None and unite is not None
+    assert liste.pagination is not None
+    assert liste.pagination.page_param == "page"
+    assert unite.pagination is None
+
+
+def test_total_count_absent_du_contrat_nest_pas_invente(widget_service: ApiService) -> None:
+    """Le SDK expose `total_count` ; le document publié ne le déclare pas."""
+    liste = widget_service.operation("ListWidgets")
+    assert liste is not None
+    assert liste.pagination is not None
+    assert liste.pagination.total_count_field is None
+
+
+def test_la_reponse_designe_le_champ_utile(widget_service: ApiService) -> None:
+    liste = widget_service.operation("ListWidgets")
+    unite = widget_service.operation("GetWidget")
+    assert liste is not None and unite is not None
+
+    assert liste.response is not None
+    assert liste.response.payload_field == "widgets"
+    assert liste.response.is_list is True
+
+    assert unite.response is not None
+    assert unite.response.payload_field == "widget"
+    assert unite.response.is_list is False
+
+
+def test_la_description_garde_le_premier_paragraphe(widget_service: ApiService) -> None:
+    assert widget_service.description == "Un produit de test."
+
+
+def test_la_ressource_est_stable_avec_ou_sans_identifiant(widget_service: ApiService) -> None:
+    par_operation = {operation.id: operation.resource for operation in widget_service.operations}
+    assert par_operation["ListWidgets"] == "widget"
+    assert par_operation["GetWidget"] == "widget"
+    assert par_operation["WidgetAction"] == "widget"
+    assert par_operation["ListWidgetGizmos"] == "widget_gizmo"
+
+
+def test_un_document_sans_chemin_est_refuse(tmp_path) -> None:
+    document = SpecDocument(
+        product="vide", version="v1", path=tmp_path / "vide.v1.yml", document={"openapi": "3.1.0"}
+    )
+    with pytest.raises(ParseError):
+        parse_document(document)
+
+
+def test_le_parsing_est_deterministe() -> None:
+    """Deux lectures du même contrat produisent le même IR, octet pour octet."""
+    source = VendoredSpecSource(root=WIDGET_SPECS)
+    premier = parse_document(source.load("widget", "v1")).to_json()
+    second = parse_document(source.load("widget", "v1")).to_json()
+    assert premier == second

@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scaleway-ansible-generator"
+version = "0.1.0"
+description = "Générateur de modules Ansible Day-2 pour les APIs Scaleway"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "GPL-3.0-or-later" }
+dependencies = [
+    "PyYAML>=6.0",
+    "Jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Le backend de construction, épinglé comme le reste : `pip install -e .`
+    # le télécharge sinon dans un environnement isolé, hors du verrou, ce qui
+    # rouvre la porte que le verrou vient de fermer.
+    "setuptools>=68",
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    # Le SDK et ansible-core ne sont pas des dépendances du générateur : ils
+    # sont des dépendances de ce que le générateur produit. Les tests en ont
+    # besoin pour prouver que le module produit s'importe, que son
+    # argument_spec est accepté, et que la surface du SDK n'a pas bougé.
+    "ansible-core>=2.16",
+    "scaleway>=2.9.0",
+    # L'outil officiel de documentation des collections. Il juge une classe de
+    # défauts qu'`ansible-test sanity` laisse passer, mesuré : une référence
+    # croisée invalide sort en 0 chez l'un et en 3 chez l'autre.
+    "antsibull-docs>=2.0",
+    # Le changelog n'est pas ecrit a la main : chaque changement depose un
+    # fragment, et `antsibull-changelog lint` les juge avant la publication.
+    "antsibull-changelog>=0.24",
+]
+
+[tool.setuptools.packages.find]
+include = ["generator*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+addopts = "-q"
+# Les noms de tests sont en français : c'est la langue du projet, et un nom de
+# test est une phrase que quelqu'un doit pouvoir lire.
+python_functions = ["test_*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Un golden est une donnée, pas du code. `ruff format` a déjà réécrit le
+# module de référence en lui retirant sa déclaration d'encodage : un golden
+# qu'un formateur peut modifier ne mesure plus la dérive du générateur.
+extend-exclude = ["tests/fixtures"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+    # Le projet écrit ses messages et ses commentaires en français ; RUF001/002
+    # signalerait chaque caractère accentué comme ambigu.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Les tests nomment un paramètre `type` pour coller au vocabulaire de l'IR.
+"tests/**" = ["A002"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+# La collection n'est pas ici : un module Ansible s'appuie sur `ansible.module_utils`,
+# qui n'est pas typé, et le juger en mode strict produirait du bruit sans rien
+# prouver. C'est `ansible-test sanity` qui contrôle `ansible_collections/`, avec les
+# contrôles qu'Ansible applique à ses propres modules.
+files = ["generator", "scripts"]
+
+[[tool.mypy.overrides]]
+module = "yaml"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Les scripts s'appellent entre eux par leur nom de fichier : ils ne forment
+# pas un paquet installé, et c'est délibéré.
+module = "collection_tree"
+ignore_missing_imports = true

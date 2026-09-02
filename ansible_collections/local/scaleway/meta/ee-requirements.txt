@@ -1,0 +1,6 @@
+# Paquets Python dont les modules de cette collection ont besoin à
+# l'exécution, côté contrôleur.
+#
+# La borne basse est celle de la collection officielle Scaleway, pour qu'un
+# utilisateur qui a déjà l'une n'ait pas à arbitrer entre les deux.
+scaleway>=2.9.0

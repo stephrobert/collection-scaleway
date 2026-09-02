@@ -1,0 +1,244 @@
+# Contrat minimal servant de sujet aux tests du parser.
+#
+# Il reproduit délibérément les formes mesurées sur le contrat Instance réel,
+# y compris ses défauts : un tableau sans `items`, un corps dont aucun champ
+# n'est déclaré `required`, un enum atteint par référence, et une réponse de
+# liste sans `total_count`.
+openapi: 3.1.0
+info:
+  title: Widget API
+  description: |-
+    Un produit de test.
+
+    Ce second paragraphe ne doit pas se retrouver dans l'IR.
+  version: v1
+servers:
+  - url: https://api.scaleway.com
+components:
+  schemas:
+    scaleway.widget.v1.Widget:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    scaleway.widget.v1.Widget.State:
+      type: string
+      enum: [running, stopped]
+      default: running
+    scaleway.widget.v1.Widget.Action:
+      type: string
+      enum: [poweron, poweroff, reboot]
+      default: poweron
+    scaleway.widget.v1.ListWidgetsResponse:
+      type: object
+      properties:
+        widgets:
+          type: array
+          items:
+            $ref: '#/components/schemas/scaleway.widget.v1.Widget'
+    scaleway.widget.v1.GetWidgetResponse:
+      type: object
+      properties:
+        widget:
+          $ref: '#/components/schemas/scaleway.widget.v1.Widget'
+    scaleway.widget.v1.WidgetActionResponse:
+      type: object
+      properties:
+        task:
+          type: string
+    google.protobuf.BoolValue:
+      type: [boolean, "null"]
+paths:
+  /widget/v1/zones/{zone}/widgets:
+    get:
+      operationId: ListWidgets
+      summary: List widgets
+      description: Lister les widgets d'une zone.
+      tags: [Widgets]
+      parameters:
+        - in: path
+          name: zone
+          required: true
+          description: The zone you want to target
+          schema:
+            type: string
+            enum: [fr-par-1, nl-ams-1]
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            format: uint32
+        - in: query
+          name: page
+          schema:
+            type: integer
+            format: int32
+        - in: query
+          name: state
+          description: List widgets in this state.
+          schema:
+            $ref: '#/components/schemas/scaleway.widget.v1.Widget.State'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.widget.v1.ListWidgetsResponse'
+    post:
+      operationId: CreateWidget
+      summary: Create a widget
+      parameters:
+        - in: path
+          name: zone
+          required: true
+          schema:
+            type: string
+            enum: [fr-par-1, nl-ams-1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: [string, "null"]
+                  description: Name of the widget.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.widget.v1.GetWidgetResponse'
+  /widget/v1/zones/{zone}/widgets/{widget_id}:
+    get:
+      operationId: GetWidget
+      summary: Get a widget
+      parameters:
+        - in: path
+          name: zone
+          required: true
+          schema:
+            type: string
+            enum: [fr-par-1, nl-ams-1]
+        - in: path
+          name: widget_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.widget.v1.GetWidgetResponse'
+    patch:
+      operationId: UpdateWidget
+      summary: Update a widget
+      parameters:
+        - in: path
+          name: zone
+          required: true
+          schema:
+            type: string
+            enum: [fr-par-1, nl-ams-1]
+        - in: path
+          name: widget_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tags:
+                  type: [array, "null"]
+                  description: Tags of the widget.
+                protected:
+                  $ref: '#/components/schemas/google.protobuf.BoolValue'
+                secret_token:
+                  type: [string, "null"]
+                  description: Jeton de rotation.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.widget.v1.GetWidgetResponse'
+    delete:
+      operationId: DeleteWidget
+      summary: Delete a widget
+      parameters:
+        - in: path
+          name: zone
+          required: true
+          schema:
+            type: string
+            enum: [fr-par-1, nl-ams-1]
+        - in: path
+          name: widget_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: no content
+  /widget/v1/zones/{zone}/widgets/{widget_id}/action:
+    post:
+      operationId: WidgetAction
+      summary: Perform an action on a widget
+      parameters:
+        - in: path
+          name: zone
+          required: true
+          schema:
+            type: string
+            enum: [fr-par-1, nl-ams-1]
+        - in: path
+          name: widget_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  description: Action to perform on the widget.
+                  $ref: '#/components/schemas/scaleway.widget.v1.Widget.Action'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.widget.v1.WidgetActionResponse'
+  /widget/v1/zones/{zone}/widgets/{widget_id}/gizmos:
+    get:
+      operationId: ListWidgetGizmos
+      summary: List the gizmos of a widget
+      parameters:
+        - in: path
+          name: zone
+          required: true
+          schema:
+            type: string
+            enum: [fr-par-1, nl-ams-1]
+        - in: path
+          name: widget_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.widget.v1.ListWidgetsResponse'

@@ -1,0 +1,40 @@
+# Une nomenclature logicielle sur chaque poussée vers `main`.
+#
+# Elle documente ce que `main` contient entre deux états, ce qui est le moment
+# où une dépendance apparaît réellement. Le dépôt n'a pas encore de workflow de
+# publication : quand il en aura un, c'est lui qui attachera la nomenclature et
+# sa provenance à l'archive de la collection.
+name: SBOM
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  main:
+    name: Syft SBOM (main)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Anchore SBOM Action (Syft)
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          format: spdx-json
+          output-file: collection-scaleway.spdx.json
+          artifact-name: collection-scaleway.spdx.json
+          upload-artifact: true
+          upload-release-assets: false

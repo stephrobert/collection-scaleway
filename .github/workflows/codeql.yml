@@ -1,0 +1,51 @@
+# Analyse statique du code Python : le générateur, les lanceurs, et le runtime
+# de la collection.
+#
+# Elle tourne sur les pull requests et une fois par semaine. L'exécution
+# hebdomadaire n'est pas une redondance : une requête CodeQL ajoutée en amont
+# trouve un défaut dans un fichier que plus personne ne touche, et sans elle
+# ce défaut n'est jamais revu.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "25 4 * * 2"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  analyze:
+    name: Analyser Python
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # `build-mode: none` : Python ne se compile pas, et demander une
+      # construction ferait échouer l'analyse sur une étape qui n'existe pas.
+      # `security-extended` ajoute les requêtes que le jeu par défaut laisse
+      # de côté, au prix de quelques minutes.
+      - name: Initialiser CodeQL
+        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          languages: python
+          build-mode: none
+          queries: security-extended
+
+      - name: Analyser
+        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7

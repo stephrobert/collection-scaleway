@@ -1,0 +1,145 @@
+# Politique de confiance sur les composants tiers du pipeline : ce qui peut être
+# utilisé, de qui, et épinglé comment. Lue par le job `plumber` de
+# `.github/workflows/plumber.yml`.
+#
+# Seule la section `github:` est tenue. Le modèle généré porte aussi une section
+# `gitlab:`, des centaines de lignes de contrôles pour une forge que ce projet
+# n'utilise pas : une politique que personne n'applique se lit comme une
+# politique en vigueur. `plumber config validate` accepte le fichier sans elle,
+# ce qui est comment ça a été établi plutôt que supposé.
+#
+# Modèle complet : plumber config generate
+version: "2.0"
+
+github:
+  controls:
+    # Une action référencée par un tag est mutable : si le mainteneur est
+    # compromis ou retague une release, le workflow appelant exécute du code
+    # neuf avec ses secrets. C'est le vecteur de tj-actions/changed-files
+    # (CVE-2025-30066), en mars 2025.
+    actionsMustBePinnedByCommitSha:
+      enabled: true
+      trustedOwners:
+        - actions
+        - github
+
+    # La liste ci-dessous est toute la politique : une action qui apparaît dans
+    # un workflow et pas ici fait échouer l'analyse. C'est le but, une nouvelle
+    # action est une décision, pas un diff.
+    githubActionMustComeFromAuthorizedSources:
+      enabled: true
+      trustGithubOfficialActions: true
+      trustSameOrgActions: true
+      minimumStars: 0
+      trustedGithubActions:
+        - step-security/harden-runner # surveillance du trafic sortant, premier pas de chaque job
+        - jdx/mise-action # le lanceur de tâches, avec sa version de mise épinglée
+        - ossf/scorecard-action # OpenSSF Scorecard
+        - google/osv-scanner-action # vulnérabilités connues, base OSV
+        - anchore/sbom-action # nomenclature logicielle (Syft)
+        - stephrobert/setup-feint # l'émulateur du scénario d'intégration
+
+    # Ce dépôt ne construit aucune image, mais la règle reste active : elle
+    # coûte zéro tant qu'aucune image n'apparaît, et le jour où une apparaît
+    # elle sera épinglée par condensat ou refusée.
+    containerImageMustNotUseForbiddenTags:
+      enabled: true
+      tags: [latest, dev, development, staging, main, master]
+      containerImagesMustBePinnedByDigest: true
+
+    pipelineMustNotUseDockerInDocker:
+      enabled: true
+      detectInsecureDaemon: true
+
+    # Les quatre scanners de ce dépôt sont téléchargés puis exécutés, ce qui est
+    # exactement le motif que cette règle cherche. Ils passent parce que la
+    # somme publiée est vérifiée avant l'installation, ou la provenance SLSA
+    # pour zizmor. Aucune URL n'est mise en confiance par défaut : si un jour un
+    # téléchargement passe sans vérification, cette règle doit mordre.
+    pipelineMustNotExecuteUnverifiedScripts:
+      enabled: true
+      trustedUrls: []
+
+    reusableWorkflowsMustNotInheritSecrets:
+      enabled: true
+
+    # Un job de sécurité neutralisé par `continue-on-error` ou réduit au
+    # déclenchement manuel est une porte devenue décoration.
+    securityJobsMustNotBeWeakened:
+      enabled: true
+      securityJobPatterns:
+        - "*codeql*"
+        - "*dependency-review*"
+        - "*trufflehog*"
+        - "*osv-scanner*"
+        - "*scan*"
+        - "*-audit"
+        - "*-security"
+        - "workflow-security/*"
+        - "secrets/*"
+      allowFailureMustBeFalse:
+        enabled: true
+      rulesMustNotBeRedefined:
+        enabled: true
+      whenMustNotBeManual:
+        enabled: true
+
+    workflowMustNotInjectUserInputInScripts:
+      enabled: true
+
+    workflowMustNotWriteUntrustedContentToGitHubEnv:
+      enabled: true
+
+    workflowMustNotUseDangerousTriggers:
+      enabled: true
+
+    pullRequestTargetMustNotCheckoutHead:
+      enabled: true
+
+    workflowsMustDeclarePermissions:
+      enabled: true
+
+    workflowMustNotGrantPermissionsWriteAll:
+      enabled: true
+
+    externalRefsMustNotCollide:
+      enabled: true
+
+    actionsMustNotBeArchived:
+      enabled: true
+
+    # La règle qui attrape la classe CVE publiée, celle de
+    # tj-actions/changed-files et de reviewdog/action-setup.
+    actionsMustNotCarryKnownCVEs:
+      enabled: true
+
+    # `ACTIONS_STEP_DEBUG=true` fait imprimer par le runner toutes les variables
+    # d'environnement, secrets compris, en contournant le masquage.
+    pipelineMustNotEnableDebugTrace:
+      enabled: true
+      forbiddenVariables:
+        - ACTIONS_STEP_DEBUG
+        - ACTIONS_RUNNER_DEBUG
+
+    # Désactivé, et c'est une décision, pas un oubli.
+    #
+    # Ce contrôle interroge l'API de protection de branche, qui réclame un jeton
+    # à portée Administration. Sans ce jeton, le collecteur rend une liste de
+    # branches vide et la règle **n'émet rien** : le contrat dégradé se lit
+    # exactement comme un succès, ce qui est le défaut que ce dépôt traque
+    # partout ailleurs.
+    #
+    # Ce qui le remplace est plus fort et ne coûte aucun secret : le job
+    # `La protection de branche est celle qui est déclarée`, dans
+    # `.github/workflows/workflow-security.yml`, compare le ruleset appliqué à
+    # `.github/rulesets/main.json` et échoue sur tout écart. Un ruleset se lit
+    # avec le `GITHUB_TOKEN` par défaut, contrairement à la protection classique.
+    #
+    # À réactiver le jour où un PAT à portée Administration existera, et à
+    # supprimer ce paragraphe le même jour.
+    branchMustBeProtected:
+      enabled: false
+
+    workflowMustIncludeRequiredActions:
+      enabled: false
+      requiredGroups: []

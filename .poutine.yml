@@ -1,0 +1,31 @@
+# Configuration de poutine, scanner de chaînes d'exploitation CI/CD.
+#
+# La règle `github_action_from_unverified_creator_used` signale toute action
+# dont l'auteur n'est pas un « verified creator » de la Marketplace. Ce signal
+# est utile et reste ACTIF pour toutes les autres actions : c'est lui qui
+# attrape une action typosquattée ou fraîchement réenregistrée qui se
+# glisserait dans le pipeline.
+#
+# Les deux entrées ci-dessous sont acquittées une par une, jamais en
+# désactivant la règle. Chacune nomme le workflow qui l'exécute, pour qu'un
+# lecteur puisse vérifier l'affirmation au lieu de la croire.
+#
+# Mesuré : ce sont les deux seules actions que poutine 1.1.4 signale sur ce
+# dépôt, sur cinq occurrences. Une exemption qui survivrait à l'action qu'elle
+# exempte accorderait une confiance que plus personne n'utilise ni ne relit,
+# donc elles se relisent quand un workflow change.
+skip:
+  - rule: github_action_from_unverified_creator_used
+    purl:
+      # Le lanceur de tâches, exécuté par les quatre jobs de
+      # .github/workflows/ci.yml. Épinglé par SHA de commit, et sa propre
+      # version de mise est épinglée par l'entrée `version:` : sans elle,
+      # l'action télécharge la dernière release publiée, ce qui annulerait
+      # l'épinglage de tout le reste.
+      - pkg:githubactions/jdx/mise-action
+      # L'action qui démarre l'émulateur dans le job d'intégration. Elle
+      # appartient au mainteneur de ce dépôt, elle est épinglée par SHA, et le
+      # dépôt de feint fait échouer un job tant que l'action publiée diffère de
+      # sa source. Elle télécharge le binaire et contrôle sa somme SHA-256
+      # contre le `checksums.txt` publié avant de le lancer.
+      - pkg:githubactions/stephrobert/setup-feint

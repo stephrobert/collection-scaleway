@@ -1,0 +1,208 @@
+# Les gardes qui jugent la CI elle-même.
+#
+# Le reste du dépôt mesure le générateur et la collection. Ce fichier mesure les
+# workflows : leur syntaxe, leurs droits, leurs chaînes d'exploitation, et
+# l'écart entre la protection de branche déclarée et celle qui s'applique.
+#
+# Une règle tient les trois scanners : **aucun n'est installé par un `uses:`**.
+# Un scanner installé par une action tierce élargit la frontière de confiance
+# qu'il est censé garder. Chacun est téléchargé comme binaire de release, sa
+# somme publiée est vérifiée, puis il est installé. Aucun script distant tubé
+# dans un shell, aucune action à croire.
+name: Sécurité des workflows
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  actionlint:
+    name: Actionlint (syntaxe des workflows)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # actionlint refuse une étiquette de runner invalide, une expression
+      # `${{ }}` malformée ou une portée de permission qui n'existe pas : la
+      # classe de faute qui désactive un contrôle sans rien casser bruyamment.
+      # Il passe aussi shellcheck sur chaque bloc `run:`.
+      - name: Installer actionlint (binaire de release vérifié)
+        env:
+          ACTIONLINT_VERSION: "1.7.12"
+        run: |
+          set -euo pipefail
+          workdir="$(mktemp -d)"
+          base="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
+          asset="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl --retry 3 --retry-connrefused -fsSL -o "${workdir}/${asset}" "${base}/${asset}"
+          curl --retry 3 --retry-connrefused -fsSL -o "${workdir}/checksums.txt" "${base}/actionlint_${ACTIONLINT_VERSION}_checksums.txt"
+          (cd "${workdir}" && grep " ${asset}$" checksums.txt | sha256sum -c -)
+          tar -xzf "${workdir}/${asset}" -C "${workdir}" actionlint
+          sudo install -m 0755 "${workdir}/actionlint" /usr/local/bin/actionlint
+          actionlint --version
+
+      - name: Actionlint
+        run: actionlint -color
+
+  zizmor:
+    name: Zizmor (analyse statique des workflows)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # zizmor ne publie pas de fichier de sommes, mais publie une provenance
+      # SLSA : `gh attestation verify` contrôle donc l'authenticité et pas
+      # seulement l'intégrité, ce qui est plus fort que la somme vérifiée pour
+      # les deux autres, et non un compromis à la baisse.
+      - name: Installer zizmor (binaire de release, provenance vérifiée)
+        env:
+          ZIZMOR_VERSION: "1.30.0"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          workdir="$(mktemp -d)"
+          asset="zizmor-x86_64-unknown-linux-gnu.tar.gz"
+          curl --retry 3 --retry-connrefused -fsSL -o "${workdir}/${asset}" \
+            "https://github.com/zizmorcore/zizmor/releases/download/v${ZIZMOR_VERSION}/${asset}"
+          gh attestation verify "${workdir}/${asset}" --repo zizmorcore/zizmor
+          tar -xzf "${workdir}/${asset}" -C "${workdir}" zizmor
+          sudo install -m 0755 "${workdir}/zizmor" /usr/local/bin/zizmor
+          zizmor --version
+
+      # Une porte, pas un rapport : zizmor sort en non nul sur un constat, et
+      # aucun SARIF n'est publié. Le dépôt n'a pas encore de pull request venue
+      # d'un fork, mais une porte qui dépend d'un jeton en écriture cesserait
+      # de fonctionner le jour où il y en aura une.
+      - name: Zizmor
+        run: zizmor --no-progress --persona regular --min-severity low .github/workflows/
+
+  poutine:
+    name: Poutine (chaînes d'exploitation CI/CD)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # poutine modélise les déclencheurs, les droits et le flux de données pour
+      # rendre des scénarios d'attaque complets plutôt que des constats isolés.
+      # Les exemptions assumées vivent dans `.poutine.yml`, une par purl.
+      - name: Installer poutine (binaire de release vérifié)
+        env:
+          POUTINE_VERSION: "1.1.6"
+        run: |
+          set -euo pipefail
+          workdir="$(mktemp -d)"
+          base="https://github.com/boostsecurityio/poutine/releases/download/v${POUTINE_VERSION}"
+          asset="poutine_Linux_x86_64.tar.gz"
+          curl --retry 3 --retry-connrefused -fsSL -o "${workdir}/${asset}" "${base}/${asset}"
+          curl --retry 3 --retry-connrefused -fsSL -o "${workdir}/checksums.txt" "${base}/poutine_${POUTINE_VERSION}_checksums.txt"
+          (cd "${workdir}" && grep " ${asset}$" checksums.txt | sha256sum -c -)
+          tar -xzf "${workdir}/${asset}" -C "${workdir}" poutine
+          sudo install -m 0755 "${workdir}/poutine" /usr/local/bin/poutine
+          poutine version
+
+      # `--fail-on-violation` en fait une porte (code 10) et non un rapport.
+      - name: Poutine
+        run: poutine analyze_local . --fail-on-violation --quiet
+
+  governance:
+    name: La protection de branche est celle qui est déclarée
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Le seul contrôle qui ne porte pas sur un fichier. Un ruleset qui ne vit
+      # que dans l'interface web est une décision que personne ne peut relire,
+      # comparer ni restaurer ; un ruleset qui ne vit que dans un fichier est
+      # une décision que personne n'applique. Ce job compare les deux.
+      #
+      # Il ne demande aucun jeton privilégié : un ruleset se lit avec le
+      # `GITHUB_TOKEN` par défaut, et c'est précisément pourquoi `main` est
+      # protégée par un ruleset plutôt que par la protection de branche
+      # classique, dont l'API réclame un PAT à portée Administration.
+      #
+      # Ce job sera rouge tant que le ruleset n'aura pas été appliqué sur
+      # GitHub, et c'est voulu : une protection déclarée et jamais appliquée
+      # est exactement le défaut que ce dépôt passe son temps à traquer.
+      #
+      # Mesuré le 2 septembre 2026 : sur un dépôt **privé** sans GitHub Pro,
+      # l'API refuse en 403 « Upgrade to GitHub Pro or make this repository
+      # public to enable this feature ». Le ruleset ne peut donc pas être
+      # appliqué du tout, et ce job distingue ce cas de l'oubli : ce n'est pas
+      # la même chose de ne pas avoir posé la protection et de ne pas pouvoir
+      # la poser.
+      - name: Le ruleset appliqué correspond au fichier
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPOT: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          declare="$(jq -S '{name, target, enforcement, bypass_actors, rules}' .github/rulesets/main.json)"
+
+          if ! reponse="$(gh api "repos/${DEPOT}/rulesets" 2>&1)"; then
+            if printf '%s' "${reponse}" | grep -q 'Upgrade to GitHub Pro'; then
+              echo "les rulesets sont indisponibles : dépôt privé sans GitHub Pro." >&2
+              echo "Rendre le dépôt public, ou passer au plan qui les autorise." >&2
+              echo "Tant que ce n'est pas fait, la protection de main n'existe pas." >&2
+            else
+              echo "l'API des rulesets a échoué : ${reponse}" >&2
+            fi
+            exit 1
+          fi
+
+          id="$(printf '%s' "${reponse}" | jq -r '.[] | select(.name == "main") | .id')"
+          if [ -z "${id}" ]; then
+            echo "aucun ruleset nommé 'main' sur ${DEPOT} : la protection déclarée n'est pas appliquée" >&2
+            exit 1
+          fi
+          applique="$(gh api "repos/${DEPOT}/rulesets/${id}" | jq -S '{name, target, enforcement, bypass_actors, rules}')"
+          diff <(printf '%s\n' "${declare}") <(printf '%s\n' "${applique}") \
+            || { echo "le ruleset appliqué diffère de .github/rulesets/main.json" >&2; exit 1; }
+          echo "le ruleset appliqué correspond au fichier"

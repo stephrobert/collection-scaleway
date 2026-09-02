@@ -1,0 +1,36 @@
+# Vulnérabilités connues et paquets malveillants, par la base OSV.
+#
+# Les exécutions sur pull request disent ce qu'un changement introduit ; les
+# exécutions planifiées attrapent un paquet reclassé malveillant après coup,
+# ce qui est le cas que rien d'autre ne couvre : le verrou fige une version,
+# il ne dit pas qu'elle est restée saine.
+name: OSV-Scanner
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "30 12 * * 1"
+
+permissions: {}
+
+jobs:
+  scan-pr:
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+    permissions:
+      actions: read
+      security-events: write
+      contents: read
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@8deb546fdb875b9996d27d4950be7312dac076a1 # v2.5.0
+
+  scan-scheduled:
+    if: github.event_name == 'push' || github.event_name == 'schedule'
+    permissions:
+      actions: read
+      security-events: write
+      contents: read
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@8deb546fdb875b9996d27d4950be7312dac076a1 # v2.5.0

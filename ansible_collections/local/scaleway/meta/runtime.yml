@@ -1,0 +1,11 @@
+# Version minimale d'ansible-core exigée par la collection.
+#
+# 2.17 est **mesuré**, pas supposé : sous ansible-core 2.16, `ansible-test
+# sanity` lance 32 contrôles et deux échouent, `future-import-boilerplate` et
+# `metaclass-boilerplate`. Ce ne sont pas des détails de forme : 2.16 accepte
+# encore des cibles Python 2.7, que ce module ne sait pas servir. À partir de
+# 2.17 le support de Python 2 disparaît, les deux contrôles avec, et la sanity
+# passe (24 contrôles, zéro échec).
+#
+# Relever ce nombre demande de le remesurer, pas de l'estimer.
+requires_ansible: ">=2.17.0"

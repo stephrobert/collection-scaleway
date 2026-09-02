@@ -1,0 +1,39 @@
+# Bloque une pull request qui introduit une dépendance porteuse d'une
+# vulnérabilité connue ou d'une licence non permissive.
+#
+# Ce dépôt verrouille ses dépendances de développement dans
+# `requirements-dev.lock`, empreintes comprises. Cette porte est ce qui garde
+# la décision honnête quand le verrou est régénéré : un verrou se relit comme
+# un diff, et un diff que personne ne lit n'est pas un contrôle.
+name: Revue des dépendances
+
+on:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  review:
+    name: Revoir les changements de dépendances
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # La liste de licences est celle qu'une collection publiée sous
+      # GPL-3.0-or-later peut consommer sans se contredire.
+      - name: Revue des dépendances
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+          allow-licenses: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0, PSF-2.0, GPL-3.0-or-later

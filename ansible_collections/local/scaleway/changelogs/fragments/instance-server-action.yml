@@ -1,0 +1,16 @@
+---
+minor_changes:
+  - "Nouveau module ``instance_server_action``, qui déclenche une action sur
+    une Instance : ``poweron``, ``poweroff``, ``reboot`` et ``stop_in_place``.
+    En check mode il annonce le changement sans rien déclencher, et il attend
+    que l'Instance ait réellement atteint l'état visé avant de rendre la main."
+  - "Le module d'action n'expose **pas** ``terminate``, ``backup`` ni
+    ``enable_routed_ip``, que le contrat range pourtant dans le même enum.
+    La première supprime l'Instance et ses volumes locaux, la deuxième crée
+    une image, la troisième migre la pile réseau sans retour : aucune n'est
+    une exploitation de l'existant. Chaque exclusion est écrite avec sa raison
+    dans les overrides du générateur."
+  - "Nouveau fragment de documentation ``waitable`` pour ``wait`` et
+    ``wait_timeout``, avec les valeurs de la collection officielle."
+  - "Nouveau playbook livré ``arreter_un_serveur``, qui arrête une Instance
+    désignée et relit son état plutôt que de croire le module sur parole."

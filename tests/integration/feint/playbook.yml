@@ -1,0 +1,188 @@
+# Ce que ce playbook prouve, et qu'aucun test unitaire ne peut prouver.
+#
+# Il parle à un vrai serveur HTTP, avec le vrai SDK, sur le module tel qu'il a
+# été généré. Il est joué par `scripts/integration.py`, qui démarre feint,
+# l'amorce et le range ensuite.
+#
+# `feint` est un émulateur local : c'est un backend de test, pas une
+# dépendance de la collection. Rien dans `plugins/` ne le connaît, et
+# `mise run check` tourne sans lui.
+- name: instance_server_info contre un émulateur local
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    zone: fr-par-1
+    # Amorcés par le lanceur. Au-delà d'une page (100), pour que la liste ne
+    # puisse pas passer pour complète en n'ayant rendu que la première.
+    attendus: "{{ lookup('env', 'FEINT_SEEDED_SERVERS') | int }}"
+    # Allumé par le lanceur avant le playbook. Sous FEINT_VM=off c'est un
+    # changement d'état ; sous incus-ovn une machine a réellement démarré, et
+    # le module doit dire la même chose dans les deux cas.
+    serveur_allume: "{{ lookup('env', 'FEINT_RUNNING_SERVER') }}"
+
+  tasks:
+    - name: Lister tous les serveurs de la zone
+      local.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+      register: liste
+
+    - name: La liste va jusqu'au bout, et ne modifie rien
+      ansible.builtin.assert:
+        that:
+          - liste.servers | length == attendus | int
+          - liste is not changed
+        fail_msg: >-
+          {{ liste.servers | length }} serveur(s) rendu(s) pour {{ attendus }} amorcé(s) :
+          la pagination s'est arrêtée avant la fin.
+        success_msg: "{{ liste.servers | length }} serveurs rendus, toutes pages parcourues"
+
+    - name: Lire un serveur par son identifiant
+      local.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+        server_id: "{{ liste.servers[0].id }}"
+      register: unitaire
+
+    - name: L'identifiant fourni bascule bien sur la lecture unitaire
+      ansible.builtin.assert:
+        that:
+          - unitaire.server.id == liste.servers[0].id
+          - unitaire.servers is not defined
+          - unitaire is not changed
+        success_msg: "serveur {{ unitaire.server.name }} lu par son identifiant"
+
+    - name: Lire le serveur qui tourne réellement
+      local.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+        server_id: "{{ serveur_allume }}"
+      register: allume
+
+    - name: Le module rapporte l'état de la machine, pas un état supposé
+      ansible.builtin.assert:
+        that:
+          - allume.server.state == 'running'
+          - allume.server.id == serveur_allume
+        fail_msg: >-
+          le serveur {{ serveur_allume }} est rendu dans l'état
+          {{ allume.server.state }}, alors que le lanceur l'a allumé et attendu.
+        success_msg: "serveur {{ allume.server.name }} lu en état running"
+
+    - name: Le serveur allumé fait partie de la liste complète
+      ansible.builtin.assert:
+        that:
+          - serveur_allume in (liste.servers | map(attribute='id') | list)
+        success_msg: "le serveur allumé est bien dans les {{ attendus }} rendus"
+
+    - name: Un filtre du contrat restreint la liste
+      local.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+        name: "{{ liste.servers[0].name }}"
+      register: filtree
+
+    - name: Le filtre a bien été transmis à l'API
+      ansible.builtin.assert:
+        that:
+          - filtree.servers | length < liste.servers | length
+        success_msg: "{{ filtree.servers | length }} serveur(s) après filtrage par nom"
+
+    - name: Le check mode ne change rien à une lecture
+      local.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+      check_mode: true
+      register: en_check_mode
+
+    - name: Un module d'information rend la même chose en check mode
+      ansible.builtin.assert:
+        that:
+          - en_check_mode.servers | length == liste.servers | length
+          - en_check_mode is not changed
+
+    - name: Un identifiant inconnu échoue avec un message qui le dit
+      local.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+        server_id: 00000000-0000-4000-8000-000000000000
+      register: absent
+      # `ignore_errors` et non `failed_when: false` : le second efface le
+      # statut d'échec, et l'assertion suivante ne mesurerait plus rien.
+      ignore_errors: true
+
+    - name: L'erreur porte l'opération et le statut, et aucun secret
+      ansible.builtin.assert:
+        that:
+          - absent is failed
+          - absent.operation == 'GetServer'
+          - absent.status_code == 404
+          - "'SCW' not in (absent.msg | string)"
+        success_msg: "erreur remontée : {{ absent.msg }}"
+
+    - name: Annoncer un arrêt sans le déclencher
+      local.scaleway.instance_server_action:
+        zone: "{{ zone }}"
+        server_id: "{{ serveur_allume }}"
+        action: poweroff
+      check_mode: true
+      register: annonce
+
+    - name: Le check mode annonce le changement et ne touche à rien
+      ansible.builtin.assert:
+        that:
+          - annonce is changed
+          - annonce.expected_state == 'stopped'
+        success_msg: "arrêt annoncé, état attendu {{ annonce.expected_state }}"
+
+    - name: Le serveur tourne toujours après le check mode
+      local.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+        server_id: "{{ serveur_allume }}"
+      register: apres_annonce
+
+    - name: Rien n'a bougé
+      ansible.builtin.assert:
+        that:
+          - apres_annonce.server.state == 'running'
+        fail_msg: >-
+          le check mode a réellement arrêté le serveur : l'état est
+          {{ apres_annonce.server.state }}.
+        success_msg: "le check mode n'a rien déclenché"
+
+    - name: Arrêter réellement l'Instance, et attendre qu'elle soit arrêtée
+      local.scaleway.instance_server_action:
+        zone: "{{ zone }}"
+        server_id: "{{ serveur_allume }}"
+        action: poweroff
+      register: arret
+
+    - name: L'action est confirmée, et l'état visé est atteint
+      ansible.builtin.assert:
+        that:
+          - arret is changed
+          - arret.action == 'poweroff'
+          - arret.state == 'stopped'
+        success_msg: "Instance arrêtée, état {{ arret.state }}"
+
+    - name: Relire l'Instance pour ne pas croire le module sur parole
+      local.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+        server_id: "{{ serveur_allume }}"
+      register: relu
+
+    - name: L'API confirme l'arrêt
+      ansible.builtin.assert:
+        that:
+          - relu.server.state == 'stopped'
+        success_msg: "l'API rend bien {{ relu.server.state }}"
+
+    - name: Une action que la collection n'expose pas est refusée par Ansible
+      local.scaleway.instance_server_action:
+        zone: "{{ zone }}"
+        server_id: "{{ serveur_allume }}"
+        action: terminate
+      register: refus
+      ignore_errors: true
+
+    - name: terminate supprimerait l'Instance, et le module ne le propose pas
+      ansible.builtin.assert:
+        that:
+          - refus is failed
+          - "'terminate' in (refus.msg | string)"
+        success_msg: "terminate refusé avant tout appel réseau"

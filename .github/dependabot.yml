@@ -1,0 +1,38 @@
+version: 2
+
+# Quarantaine d'approvisionnement : quatorze jours avant d'adopter une nouvelle
+# version, pour qu'une release fraîchement publiée (ou fraîchement compromise)
+# ne soit jamais tirée le jour où elle sort. Les mises à jour de sécurité issues
+# des alertes Dependabot ne sont pas retardées par ce délai.
+#
+# Sans ce fichier, l'épinglage par SHA de ce dépôt se transformerait en gel :
+# une épingle que personne ne rafraîchit vieillit jusqu'à la première CVE.
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 10
+    groups:
+      python:
+        patterns: ["*"]
+    commit-message:
+      prefix: "chore(deps)"
+
+  # `sha-and-version` garde le SHA **et** le commentaire `# vX.Y.Z` à côté en
+  # phase : sans lui, un lecteur ne peut plus dire ce qu'est un condensat de
+  # quarante caractères.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 10
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci(deps)"

@@ -1,0 +1,177 @@
+# Décisions humaines sur l'API Instance v1.
+#
+# Chaque entrée corrige ce qu'une règle mécanique ne peut pas savoir : ce que
+# l'opération veut dire pour un opérateur, et si Ansible a une raison de
+# l'exposer. La clé est celle que l'IR calcule
+# (`<produit>.<version>.<Ressource>.<OperationId>`), et `reason` est obligatoire
+# dès qu'on change une classification.
+#
+# Ce que ce fichier ne fait pas : rattraper une règle qui se trompe partout.
+# Une correction qui se répète sur dix opérations est une règle manquante dans
+# `generator/classifier/rules.py`, pas dix overrides.
+
+operations:
+
+  # --- Le PUT de remplacement n'est pas le chemin d'un module idempotent ----
+  #
+  # Scaleway publie deux écritures pour la même ressource : un PATCH partiel
+  # (`Update*`) et un PUT de remplacement complet (`Set*`). Un module MANAGE
+  # compare l'état courant à l'état voulu et n'écrit que la différence : c'est
+  # le PATCH. Exposer le PUT en plus donnerait deux modules pour une ressource,
+  # dont un capable d'effacer silencieusement les champs non fournis.
+
+  instance.v1.Image.SetImage:
+    generation: ignore
+    reason: PUT de remplacement complet ; le module utilise le PATCH UpdateImage.
+
+  instance.v1.PlacementGroup.SetPlacementGroup:
+    generation: ignore
+    reason: PUT de remplacement complet ; le module utilise le PATCH UpdatePlacementGroup.
+
+  instance.v1.SecurityGroup.SetSecurityGroup:
+    generation: ignore
+    reason: PUT de remplacement complet ; le module utilise le PATCH UpdateSecurityGroup.
+
+  instance.v1.SecurityGroupRule.SetSecurityGroupRule:
+    generation: ignore
+    reason: PUT de remplacement complet ; le module utilise le PATCH UpdateSecurityGroupRule.
+
+  instance.v1.Snapshot.SetSnapshot:
+    generation: ignore
+    reason: PUT de remplacement complet ; le module utilise le PATCH UpdateSnapshot.
+
+  instance.v1.Volume.SetVolume:
+    generation: ignore
+    reason: PUT de remplacement complet ; le module utilise le PATCH UpdateVolume.
+
+  instance.v1.PlacementGroupServer.SetPlacementGroupServers:
+    generation: ignore
+    reason: PUT de remplacement complet ; le module utilise le PATCH UpdatePlacementGroupServers.
+
+  instance.v1.SecurityGroupRule.SetSecurityGroupRules:
+    generation: manual
+    module: instance_security_group_rules
+    reason: >-
+      Remplace en un appel la totalité des règles d'un groupe. L'idempotence
+      demande de comparer deux listes ordonnées et de décider ce qu'est une
+      règle « identique » : c'est de la logique métier, elle s'écrit à la main.
+      Le module porte un nom au pluriel parce qu'il gère l'ensemble des règles,
+      là où instance_security_group_rule en gère une.
+
+  # --- Topologie : Terraform décide, Ansible n'attache pas ------------------
+  #
+  # Attacher un volume ou un système de fichiers à un serveur crée une relation
+  # entre deux ressources. C'est exactement la frontière posée par le projet :
+  # Terraform provisionne et relie, Ansible exploite l'existant.
+
+  instance.v1.Server.AttachServerVolume:
+    generation: ignore
+    reason: Relation entre deux ressources, décrite par Terraform et non par Ansible.
+
+  instance.v1.Server.DetachServerVolume:
+    generation: ignore
+    reason: Relation entre deux ressources, décrite par Terraform et non par Ansible.
+
+  instance.v1.Server.AttachServerFileSystem:
+    generation: ignore
+    reason: Relation entre deux ressources, décrite par Terraform et non par Ansible.
+
+  instance.v1.Server.DetachServerFileSystem:
+    generation: ignore
+    reason: Relation entre deux ressources, décrite par Terraform et non par Ansible.
+
+  # --- Ce qu'un module d'action expose, et ce qu'il refuse -----------------
+  #
+  # Le contrat range sept valeurs dans un même enum, et sa description dit ce
+  # que chacune fait. Trois d'entre elles ne sont pas du Day-2 :
+  #
+  #   terminate         « Delete the Instance along with its attached local
+  #                     volumes. » Une suppression, donc le périmètre de
+  #                     Terraform, et la plus irréversible du lot.
+  #   backup            « Create an image with all the volumes of an
+  #                     Instance. » Une création de ressource. Sauvegarder
+  #                     relève du Day-2, mais l'arbitrage est le même que pour
+  #                     CreateSnapshot, et il n'est pas rendu.
+  #   enable_routed_ip  « Migrate the Instance to the new network stack. » Une
+  #                     migration sans retour, qui change la topologie réseau.
+  #
+  # Les recopier parce que le contrat les liste, c'est laisser une suppression
+  # entrer par la porte d'une action.
+
+  instance.v1.Server.ServerAction:
+    parameters:
+      action:
+        choices:
+          - poweron
+          - poweroff
+          - reboot
+          - stop_in_place
+        required: true
+        reason: >-
+          Les quatre valeurs de contrôle d'alimentation, et elles seules.
+          terminate supprime l'Instance et ses volumes locaux, backup crée une
+          image, enable_routed_ip migre la pile réseau sans retour : aucune
+          des trois n'est une exploitation de l'existant. `required` parce que
+          le contrat ne déclare aucun champ de corps obligatoire, et qu'un
+          module d'action sans action ne veut rien dire.
+      name:
+        expose: false
+        reason: >-
+          Le contrat le dit lui-même : « This field should only be specified
+          when performing a backup action. » Cette action n'est pas exposée,
+          donc ce paramètre ne pourrait jamais servir.
+      volumes:
+        expose: false
+        reason: >-
+          Même raison que `name` : réservé à l'action backup, que ce module
+          n'expose pas.
+      disable_ipv6:
+        expose: false
+        reason: >-
+          Le contrat le réserve à l'action enable_routed_ip, que ce module
+          n'expose pas.
+    wait:
+      field: state
+      states:
+        poweron: running
+        reboot: running
+        poweroff: stopped
+        stop_in_place: stopped
+      reason: >-
+        Le contrat dit ce qu'une action fait, jamais dans quel état elle laisse
+        l'Instance. La correspondance est une décision, écrite ici pour que le
+        module attende quelque chose de nommé plutôt que de rendre la main sur
+        un déclenchement accepté.
+
+  # --- Opérations qui alimentent un module sans en être un ------------------
+
+  instance.v1.Server.ListServerActions:
+    generation: ignore
+    reason: >-
+      Liste les actions qu'un serveur accepte à l'instant t. Elle est consommée
+      par instance_server_action pour valider une demande, pas exposée comme
+      module d'information.
+
+  instance.v1.BlockMigration.CheckBlockMigrationOrganizationQuotas:
+    generation: ignore
+    reason: >-
+      Pré-contrôle de quotas d'une migration de volumes vers Block Storage. La
+      migration elle-même n'est pas exposée ; son pré-contrôle seul n'a pas
+      d'usage Day-2.
+
+  # --- Ressources que le chemin nomme mal ----------------------------------
+  #
+  # `/products/servers` est un catalogue, pas une ressource `product`. La règle
+  # de dérivation lit le chemin ; ici le chemin ment sur ce qu'il décrit.
+
+  instance.v1.ProductServer.ListServersTypes:
+    resource: server_type
+
+  instance.v1.ProductServer.GetServerTypesAvailability:
+    resource: server_type_availability
+
+  instance.v1.ProductVolume.ListVolumesTypes:
+    resource: volume_type
+
+  instance.v1.Server.GetServerCompatibleTypes:
+    resource: server_compatible_type

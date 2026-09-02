@@ -1,0 +1,18 @@
+# Propriétaire par défaut de tout le dépôt.
+#
+# Une revue de propriétaire n'est **pas** exigée sur `main`, et ce fichier ne
+# prétend pas le contraire : `require_code_owner_review` vaut `false` dans
+# `.github/rulesets/main.json`. Un commentaire qui décrit un contrôle que
+# personne n'applique se lit exactement comme le contrôle, et c'est le défaut
+# que ce dépôt passe son temps à traquer ailleurs.
+#
+# C'est faux à dessein, pas par négligence. Un seul mainteneur ne peut pas
+# approuver sa propre pull request : exiger une revue de propriétaire fermerait
+# le seul chemin vers `main`, et la façon d'en sortir serait le contournement
+# administrateur, ce qui donnerait deux contrôles affichés pour zéro appliqué.
+# `docs/scorecard.md` écrit l'arbitrage et ce qui le changerait : un second
+# relecteur, pas un réglage.
+#
+# Ce que ce fichier fait aujourd'hui : nommer le relecteur que GitHub demande
+# automatiquement sur chaque pull request.
+* @stephrobert

@@ -1,0 +1,60 @@
+# Ce que l'inventaire dynamique vaut une fois branché sur Ansible.
+#
+# `ansible-inventory --list` prouve que le plugin rend du JSON. Ce playbook
+# prouve autre chose, et c'est ce qui compte : que les machines découvertes
+# sont **adressables** par Ansible, et que leurs variables d'identité
+# suffisent aux modules de la collection pour agir sur elles.
+#
+#   ansible-playbook -i tests/integration/feint/inventaire.scaleway.yml \
+#     tests/integration/feint/playbook_inventaire.yml
+#
+# Les machines n'ont pas de SSH ici : c'est justement le cas Day-2 que le
+# brief décrit. Une machine sans route reste pilotable par l'API, en
+# `delegate_to: localhost`, et l'inventaire doit le permettre.
+- name: Un inventaire Scaleway est utilisable par les modules de la collection
+  hosts: scw_product_instance
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Chaque machine porte son identité Scaleway
+      ansible.builtin.assert:
+        that:
+          - scaleway_id is defined and scaleway_id | length > 0
+          - scaleway_product == 'instance'
+          - scaleway_zone == 'fr-par-1'
+          - scaleway_region == 'fr-par'
+        quiet: true
+
+    - name: Les groupes natifs portent bien le produit et la zone
+      ansible.builtin.assert:
+        that:
+          - "'scw_product_instance' in group_names"
+          - "'scw_zone_fr_par_1' in group_names"
+        quiet: true
+
+    - name: Lire cette machine par l'API, avec les seules variables d'inventaire
+      local.scaleway.instance_server_info:
+        zone: "{{ scaleway_zone }}"
+        server_id: "{{ scaleway_id }}"
+      delegate_to: localhost
+      run_once: true
+      register: lue
+
+    - name: L'API décrit bien la machine que l'inventaire a nommée
+      ansible.builtin.assert:
+        that:
+          - lue.server.id == scaleway_id
+          - lue.server.name == inventory_hostname
+          - lue is not changed
+        success_msg: >-
+          {{ inventory_hostname }} : l'identité rendue par l'inventaire suffit
+          aux modules de la collection
+      run_once: true
+
+    - name: Ce que l'inventaire a construit
+      ansible.builtin.debug:
+        msg:
+          - "machines découvertes : {{ groups['scw_product_instance'] | length }}"
+          - "groupes natifs       : {{ groups.keys() | select('match', '^scw_') | list | sort }}"
+      run_once: true

@@ -1,0 +1,5 @@
+# Paquets système nécessaires à l'exécution. Aucun : la collection parle à
+# une API en HTTPS et n'appelle aucun binaire.
+#
+# Le fichier reste présent même vide, parce que `ansible-builder` retomberait
+# sinon sur le `bindep.txt` de la racine.

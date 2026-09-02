@@ -1,0 +1,51 @@
+# Lire une Instance précise, et n'appeler l'API qu'une fois pour cela.
+#
+# Le même module sert les deux modes : `server_id` fourni lit une ressource,
+# `server_id` absent liste la zone. C'est le seul choix que le module fait, et
+# il se voit dans le playbook.
+#
+#   ansible-playbook playbooks/detail_dun_serveur.yml \
+#     -e zone=fr-par-1 -e server_id=<uuid>
+#
+# Sans `server_id`, le playbook prend la première Instance de la zone, ce qui
+# permet de l'essayer sans rien connaître à l'avance.
+- name: Détail d'une Instance Scaleway
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    zone: fr-par-1
+    server_id: ""
+
+  tasks:
+    - name: Trouver une Instance quand aucune n'est nommée
+      local.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+      register: inventaire
+      when: not server_id
+
+    - name: Retenir l'Instance à lire
+      ansible.builtin.set_fact:
+        cible: "{{ server_id or (inventaire.servers | first).id }}"
+
+    - name: Lire l'Instance
+      local.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+        server_id: "{{ cible }}"
+      register: instance
+
+    - name: Ce que l'API dit de cette Instance
+      ansible.builtin.debug:
+        msg:
+          - "nom             : {{ instance.server.name }}"
+          - "état            : {{ instance.server.state }}"
+          - "type commercial : {{ instance.server.commercial_type }}"
+          - "zone            : {{ instance.server.zone }}"
+          - "créée le        : {{ instance.server.creation_date }}"
+          - "étiquettes      : {{ instance.server.tags | default([]) }}"
+
+    - name: Un module d'information ne modifie jamais rien
+      ansible.builtin.assert:
+        that:
+          - instance is not changed
+        success_msg: "lecture seule confirmée, changed=false"
