@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.config import (
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.config import (
     DEFAULT_GROUP_BY,
     DEFAULT_HOSTNAMES,
     ConfigError,

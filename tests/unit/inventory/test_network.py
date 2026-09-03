@@ -13,7 +13,7 @@ Deux choses se prouvent ici, et la seconde est la raison d'être du module :
 
 from __future__ import annotations
 
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.network import (
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.network import (
     IpamAddress,
     NetworkIndex,
     NicRef,

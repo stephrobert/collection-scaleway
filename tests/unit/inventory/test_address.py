@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import pytest
 
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.address import (
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.address import (
     AddressPolicy,
     select_ansible_host,
 )
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.models import (
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.models import (
     InventoryHost,
     NetworkAttachment,
 )

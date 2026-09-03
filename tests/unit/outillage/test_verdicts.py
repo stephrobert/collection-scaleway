@@ -40,9 +40,9 @@ def _sortie(stdout: str, code: int = 0) -> subprocess.CompletedProcess[str]:
 
 def _collection_factice(racine: Path) -> Collection:
     """Une collection qui existe sur disque et ne contient rien."""
-    chemin = racine / "ansible_collections" / "local" / "scaleway"
+    chemin = racine / "ansible_collections" / "stephrobert" / "scaleway"
     chemin.mkdir(parents=True, exist_ok=True)
-    return Collection(namespace="local", name="scaleway", version="0.0.0", path=chemin)
+    return Collection(namespace="stephrobert", name="scaleway", version="0.0.0", path=chemin)
 
 
 # --- ansible-test peut ne rien tester et sortir en 0 -----------------------
@@ -426,7 +426,7 @@ def test_un_plugin_dinventaire_sans_options_nest_pas_charge(
         type(
             "FauxSubprocess",
             (),
-            {"run": staticmethod(lambda *a, **k: _sortie('{"local.scaleway.scaleway": {}}'))},
+            {"run": staticmethod(lambda *a, **k: _sortie('{"stephrobert.scaleway.scaleway": {}}'))},
         ),
     )
 
@@ -442,7 +442,7 @@ def test_un_plugin_dinventaire_complet_est_accepte(
     collection = _collection_factice(tmp_path)
     documente = json.dumps(
         {
-            "local.scaleway.scaleway": {
+            "stephrobert.scaleway.scaleway": {
                 "doc": {"options": {nom: {} for nom in package.INVENTORY_OPTIONS}}
             }
         }
@@ -516,7 +516,7 @@ def _site_factice(tmp_path: Path, modules: list[str], pages: list[str]) -> None:
     (tmp_path / "modules").mkdir(parents=True, exist_ok=True)
     for nom in modules:
         (tmp_path / "modules" / f"{nom}.py").write_text("", encoding="utf-8")
-    reference = tmp_path / "src" / "collections" / "local" / "scaleway"
+    reference = tmp_path / "src" / "collections" / "stephrobert" / "scaleway"
     reference.mkdir(parents=True, exist_ok=True)
     for nom in pages:
         (reference / f"{nom}_module.rst").write_text("", encoding="utf-8")
@@ -581,7 +581,7 @@ def test_un_bloc_de_configuration_nest_pas_pris_pour_un_playbook(tmp_path: Path)
     """
     page = tmp_path / "guide.md"
     page.write_text(
-        "```yaml\nplugin: local.scaleway.scaleway\nproducts:\n  - instance\n```\n",
+        "```yaml\nplugin: stephrobert.scaleway.scaleway\nproducts:\n  - instance\n```\n",
         encoding="utf-8",
     )
     assert doc_examples.extract(page) == []

@@ -1,0 +1,68 @@
+# Arrêter une Instance, et vérifier qu'elle est bien arrêtée.
+#
+# Le cas Day-2 par excellence : agir sur une machine qui existe, sans jamais
+# en créer ni en supprimer une.
+#
+#   ansible-playbook stephrobert.scaleway.arreter_un_serveur \
+#     -e zone=fr-par-1 -e server_id=<uuid>
+#
+# Sans `server_id`, le playbook ne fait rien et le dit : un playbook d'exemple
+# qui choisit tout seul quelle machine arrêter est un piège, pas une
+# documentation.
+#
+# Répétez-le : la seconde exécution rend `changed=true` parce qu'une action est
+# un déclenchement, pas un état. L'idempotence est le sujet des modules de
+# gestion d'état, pas des modules d'action.
+- name: Arrêter une Instance Scaleway
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    zone: fr-par-1
+    server_id: ""
+    # `poweroff` libère l'emplacement sur l'hyperviseur, `stop_in_place` le
+    # garde. Les deux valeurs viennent du contrat, avec leurs conséquences.
+    action: poweroff
+
+  tasks:
+    - name: Sans Instance désignée, ne rien faire et le dire
+      ansible.builtin.debug:
+        msg: >-
+          Aucune Instance désignée. Relancer avec -e server_id=<uuid> pour
+          agir. Le playbook s'arrête ici sans rien toucher.
+      when: not server_id
+
+    - name: Lire l'Instance avant d'agir
+      stephrobert.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+        server_id: "{{ server_id }}"
+      register: avant
+      when: server_id | length > 0
+
+    - name: Ce qui va être arrêté
+      ansible.builtin.debug:
+        msg: "{{ avant.server.name }} est {{ avant.server.state }}, action demandée : {{ action }}"
+      when: server_id | length > 0
+
+    - name: Arrêter l'Instance, et attendre l'état visé
+      stephrobert.scaleway.instance_server_action:
+        zone: "{{ zone }}"
+        server_id: "{{ server_id }}"
+        action: "{{ action }}"
+      register: arret
+      when: server_id | length > 0
+
+    - name: Relire l'Instance plutôt que de croire le module sur parole
+      stephrobert.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+        server_id: "{{ server_id }}"
+      register: apres
+      when: server_id | length > 0
+
+    - name: L'API confirme l'état
+      ansible.builtin.assert:
+        that:
+          - apres.server.state == 'stopped'
+        fail_msg: "état {{ apres.server.state }} après {{ action }}, 'stopped' attendu"
+        success_msg: "{{ apres.server.name }} est {{ apres.server.state }}"
+      when: server_id | length > 0

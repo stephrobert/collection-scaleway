@@ -23,7 +23,7 @@
 
   tasks:
     - name: Lister tous les serveurs de la zone
-      local.scaleway.instance_server_info:
+      stephrobert.scaleway.instance_server_info:
         zone: "{{ zone }}"
       register: liste
 
@@ -38,7 +38,7 @@
         success_msg: "{{ liste.servers | length }} serveurs rendus, toutes pages parcourues"
 
     - name: Lire un serveur par son identifiant
-      local.scaleway.instance_server_info:
+      stephrobert.scaleway.instance_server_info:
         zone: "{{ zone }}"
         server_id: "{{ liste.servers[0].id }}"
       register: unitaire
@@ -52,7 +52,7 @@
         success_msg: "serveur {{ unitaire.server.name }} lu par son identifiant"
 
     - name: Lire le serveur qui tourne réellement
-      local.scaleway.instance_server_info:
+      stephrobert.scaleway.instance_server_info:
         zone: "{{ zone }}"
         server_id: "{{ serveur_allume }}"
       register: allume
@@ -74,7 +74,7 @@
         success_msg: "le serveur allumé est bien dans les {{ attendus }} rendus"
 
     - name: Un filtre du contrat restreint la liste
-      local.scaleway.instance_server_info:
+      stephrobert.scaleway.instance_server_info:
         zone: "{{ zone }}"
         name: "{{ liste.servers[0].name }}"
       register: filtree
@@ -86,7 +86,7 @@
         success_msg: "{{ filtree.servers | length }} serveur(s) après filtrage par nom"
 
     - name: Le check mode ne change rien à une lecture
-      local.scaleway.instance_server_info:
+      stephrobert.scaleway.instance_server_info:
         zone: "{{ zone }}"
       check_mode: true
       register: en_check_mode
@@ -98,7 +98,7 @@
           - en_check_mode is not changed
 
     - name: Un identifiant inconnu échoue avec un message qui le dit
-      local.scaleway.instance_server_info:
+      stephrobert.scaleway.instance_server_info:
         zone: "{{ zone }}"
         server_id: 00000000-0000-4000-8000-000000000000
       register: absent
@@ -116,7 +116,7 @@
         success_msg: "erreur remontée : {{ absent.msg }}"
 
     - name: Annoncer un arrêt sans le déclencher
-      local.scaleway.instance_server_action:
+      stephrobert.scaleway.instance_server_action:
         zone: "{{ zone }}"
         server_id: "{{ serveur_allume }}"
         action: poweroff
@@ -131,7 +131,7 @@
         success_msg: "arrêt annoncé, état attendu {{ annonce.expected_state }}"
 
     - name: Le serveur tourne toujours après le check mode
-      local.scaleway.instance_server_info:
+      stephrobert.scaleway.instance_server_info:
         zone: "{{ zone }}"
         server_id: "{{ serveur_allume }}"
       register: apres_annonce
@@ -146,7 +146,7 @@
         success_msg: "le check mode n'a rien déclenché"
 
     - name: Arrêter réellement l'Instance, et attendre qu'elle soit arrêtée
-      local.scaleway.instance_server_action:
+      stephrobert.scaleway.instance_server_action:
         zone: "{{ zone }}"
         server_id: "{{ serveur_allume }}"
         action: poweroff
@@ -161,7 +161,7 @@
         success_msg: "Instance arrêtée, état {{ arret.state }}"
 
     - name: Relire l'Instance pour ne pas croire le module sur parole
-      local.scaleway.instance_server_info:
+      stephrobert.scaleway.instance_server_info:
         zone: "{{ zone }}"
         server_id: "{{ serveur_allume }}"
       register: relu
@@ -186,14 +186,14 @@
     # Aucun test hors ligne ne pouvait l'attraper, parce que le défaut était
     # dans la valeur, pas dans la forme. Celui-ci l'attrape.
     - name: Rallumer pour éprouver la seconde forme d'arrêt
-      local.scaleway.instance_server_action:
+      stephrobert.scaleway.instance_server_action:
         zone: "{{ zone }}"
         server_id: "{{ server_id }}"
         action: poweron
         wait: true
 
     - name: Arrêter en gardant la place sur l'hyperviseur
-      local.scaleway.instance_server_action:
+      stephrobert.scaleway.instance_server_action:
         zone: "{{ zone }}"
         server_id: "{{ server_id }}"
         action: stop_in_place
@@ -213,7 +213,7 @@
           l'override d'attente ne correspond plus au contrat
 
     - name: Relire l'Instance plutôt que croire le module
-      local.scaleway.instance_server_info:
+      stephrobert.scaleway.instance_server_info:
         zone: "{{ zone }}"
         server_id: "{{ server_id }}"
       register: apres_fige
@@ -225,7 +225,7 @@
         quiet: true
 
     - name: Une action que la collection n'expose pas est refusée par Ansible
-      local.scaleway.instance_server_action:
+      stephrobert.scaleway.instance_server_action:
         zone: "{{ zone }}"
         server_id: "{{ serveur_allume }}"
         action: terminate

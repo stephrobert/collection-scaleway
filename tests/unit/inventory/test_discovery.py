@@ -15,11 +15,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from ansible_collections.local.scaleway.plugins.module_utils.inventory import discovery
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.errors import (
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory import discovery
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.errors import (
     AuthenticationFailed,
 )
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.providers.base import (
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.providers.base import (
     SCALEWAY_ZONES,
     DiscoveryContext,
 )
@@ -254,7 +254,7 @@ def test_lindex_reseau_nest_paye_que_par_les_produits_qui_le_joignent() -> None:
 def test_la_capacite_vient_des_providers_et_non_du_coeur() -> None:
     """Le cœur ne connaît aucun produit : trancher ici ramènerait la
     connaissance qu'on vient d'en sortir."""
-    from ansible_collections.local.scaleway.plugins.module_utils.inventory.providers import (
+    from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.providers import (
         apple_silicon,
         elastic_metal,
         instance,

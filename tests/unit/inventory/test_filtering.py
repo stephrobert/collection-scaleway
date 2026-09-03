@@ -7,12 +7,14 @@ que le provider aurait dû déléguer à l'API.
 
 from __future__ import annotations
 
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.filtering import (
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.filtering import (
     Filters,
     apply,
     keep,
 )
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.models import InventoryHost
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.models import (
+    InventoryHost,
+)
 
 
 def _host(**champs) -> InventoryHost:

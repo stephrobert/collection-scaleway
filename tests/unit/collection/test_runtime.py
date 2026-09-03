@@ -20,7 +20,7 @@ import pytest
 
 @pytest.fixture(scope="module")
 def runtime(collection_root: Path) -> Any:
-    from ansible_collections.local.scaleway.plugins.module_utils import scaleway
+    from ansible_collections.stephrobert.scaleway.plugins.module_utils import scaleway
 
     return scaleway
 

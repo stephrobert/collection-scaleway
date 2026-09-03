@@ -20,25 +20,24 @@ import pytest
 import yaml
 from ansible.module_utils.common.arg_spec import ArgumentSpecValidator
 
-from generator.ansible.collection import Collection
+from generator.ansible.collection import Collection, find_collection
 from generator.ansible.mapping import COMMON_PARAMETERS
 
 MODULE_NAME = "instance_server_info"
-SOURCE = (
-    Path(__file__).resolve().parents[3]
-    / "ansible_collections"
-    / "local"
-    / "scaleway"
-    / "plugins"
-    / "modules"
-    / f"{MODULE_NAME}.py"
-)
+
+#: **Dérivé de `galaxy.yml`, et non écrit segment par segment.** La version
+#: précédente assemblait `"ansible_collections" / "local" / "scaleway"` ; un
+#: renommage de namespace ne pouvait pas la voir, parce qu'aucune recherche
+#: textuelle de `local/scaleway` ne trouve un chemin découpé en morceaux. Le
+#: symptôme était un `FileNotFoundError` dans le harnais de falsification,
+#: c'est-à-dire loin de la cause.
+SOURCE = find_collection() / "plugins" / "modules" / f"{MODULE_NAME}.py"
 
 
 @pytest.fixture(scope="module")
 def module(collection_root: Path) -> Any:
     """Le module généré, importé par le chemin qu'Ansible résout."""
-    from ansible_collections.local.scaleway.plugins.modules import instance_server_info
+    from ansible_collections.stephrobert.scaleway.plugins.modules import instance_server_info
 
     return instance_server_info
 
@@ -146,7 +145,7 @@ ACTION_SOURCE = SOURCE.with_name("instance_server_action.py")
 
 @pytest.fixture(scope="module")
 def module_action(collection_root: Path) -> Any:
-    from ansible_collections.local.scaleway.plugins.modules import instance_server_action
+    from ansible_collections.stephrobert.scaleway.plugins.modules import instance_server_action
 
     return instance_server_action
 

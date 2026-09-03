@@ -24,14 +24,14 @@ def _ecrire(racine: Path, namespace: str, nom: str, declare: dict[str, object]) 
 
 def test_la_collection_du_depot_se_decouvre() -> None:
     collection = load_collection()
-    assert collection.fqcn == "local.scaleway"
+    assert collection.fqcn == "stephrobert.scaleway"
     assert collection.path.name == collection.name
     assert collection.path.parent.name == collection.namespace
 
 
 def test_le_chemin_dimport_du_runtime_suit_le_namespace() -> None:
     collection = load_collection()
-    assert collection.module_utils_import.startswith("ansible_collections.local.scaleway.")
+    assert collection.module_utils_import.startswith("ansible_collections.stephrobert.scaleway.")
     assert collection.collections_root.name != "ansible_collections"
 
 

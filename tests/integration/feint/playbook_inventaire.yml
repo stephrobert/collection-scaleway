@@ -34,7 +34,7 @@
         quiet: true
 
     - name: Lire cette machine par l'API, avec les seules variables d'inventaire
-      local.scaleway.instance_server_info:
+      stephrobert.scaleway.instance_server_info:
         zone: "{{ scaleway_zone }}"
         server_id: "{{ scaleway_id }}"
       delegate_to: localhost

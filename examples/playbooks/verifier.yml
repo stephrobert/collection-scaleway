@@ -46,7 +46,7 @@
     # C'est l'intégration Day-2 : l'inventaire découvre, les modules agissent,
     # et aucun identifiant n'est écrit à la main nulle part.
     - name: Lire la machine par l'API
-      local.scaleway.instance_server_info:
+      stephrobert.scaleway.instance_server_info:
         zone: "{{ scaleway_zone }}"
         server_id: "{{ scaleway_id }}"
       delegate_to: localhost
@@ -72,7 +72,7 @@
     # couperait le chemin de tout le reste, et arrêter une machine web ferait
     # sortir une cible du load balancer.
     - name: Arrêter la machine, et attendre qu'elle le soit
-      local.scaleway.instance_server_action:
+      stephrobert.scaleway.instance_server_action:
         zone: "{{ scaleway_zone }}"
         server_id: "{{ scaleway_id }}"
         action: poweroff
@@ -88,7 +88,7 @@
         quiet: true
 
     - name: La relancer, et attendre qu'elle réponde
-      local.scaleway.instance_server_action:
+      stephrobert.scaleway.instance_server_action:
         zone: "{{ scaleway_zone }}"
         server_id: "{{ scaleway_id }}"
         action: poweron

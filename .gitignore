@@ -17,10 +17,10 @@ __pycache__/
 
 # `ansible-test` écrit ici quand il tourne depuis le dépôt plutôt que depuis
 # la copie assemblée hors dépôt.
-/ansible_collections/local/scaleway/tests/output/
+/ansible_collections/stephrobert/scaleway/tests/output/
 
 # `antsibull-changelog` reconstruit ce cache à chaque exécution.
-/ansible_collections/local/scaleway/changelogs/.plugin-cache.yaml
+/ansible_collections/stephrobert/scaleway/changelogs/.plugin-cache.yaml
 
 # Collections installées par ansible-galaxy pour un essai local, et archives
 # construites hors de build/dist.

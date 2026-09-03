@@ -26,7 +26,7 @@ aucun service, ne stocke aucune donnée, et ne détient aucun identifiant.
 Entrent dans le périmètre :
 
 * une faille dans le code généré ou dans le runtime des modules
-  (`ansible_collections/local/scaleway/plugins/`), notamment tout ce qui
+  (`ansible_collections/stephrobert/scaleway/plugins/`), notamment tout ce qui
   écrirait un secret dans un journal, contournerait `no_log`, ou exécuterait
   une donnée venue de l'API ;
 * une faille dans le générateur (`generator/`) qui produirait un module

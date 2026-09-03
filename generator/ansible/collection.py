@@ -6,7 +6,7 @@ c'est ce qui permet à `ansible-test`, `antsibull-docs` et `ansible-playbook`
 de travailler **en place**, sans qu'on assemble une copie ailleurs.
 
 Deux sources décrivent alors la même identité, et Ansible les lit toutes les
-deux : le **chemin** (`ansible_collections/local/scaleway`) et **galaxy.yml**.
+deux : le **chemin** (`ansible_collections/stephrobert/scaleway`) et **galaxy.yml**.
 On ne peut pas en supprimer une, l'outil impose les deux. Ce qu'on peut faire,
 et que fait `load_collection`, c'est **exiger qu'elles concordent** : une
 collection dont le chemin et le manifeste divergent se charge sous un nom et
@@ -47,7 +47,7 @@ class Collection:
 
     @property
     def fqcn(self) -> str:
-        """`local.scaleway`, le préfixe du nom complet d'un module."""
+        """`stephrobert.scaleway`, le préfixe du nom complet d'un module."""
         return f"{self.namespace}.{self.name}"
 
     @property

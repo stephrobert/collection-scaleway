@@ -90,7 +90,7 @@
     {
       "name": "pagination-incomplete",
       "why": "Rendre la première page en silence donne une liste plausible et fausse.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "            if len(batch) < per_page:\n                return items",
       "replace": "            if len(batch) <= per_page:\n                return items",
       "test": "tests/unit/collection/test_runtime.py::test_la_pagination_va_jusquau_bout"
@@ -98,7 +98,7 @@
     {
       "name": "pagination-sans-fin",
       "why": "Une API qui ignorerait per_page ferait boucler le module indéfiniment, sans rien dire.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "    raise ScalewayApiError(\n        operation=payload_field,",
       "replace": "    return items\n    raise ScalewayApiError(\n        operation=payload_field,",
       "test": "tests/unit/collection/test_runtime.py::test_une_api_qui_ignore_la_taille_de_page_fait_echouer"
@@ -106,7 +106,7 @@
     {
       "name": "secret-dans-un-message",
       "why": "Un message de module finit dans un journal, et un journal se partage.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "        message = str(payload.get(\"message\") or message)",
       "replace": "        message = str(payload or message)",
       "test": "tests/unit/collection/test_runtime.py::test_une_erreur_ne_recopie_pas_le_corps_de_la_reponse"
@@ -114,7 +114,7 @@
     {
       "name": "chemin-non-resolu",
       "why": "Un chemin qui garde un segment `{...}` produit une requête sur une URL littérale, et une erreur incompréhensible.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "    if \"{\" in rendered:",
       "replace": "    if \"{\" in rendered and False:",
       "test": "tests/unit/collection/test_runtime.py::test_un_segment_non_resolu_est_refuse"
@@ -234,7 +234,7 @@
     {
       "name": "attente-sans-preuve",
       "why": "Rendre la main sans avoir vu l'etat ferait passer une attente pour une confirmation.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "            raise ScalewayApiError(\n                operation=field_name,\n                message=(\n                    f\"état '{observe}' après",
       "replace": "            return observe\n            raise ScalewayApiError(\n                operation=field_name,\n                message=(\n                    f\"état '{observe}' après",
       "test": "tests/unit/collection/test_runtime.py::test_une_attente_qui_expire_nomme_le_dernier_etat_vu"
@@ -242,7 +242,7 @@
     {
       "name": "check-mode-qui-agit",
       "why": "Un module qui declenche en check mode rend le mode inutile, et personne ne s'en apercoit avant le jour ou ca compte.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "    if module.check_mode:\n        module.exit_json(",
       "replace": "    if module.check_mode and False:\n        module.exit_json(",
       "test": "tests/unit/collection/test_runtime.py::test_en_check_mode_rien_nest_declenche"
@@ -258,7 +258,7 @@
     {
       "name": "inventaire-authentification-fatale",
       "why": "Un jeton révoqué qui devient un avertissement rend un inventaire vide qui se présente comme complet.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/providers/instance.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/providers/instance.py",
       "find": "                        if categorie is AuthenticationFailed:",
       "replace": "                        if categorie is AuthenticationFailed and False:",
       "test": "tests/unit/inventory/test_discovery.py::test_un_echec_dauthentification_arrete_tout_meme_hors_mode_strict"
@@ -266,7 +266,7 @@
     {
       "name": "inventaire-produit-absent-nest-pas-une-panne",
       "why": "Un produit absent d'une zone signalé comme erreur rendrait le mode strict inutilisable.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/errors.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/errors.py",
       "find": "    if status_code in (404, 501):",
       "replace": "    if status_code in (404, 501) and False:",
       "test": "tests/unit/inventory/test_providers.py::test_une_zone_qui_ne_sert_pas_le_produit_est_un_avertissement"
@@ -274,7 +274,7 @@
     {
       "name": "inventaire-collision-de-noms",
       "why": "Deux machines du même nom : la seconde écrase la première, ses variables et ses groupes, sans un mot.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/hostname.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/hostname.py",
       "find": "        if nom not in pris:",
       "replace": "        if nom not in pris or True:",
       "test": "tests/unit/inventory/test_hostname.py::test_deux_machines_du_meme_nom_ne_secrasent_pas"
@@ -282,7 +282,7 @@
     {
       "name": "inventaire-assainissement-de-groupe",
       "why": "Remplacer trois caractères comme le plugin officiel laisse passer 'production/web', qu'Ansible réécrit ensuite lui-même.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/groups.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/groups.py",
       "find": "_INVALIDES = re.compile(r\"[^A-Za-z0-9_]+\")",
       "replace": "_INVALIDES = re.compile(r\"[-: ]+\")",
       "test": "tests/unit/inventory/test_groups.py::test_un_nom_assaini_est_un_point_fixe_pour_ansible"
@@ -290,7 +290,7 @@
     {
       "name": "inventaire-masque-de-sous-reseau",
       "why": "IPAM rend un CIDR : garder le masque produit un ansible_host que SSH ne sait pas joindre.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/network.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/network.py",
       "find": "    return address.split(\"/\", 1)[0]",
       "replace": "    return address",
       "test": "tests/unit/inventory/test_network.py::test_la_jointure_conserve_le_reseau_et_le_vpc"
@@ -298,7 +298,7 @@
     {
       "name": "inventaire-reseau-prive-nomme",
       "why": "Ignorer le réseau demandé rendrait l'adresse d'un autre réseau, et le playbook joindrait la mauvaise interface.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/address.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/address.py",
       "find": "    if policy.private_network is not None:",
       "replace": "    if policy.private_network is not None and False:",
       "test": "tests/unit/inventory/test_address.py::test_un_reseau_nomme_impose_son_adresse"
@@ -306,7 +306,7 @@
     {
       "name": "inventaire-tags-match-all",
       "why": "Traiter 'all' comme 'any' élargit silencieusement le parc ciblé par un playbook.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/filtering.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/filtering.py",
       "find": "        if filters.tags_match == \"all\":",
       "replace": "        if filters.tags_match == \"all\" and False:",
       "test": "tests/unit/inventory/test_filtering.py::test_tags_match_all_les_exige_tous"
@@ -314,7 +314,7 @@
     {
       "name": "inventaire-produit-inconnu-en-configuration",
       "why": "Un produit mal orthographié qui passe produit un inventaire silencieusement partiel.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/config.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/config.py",
       "find": "    if inconnus:\n        raise ConfigError(",
       "replace": "    if inconnus and False:\n        raise ConfigError(",
       "test": "tests/unit/inventory/test_config.py::test_un_produit_inconnu_est_refuse_avec_la_liste_des_connus"
@@ -322,7 +322,7 @@
     {
       "name": "inventaire-cle-de-cache-complete",
       "why": "Une clé qui ignore les filtres fait servir l'inventaire de production depuis le cache de la préproduction.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/config.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/config.py",
       "find": "        serialise = json.dumps(materiel, sort_keys=True, default=list)",
       "replace": "        serialise = json.dumps({\"profile\": materiel[\"profile\"]}, sort_keys=True, default=list)",
       "test": "tests/unit/inventory/test_config.py::test_deux_filtrages_differents_ne_partagent_pas_leur_cache"
@@ -330,7 +330,7 @@
     {
       "name": "inventaire-coeur-sans-produit",
       "why": "Un nom de produit qui fuite hors de son provider fait payer le suivant en modifications du coeur.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/address.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/address.py",
       "find": "    familles = policy.families()",
       "replace": "    familles = policy.families() if host.product != \"instance\" else policy.families()",
       "test": "tests/unit/inventory/test_providers.py::test_aucune_couche_du_coeur_ne_nomme_un_produit"
@@ -418,7 +418,7 @@
     {
       "name": "attente-sans-transition",
       "why": "Une action dont l'état visé est l'état de départ verrait sa première lecture satisfaire l'attente, sans rien avoir observé.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "        if not quitte and observe != leave_first:\n            quitte = True",
       "replace": "        if not quitte and observe != leave_first:\n            quitte = True\n        quitte = True",
       "test": "tests/unit/collection/test_runtime.py::test_un_etat_qui_ne_bouge_jamais_est_dit_comme_tel"
@@ -426,7 +426,7 @@
     {
       "name": "changement-perdu-en-echec-dattente",
       "why": "Un fail_json sans changed fait croire à un playbook rejoué qu'il n'a rien fait, alors que l'API a accepté l'action.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "            module.fail_json(changed=True, msg=error.message, **error.details())",
       "replace": "            module.fail_json(msg=error.message, **error.details())",
       "test": "tests/unit/collection/test_runtime.py::test_une_attente_qui_echoue_rapporte_quand_meme_le_changement"
@@ -434,7 +434,7 @@
     {
       "name": "appel-sans-delai",
       "why": "Sans timeout, une connexion muette fige un playbook indéfiniment, ce que le SDK faisait.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "                timeout=delai,",
       "replace": "                timeout=None,",
       "test": "tests/unit/collection/test_runtime.py::test_un_appel_dapi_est_borne_dans_le_temps"
@@ -442,7 +442,7 @@
     {
       "name": "panne-reseau-en-trace",
       "why": "Une exception réseau non traduite sort en MODULE FAILURE : l'utilisateur ne sait pas qui est fautif.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "        except requests.exceptions.RequestException as erreur:",
       "replace": "        except _JamaisLevee as erreur:",
       "test": "tests/unit/collection/test_runtime.py::test_une_api_injoignable_donne_une_erreur_nommee_pas_une_trace"
@@ -450,7 +450,7 @@
     {
       "name": "total-non-reverse",
       "why": "Sans le report de x-total-count, la pagination perd son garde-fou et rend une liste tronquée sans le dire.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "    charge[\"total_count\"] = total",
       "replace": "    charge[\"total_count\"] = total if False else None\n    return",
       "test": "tests/unit/collection/test_runtime.py::test_le_total_est_reverse_de_lentete_vers_le_corps"
@@ -458,7 +458,7 @@
     {
       "name": "strict-hors-cle-de-cache",
       "why": "Un inventaire partiel enregistré en mode tolérant serait resservi à une exécution qui demandait un refus.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/config.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/config.py",
       "find": "            \"strict\": self.strict,",
       "replace": "",
       "test": "tests/unit/inventory/test_config.py::test_le_mode_strict_entre_dans_la_cle_de_cache"
@@ -466,7 +466,7 @@
     {
       "name": "organisation-non-filtree",
       "why": "L'option existait, traversait toute la chaîne et ne filtrait rien : l'inventaire était plus large que demandé.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/filtering.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/filtering.py",
       "find": "    if filters.organizations and host.organization_id not in filters.organizations:",
       "replace": "    if filters.organizations and host.organization_id not in filters.organizations and False:",
       "test": "tests/unit/inventory/test_filtering.py::test_une_organisation_demandee_ecarte_les_autres"
@@ -474,7 +474,7 @@
     {
       "name": "index-reseau-toujours-paye",
       "why": "Douze appels d'API étaient émis même pour un inventaire sans aucune carte réseau privée à joindre.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/discovery.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/discovery.py",
       "find": "    return any(CAPACITES.get(nom, False) for nom in products)",
       "replace": "    return True or any(CAPACITES.get(nom, False) for nom in products)",
       "test": "tests/unit/inventory/test_discovery.py::test_lindex_reseau_nest_paye_que_par_les_produits_qui_le_joignent"
@@ -482,7 +482,7 @@
     {
       "name": "droit-ipam-manquant-fatal",
       "why": "Un jeton sans droit IPAM faisait échouer en mode strict un inventaire de machines publiques parfaitement joignables.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/discovery.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/discovery.py",
       "find": "            if categorie in (ProductUnavailable, PermissionDenied):",
       "replace": "            if categorie is ProductUnavailable:",
       "test": "tests/unit/inventory/test_discovery.py::test_un_droit_manquant_sur_ipam_nempeche_pas_un_inventaire_public"
@@ -490,7 +490,7 @@
     {
       "name": "defaut-qui-ecrase-le-profil",
       "why": "Un défaut d'argument_spec n'est jamais None : il écrase toujours le profil, et un playbook visant un émulateur partait en production.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "        \"api_allow_insecure\": {\"type\": \"bool\"},",
       "replace": "        \"api_allow_insecure\": {\"type\": \"bool\", \"default\": False},",
       "test": "tests/unit/collection/test_runtime.py::test_lurl_de_lapi_ne_porte_pas_de_defaut_dans_largument_spec"
@@ -498,7 +498,7 @@
     {
       "name": "defaut-applique-avant-le-profil",
       "why": "Appliquer le défaut avant la lecture du profil revient exactement au défaut qu'on vient de corriger.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "    if not profile.api_url:\n        profile.api_url = PRODUCTION_API_URL",
       "replace": "    profile.api_url = PRODUCTION_API_URL",
       "test": "tests/unit/collection/test_runtime.py::test_le_fichier_de_configuration_impose_son_url"
@@ -506,7 +506,7 @@
     {
       "name": "cle-secrete-dans-le-message",
       "why": "Le message du SDK contient la clé refusée ; le recopier la publie dans le journal du playbook et les artefacts de CI.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "            return f\"le format de {champ} est refusé par le SDK (valeur non affichée)\"",
       "replace": "            return str(error)",
       "test": "tests/unit/collection/test_runtime.py::test_une_cle_refusee_par_le_sdk_ne_sort_jamais_dans_le_message"
@@ -514,7 +514,7 @@
     {
       "name": "401-non-fatal",
       "why": "Le corps 401 réel de Scaleway contient « denied » : chercher ce mot rendait tout jeton révoqué tolérable, et l'inventaire sortait vide en code 0.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/errors.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/errors.py",
       "find": "    if status_code in (401, 403) and \"permission\" in message.lower():",
       "replace": "    if status_code in (401, 403) and \"denied\" in message.lower():",
       "test": "tests/unit/inventory/test_errors.py::test_le_corps_401_reel_de_scaleway_est_bien_fatal"
@@ -522,7 +522,7 @@
     {
       "name": "tags-any-envoyes-a-lapi",
       "why": "L'API applique un ET : envoyer plusieurs tags en mode any ne rend que les machines qui les portent tous, et le filtrage local ne récupère pas ce qu'il n'a pas reçu.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/filtering.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/filtering.py",
       "find": "        if self.tags_match == \"any\" and len(self.tags) > 1:\n            return ()",
       "replace": "        if self.tags_match == \"any\" and len(self.tags) > 1 and False:\n            return ()",
       "test": "tests/unit/inventory/test_filtering.py::test_en_mode_any_plusieurs_tags_ne_partent_pas_a_lapi"
@@ -530,7 +530,7 @@
     {
       "name": "zone-inconnue-acceptee",
       "why": "Une faute de frappe dans une zone donnait zéro appel, zéro avertissement et un inventaire vide en code 0.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/config.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/config.py",
       "find": "        if hors_zones:",
       "replace": "        if hors_zones and False:",
       "test": "tests/unit/inventory/test_config.py::test_une_zone_inconnue_est_refusee"
@@ -538,7 +538,7 @@
     {
       "name": "source-de-nom-inconnue-acceptee",
       "why": "Une source non reconnue écartait chaque machine, et une source qui lit un objet produisait un nom d'hôte non textuel.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/config.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/config.py",
       "find": "    if hors_sources:",
       "replace": "    if hors_sources and False:",
       "test": "tests/unit/inventory/test_config.py::test_une_source_de_nom_dhote_inconnue_est_refusee"
@@ -546,7 +546,7 @@
     {
       "name": "cache-partage-entre-comptes",
       "why": "Sans profil déclaré, deux clés d'accès différentes partageaient une empreinte : le second run recevait le parc du premier.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/config.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/config.py",
       "find": "            \"identity\": hashlib.sha256((access_key or \"\").encode(\"utf-8\")).hexdigest()[:16],",
       "replace": "            \"identity\": \"\",",
       "test": "tests/unit/inventory/test_config.py::test_deux_comptes_ne_partagent_pas_leur_inventaire_en_cache"
@@ -554,7 +554,7 @@
     {
       "name": "reponse-brute-perdue",
       "why": "L'option include_raw était documentée, mise en cache et sans le moindre effet observable.",
-      "file": "ansible_collections/local/scaleway/plugins/inventory/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/inventory/scaleway.py",
       "find": "            \"raw\": _plain(host.raw),",
       "replace": "            \"raw\": None,",
       "test": "tests/unit/inventory/test_plugin.py::test_la_reponse_brute_survit_a_laller_retour"
@@ -562,7 +562,7 @@
     {
       "name": "page-courte-avant-total",
       "why": "Tester « la page est plus courte que demandée » avant `total_count` tronque la liste dès la première page quand l'API plafonne `per_page`, et rend une liste incomplète qui se présente comme complète.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "        total = payload.get(\"total_count\")\n        if total is None:",
       "replace": "        total = payload.get(\"total_count\")\n        if len(batch) < per_page:\n            return items\n        if total is None:",
       "test": "tests/unit/collection/test_runtime.py::test_une_api_qui_plafonne_la_taille_de_page_ne_tronque_pas"
@@ -570,7 +570,7 @@
     {
       "name": "total-menteur-tolere",
       "why": "Une API qui annonce un total qu'elle ne tient pas doit le dire. Rendre la liste partielle en silence est le défaut que toute cette fonction existe pour empêcher.",
-      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
       "find": "            if not batch:\n                raise ScalewayApiError(",
       "replace": "            if not batch and False:\n                raise ScalewayApiError(",
       "test": "tests/unit/collection/test_runtime.py::test_un_total_annonce_que_lapi_ne_tient_pas_est_une_erreur"

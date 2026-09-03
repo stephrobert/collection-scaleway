@@ -23,7 +23,7 @@ instance v1 : 74 opérations découvertes
   INFO 27 · ACTION 3 · MANAGE 11 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 13 · UNKNOWN 0
   Day-2 42 · AUTO 41 · MANUAL 1 · classées pour génération automatique 97,6 % (41/42)
 
-collection local.scaleway : 16 modules produits sur 31 au plan
+collection stephrobert.scaleway : 16 modules produits sur 31 au plan
   instance_dashboard_info                Gather information about Scaleway Instance dashboards
   instance_image_info                    Gather information about Scaleway Instance images
   instance_ip_info                       Gather information about Scaleway Instance ips
@@ -98,7 +98,7 @@ python -m generator generate instance --module instance_server_info
 ├── generator/                        lit le contrat, décide, écrit le module
 ├── scripts/                          les lanceurs de contrôles
 ├── specs/scaleway/                   les contrats versionnés
-└── ansible_collections/local/scaleway/    le livrable, et rien d'autre
+└── ansible_collections/stephrobert/scaleway/    le livrable, et rien d'autre
 ```
 
 La collection est rangée à l'emplacement qu'Ansible exige. Ce n'est pas du
@@ -118,7 +118,7 @@ collection à la racine, et la copie qu'il fallait alors fabriquer a produit un
 | rapport | `generator/report/` | texte, JSON et Markdown |
 | modèle | `generator/ansible/models.py` | la source unique de l'`argument_spec` et de la doc |
 | renderer | `generator/renderer/`, `generator/templates/` | les fichiers de `plugins/modules/` |
-| runtime | `ansible_collections/local/scaleway/plugins/module_utils/` | client, erreurs, pagination, check mode |
+| runtime | `ansible_collections/stephrobert/scaleway/plugins/module_utils/` | client, erreurs, pagination, check mode |
 
 La source de vérité est le document OpenAPI 3.1 publié par produit sur le
 portail developers de Scaleway. Ce qu'il porte, ce qu'il ne porte pas et
@@ -171,7 +171,7 @@ fichier présent dans une archive n'est pas un module qu'Ansible sait charger.
 * [L'inventaire dynamique](docs/guides/inventaire-dynamique.md), et le piège d'Ansible sur le mode strict
 * [Ce que dit OpenSSF Scorecard, et ce qu'il ne dit pas](docs/scorecard.md)
 * [SECURITY.md](SECURITY.md) : comment signaler une faille, et ce que le dépôt tient déjà
-* [Les playbooks livrés](ansible_collections/local/scaleway/playbooks/README.md), joués à chaque `mise run integration`
+* [Les playbooks livrés](ansible_collections/stephrobert/scaleway/playbooks/README.md), joués à chaque `mise run integration`
 
 ## Licence
 

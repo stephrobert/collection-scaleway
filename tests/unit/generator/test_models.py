@@ -24,10 +24,10 @@ from generator.overrides.loader import OverrideSet
 from generator.plan import ProductPlan, plan_service
 
 COLLECTION = Collection(
-    namespace="local",
+    namespace="stephrobert",
     name="scaleway",
     version="0.1.0",
-    path=Path("ansible_collections/local/scaleway"),
+    path=Path("ansible_collections/stephrobert/scaleway"),
     authors=("Quelqu'un (@quelquun)",),
 )
 
@@ -215,8 +215,8 @@ def test_les_exemples_montrent_les_deux_modes(instance_plan: ProductPlan) -> Non
     spec = _spec(instance_plan, "instance_server_info")
     exemples = spec.examples_documentation()
     assert len(exemples) == 2
-    assert "server_id" in exemples[0]["local.scaleway.instance_server_info"]
-    assert "server_id" not in exemples[1]["local.scaleway.instance_server_info"]
+    assert "server_id" in exemples[0]["stephrobert.scaleway.instance_server_info"]
+    assert "server_id" not in exemples[1]["stephrobert.scaleway.instance_server_info"]
 
 
 def test_le_retour_distingue_la_lecture_de_la_liste(instance_plan: ProductPlan) -> None:

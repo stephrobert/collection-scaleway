@@ -9,7 +9,7 @@
 # tier applicatif n'en ont aucune, et sont joints par leur adresse privée,
 # obtenue en joignant IPAM aux cartes réseau. Un inventaire qui ne saurait pas
 # faire ça ne verrait que le bastion.
-plugin: local.scaleway.scaleway
+plugin: stephrobert.scaleway.scaleway
 
 products:
   - instance

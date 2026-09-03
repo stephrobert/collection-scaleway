@@ -5,7 +5,7 @@ usages ici, et le premier compte plus que le second :
 
 * **`lint-collection-docs`** juge la documentation, et il voit une classe de
   défauts qu'`ansible-test sanity` laisse passer. Mesuré : sur un module qui
-  écrit `M(local.scaleway.module_inexistant)`, `validate-modules` sort en 0
+  écrit `M(stephrobert.scaleway.module_inexistant)`, `validate-modules` sort en 0
   sans rien signaler, et `antsibull-docs` sort en 3 en nommant la référence,
   dans `DOCUMENTATION` comme dans `RETURN` ;
 * **`collection`** produit les pages RST, une par module, depuis la même

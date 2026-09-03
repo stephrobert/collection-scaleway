@@ -33,7 +33,7 @@
     # ---- Le parc, vu par les modules de liste ---------------------------
 
     - name: Les machines de la zone
-      local.scaleway.instance_server_info:
+      stephrobert.scaleway.instance_server_info:
         zone: "{{ zone }}"
       register: machines
 
@@ -55,7 +55,7 @@
     # rien, et le playbook lit zéro machine sur un parc qui en porte cinq.
     # Mesuré sur ce playbook même, à sa première exécution.
     - name: Le filtre par tag, dans la forme que le contrat déclare
-      local.scaleway.instance_server_info:
+      stephrobert.scaleway.instance_server_info:
         zone: "{{ zone }}"
         tags: exemple
       register: taguees
@@ -73,7 +73,7 @@
         quiet: true
 
     - name: Les groupes de sécurité
-      local.scaleway.instance_security_group_info:
+      stephrobert.scaleway.instance_security_group_info:
         zone: "{{ zone }}"
       register: groupes
 
@@ -85,7 +85,7 @@
         quiet: true
 
     - name: Le groupe de placement
-      local.scaleway.instance_placement_group_info:
+      stephrobert.scaleway.instance_placement_group_info:
         zone: "{{ zone }}"
       register: placement
 
@@ -99,7 +99,7 @@
     # Le seul module du lot qui exige un identifiant venu d'un autre module.
     # C'est aussi ce qu'il prouve : la chaîne tient sans intervention humaine.
     - name: Les machines de ce groupe de placement
-      local.scaleway.instance_placement_group_server_info:
+      stephrobert.scaleway.instance_placement_group_server_info:
         zone: "{{ zone }}"
         placement_group_id: "{{ (placement.placement_groups
           | selectattr('name', 'search', prefixe) | first).id }}"
@@ -112,12 +112,12 @@
         quiet: true
 
     - name: Les volumes
-      local.scaleway.instance_volume_info:
+      stephrobert.scaleway.instance_volume_info:
         zone: "{{ zone }}"
       register: volumes
 
     - name: Les adresses IP publiques
-      local.scaleway.instance_ip_info:
+      stephrobert.scaleway.instance_ip_info:
         zone: "{{ zone }}"
       register: adresses
 
@@ -132,12 +132,12 @@
         quiet: true
 
     - name: Les instantanés
-      local.scaleway.instance_snapshot_info:
+      stephrobert.scaleway.instance_snapshot_info:
         zone: "{{ zone }}"
       register: instantanes
 
     - name: Les images
-      local.scaleway.instance_image_info:
+      stephrobert.scaleway.instance_image_info:
         zone: "{{ zone }}"
         public: false
       register: images
@@ -155,25 +155,25 @@
     # est un vrai échec : c'est `cible` qui tranche, pas un `ignore_errors`.
 
     - name: Les types de machines offerts dans la zone
-      local.scaleway.instance_server_type_info:
+      stephrobert.scaleway.instance_server_type_info:
         zone: "{{ zone }}"
       register: types
       failed_when: false
 
     - name: Leur disponibilité
-      local.scaleway.instance_server_type_availability_info:
+      stephrobert.scaleway.instance_server_type_availability_info:
         zone: "{{ zone }}"
       register: dispo
       failed_when: false
 
     - name: Les types de volumes
-      local.scaleway.instance_volume_type_info:
+      stephrobert.scaleway.instance_volume_type_info:
         zone: "{{ zone }}"
       register: types_volumes
       failed_when: false
 
     - name: Le tableau de bord du projet
-      local.scaleway.instance_dashboard_info:
+      stephrobert.scaleway.instance_dashboard_info:
         zone: "{{ zone }}"
       register: tableau
       failed_when: false
@@ -181,21 +181,21 @@
     # ---- Ce qu'on sait d'une machine précise ----------------------------
 
     - name: Les types compatibles avec le bastion
-      local.scaleway.instance_server_compatible_type_info:
+      stephrobert.scaleway.instance_server_compatible_type_info:
         zone: "{{ zone }}"
         server_id: "{{ bastion_id }}"
       register: compatibles
       failed_when: false
 
     - name: Les cartes réseau privées d'un worker
-      local.scaleway.instance_server_private_nic_info:
+      stephrobert.scaleway.instance_server_private_nic_info:
         zone: "{{ zone }}"
         server_id: "{{ worker_id }}"
       register: cartes
       failed_when: false
 
     - name: Le user-data du bastion
-      local.scaleway.instance_server_user_data_info:
+      stephrobert.scaleway.instance_server_user_data_info:
         zone: "{{ zone }}"
         server_id: "{{ bastion_id }}"
       register: userdata

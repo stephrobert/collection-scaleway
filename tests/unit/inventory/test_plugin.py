@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from ansible_collections.local.scaleway.plugins.inventory.scaleway import (
+from ansible_collections.stephrobert.scaleway.plugins.inventory.scaleway import (
     InventoryModule,
     _plain,
 )
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.models import (
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.models import (
     InventoryHost,
     NetworkAttachment,
 )

@@ -1,6 +1,6 @@
 # L'inventaire dynamique Scaleway
 
-`local.scaleway.scaleway` construit un inventaire Ansible à partir d'un compte
+`stephrobert.scaleway.scaleway` construit un inventaire Ansible à partir d'un compte
 Scaleway. Il découvre les machines produit par produit, puis les relie à leurs
 réseaux privés et à leurs VPC.
 
@@ -21,7 +21,7 @@ ansible-inventory -i production.scaleway.yml --graph
 Le minimum tient en une ligne, et le profil Scaleway habituel décide du reste :
 
 ```yaml
-plugin: local.scaleway.scaleway
+plugin: stephrobert.scaleway.scaleway
 ```
 
 ## Identifiants
@@ -52,7 +52,7 @@ Scaleway existantes. Un nom inconnu est refusé plutôt qu'ignoré : un produit
 mal orthographié produirait un inventaire silencieusement partiel.
 
 ```yaml
-plugin: local.scaleway.scaleway
+plugin: stephrobert.scaleway.scaleway
 products:
   - instance
   - elastic_metal
@@ -265,7 +265,7 @@ suffisent, sans lookup supplémentaire :
   gather_facts: false
   tasks:
     - name: Extinction
-      local.scaleway.instance_server_action:
+      stephrobert.scaleway.instance_server_action:
         zone: "{{ scaleway_zone }}"
         server_id: "{{ scaleway_id }}"
         action: poweroff
