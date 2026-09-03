@@ -281,3 +281,58 @@ jobs:
 
       - name: Playbooks contre l'émulateur
         run: mise run integration
+
+  exemple:
+    # La plateforme d'exemple, contre l'émulateur : la stack Terraform
+    # s'applique, l'inventaire dynamique retrouve ce qu'elle a créé, douze
+    # contrôles interrogent l'API sur ce que la plateforme déclare, puis tout
+    # est détruit.
+    #
+    # **La cible réelle n'est pas ici et ne le sera pas.** Elle crée des
+    # ressources facturées sur un vrai compte ; elle se lance à la main, par
+    # `mise run example:reel`, encadrée par le contrôle de résidu. Un secret de
+    # compte dans un workflow déclenché par une pull request serait
+    # exactement le défaut que le reste de ce pipeline cherche.
+    #
+    # Ce que ce job ne prouve pas : l'émulateur n'applique pas les ACL de VPC
+    # et ne pousse pas de route par défaut, donc tout ce qui dépend du filtrage
+    # ou du routage reste au run réel. C'est écrit dans le skill
+    # `example-stack-author`, et répété ici parce qu'un vert se lit sans aller
+    # chercher ailleurs.
+    name: Plateforme d'exemple
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          # Terraform télécharge son fournisseur, et le job télécharge le
+          # binaire de l'émulateur : `audit` documente ce trafic.
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Installer mise
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
+        with:
+          version: 2026.2.23
+
+      - name: Installer
+        run: mise run setup
+
+      # Épinglé par SHA, et sur le port que `scripts/example.py` attend par
+      # défaut. Le lanceur adopte un émulateur déjà en écoute et ne l'arrête
+      # pas : le cycle de vie appartient à qui l'a démarré.
+      - name: Démarrer l'émulateur
+        uses: stephrobert/setup-feint@b7eba1d4fcaccf65cf9124bf97a0d995996709b9 # v1
+        with:
+          version: "0.12.1"
+          addr: 127.0.0.1:4877
+
+      - name: La plateforme d'exemple se déploie et se détruit
+        run: mise run example

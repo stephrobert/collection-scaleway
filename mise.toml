@@ -18,6 +18,10 @@ ruff = "0.16.5"
 # même raison que ruff : l'outil qui décide quelles versions entrent dans le
 # projet ne doit pas changer d'avis tout seul.
 uv = "0.11.26"
+# Terraform bâtit la plateforme d'exemple. Épinglé comme le reste : la stack
+# doit produire le même plan sur un poste et dans la CI, et un fournisseur
+# résolu différemment selon la machine ferait mentir le contrôle de résidu.
+terraform = "1.15.4"
 
 [env]
 # Le venv du projet, créé et activé par mise. Les dépendances de développement
