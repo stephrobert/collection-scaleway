@@ -384,7 +384,80 @@
         msg: "{{ non_emules_lb | join(', ') }}"
       when: non_emules_lb | length > 0
 
-    - name: Ce que les vingt-neuf modules ont trouvé
+    # ---- Un module de gestion, et la seule chose qui le prouve ----------
+    #
+    # **L'idempotence ne se démontre pas par un test unitaire.** Un module de
+    # gestion lit la ressource, compare, et n'écrit que la différence : ce qui
+    # peut casser est que l'API **normalise** ce qu'on lui envoie, et rende
+    # ensuite autre chose que ce qu'on a écrit. La comparaison voit alors une
+    # différence à chaque exécution, le module rend `changed` à chaque fois, et
+    # un playbook qui devrait être stable ne l'est jamais.
+    #
+    # Seul un vrai serveur peut le dire. C'est donc ici, sur un groupe de
+    # sécurité que la stack possède et que la destruction emportera.
+
+    - name: Le groupe de sécurité du tier web, choisi parmi ceux de la stack
+      ansible.builtin.set_fact:
+        groupe_web: "{{ (groupes.security_groups
+          | selectattr('name', 'search', prefixe) | list | first).id }}"
+
+    - name: Écrire une description, en check mode d'abord
+      stephrobert.scaleway.instance_security_group:
+        zone: "{{ zone }}"
+        security_group_id: "{{ groupe_web }}"
+        description: "Décrit par l'exemple, exécution {{ run_id | default('locale') }}"
+      check_mode: true
+      register: essai
+
+    - name: Le check mode annonce le changement sans l'écrire
+      ansible.builtin.assert:
+        that:
+          - essai is changed
+          - essai.diff.after.description is defined
+        fail_msg: >-
+          Un check mode qui annonce un changement sans dire lequel n'aide
+          personne à décider.
+        quiet: true
+
+    - name: Écrire la description pour de bon
+      stephrobert.scaleway.instance_security_group:
+        zone: "{{ zone }}"
+        security_group_id: "{{ groupe_web }}"
+        description: "Décrit par l'exemple, exécution {{ run_id | default('locale') }}"
+      register: ecriture
+
+    - name: L'écriture a eu lieu, et l'état rendu est celui qu'on a demandé
+      ansible.builtin.assert:
+        that:
+          - ecriture is changed
+          - ecriture.security_group.description is search('Décrit par l.exemple')
+        quiet: true
+
+    # **Le cœur du test.** Rien n'a changé entre les deux appels, donc le second
+    # ne doit rien écrire. Un module qui rend `changed` ici enverrait tous ses
+    # paramètres à chaque exécution, ou comparerait mal ce que l'API a
+    # normalisé.
+    - name: Réécrire exactement la même chose
+      stephrobert.scaleway.instance_security_group:
+        zone: "{{ zone }}"
+        security_group_id: "{{ groupe_web }}"
+        description: "Décrit par l'exemple, exécution {{ run_id | default('locale') }}"
+      register: reprise
+
+    - name: La seconde exécution ne change rien, et c'est toute la preuve
+      ansible.builtin.assert:
+        that:
+          - reprise is not changed
+        fail_msg: >-
+          Le module a rendu `changed` sur une écriture identique. L'API a
+          normalisé un champ, ou la comparaison porte sur autre chose que ce
+          qu'elle croit. C'est le défaut que ce play existe pour attraper.
+        success_msg: >-
+          Idempotence prouvée : première écriture `changed`, seconde inchangée,
+          check mode sans effet.
+        quiet: true
+
+    - name: Ce que les modules ont trouvé
       ansible.builtin.debug:
         msg: >-
           {{ machines.servers | length }} machines ·
