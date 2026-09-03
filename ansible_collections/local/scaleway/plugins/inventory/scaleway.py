@@ -355,9 +355,25 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
 
         regions = settings.regions or self._regions(settings)
         report = discovery.DiscoveryReport()
-        index = discovery.build_network_index(
-            client, regions, settings.project_ids, report
-        )
+
+        # L'index réseau coûte trois appels par région et par projet, et il ne
+        # sert qu'aux produits qui portent des cartes réseau privées. Le payer
+        # pour un inventaire qui n'en demande aucun revenait à facturer douze
+        # appels à personne.
+        #
+        # Le filtrage n'est volontairement pas plus fin que ça : couper aussi
+        # quand `address_priority` ne cite que du public viderait en silence
+        # `scaleway_private_ipv4` et `scaleway_private_networks`, dont un
+        # `compose` peut dépendre. Ne pas appeler et ne rien rendre ne sont pas
+        # la même chose.
+        index = None
+        if discovery.needs_network_index(settings.products):
+            index = discovery.build_network_index(client, regions, settings.project_ids, report)
+        else:
+            self.display.vvv(
+                "scaleway: aucun produit demandé ne joint de réseau privé, "
+                "index IPAM et VPC non construit"
+            )
 
         context = DiscoveryContext(
             zones=settings.zones,
@@ -482,9 +498,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
             # jamais : `compose`, `groups` et `keyed_groups` y sont sans effet.
             self._set_composite_vars(self.get_option("compose"), variables, nom, strict)
             self._add_host_to_composed_groups(self.get_option("groups"), variables, nom, strict)
-            self._add_host_to_keyed_groups(
-                self.get_option("keyed_groups"), variables, nom, strict
-            )
+            self._add_host_to_keyed_groups(self.get_option("keyed_groups"), variables, nom, strict)
 
     @staticmethod
     def _host_variables(host, selection):

@@ -80,3 +80,24 @@ def test_les_ecarts_sont_nommes_avec_leur_raison() -> None:
 def test_les_tags_demandes_partent_bien_vers_lapi() -> None:
     """Même en mode `all` : cela réduit déjà le transfert, l'affinage suit."""
     assert Filters(tags=("a", "b"), tags_match="all").api_tags() == ("a", "b")
+
+
+def test_une_organisation_demandee_ecarte_les_autres() -> None:
+    """L'option existait, traversait toute la chaîne, et ne filtrait rien.
+
+    Elle entrait même dans la clé de cache. Une option documentée qui ne fait
+    rien est pire qu'une option absente : quelqu'un construit dessus, et
+    l'inventaire qu'il croit restreint ne l'est pas.
+    """
+    garde, raison = keep(_host(organization_id="org-1"), Filters(organizations=("org-2",)))
+    assert not garde
+    assert "org-1" in raison and "org-2" in raison
+
+    assert keep(_host(organization_id="org-2"), Filters(organizations=("org-2",)))[0]
+
+
+def test_sans_organisation_demandee_rien_nest_ecarte() -> None:
+    """Le contre-exemple, sans lequel le test ci-dessus passerait aussi sur une
+    fonction qui refuserait tout."""
+    assert keep(_host(organization_id="org-1"), Filters())[0]
+    assert keep(_host(), Filters())[0]

@@ -676,9 +676,7 @@ def run_info_module(module: AnsibleModule, spec: InfoModule) -> None:
             operation = spec.list_operation
             result = api.fetch_all(operation)
         else:
-            module.fail_json(
-                msg=f"ce module exige {selector} : aucune opération de liste n'existe"
-            )
+            module.fail_json(msg=f"ce module exige {selector} : aucune opération de liste n'existe")
             return
     except ScalewayApiError as error:
         module.fail_json(msg=error.message, **error.details())

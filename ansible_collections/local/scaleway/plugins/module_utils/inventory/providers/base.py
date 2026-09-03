@@ -36,6 +36,22 @@ class DiscoveryContext:
     #: Les index réseau, construits une fois pour tous les providers.
     network: Any | None = None
 
+    def single_organization(self) -> str | None:
+        """L'organisation à passer à l'API, ou rien.
+
+        Ce qui peut se filtrer côté API l'est côté API : inutile de
+        transférer un parc pour en jeter la moitié. Mais **une seule**, et
+        jamais une boucle : les organisations multiplieraient les appels par
+        les zones, les états et les projets, pour un gain que le filtrage
+        local obtient déjà.
+
+        Le filtrage local reste la garantie dans tous les cas. Une API qui
+        ignore ce paramètre rendrait tout le parc, et l'inventaire serait
+        silencieusement plus large que demandé : c'est exactement ce que fait
+        l'émulateur aujourd'hui (feint#638).
+        """
+        return self.organization_ids[0] if len(self.organization_ids) == 1 else None
+
     def scoped_zones(self, available: tuple[str, ...]) -> tuple[str, ...]:
         """Les zones à interroger pour ce produit.
 
@@ -72,6 +88,12 @@ class InventoryProvider(Protocol):
     """L'interface qu'un produit doit remplir pour entrer dans l'inventaire."""
 
     name: str
+
+    #: Vrai quand le produit porte des cartes réseau privées à joindre avec
+    #: IPAM. C'est le provider qui le déclare, parce que c'est lui qui sait :
+    #: le cœur ne connaît aucun produit, et deviner ici ramènerait la
+    #: connaissance qu'on vient d'en sortir.
+    joins_private_networks: bool
 
     def discover(self, context: DiscoveryContext) -> ProviderResult:
         """Découvre les machines de ce produit et rend un résultat.

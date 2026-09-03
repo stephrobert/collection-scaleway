@@ -454,6 +454,38 @@
       "find": "    charge[\"total_count\"] = total",
       "replace": "    charge[\"total_count\"] = total if False else None\n    return",
       "test": "tests/unit/collection/test_runtime.py::test_le_total_est_reverse_de_lentete_vers_le_corps"
+    },
+    {
+      "name": "strict-hors-cle-de-cache",
+      "why": "Un inventaire partiel enregistré en mode tolérant serait resservi à une exécution qui demandait un refus.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/config.py",
+      "find": "            \"strict\": self.strict,",
+      "replace": "",
+      "test": "tests/unit/inventory/test_config.py::test_le_mode_strict_entre_dans_la_cle_de_cache"
+    },
+    {
+      "name": "organisation-non-filtree",
+      "why": "L'option existait, traversait toute la chaîne et ne filtrait rien : l'inventaire était plus large que demandé.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/filtering.py",
+      "find": "    if filters.organizations and host.organization_id not in filters.organizations:",
+      "replace": "    if filters.organizations and host.organization_id not in filters.organizations and False:",
+      "test": "tests/unit/inventory/test_filtering.py::test_une_organisation_demandee_ecarte_les_autres"
+    },
+    {
+      "name": "index-reseau-toujours-paye",
+      "why": "Douze appels d'API étaient émis même pour un inventaire sans aucune carte réseau privée à joindre.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/discovery.py",
+      "find": "    return any(CAPACITES.get(nom, False) for nom in products)",
+      "replace": "    return True or any(CAPACITES.get(nom, False) for nom in products)",
+      "test": "tests/unit/inventory/test_discovery.py::test_lindex_reseau_nest_paye_que_par_les_produits_qui_le_joignent"
+    },
+    {
+      "name": "droit-ipam-manquant-fatal",
+      "why": "Un jeton sans droit IPAM faisait échouer en mode strict un inventaire de machines publiques parfaitement joignables.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/discovery.py",
+      "find": "            if categorie in (ProductUnavailable, PermissionDenied):",
+      "replace": "            if categorie is ProductUnavailable:",
+      "test": "tests/unit/inventory/test_discovery.py::test_un_droit_manquant_sur_ipam_nempeche_pas_un_inventaire_public"
     }
   ]
 }

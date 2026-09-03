@@ -75,6 +75,7 @@ class InventoryConfig:
             "address": [self.address.priority, self.address.private_network],
             "group_by": self.group_by,
             "filters": [
+                self.filters.organizations,
                 self.filters.tags,
                 self.filters.tags_match,
                 self.filters.states,
@@ -82,6 +83,13 @@ class InventoryConfig:
                 self.filters.exclude_states,
             ],
             "include_raw": self.include_raw,
+            # `strict` décide si une découverte partielle échoue ou passe : il
+            # change donc le résultat, et il doit entrer dans la clé. Sans lui,
+            # un inventaire incomplet enregistré en mode tolérant était
+            # resservi tel quel à une exécution qui demandait un refus, et
+            # `_collect()` n'étant pas rejoué, les erreurs ne provoquaient plus
+            # rien. Mesuré : les deux empreintes étaient identiques.
+            "strict": self.strict,
         }
         serialise = json.dumps(materiel, sort_keys=True, default=list)
         return hashlib.sha256(serialise.encode("utf-8")).hexdigest()[:16]
@@ -143,6 +151,7 @@ def from_options(
         require_address=bool(get_option("require_address")),
         group_by=tuple(axes),
         filters=Filters(
+            organizations=_liste(get_option("organizations")),
             tags=_liste(get_option("tags")),
             tags_match=correspondance,
             states=_liste(get_option("states")),

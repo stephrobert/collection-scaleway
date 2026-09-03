@@ -122,6 +122,9 @@ class InstanceProvider:
 
     name = "instance"
 
+    #: Instance porte `private_nics`, que la jointure IPAM complète.
+    joins_private_networks = True
+
     def __init__(self, api: Any) -> None:
         self._api = api
 
@@ -150,6 +153,7 @@ class InstanceProvider:
                             tags=list(context.tags) or None,
                             state=etat,
                             project=projet,
+                            organization=context.single_organization(),
                         )
                     except Exception as erreur:
                         categorie = classify(getattr(erreur, "status_code", None), str(erreur))

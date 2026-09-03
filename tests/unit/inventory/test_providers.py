@@ -307,11 +307,14 @@ def test_apple_silicon_sans_adresse_reste_un_host() -> None:
 
 
 def test_apple_silicon_ne_demande_pas_de_filtre_que_son_api_ignore() -> None:
-    """Son `list_servers_all` n'accepte ni `tags` ni `state` : mesuré sur le SDK."""
+    """Son `list_servers_all` n'accepte ni `tags` ni `state` : mesuré sur le SDK.
+
+    Il accepte en revanche `organization_id`, comme les deux autres.
+    """
     api = ApiFigee({"fr-par-1": []})
     contexte = base.DiscoveryContext(zones=("fr-par-1",), tags=("env=prod",), states=("ready",))
     apple_silicon.AppleSiliconProvider(api).discover(contexte)
-    assert set(api.appels[0]) == {"zone", "project_id"}
+    assert set(api.appels[0]) == {"zone", "project_id", "organization_id"}
 
 
 # --------------------------------------------------------------------------

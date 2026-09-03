@@ -1,0 +1,21 @@
+---
+bugfixes:
+  - "L'option ``organizations`` du plugin d'inventaire ne filtrait rien. Elle
+    était lue, portée par le contexte de découverte et comptée dans la clé de
+    cache, mais aucun provider ne la transmettait et aucun filtrage local ne
+    l'appliquait : l'inventaire était silencieusement plus large que demandé.
+    Elle est désormais transmise à l'API quand une seule organisation est
+    demandée, et **toujours** appliquée localement."
+  - "``strict`` n'entrait pas dans la clé de cache. Un inventaire partiel
+    enregistré avec ``strict: false`` était donc resservi tel quel à une
+    exécution qui demandait ``strict: true``, et comme la découverte n'était
+    pas rejouée, les erreurs déjà présentes ne provoquaient plus d'échec."
+  - "Un droit manquant sur IPAM ou VPC faisait échouer tout l'inventaire en
+    mode strict, y compris quand toutes les machines avaient une adresse
+    publique parfaitement joignable. C'est désormais un avertissement : c'est
+    un enrichissement qui n'a pas lieu, pas une découverte qui échoue."
+minor_changes:
+  - "L'index IPAM et VPC n'est plus construit quand aucun produit demandé ne
+    porte de carte réseau privée. Un inventaire ``products: [apple_silicon]``
+    émettait douze appels d'API dont il ne faisait rien. La capacité est
+    déclarée par chaque provider, pas devinée par le cœur."

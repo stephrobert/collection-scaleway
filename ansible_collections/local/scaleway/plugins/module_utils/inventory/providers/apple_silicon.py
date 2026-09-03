@@ -78,6 +78,9 @@ class AppleSiliconProvider:
 
     name = "apple_silicon"
 
+    #: Apple Silicon rend une adresse unique et publique.
+    joins_private_networks = False
+
     def __init__(self, api: Any) -> None:
         self._api = api
 
@@ -100,7 +103,11 @@ class AppleSiliconProvider:
             for projet in projets:
                 try:
                     appels += 1
-                    trouves = self._api.list_servers_all(zone=zone, project_id=projet)
+                    trouves = self._api.list_servers_all(
+                        zone=zone,
+                        project_id=projet,
+                        organization_id=context.single_organization(),
+                    )
                 except Exception as erreur:
                     categorie = classify(getattr(erreur, "status_code", None), str(erreur))
                     if categorie is AuthenticationFailed:
