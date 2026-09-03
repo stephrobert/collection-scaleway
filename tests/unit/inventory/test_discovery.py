@@ -235,10 +235,50 @@ def test_une_region_sans_ipam_nest_pas_une_panne(monkeypatch) -> None:
     assert any("indisponible" in texte for texte in rapport.warnings)
 
 
-def test_un_droit_manquant_sur_ipam_est_une_erreur_nommee(monkeypatch) -> None:
+# --- ce que l'index réseau coûte, et à qui -------------------------------
+
+
+def test_lindex_reseau_nest_paye_que_par_les_produits_qui_le_joignent() -> None:
+    """Douze appels étaient émis quels que soient les produits demandés.
+
+    Pour un inventaire qui ne demande qu'Apple Silicon, aucune carte réseau
+    privée n'existe : le coût était payé pour personne.
+    """
+    assert discovery.needs_network_index(("instance",)) is True
+    assert discovery.needs_network_index(("instance", "apple_silicon")) is True
+    assert discovery.needs_network_index(("apple_silicon",)) is False
+    assert discovery.needs_network_index(("elastic_metal", "apple_silicon")) is False
+    assert discovery.needs_network_index(()) is False
+
+
+def test_la_capacite_vient_des_providers_et_non_du_coeur() -> None:
+    """Le cœur ne connaît aucun produit : trancher ici ramènerait la
+    connaissance qu'on vient d'en sortir."""
+    from ansible_collections.local.scaleway.plugins.module_utils.inventory.providers import (
+        apple_silicon,
+        elastic_metal,
+        instance,
+    )
+
+    assert instance.InstanceProvider.joins_private_networks is True
+    assert elastic_metal.ElasticMetalProvider.joins_private_networks is False
+    assert apple_silicon.AppleSiliconProvider.joins_private_networks is False
+    assert set(discovery.CAPACITES) == set(discovery.HOST_PROVIDERS)
+
+
+def test_un_droit_manquant_sur_ipam_nempeche_pas_un_inventaire_public(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Un jeton sans droit IPAM construit très bien un inventaire de machines
+    publiques. Classer ce refus en erreur faisait échouer tout l'inventaire en
+    mode strict, pour un enrichissement dont personne n'avait besoin."""
     _brancher(monkeypatch, ApiReseau(echec=EchecApi(403)))
     rapport = discovery.DiscoveryReport()
 
-    discovery.build_network_index(object(), ("fr-par",), report=rapport)
+    index = discovery.build_network_index(object(), ("fr-par",), report=rapport)
 
-    assert any("PermissionDenied" in texte for texte in rapport.errors)
+    assert index.address_count == 0
+    assert rapport.errors == [], "un droit manquant sur IPAM n'est pas une panne"
+    assert any("PermissionDenied" in texte for texte in rapport.warnings), (
+        "et il doit quand même être dit"
+    )

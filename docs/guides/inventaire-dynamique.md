@@ -163,6 +163,8 @@ keyed_groups:
 ## Filtrer
 
 ```yaml
+organizations:
+  - 99999999-9999-4999-8999-999999999999
 tags:
   - env=production
 tags_match: all      # « any » par défaut ; l'API ne sait exprimer que « any »
@@ -178,6 +180,12 @@ exclude:
 Ce qui peut se filtrer côté API l'est côté API, pour ne pas transférer ce
 qu'on va jeter. Le reste se décide localement, et `-vvv` dit pourquoi chaque
 machine écartée l'a été.
+
+`organizations` est passé à l'API quand **une seule** est demandée, jamais en
+boucle : plusieurs organisations multiplieraient les appels par les zones, les
+états et les projets. Le filtrage local reste la garantie dans tous les cas,
+et il n'est pas décoratif : une API qui ignore ce paramètre rendrait tout le
+parc, et l'inventaire serait silencieusement plus large que demandé.
 
 ## Le cache
 
@@ -289,6 +297,18 @@ elle ne garde qu'une adresse privée par machine, sans dire de quel réseau.
 
 Ici le coût de la jointure est linéaire en cartes réseau, et c'est prouvé par
 comptage des consultations d'index, pas par un chronomètre.
+
+L'index lui-même n'est construit que si un produit demandé porte des cartes
+réseau privées. `products: [apple_silicon]` ne paie donc plus les douze appels
+dont il n'aurait rien fait. Le filtrage s'arrête là volontairement : couper
+aussi quand `address_priority` ne cite que du public viderait en silence
+`scaleway_private_ipv4` et `scaleway_private_networks`, dont un `compose` peut
+dépendre. Ne pas appeler et ne rien rendre ne sont pas la même chose.
+
+Un droit manquant sur IPAM ou VPC est un **avertissement**, pas une erreur :
+un jeton qui n'a pas ce droit construit très bien un inventaire de machines
+publiques, et faire échouer tout l'inventaire en mode strict pour un
+enrichissement dont personne n'a besoin serait un refus mal placé.
 
 ## Ce que ce plugin ne fait pas encore
 

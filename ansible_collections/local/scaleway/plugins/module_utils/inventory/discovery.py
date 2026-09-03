@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from functools import partial
 from typing import Any
 
-from .errors import AuthenticationFailed, ProductUnavailable, classify
+from .errors import AuthenticationFailed, PermissionDenied, ProductUnavailable, classify
 from .models import ProviderResult
 from .network import IpamAddress, NetworkIndex, PrivateNetworkInfo, build_index
 from .providers.apple_silicon import AppleSiliconProvider
@@ -113,9 +113,15 @@ def build_network_index(
                 raise AuthenticationFailed(str(erreur)) from erreur
             if report is None:
                 return None
-            if categorie is ProductUnavailable:
+            if categorie in (ProductUnavailable, PermissionDenied):
+                # Un jeton sans droit IPAM ou VPC peut parfaitement construire
+                # un inventaire de machines publiques. Classer ce refus en
+                # erreur faisait échouer tout l'inventaire en mode strict, pour
+                # un enrichissement dont personne n'avait besoin. C'est un
+                # enrichissement qui n'aura pas lieu, pas une panne.
                 report.warnings.append(
-                    f"enrichissement réseau indisponible dans {region} ({label})"
+                    f"enrichissement réseau indisponible dans {region} ({label}) : "
+                    f"{categorie.__name__}"
                 )
             else:
                 report.errors.append(f"{categorie.__name__} sur {label} dans {region} : {erreur}")
@@ -196,6 +202,28 @@ def providers_for(client: Any, products: tuple[str, ...]) -> tuple[Any, ...]:
         "apple_silicon": lambda: AppleSiliconProvider(ApplesiliconV1Alpha1API(client)),
     }
     return tuple(fabriques[nom]() for nom in products)
+
+
+def needs_network_index(products: tuple[str, ...]) -> bool:
+    """Faut-il payer l'index réseau pour les produits demandés ?
+
+    Douze appels d'API étaient émis quels que soient les produits, y compris
+    pour un inventaire qui ne demandait qu'Apple Silicon et n'avait donc
+    aucune carte réseau privée à joindre. Le coût était payé pour personne.
+
+    La question est posée aux providers : le cœur ne connaît aucun produit, et
+    trancher ici ramènerait la connaissance qu'on vient d'en sortir.
+    """
+    return any(CAPACITES.get(nom, False) for nom in products)
+
+
+#: Ce que chaque provider déclare de lui-même, lu une fois pour éviter de les
+#: instancier avant d'avoir un client.
+CAPACITES: dict[str, bool] = {
+    "instance": InstanceProvider.joins_private_networks,
+    "elastic_metal": ElasticMetalProvider.joins_private_networks,
+    "apple_silicon": AppleSiliconProvider.joins_private_networks,
+}
 
 
 def discover(

@@ -96,6 +96,9 @@ class ElasticMetalProvider:
 
     name = "elastic_metal"
 
+    #: Elastic Metal ne rend que des adresses publiques : rien à joindre.
+    joins_private_networks = False
+
     def __init__(self, api: Any) -> None:
         self._api = api
 
@@ -122,6 +125,7 @@ class ElasticMetalProvider:
                         zone=zone,
                         tags=list(context.tags) or None,
                         project_id=projet,
+                        organization_id=context.single_organization(),
                     )
                 except Exception as erreur:
                     categorie = classify(getattr(erreur, "status_code", None), str(erreur))

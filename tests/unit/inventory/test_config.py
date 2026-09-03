@@ -139,3 +139,18 @@ def test_deux_filtrages_differents_ne_partagent_pas_leur_cache() -> None:
     prod = from_options(_options(tags=["env=prod"]), PRODUITS)
     staging = from_options(_options(tags=["env=staging"]), PRODUITS)
     assert prod.cache_fingerprint("scw", None) != staging.cache_fingerprint("scw", None)
+
+
+def test_le_mode_strict_entre_dans_la_cle_de_cache() -> None:
+    """Sans lui, un inventaire partiel enregistré en mode tolérant était
+    resservi à une exécution qui demandait un refus, et `_collect()` n'étant
+    pas rejoué, les erreurs ne provoquaient plus rien."""
+    tolerant = from_options(_options(strict=False), PRODUITS).cache_fingerprint("scw", None)
+    exigeant = from_options(_options(strict=True), PRODUITS).cache_fingerprint("scw", None)
+    assert tolerant != exigeant
+
+
+def test_les_organisations_entrent_dans_la_cle_de_cache() -> None:
+    une = from_options(_options(organizations=["org-1"]), PRODUITS).cache_fingerprint("scw", None)
+    autre = from_options(_options(organizations=["org-2"]), PRODUITS).cache_fingerprint("scw", None)
+    assert une != autre

@@ -26,6 +26,11 @@ from .models import InventoryHost
 class Filters:
     """Ce que l'utilisateur garde, et ce qu'il écarte."""
 
+    #: Les organisations retenues. Le filtre est appliqué **ici** et pas
+    #: seulement transmis à l'API : une API qui ignore le paramètre rendrait
+    #: tout le parc, et l'inventaire serait silencieusement plus large que
+    #: demandé. Mesuré sur l'émulateur, qui l'ignore aujourd'hui.
+    organizations: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
     tags_match: str = "any"
     states: tuple[str, ...] = ()
@@ -47,6 +52,9 @@ def keep(host: InventoryHost, filters: Filters) -> tuple[bool, str]:
     La raison est rendue pour que le mode debug puisse répondre à « pourquoi
     cette machine n'apparaît-elle pas ».
     """
+    if filters.organizations and host.organization_id not in filters.organizations:
+        return False, f"organisation '{host.organization_id}' hors de {list(filters.organizations)}"
+
     tags = set(host.tags)
 
     for tag in filters.exclude_tags:
