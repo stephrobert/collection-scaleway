@@ -178,8 +178,79 @@ def test_les_cles_dapi_sont_marquees_no_log(runtime: Any) -> None:
 def test_lurl_de_lapi_est_surchargeable_par_lenvironnement(runtime: Any) -> None:
     """Règle 7 du projet : c'est ce qui permet de tester sans credentials."""
     api_url = runtime.scaleway_argument_spec()["api_url"]
-    assert api_url["default"] == "https://api.scaleway.com"
     assert api_url["fallback"][1] == ["SCW_API_URL"]
+
+
+def test_lurl_de_lapi_ne_porte_pas_de_defaut_dans_largument_spec(runtime: Any) -> None:
+    """Un défaut n'est jamais `None`, donc il écrase toujours le profil.
+
+    Avec un défaut ici, un utilisateur dont le fichier de configuration pointe
+    vers un émulateur voyait son playbook partir en production : l'ordre de
+    priorité annoncé, paramètre puis environnement puis fichier, ne pouvait pas
+    être tenu. Le défaut s'applique après la lecture du profil.
+    """
+    spec = runtime.scaleway_argument_spec()
+    assert "default" not in spec["api_url"]
+    assert "default" not in spec["api_allow_insecure"]
+
+
+def test_le_fichier_de_configuration_impose_son_url(runtime: Any, monkeypatch: Any) -> None:
+    """Le scénario exact du défaut : un profil qui déclare un émulateur."""
+    profil = SimpleNamespace(
+        api_url="http://localhost:8080",
+        api_allow_insecure=True,
+        user_agent=None,
+        access_key="SCWXXXXXXXXXXXXXXXXX",
+        secret_key="00000000-0000-0000-0000-000000000000",
+        default_organization_id=None,
+        default_project_id=None,
+    )
+    monkeypatch.setattr(
+        runtime.Profile, "from_config_file_and_env", staticmethod(lambda *_a: profil)
+    )
+    monkeypatch.setattr(runtime.Client, "from_profile", staticmethod(lambda p: p))
+
+    # Ce qu'un AnsibleModule pose quand l'option n'a pas de défaut : None.
+    client = runtime.build_client_from_values({"api_url": None, "api_allow_insecure": None})
+
+    assert client.api_url == "http://localhost:8080"
+    assert client.api_allow_insecure is True
+
+
+def test_sans_rien_de_declare_le_defaut_reste_la_production(runtime: Any, monkeypatch: Any) -> None:
+    """Le contre-exemple : retirer le défaut ne doit pas le supprimer."""
+    profil = SimpleNamespace(
+        api_url=None,
+        api_allow_insecure=None,
+        user_agent=None,
+        access_key=None,
+        secret_key=None,
+        default_organization_id=None,
+        default_project_id=None,
+    )
+    monkeypatch.setattr(
+        runtime.Profile, "from_config_file_and_env", staticmethod(lambda *_a: profil)
+    )
+    monkeypatch.setattr(runtime.Client, "from_profile", staticmethod(lambda p: p))
+
+    client = runtime.build_client_from_values({})
+
+    assert client.api_url == runtime.PRODUCTION_API_URL
+    assert client.api_allow_insecure is False
+
+
+def test_une_cle_refusee_par_le_sdk_ne_sort_jamais_dans_le_message(runtime: Any) -> None:
+    """`Client.validate()` lève « Invalid secret key format 'SCW...' », valeur
+    comprise. Ansible censure les valeurs venues des paramètres du module, pas
+    celles lues dans ~/.config/scw/config.yaml : la clé atterrissait en clair
+    dans le journal du playbook."""
+    secret = "SCW-SECRET-QUI-NE-DOIT-PAS-SORTIR"
+    erreur = ValueError(f"Invalid secret key format '{secret}', expected a UUID")
+
+    message = runtime._safe_reason(erreur)
+
+    assert secret not in message
+    assert "secret key" in message
 
 
 def test_lattente_a_les_valeurs_de_la_collection_officielle(runtime: Any) -> None:

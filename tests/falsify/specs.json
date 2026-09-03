@@ -486,6 +486,30 @@
       "find": "            if categorie in (ProductUnavailable, PermissionDenied):",
       "replace": "            if categorie is ProductUnavailable:",
       "test": "tests/unit/inventory/test_discovery.py::test_un_droit_manquant_sur_ipam_nempeche_pas_un_inventaire_public"
+    },
+    {
+      "name": "defaut-qui-ecrase-le-profil",
+      "why": "Un défaut d'argument_spec n'est jamais None : il écrase toujours le profil, et un playbook visant un émulateur partait en production.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        \"api_allow_insecure\": {\"type\": \"bool\"},",
+      "replace": "        \"api_allow_insecure\": {\"type\": \"bool\", \"default\": False},",
+      "test": "tests/unit/collection/test_runtime.py::test_lurl_de_lapi_ne_porte_pas_de_defaut_dans_largument_spec"
+    },
+    {
+      "name": "defaut-applique-avant-le-profil",
+      "why": "Appliquer le défaut avant la lecture du profil revient exactement au défaut qu'on vient de corriger.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    if not profile.api_url:\n        profile.api_url = PRODUCTION_API_URL",
+      "replace": "    profile.api_url = PRODUCTION_API_URL",
+      "test": "tests/unit/collection/test_runtime.py::test_le_fichier_de_configuration_impose_son_url"
+    },
+    {
+      "name": "cle-secrete-dans-le-message",
+      "why": "Le message du SDK contient la clé refusée ; le recopier la publie dans le journal du playbook et les artefacts de CI.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "            return f\"le format de {champ} est refusé par le SDK (valeur non affichée)\"",
+      "replace": "            return str(error)",
+      "test": "tests/unit/collection/test_runtime.py::test_une_cle_refusee_par_le_sdk_ne_sort_jamais_dans_le_message"
     }
   ]
 }

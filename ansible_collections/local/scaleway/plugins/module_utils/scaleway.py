@@ -111,10 +111,15 @@ def scaleway_argument_spec() -> dict[str, dict[str, Any]]:
         },
         "api_url": {
             "type": "str",
-            "default": PRODUCTION_API_URL,
             "fallback": (env_fallback, ["SCW_API_URL"]),
         },
-        "api_allow_insecure": {"type": "bool", "default": False},
+        # Ni `api_url` ni `api_allow_insecure` ne portent de défaut ici, et
+        # c'est la correction d'un vrai défaut : une valeur par défaut n'est
+        # jamais `None`, donc elle écrasait **toujours** ce que le profil
+        # déclarait. Un utilisateur qui pointait son profil vers un émulateur
+        # voyait son playbook partir en production. Le défaut est appliqué
+        # après la lecture du profil, dans `build_client_from_values`.
+        "api_allow_insecure": {"type": "bool"},
         "api_timeout": {"type": "int", "default": DEFAULT_REQUEST_TIMEOUT},
         "user_agent": {"type": "str"},
         "organization_id": {
@@ -420,12 +425,40 @@ def build_client_from_values(values: dict[str, Any]) -> Client:
     if not profile.user_agent:
         profile.user_agent = DEFAULT_USER_AGENT
 
+    # Les défauts s'appliquent **après** le profil, et jamais avant. Posés dans
+    # l'`argument_spec`, ils n'étaient jamais `None` et écrasaient donc toujours
+    # ce que le fichier de configuration déclarait : l'ordre de priorité annoncé
+    # par la documentation, paramètre puis environnement puis fichier, ne
+    # pouvait pas être tenu pour ces deux-là.
+    if not profile.api_url:
+        profile.api_url = PRODUCTION_API_URL
+    if profile.api_allow_insecure is None:
+        profile.api_allow_insecure = False
+
     return Client.from_profile(profile)
 
 
 def build_client(module: AnsibleModule) -> Client:
     """Le client d'un module, construit depuis ses paramètres."""
     return build_client_from_values(dict(module.params))
+
+
+#: Les champs dont le SDK peut citer la valeur dans un message d'erreur.
+_CREDENTIAL_FIELDS: tuple[str, ...] = ("secret key", "access key", "organization id", "project id")
+
+
+def _safe_reason(error: Exception) -> str:
+    """Ce que le SDK refuse, sans jamais recopier la valeur qu'il a refusée.
+
+    Mesuré : `Client.validate()` lève
+    `ValueError("Invalid secret key format 'SCW...', expected ...")`, valeur
+    comprise. Recopier ce message publie la clé.
+    """
+    texte = str(error).lower()
+    for champ in _CREDENTIAL_FIELDS:
+        if champ in texte:
+            return f"le format de {champ} est refusé par le SDK (valeur non affichée)"
+    return "les identifiants ou la configuration sont refusés par le SDK"
 
 
 def _validate_client(module: AnsibleModule, client: Client) -> None:
@@ -453,7 +486,16 @@ def _validate_client(module: AnsibleModule, client: Client) -> None:
         try:
             client.validate()
         except ValueError as error:
-            module.fail_json(msg=f"configuration Scaleway invalide : {error}")
+            # Le message du SDK **contient la clé** : « Invalid secret key
+            # format 'SCW...' ». Ansible censure les valeurs `no_log` venues
+            # des paramètres du module, pas une valeur lue dans
+            # ~/.config/scw/config.yaml : elle atterrissait donc en clair dans
+            # le journal du playbook et dans les artefacts de CI.
+            #
+            # Le message est reconstruit à partir du champ fautif, jamais de sa
+            # valeur. `ScalewayApiError` promet « jamais de clé dans le
+            # message » : cette promesse est désormais tenue ici aussi.
+            module.fail_json(msg=f"configuration Scaleway invalide : {_safe_reason(error)}")
 
 
 def _carry_total_count(response: Any) -> None:
