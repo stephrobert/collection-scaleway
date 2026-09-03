@@ -53,7 +53,7 @@ MODULES = "{{ get_env(name='MODULES', default='instance_dashboard_info instance_
 # `lb_load_balancer_action` est écarté parce que `MigrateLb` ne porte aucun
 # paramètre d'action dans son corps. Les onze écarts sortent avec leur raison
 # dans le compte rendu de génération.
-MODULES_LB = "{{ get_env(name='MODULES_LB', default='lb_acl lb_acl_info lb_backend lb_backend_info lb_backend_stat_info lb_certificate lb_certificate_info lb_frontend lb_frontend_acl_info lb_frontend_info lb_ip lb_ip_info lb_load_balancer lb_load_balancer_info lb_load_balancer_private_network_info lb_load_balancer_stat_info lb_load_balancer_type_info lb_route lb_route_info lb_subscriber_info') }}"
+MODULES_LB = "{{ get_env(name='MODULES_LB', default='lb_acl lb_acl_info lb_backend lb_backend_info lb_backend_stat_info lb_certificate lb_certificate_info lb_frontend lb_frontend_acl_info lb_frontend_info lb_ip lb_ip_info lb_load_balancer lb_load_balancer_info lb_load_balancer_private_network_info lb_load_balancer_stat_info lb_load_balancer_type_info lb_route lb_route_info lb_subscriber lb_subscriber_info') }}"
 
 # Ce qui porte un serveur allumé pendant la cible d'intégration : off, incus,
 # incus-vm, incus-ovn. Démarrer des machines est un effet de bord qui se

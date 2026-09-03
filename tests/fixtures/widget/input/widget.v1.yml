@@ -52,6 +52,11 @@ components:
       properties:
         widget:
           $ref: '#/components/schemas/scaleway.widget.v1.Widget'
+    scaleway.widget.v1.Widget.EmailConfig:
+      type: object
+      properties:
+        email:
+          type: string
     scaleway.widget.v1.WidgetActionResponse:
       type: object
       properties:
@@ -173,6 +178,18 @@ paths:
                 secret_token:
                   type: [string, "null"]
                   description: Jeton de rotation.
+                # **La façon dont Scaleway écrit « optionnel ».** Ce n'est pas
+                # une union de formes alternatives : `oneOf: [$ref, null]` veut
+                # dire « un EmailConfig, ou rien ». Les 24 occurrences du
+                # contrat du Load Balancer ont toutes cette forme, et sans elle
+                # `UpdateSubscriber` sortait en type non mappé, ce qui écartait
+                # un module Day-2 entier.
+                email_config:
+                  description: Email address configuration.
+                  x-one-of: config
+                  oneOf:
+                    - $ref: '#/components/schemas/scaleway.widget.v1.Widget.EmailConfig'
+                    - type: "null"
       responses:
         '200':
           content:

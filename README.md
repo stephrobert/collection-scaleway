@@ -20,10 +20,10 @@ d'inventaire dynamique qui découvre trois produits derrière un même modèle.
 <!-- compteurs:début, produits par scripts/readme_counters.py -->
 ```text
 instance v1 : 74 opérations découvertes
-  INFO 27 · ACTION 3 · MANAGE 11 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 13 · UNKNOWN 0
-  Day-2 42 · AUTO 41 · MANUAL 1 · classées pour génération automatique 97,6 % (41/42)
+  INFO 27 · ACTION 3 · MANAGE 10 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 14 · UNKNOWN 0
+  Day-2 41 · AUTO 40 · MANUAL 1 · classées pour génération automatique 97,6 % (40/41)
 
-collection stephrobert.scaleway : 25 modules produits sur 31 au plan
+collection stephrobert.scaleway : 25 modules produits sur 30 au plan
   instance_dashboard_info                Gather information about Scaleway Instance dashboards
   instance_image                         Manage a Scaleway Instance image
   instance_image_info                    Gather information about Scaleway Instance images
@@ -68,9 +68,10 @@ collection stephrobert.scaleway : 25 modules produits sur 31 au plan
   lb_load_balancer_type_info             Gather information about Scaleway Load Balancer load balancer types
   lb_route                               Manage a Scaleway Lb route
   lb_route_info                          Gather information about Scaleway Load Balancer routes
+  lb_subscriber                          Manage a Scaleway Lb subscriber
   lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
   scaleway (inventaire)                  instance, elastic_metal, apple_silicon
-  439 tests unitaires · 83 mutations prouvées par /falsify
+  440 tests unitaires · 84 mutations prouvées par /falsify
   CI : cinq jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks et inventaire contre l'émulateur :
   comptes rendus par `mise run sanity` et `mise run integration`

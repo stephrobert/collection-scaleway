@@ -509,9 +509,16 @@ def _build_manage_module(
     options, limits = _build_options([item.operation], ("zone", "region", *identifiants), override)
     geres = tuple(nom for nom in update_operation.body_params)
     if not geres:
+        # **Nommer la cause, pas le symptôme.** Un corps vide vient presque
+        # toujours d'un `requestBody` que le contrat déclare hors JSON : le
+        # parser le signale déjà dans les limites, et le message d'écart doit y
+        # renvoyer plutôt que de laisser croire à une lacune du modèle. Mesuré
+        # sur `SetServerUserData`, dont le contrat déclare un corps `*/*`.
         raise AmbiguousModule(
-            f"{name} : {update_operation.id} ne porte aucun champ de corps, donc "
-            "le module n'aurait rien à écrire."
+            f"{name} : le contrat ne décrit aucun champ du corps de "
+            f"{update_operation.id}, donc le module ne saurait pas quoi envoyer. "
+            "Voir les limites du rapport : un `requestBody` hors `application/json` "
+            "y est signalé par le parser."
         )
 
     secrets = tuple(option.name for option in options if option.no_log and option.name in geres)

@@ -670,6 +670,14 @@
       "find": "    apres_demande = {\n        nom: (masque if nom in spec.secret_params else valeur)",
       "replace": "    apres_demande = {\n        nom: valeur",
       "test": "tests/unit/collection/test_runtime.py::test_un_secret_ne_fuit_pas_dans_le_diff_du_check_mode"
+    },
+    {
+      "name": "oneof-optionnel-non-resolu",
+      "why": "`oneOf: [X, null]` est la façon dont Scaleway écrit « optionnel ». Le traiter comme un type non traité laisse 13 paramètres en UNKNOWN sur le Load Balancer et écarte un module Day-2 entier, faute de correspondance Ansible.",
+      "file": "generator/parser/openapi.py",
+      "find": "        if len(utiles) == 1:\n            return _resolve_type(",
+      "replace": "        if len(utiles) == 1 and False:\n            return _resolve_type(",
+      "test": "tests/unit/generator/test_parser.py::test_un_oneof_avec_null_est_un_champ_optionnel"
     }
   ]
 }

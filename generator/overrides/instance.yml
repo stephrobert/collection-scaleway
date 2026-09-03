@@ -194,3 +194,17 @@ operations:
           zéro machine sur un parc qui en porte cinq. Mesuré en capturant la
           requête émise. Une liste est ce que ce paramètre est ; la virgule est
           la façon dont l'API veut l'entendre, et c'est au runtime de la parler.
+
+  # --- Un remplacement complet, qui relie plutôt qu'il ne configure ---------
+
+  instance.v1.PlacementGroupServer.UpdatePlacementGroupServers:
+    generation: ignore
+    reason: >-
+      Réécrit la liste des machines d'un groupe de placement. Relier des
+      ressources relève de Terraform, qui déclare cette liste ; un module qui la
+      remplace produirait un écart entre l'état déclaré et l'état réel,
+      invisible jusqu'au prochain `terraform apply`. Même frontière que
+      AttachServerVolume, et même raison que AddBackendServers côté Load
+      Balancer. Le modèle l'écartait déjà, mais pour un symptôme, l'absence de
+      lecture unitaire : c'est la décision qui doit porter l'écart, pas ce qui
+      l'a révélé.

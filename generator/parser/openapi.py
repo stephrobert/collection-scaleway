@@ -290,6 +290,36 @@ def _resolve_type(
         warnings.append(f"{context} : paramètre sans schéma, type inconnu")
         return _ResolvedType(ApiType.UNKNOWN)
 
+    # **`oneOf: [X, null]` est la façon dont Scaleway écrit « optionnel ».**
+    # Ce n'est pas une union de formes alternatives : c'est un X, ou rien. Les
+    # 24 occurrences du contrat du Load Balancer ont toutes exactement cette
+    # forme, et pas une n'est une vraie union. Les traiter comme un type non
+    # traité écartait un module Day-2 entier, `lb_subscriber`.
+    #
+    # La mutuelle exclusion, elle, n'est **pas** portée par le `oneOf` mais par
+    # le marqueur frère `x-one-of`, qui nomme le groupe auquel le champ
+    # appartient. Le parser ne la traduit pas encore : elle deviendra un
+    # `mutually_exclusive` dans l'argument_spec, et c'est un travail à part.
+    branches = schema.get("oneOf")
+    if isinstance(branches, list):
+        utiles = [
+            branche
+            for branche in branches
+            if isinstance(branche, dict) and branche.get("type") != "null"
+        ]
+        if len(utiles) == 1:
+            return _resolve_type(
+                schema=utiles[0],
+                schemas=schemas,
+                enums=enums,
+                warnings=warnings,
+                context=context,
+            )
+        warnings.append(
+            f"{context} : `oneOf` à {len(utiles)} branches non nulles, union non traduite"
+        )
+        return _ResolvedType(ApiType.UNKNOWN)
+
     ref = schema.get("$ref")
     if ref:
         target_name = ref.rsplit("/", 1)[-1]

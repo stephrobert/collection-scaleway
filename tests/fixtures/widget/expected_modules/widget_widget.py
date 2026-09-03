@@ -36,6 +36,10 @@ options:
     - Not documented by the Scaleway API contract.
     type: str
     required: true
+  email_config:
+    description:
+    - Email address configuration.
+    type: dict
   protected:
     description:
     - Not documented by the Scaleway API contract.
@@ -87,6 +91,7 @@ MODULE_ARGUMENT_SPEC = {
         "choices": ["fr-par-1", "nl-ams-1"],
     },
     "widget_id": {"type": "str", "required": True},
+    "email_config": {"type": "dict"},
     "protected": {"type": "bool"},
     "secret_token": {"type": "str", "no_log": True},
     "tags": {"type": "list", "elements": "str"},
@@ -113,9 +118,9 @@ MODULE = ManageModule(
         path="/widget/v1/zones/{zone}/widgets/{widget_id}",
         path_params=("zone", "widget_id"),
         query_params=(),
-        body_params=("tags", "protected", "secret_token"),
+        body_params=("tags", "protected", "secret_token", "email_config"),
     ),
-    managed_params=("tags", "protected", "secret_token"),
+    managed_params=("tags", "protected", "secret_token", "email_config"),
     secret_params=("secret_token",),
 )
 

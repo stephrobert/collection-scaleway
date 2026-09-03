@@ -638,17 +638,19 @@
         },
         {
           "name": "letsencrypt",
-          "type": "unknown",
+          "type": "object",
           "required": false,
           "location": "body",
-          "description": "Object to define a new Let's Encrypt certificate to be generated."
+          "description": "Object to define a new Let's Encrypt certificate to be generated.",
+          "ref": "scaleway.lb.v1.CreateCertificateRequest.LetsencryptConfig"
         },
         {
           "name": "custom_certificate",
-          "type": "unknown",
+          "type": "object",
           "required": false,
           "location": "body",
-          "description": "Object to define an existing custom certificate to be imported."
+          "description": "Object to define an existing custom certificate to be imported.",
+          "ref": "scaleway.lb.v1.CreateCertificateRequest.CustomCertificate"
         }
       ],
       "response": {
@@ -1071,17 +1073,19 @@
         },
         {
           "name": "email_config",
-          "type": "unknown",
+          "type": "object",
           "required": false,
           "location": "body",
-          "description": "Email address configuration."
+          "description": "Email address configuration.",
+          "ref": "scaleway.lb.v1.Subscriber.EmailConfig"
         },
         {
           "name": "webhook_config",
-          "type": "unknown",
+          "type": "object",
           "required": false,
           "location": "body",
-          "description": "WebHook URI configuration."
+          "description": "WebHook URI configuration.",
+          "ref": "scaleway.lb.v1.Subscriber.WebhookConfig"
         },
         {
           "name": "organization_id",
@@ -3738,52 +3742,59 @@
         },
         {
           "name": "tcp_config",
-          "type": "unknown",
+          "type": "object",
           "required": false,
           "location": "body",
-          "description": "Object to configure a basic TCP health check."
+          "description": "Object to configure a basic TCP health check.",
+          "ref": "scaleway.lb.v1.HealthCheck.TcpConfig"
         },
         {
           "name": "mysql_config",
-          "type": "unknown",
+          "type": "object",
           "required": false,
           "location": "body",
-          "description": "Object to configure a MySQL health check. The check requires MySQL >=3.22 or <9.0. For older or newer versions, use a TCP health check."
+          "description": "Object to configure a MySQL health check. The check requires MySQL >=3.22 or <9.0. For older or newer versions, use a TCP health check.",
+          "ref": "scaleway.lb.v1.HealthCheck.MysqlConfig"
         },
         {
           "name": "pgsql_config",
-          "type": "unknown",
+          "type": "object",
           "required": false,
           "location": "body",
-          "description": "Object to configure a PostgreSQL health check."
+          "description": "Object to configure a PostgreSQL health check.",
+          "ref": "scaleway.lb.v1.HealthCheck.PgsqlConfig"
         },
         {
           "name": "ldap_config",
-          "type": "unknown",
+          "type": "object",
           "required": false,
           "location": "body",
-          "description": "Object to configure an LDAP health check. The response is analyzed to find the LDAPv3 response message."
+          "description": "Object to configure an LDAP health check. The response is analyzed to find the LDAPv3 response message.",
+          "ref": "scaleway.lb.v1.HealthCheck.LdapConfig"
         },
         {
           "name": "redis_config",
-          "type": "unknown",
+          "type": "object",
           "required": false,
           "location": "body",
-          "description": "Object to configure a Redis health check. The response is analyzed to find the +PONG response message."
+          "description": "Object to configure a Redis health check. The response is analyzed to find the +PONG response message.",
+          "ref": "scaleway.lb.v1.HealthCheck.RedisConfig"
         },
         {
           "name": "http_config",
-          "type": "unknown",
+          "type": "object",
           "required": false,
           "location": "body",
-          "description": "Object to configure an HTTP health check."
+          "description": "Object to configure an HTTP health check.",
+          "ref": "scaleway.lb.v1.HealthCheck.HttpConfig"
         },
         {
           "name": "https_config",
-          "type": "unknown",
+          "type": "object",
           "required": false,
           "location": "body",
-          "description": "Object to configure an HTTPS health check."
+          "description": "Object to configure an HTTPS health check.",
+          "ref": "scaleway.lb.v1.HealthCheck.HttpsConfig"
         },
         {
           "name": "transient_check_delay",
@@ -4055,17 +4066,19 @@
         },
         {
           "name": "email_config",
-          "type": "unknown",
+          "type": "object",
           "required": false,
           "location": "body",
-          "description": "Email address configuration."
+          "description": "Email address configuration.",
+          "ref": "scaleway.lb.v1.Subscriber.EmailConfig"
         },
         {
           "name": "webhook_config",
-          "type": "unknown",
+          "type": "object",
           "required": false,
           "location": "body",
-          "description": "Webhook URI configuration."
+          "description": "Webhook URI configuration.",
+          "ref": "scaleway.lb.v1.Subscriber.WebhookConfig"
         }
       ],
       "response": {
@@ -4075,21 +4088,8 @@
     }
   ],
   "warnings": [
-    "CreateCertificate.custom_certificate : type OpenAPI non traité (None)",
-    "CreateCertificate.letsencrypt : type OpenAPI non traité (None)",
     "CreateFrontend.certificate_ids : tableau sans `items`, type des éléments inconnu",
-    "CreateSubscriber.email_config : type OpenAPI non traité (None)",
-    "CreateSubscriber.webhook_config : type OpenAPI non traité (None)",
     "UpdateFrontend.certificate_ids : tableau sans `items`, type des éléments inconnu",
-    "UpdateHealthCheck.http_config : type OpenAPI non traité (None)",
-    "UpdateHealthCheck.https_config : type OpenAPI non traité (None)",
-    "UpdateHealthCheck.ldap_config : type OpenAPI non traité (None)",
-    "UpdateHealthCheck.mysql_config : type OpenAPI non traité (None)",
-    "UpdateHealthCheck.pgsql_config : type OpenAPI non traité (None)",
-    "UpdateHealthCheck.redis_config : type OpenAPI non traité (None)",
-    "UpdateHealthCheck.tcp_config : type OpenAPI non traité (None)",
-    "UpdateIp.tags : tableau sans `items`, type des éléments inconnu",
-    "UpdateSubscriber.email_config : type OpenAPI non traité (None)",
-    "UpdateSubscriber.webhook_config : type OpenAPI non traité (None)"
+    "UpdateIp.tags : tableau sans `items`, type des éléments inconnu"
   ]
 }

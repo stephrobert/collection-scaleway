@@ -149,3 +149,21 @@ operations:
     generation: ignore
     reason: >-
       Le symétrique d'AttachPrivateNetwork, écarté pour la même raison.
+
+  # --- Deux remplacements complets, écartés par décision et non par symptôme -
+
+  lb.v1.FrontendAcl.SetAcls:
+    generation: ignore
+    reason: >-
+      PUT de remplacement complet de la liste des ACL d'un frontend. Terraform
+      déclare ces règles ; les réécrire depuis un playbook effacerait celles
+      qu'il ne connaît pas. Même raison que SetBackendServers.
+
+  lb.v1.BackendHealthcheck.UpdateHealthCheck:
+    generation: ignore
+    reason: >-
+      PUT de remplacement complet de la sonde de santé d'un backend, que le
+      fichier Terraform déclare dans le même bloc que le backend lui-même. Le
+      modèle l'écartait faute de lecture unitaire, ce qui est vrai et n'est pas
+      la raison : si le contrat en gagnait une demain, l'opération serait
+      générée par accident.
