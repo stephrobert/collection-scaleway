@@ -324,6 +324,8 @@ def _operation_literal(operation: OperationBinding, *, indent: int) -> str:
     ]
     if operation.body_params:
         fields.append(("body_params", operation.body_params))
+    if operation.csv_params:
+        fields.append(("csv_params", operation.csv_params))
     if operation.payload_field is not None:
         fields.append(("payload_field", operation.payload_field))
     if operation.is_list:

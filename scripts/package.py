@@ -166,7 +166,7 @@ def check_playbooks(collections_path: Path, collection: Collection) -> None:
 
     C'est tout l'intérêt de `playbooks/` plutôt que d'un répertoire d'exemples :
     une fois la collection installée, `ansible-playbook
-    local.scaleway.inventaire_serveurs` résout sans chemin. Le contrôle
+    stephrobert.scaleway.inventaire_serveurs` résout sans chemin. Le contrôle
     n'exécute rien, il exige que la résolution aboutisse.
     """
     racine = collections_path / "ansible_collections" / collection.namespace / collection.name

@@ -1,6 +1,6 @@
 """Rend la collection importable comme Ansible l'importe à l'exécution.
 
-Un module généré fait `from ansible_collections.local.scaleway.plugins...`.
+Un module généré fait `from ansible_collections.stephrobert.scaleway.plugins...`.
 Ce chemin existe tel quel dans le dépôt, parce que la collection est rangée à
 l'emplacement qu'Ansible attend : il suffit d'ouvrir la racine du dépôt à
 l'import.

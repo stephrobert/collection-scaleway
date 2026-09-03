@@ -23,11 +23,38 @@ instance v1 : 74 opérations découvertes
   INFO 27 · ACTION 3 · MANAGE 11 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 13 · UNKNOWN 0
   Day-2 42 · AUTO 41 · MANUAL 1 · classées pour génération automatique 97,6 % (41/42)
 
-collection local.scaleway : 2 modules produits sur 31 au plan
-  instance_server_info    lire une Instance, ou lister une zone entière
-  instance_server_action  allumer, arrêter, redémarrer, figer
-  scaleway (inventaire)   instance, elastic_metal, apple_silicon
-  423 tests unitaires · 75 mutations prouvées par /falsify
+collection stephrobert.scaleway : 16 modules produits sur 31 au plan
+  instance_dashboard_info                Gather information about Scaleway Instance dashboards
+  instance_image_info                    Gather information about Scaleway Instance images
+  instance_ip_info                       Gather information about Scaleway Instance ips
+  instance_placement_group_info          Gather information about Scaleway Instance placement groups
+  instance_placement_group_server_info   Gather information about Scaleway Instance placement group servers
+  instance_security_group_info           Gather information about Scaleway Instance security groups
+  instance_server_action                 Perform an action on a Scaleway Instance server
+  instance_server_compatible_type_info   Gather information about Scaleway Instance server compatible types
+  instance_server_info                   Gather information about Scaleway Instance servers
+  instance_server_private_nic_info       Gather information about Scaleway Instance server private nics
+  instance_server_type_availability_info Gather information about Scaleway Instance server type availabilities
+  instance_server_type_info              Gather information about Scaleway Instance server types
+  instance_server_user_data_info         Gather information about Scaleway Instance server user data
+  instance_snapshot_info                 Gather information about Scaleway Instance snapshots
+  instance_volume_info                   Gather information about Scaleway Instance volumes
+  instance_volume_type_info              Gather information about Scaleway Instance volume types
+  lb_acl_info                            Gather information about Scaleway Load Balancer acls
+  lb_backend_info                        Gather information about Scaleway Load Balancer backends
+  lb_backend_stat_info                   Gather information about Scaleway Load Balancer backend stats
+  lb_certificate_info                    Gather information about Scaleway Load Balancer certificates
+  lb_frontend_acl_info                   Gather information about Scaleway Load Balancer frontend acls
+  lb_frontend_info                       Gather information about Scaleway Load Balancer frontends
+  lb_ip_info                             Gather information about Scaleway Load Balancer ips
+  lb_load_balancer_info                  Gather information about Scaleway Load Balancer load balancers
+  lb_load_balancer_private_network_info  Gather information about Scaleway Load Balancer load balancer private networks
+  lb_load_balancer_stat_info             Gather information about Scaleway Load Balancer load balancer stats
+  lb_load_balancer_type_info             Gather information about Scaleway Load Balancer load balancer types
+  lb_route_info                          Gather information about Scaleway Load Balancer routes
+  lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
+  scaleway (inventaire)                  instance, elastic_metal, apple_silicon
+  429 tests unitaires · 78 mutations prouvées par /falsify
   CI : cinq jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks et inventaire contre l'émulateur :
   comptes rendus par `mise run sanity` et `mise run integration`
@@ -84,7 +111,7 @@ python -m generator generate instance --module instance_server_info
 ├── generator/                        lit le contrat, décide, écrit le module
 ├── scripts/                          les lanceurs de contrôles
 ├── specs/scaleway/                   les contrats versionnés
-└── ansible_collections/local/scaleway/    le livrable, et rien d'autre
+└── ansible_collections/stephrobert/scaleway/    le livrable, et rien d'autre
 ```
 
 La collection est rangée à l'emplacement qu'Ansible exige. Ce n'est pas du
@@ -104,7 +131,7 @@ collection à la racine, et la copie qu'il fallait alors fabriquer a produit un
 | rapport | `generator/report/` | texte, JSON et Markdown |
 | modèle | `generator/ansible/models.py` | la source unique de l'`argument_spec` et de la doc |
 | renderer | `generator/renderer/`, `generator/templates/` | les fichiers de `plugins/modules/` |
-| runtime | `ansible_collections/local/scaleway/plugins/module_utils/` | client, erreurs, pagination, check mode |
+| runtime | `ansible_collections/stephrobert/scaleway/plugins/module_utils/` | client, erreurs, pagination, check mode |
 
 La source de vérité est le document OpenAPI 3.1 publié par produit sur le
 portail developers de Scaleway. Ce qu'il porte, ce qu'il ne porte pas et
@@ -157,7 +184,7 @@ fichier présent dans une archive n'est pas un module qu'Ansible sait charger.
 * [L'inventaire dynamique](docs/guides/inventaire-dynamique.md), et le piège d'Ansible sur le mode strict
 * [Ce que dit OpenSSF Scorecard, et ce qu'il ne dit pas](docs/scorecard.md)
 * [SECURITY.md](SECURITY.md) : comment signaler une faille, et ce que le dépôt tient déjà
-* [Les playbooks livrés](ansible_collections/local/scaleway/playbooks/README.md), joués à chaque `mise run integration`
+* [Les playbooks livrés](ansible_collections/stephrobert/scaleway/playbooks/README.md), joués à chaque `mise run integration`
 
 ## Licence
 

@@ -7,12 +7,14 @@ que la collision soit résolue **et** dite.
 
 from __future__ import annotations
 
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.hostname import (
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.hostname import (
     assign_hostnames,
     pick_hostname,
     resolve_source,
 )
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.models import InventoryHost
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.models import (
+    InventoryHost,
+)
 
 
 def _host(id_: str, **champs) -> InventoryHost:

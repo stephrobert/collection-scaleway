@@ -46,7 +46,7 @@
     # C'est l'intégration Day-2 : l'inventaire découvre, les modules agissent,
     # et aucun identifiant n'est écrit à la main nulle part.
     - name: Lire la machine par l'API
-      local.scaleway.instance_server_info:
+      stephrobert.scaleway.instance_server_info:
         zone: "{{ scaleway_zone }}"
         server_id: "{{ scaleway_id }}"
       delegate_to: localhost
@@ -72,7 +72,7 @@
     # couperait le chemin de tout le reste, et arrêter une machine web ferait
     # sortir une cible du load balancer.
     - name: Arrêter la machine, et attendre qu'elle le soit
-      local.scaleway.instance_server_action:
+      stephrobert.scaleway.instance_server_action:
         zone: "{{ scaleway_zone }}"
         server_id: "{{ scaleway_id }}"
         action: poweroff
@@ -88,7 +88,7 @@
         quiet: true
 
     - name: La relancer, et attendre qu'elle réponde
-      local.scaleway.instance_server_action:
+      stephrobert.scaleway.instance_server_action:
         zone: "{{ scaleway_zone }}"
         server_id: "{{ scaleway_id }}"
         action: poweron
@@ -96,7 +96,7 @@
       delegate_to: localhost
       register: relance
 
-    - name: Le cycle complet est prouvé
+    - name: Le cycle est prouvé
       ansible.builtin.assert:
         that:
           - relance is changed
@@ -104,3 +104,91 @@
         success_msg: >-
           {{ inventory_hostname }} arrêtée puis relancée, états observés par
           l'API et non supposés
+        quiet: true
+
+    # **`reboot` et `stop_in_place` n'étaient éprouvés nulle part**, et deux
+    # défauts fermés portaient précisément sur eux : `reboot` rendait la main
+    # sans avoir observé le redémarrage, et `stop_in_place` échouait toujours
+    # parce que l'override attendait `stopped` là où le contrat déclare
+    # `stopped in place`. Des tests unitaires verts n'auraient rien dit de plus
+    # sur ces deux-là que sur les deux précédents.
+    #
+    # Ils sont joués ici, dans cet ordre, parce que l'état de départ compte :
+    # la machine tourne après la relance ci-dessus, `reboot` la laisse en
+    # marche, et `stop_in_place` peut donc l'arrêter ensuite.
+
+    # **Ces deux-là ne sont jouées que contre le cloud réel**, et c'est mesuré
+    # plutôt que prudent. L'émulateur accepte un `reboot` en répondant
+    # `success` et ne change jamais l'état de la machine : l'attente, qui exige
+    # d'observer l'état quitter `running`, expire alors sur une action pourtant
+    # acceptée. C'est feint#654, et le module a raison d'insister — une action
+    # acceptée n'est pas une action advenue.
+    #
+    # `stop_in_place` suit le même sort, parce qu'il vient après `reboot` dans
+    # une séquence dont l'état de départ compte.
+
+    - name: Redémarrer, et attendre que la machine réponde à nouveau
+      when: cible | default('reel') == 'reel'
+      stephrobert.scaleway.instance_server_action:
+        zone: "{{ scaleway_zone }}"
+        server_id: "{{ scaleway_id }}"
+        action: reboot
+        wait: true
+      delegate_to: localhost
+      register: redemarrage
+
+    - name: Le redémarrage est observé, pas seulement déclenché
+      when: cible | default('reel') == 'reel'
+      ansible.builtin.assert:
+        that:
+          - redemarrage is changed
+          - redemarrage.state == 'running'
+        fail_msg: >-
+          `reboot` a rendu la main sur l'état {{ redemarrage.state | default('inconnu') }}.
+          Rendre la main sur un déclenchement accepté est exactement le défaut
+          que l'attente existe pour empêcher.
+        quiet: true
+
+    - name: Arrêter sur place, un état que le contrat distingue de `stopped`
+      when: cible | default('reel') == 'reel'
+      stephrobert.scaleway.instance_server_action:
+        zone: "{{ scaleway_zone }}"
+        server_id: "{{ scaleway_id }}"
+        action: stop_in_place
+        wait: true
+      delegate_to: localhost
+      register: sur_place
+
+    - name: L'état observé est bien `stopped in place`
+      when: cible | default('reel') == 'reel'
+      ansible.builtin.assert:
+        that:
+          - sur_place is changed
+          - sur_place.state == 'stopped in place'
+        fail_msg: >-
+          État observé : {{ sur_place.state | default('inconnu') }}. Le contrat
+          déclare `stopped` et `stopped in place` comme deux états distincts ;
+          attendre le mauvais faisait échouer l'action sur une Instance pourtant
+          arrêtée.
+        quiet: true
+
+    - name: La remettre en marche, pour que la destruction parte d'un état connu
+      when: cible | default('reel') == 'reel'
+      stephrobert.scaleway.instance_server_action:
+        zone: "{{ scaleway_zone }}"
+        server_id: "{{ scaleway_id }}"
+        action: poweron
+        wait: true
+      delegate_to: localhost
+      register: retour
+
+    - name: Les quatre actions du module ont été jouées et observées
+      when: cible | default('reel') == 'reel'
+      ansible.builtin.assert:
+        that:
+          - retour is changed
+          - retour.state == 'running'
+        success_msg: >-
+          {{ inventory_hostname }} : poweroff, poweron, reboot et stop_in_place,
+          chacune confirmée par l'état que l'API rend, jamais par le fait que
+          l'appel a été accepté

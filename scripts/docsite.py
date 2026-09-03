@@ -44,6 +44,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from sync_specs import read_products
 
+from generator.ansible.collection import load_collection
+
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 BUILD = ROOT / "build"
@@ -51,7 +53,13 @@ ANTSIBULL = BUILD / "docs" / "collections"
 REPORTS = BUILD / "reports"
 SITE_SRC = BUILD / "site-src"
 SITE = BUILD / "site"
-MODULES = ROOT / "ansible_collections" / "local" / "scaleway" / "plugins" / "modules"
+#: **Dérivés de `galaxy.yml`, et non écrits segment par segment.** Ces deux
+#: chemins nommaient `local` et `scaleway` en morceaux, donc un renommage de
+#: namespace ne pouvait pas les voir : aucune recherche de `local/scaleway` ne
+#: trouve un chemin découpé. Le symptôme sortait trois couches plus loin, dans
+#: le harnais de falsification.
+COLLECTION = load_collection()
+MODULES = COLLECTION.path / "plugins" / "modules"
 
 #: Les sous-paquets du générateur, dans l'ordre du pipeline, avec ce qu'ils
 #: font. La liste est écrite ici parce qu'elle porte un ordre et une intention
@@ -261,7 +269,7 @@ def check_population(produits: tuple[str, ...], paquets: tuple[str, ...]) -> Non
     doit avoir sa page, chaque produit de `products.txt` sa mesure, chaque
     sous-paquet du générateur sa page d'API.
     """
-    reference = SITE_SRC / "collections" / "local" / "scaleway"
+    reference = SITE_SRC / "collections" / COLLECTION.namespace / COLLECTION.name
     modules = expected_modules()
     if not modules:
         raise SiteError("aucun module dans plugins/modules/ : le site n'aurait rien à documenter")

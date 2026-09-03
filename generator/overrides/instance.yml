@@ -178,3 +178,19 @@ operations:
 
   instance.v1.Server.GetServerCompatibleTypes:
     resource: server_compatible_type
+
+  # --- Un filtre que le contrat décrit en prose ------------------------------
+
+  instance.v1.Server.ListServers:
+    parameters:
+      tags:
+        csv: true
+        reason: >-
+          Le contrat déclare `tags` en `string` et décrit sa forme dans sa
+          propre description : « to filter with several tags, use commas to
+          separate them ». L'override lit cette phrase, il n'invente rien. Sans
+          lui, `tags: [exemple]` en YAML ne lève aucune erreur : Ansible produit
+          la chaîne `"['exemple']"`, l'API ne trouve rien, et le playbook lit
+          zéro machine sur un parc qui en porte cinq. Mesuré en capturant la
+          requête émise. Une liste est ce que ce paramètre est ; la virgule est
+          la façon dont l'API veut l'entendre, et c'est au runtime de la parler.

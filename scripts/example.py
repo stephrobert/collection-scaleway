@@ -511,14 +511,28 @@ def main(argv: list[str]) -> int:
         controler_plan_de_controle(env, sorties)
         controler_inventaire(inventaire(env), attendu)
 
+        extra = {
+            "bastion_ip": bastion_ip,
+            "application_url": application_url,
+            "ssh_key": str(CLE),
+            # Les playbooks doivent savoir contre quoi ils tournent : une route
+            # non émulée est une limite déclarée chez feint et un défaut sur le
+            # cloud réel. Sans cette variable, il faudrait un `ignore_errors`,
+            # qui tairait les deux.
+            "cible": arguments.cible,
+        }
+
+        # Les seize modules parlent à l'API et n'ont besoin d'aucune machine
+        # démarrée : ils tournent donc sur **les trois cibles**, avec la même
+        # stack et les mêmes assertions. C'est ce qui fait de l'exercice un test
+        # différentiel de l'émulateur, et ce qui a produit feint#648, feint#650
+        # et feint#651. Un écart entre les deux exécutions est un défaut de
+        # l'émulateur, pas une fatalité.
+        code = jouer("modules.yml", env, extra)
+
         if cible["ssh"]:
             controler_sortie_internet(bastion_ip)
-            extra = {
-                "bastion_ip": bastion_ip,
-                "application_url": application_url,
-                "ssh_key": str(CLE),
-            }
-            code = jouer("site.yml", env, extra) or jouer("verifier.yml", env, extra)
+            code = code or jouer("site.yml", env, extra) or jouer("verifier.yml", env, extra)
         else:
             print(
                 "cible sans machines : les playbooks SSH ne sont pas joués, et c'est "

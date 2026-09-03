@@ -1,0 +1,42 @@
+---
+# Configuration d'antsibull-changelog. Le changelog n'est pas écrit à la
+# main : chaque changement dépose un fragment dans `fragments/`, et
+# `antsibull-changelog release` les rassemble. Un changelog écrit après coup
+# est une reconstitution, pas un journal.
+add_plugin_period: true
+changelog_nice_yaml: true
+changelog_sort: version
+changes_file: changelog.yaml
+changes_format: combined
+ignore_other_fragment_extensions: true
+keep_fragments: false
+mention_ancestor: true
+new_plugins_after_name: removed_features
+notesdir: fragments
+output:
+- file: CHANGELOG.rst
+  format: rst
+prelude_section_name: release_summary
+prelude_section_title: Release Summary
+sanitize_changelog: true
+sections:
+- - major_changes
+  - Major Changes
+- - minor_changes
+  - Minor Changes
+- - breaking_changes
+  - Breaking Changes / Porting Guide
+- - deprecated_features
+  - Deprecated Features
+- - removed_features
+  - Removed Features (previously deprecated)
+- - security_fixes
+  - Security Fixes
+- - bugfixes
+  - Bugfixes
+- - known_issues
+  - Known Issues
+title: stephrobert.scaleway
+trivial_section_name: trivial
+use_fqcn: true
+vcs: auto

@@ -30,6 +30,8 @@ from typing import Any
 
 import yaml
 
+from generator.ansible.collection import load_collection
+
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 RAPPORTS = ROOT / "build" / "reports"
@@ -104,6 +106,38 @@ def _jobs() -> tuple[int, tuple[str, ...]]:
     return len(jobs), noms
 
 
+def _lignes_de_modules() -> list[str]:
+    """Les modules livrés, avec leur `short_description`, lue dans le fichier.
+
+    Recopier cette liste à la main était le même défaut que celui qui a fait
+    annoncer 366 tests pour 420 : elle est restée à deux modules pendant que la
+    collection en produisait seize.
+
+    La description vient du module lui-même, donc du contrat : ce sont les mots
+    qu'un utilisateur lira dans `ansible-doc`, pas une glose écrite à côté.
+    """
+    # Dérivé de `galaxy.yml`, jamais écrit segment par segment : c'est ce qui
+    # a fait survivre trois chemins au renommage du namespace, chacun invisible
+    # à toute recherche textuelle.
+    dossier = load_collection().path / "plugins" / "modules"
+    lignes: list[str] = []
+    for fichier in sorted(dossier.glob("*.py")):
+        if fichier.name.startswith("_"):
+            continue
+        courte = ""
+        for ligne in fichier.read_text(encoding="utf-8").splitlines():
+            if ligne.startswith("short_description:"):
+                courte = ligne.split(":", 1)[1].strip().strip("\"'")
+                break
+        lignes.append(f"  {fichier.stem:<38s} {courte}")
+    if not lignes:
+        raise CompteursError(
+            f"{dossier.relative_to(ROOT)} ne porte aucun module : lancer "
+            "`mise run generate`. Un bloc qui annonce zéro module est un bloc faux."
+        )
+    return lignes
+
+
 def _pourcent(valeur: float) -> str:
     """Avec la virgule décimale, le dépôt écrivant en français."""
     return f"{valeur * 100:.1f} %".replace(".", ",", 1)
@@ -137,10 +171,9 @@ def bloc() -> str:
             f"{_pourcent(couverture)} ({modes['auto'] + modes['override']}"
             f"/{totaux['day2_candidates']})",
             "",
-            f"collection local.scaleway : {ecrits} modules produits sur {plan} au plan",
-            "  instance_server_info    lire une Instance, ou lister une zone entière",
-            "  instance_server_action  allumer, arrêter, redémarrer, figer",
-            "  scaleway (inventaire)   instance, elastic_metal, apple_silicon",
+            f"collection stephrobert.scaleway : {ecrits} modules produits sur {plan} au plan",
+            *_lignes_de_modules(),
+            f"  {'scaleway (inventaire)':<38s} instance, elastic_metal, apple_silicon",
             f"  {_tests()} tests unitaires · {_mutations()} mutations prouvées par /falsify",
             f"  CI : {_en_lettres(nb_jobs)} jobs, {' · '.join(noms_jobs)}",
             "  ansible-test sanity, playbooks et inventaire contre l'émulateur :",

@@ -9,7 +9,7 @@ Ce que `plugins/module_utils/scaleway.py` porte, pourquoi, et ce que ça coûte.
 
 ```text
 generator/                              lit le contrat, décide, écrit le module
-ansible_collections/local/scaleway/
+ansible_collections/stephrobert/scaleway/
   plugins/modules/                      la documentation, l'argument_spec, l'opération
   plugins/module_utils/                 le client, l'erreur, la pagination, le check mode
 ```
@@ -313,7 +313,7 @@ WARNING: All targets skipped.
 un vert parfait, indiscernable de celui d'une collection irréprochable.
 
 La correction n'a pas été de contourner le symptôme mais de retirer sa cause :
-la collection est rangée dans `ansible_collections/local/scaleway/`, suivie par
+la collection est rangée dans `ansible_collections/stephrobert/scaleway/`, suivie par
 git, et `ansible-test` y travaille **en place**. Le script qui fabriquait la
 copie a été supprimé.
 

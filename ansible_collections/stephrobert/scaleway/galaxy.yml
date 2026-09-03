@@ -1,0 +1,43 @@
+# Identité de la collection. Le générateur lit ce fichier : le namespace, le
+# nom et la version qu'il déclare finissent dans chaque module produit.
+#
+# Le namespace est une décision de périmètre, pas une préférence de style.
+#
+# `scaleway.scaleway` appartient à Scaleway, et rien ne s'y publie sans son
+# accord : le prendre serait un squat. `local` désignait une collection interne,
+# installable par chemin ou par archive et **impubliable** sur Galaxy ; c'était
+# le bon choix tant que la question n'était pas tranchée, et le mauvais dès que
+# le nombre de playbooks écrits a commencé à en faire monter le prix.
+#
+# `stephrobert.scaleway` dit ce que ce dépôt est : une chaîne de génération et
+# la collection de démonstration qu'elle produit. Il se publie, il n'usurpe
+# rien, et il laisse ouverte la seule suite qui vaille, alimenter la collection
+# officielle plutôt que lui faire concurrence.
+#
+# Le renommer se fait ici **et** dans le chemin du répertoire : `load_collection`
+# exige que les deux concordent, et c'est cette garde qui a rattrapé le
+# renommage à moitié fait.
+namespace: stephrobert
+name: scaleway
+version: 0.1.0
+readme: README.md
+authors:
+  - Stéphane Robert (@stephrobert)
+description: >-
+  Modules Ansible Day-2 pour les APIs Scaleway, produits par le générateur de
+  ce dépôt. Terraform provisionne les ressources, cette collection exploite
+  les ressources existantes.
+license:
+  - GPL-3.0-or-later
+tags:
+  - scaleway
+  - cloud
+  - infrastructure
+dependencies: {}
+
+# La collection ne contient que ce qui se livre : le générateur, les contrats
+# et les tests du dépôt vivent au-dessus de `ansible_collections/`, hors de ce
+# répertoire. `build_ignore` n'a donc plus à les écarter, et ce qui reste est
+# ce qu'`ansible-galaxy` produirait de toute façon.
+build_ignore:
+  - tests/output

@@ -1,0 +1,400 @@
+---
+# Les modules de la collection, appelés sur la plateforme d'exemple.
+#
+# **Ce playbook est le test différentiel de l'émulateur.** Il tourne à
+# l'identique contre feint et contre le compte Scaleway réel, avec la même
+# stack et les mêmes assertions. Un écart entre les deux exécutions est un
+# défaut de l'émulateur, et se remonte chez lui : c'est ce qui a produit
+# feint#648, feint#650 et feint#651.
+#
+# **Aucun identifiant n'est écrit à la main.** Tout vient de l'inventaire
+# dynamique ou d'un module appelé plus haut. Un exemple qui code en dur un
+# `server_id` ne prouve ni l'inventaire ni les modules : il prouve qu'on sait
+# recopier un UUID.
+#
+# Les assertions portent sur des nombres que la stack Terraform décide, pas sur
+# la forme des réponses : trois groupes de sécurité parce que le fichier en
+# déclare trois, cinq machines parce qu'il en déclare cinq. Une assertion sur la
+# forme passerait sur un parc vide.
+
+- name: Les modules de la collection, sur la plateforme que l'inventaire a découverte
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    zone: "{{ hostvars[groups['scw_tag_role_bastion'][0]].scaleway_zone }}"
+    prefixe: "{{ hostvars[groups['scw_tag_role_bastion'][0]].inventory_hostname
+      | regex_replace('-bastion$', '') }}"
+    bastion_id: "{{ hostvars[groups['scw_tag_role_bastion'][0]].scaleway_id }}"
+    worker_id: "{{ hostvars[groups['scw_tag_role_app'][0]].scaleway_id }}"
+
+  tasks:
+    # ---- Le parc, vu par les modules de liste ---------------------------
+
+    - name: Les machines de la zone
+      stephrobert.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+      register: machines
+
+    - name: L'API rend les cinq machines que la stack a créées
+      ansible.builtin.assert:
+        that:
+          - machines.servers | selectattr('name', 'search', prefixe)
+            | list | length == 5
+          - machines is not changed
+        fail_msg: >-
+          {{ machines.servers | selectattr('name', 'search', prefixe) | list | length }}
+          machine(s) au lieu de 5.
+        quiet: true
+
+    # **`tags` s'écrit en liste, et c'est un override qui l'a rendu possible.**
+    # Le contrat le déclare `string` et décrit la virgule dans sa propre
+    # description ; l'override lit cette phrase, le module expose une liste, et
+    # le runtime joint. Avant lui, `tags: [exemple]` ne levait aucune erreur :
+    # Ansible produisait la chaîne `"['exemple']"`, l'API ne trouvait rien, et
+    # ce playbook lisait zéro machine sur un parc qui en porte cinq. Mesuré ici
+    # même, à sa première exécution, en capturant la requête émise.
+    - name: Le filtre par tag, écrit comme un opérateur l'écrirait
+      stephrobert.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+        tags: [exemple]
+      register: taguees
+
+    - name: Le filtre serveur rend les mêmes cinq machines
+      ansible.builtin.assert:
+        that:
+          - taguees.servers | selectattr('name', 'search', prefixe)
+            | list | length == 5
+        fail_msg: >-
+          Le filtre `tags=exemple` rend
+          {{ taguees.servers | selectattr('name', 'search', prefixe) | list | length }}
+          machine(s) là où la liste complète en rend 5. C'est un écart entre le
+          filtrage de l'API et son inventaire, et il se remonte.
+        quiet: true
+
+    - name: Les groupes de sécurité
+      stephrobert.scaleway.instance_security_group_info:
+        zone: "{{ zone }}"
+      register: groupes
+
+    - name: Les trois groupes de la stack sont là, un par étage
+      ansible.builtin.assert:
+        that:
+          - groupes.security_groups | selectattr('name', 'search', prefixe)
+            | list | length == 3
+        quiet: true
+
+    - name: Le groupe de placement
+      stephrobert.scaleway.instance_placement_group_info:
+        zone: "{{ zone }}"
+      register: placement
+
+    - name: Un seul groupe de placement, celui du tier applicatif
+      ansible.builtin.assert:
+        that:
+          - placement.placement_groups | selectattr('name', 'search', prefixe)
+            | list | length == 1
+        quiet: true
+
+    # Le seul module du lot qui exige un identifiant venu d'un autre module.
+    # C'est aussi ce qu'il prouve : la chaîne tient sans intervention humaine.
+    - name: Les machines de ce groupe de placement
+      stephrobert.scaleway.instance_placement_group_server_info:
+        zone: "{{ zone }}"
+        placement_group_id: "{{ (placement.placement_groups
+          | selectattr('name', 'search', prefixe) | first).id }}"
+      register: places
+
+    - name: Le groupe de placement porte les deux machines applicatives
+      ansible.builtin.assert:
+        that:
+          - places.servers | length == 2
+        quiet: true
+
+    - name: Les volumes
+      stephrobert.scaleway.instance_volume_info:
+        zone: "{{ zone }}"
+      register: volumes
+
+    - name: Les adresses IP publiques
+      stephrobert.scaleway.instance_ip_info:
+        zone: "{{ zone }}"
+      register: adresses
+
+    - name: Une seule adresse publique dans la plateforme, celle du bastion
+      ansible.builtin.assert:
+        that:
+          - adresses.ips | selectattr('tags', 'contains', 'exemple')
+            | list | length == 1
+        fail_msg: >-
+          Quatre machines sur cinq ne doivent porter aucune adresse publique.
+          C'est la propriété que l'inventaire dynamique existe pour éprouver.
+        quiet: true
+
+    - name: Les instantanés
+      stephrobert.scaleway.instance_snapshot_info:
+        zone: "{{ zone }}"
+      register: instantanes
+
+    - name: Les images
+      stephrobert.scaleway.instance_image_info:
+        zone: "{{ zone }}"
+        public: false
+      register: images
+
+    # ---- Les catalogues, qui ne dépendent d'aucune ressource ------------
+    #
+    # Ils n'assertent pas un nombre : un catalogue est décidé par Scaleway et
+    # change sans prévenir. Ce qu'on éprouve est qu'il répond et que le module
+    # ne prétend pas avoir changé quoi que ce soit.
+    #
+    # **Un 501 `not_emulated` n'est pas un échec de la collection, et n'est pas
+    # non plus un succès.** L'émulateur déclare les routes qu'il ne sert pas,
+    # et le dire est tout l'intérêt de faire tourner ce playbook des deux
+    # côtés. Contre le cloud réel il n'y en a aucun, et une route manquante y
+    # est un vrai échec : c'est `cible` qui tranche, pas un `ignore_errors`.
+    #
+    # **La condition dit ce qu'elle tolère, et rien de plus.** `failed_when:
+    # false` remettait `failed` à faux quoi qu'il arrive, y compris sur un vrai
+    # défaut ; l'assertion écrite ensuite sur `failed` ne pouvait donc rien
+    # voir. C'était une garde vide, et le run réel l'a montrée en laissant
+    # passer un module qui échouait pour ne rougir que trois tâches plus loin,
+    # sur une variable indéfinie.
+
+    - name: Les types de machines offerts dans la zone
+      stephrobert.scaleway.instance_server_type_info:
+        zone: "{{ zone }}"
+      register: types
+      failed_when: types.failed | default(false)
+        and types.api_type | default('') != 'not_emulated'
+
+    - name: Leur disponibilité
+      stephrobert.scaleway.instance_server_type_availability_info:
+        zone: "{{ zone }}"
+      register: dispo
+      failed_when: dispo.failed | default(false)
+        and dispo.api_type | default('') != 'not_emulated'
+
+    - name: Les types de volumes
+      stephrobert.scaleway.instance_volume_type_info:
+        zone: "{{ zone }}"
+      register: types_volumes
+      failed_when: types_volumes.failed | default(false)
+        and types_volumes.api_type | default('') != 'not_emulated'
+
+    - name: Le tableau de bord du projet
+      stephrobert.scaleway.instance_dashboard_info:
+        zone: "{{ zone }}"
+      register: tableau
+      failed_when: tableau.failed | default(false)
+        and tableau.api_type | default('') != 'not_emulated'
+
+    # ---- Ce qu'on sait d'une machine précise ----------------------------
+
+    - name: Les types compatibles avec le bastion
+      stephrobert.scaleway.instance_server_compatible_type_info:
+        zone: "{{ zone }}"
+        server_id: "{{ bastion_id }}"
+      register: compatibles
+      failed_when: compatibles.failed | default(false)
+        and compatibles.api_type | default('') != 'not_emulated'
+
+    - name: Les cartes réseau privées d'un worker
+      stephrobert.scaleway.instance_server_private_nic_info:
+        zone: "{{ zone }}"
+        server_id: "{{ worker_id }}"
+      register: cartes
+      failed_when: cartes.failed | default(false)
+        and cartes.api_type | default('') != 'not_emulated'
+
+    - name: Le user-data du bastion
+      stephrobert.scaleway.instance_server_user_data_info:
+        zone: "{{ zone }}"
+        server_id: "{{ bastion_id }}"
+      register: userdata
+      failed_when: userdata.failed | default(false)
+        and userdata.api_type | default('') != 'not_emulated'
+
+    # ---- Le différentiel, en un seul endroit ----------------------------
+
+    - name: Ce que l'émulateur ne sert pas, nommé plutôt que sauté
+      ansible.builtin.set_fact:
+        non_emules: "{{ [types, dispo, types_volumes, tableau,
+          compatibles, cartes, userdata]
+          | selectattr('api_type', 'defined')
+          | selectattr('api_type', 'equalto', 'not_emulated')
+          | map(attribute='operation') | list }}"
+
+    - name: Contre le cloud réel, toutes les routes doivent répondre
+      ansible.builtin.assert:
+        that:
+          - non_emules | length == 0
+        fail_msg: >-
+          Routes injoignables sur le compte réel : {{ non_emules }}.
+          Une route absente y est un défaut, pas une limite déclarée.
+        quiet: true
+      when: cible == 'reel'
+
+    - name: Chaque appel a rendu ce que sa documentation annonce
+      ansible.builtin.assert:
+        that:
+          # `result` et non `server_types` : le contrat ne nomme aucun champ
+          # porteur pour ces opérations, donc le module rend le corps entier
+          # sous cette clé, et son `RETURN` le documente ainsi.
+          - types.result is defined or 'ListServersTypes' in non_emules
+          - dispo.result is defined or 'GetServerTypesAvailability' in non_emules
+          - types_volumes.result is defined or 'ListVolumesTypes' in non_emules
+          - tableau.dashboard is defined or 'GetDashboard' in non_emules
+          - compatibles.result is defined or 'GetServerCompatibleTypes' in non_emules
+          - cartes.private_nics is defined or 'ListPrivateNICs' in non_emules
+          - userdata.result is defined or userdata.user_data is defined
+            or 'ListServerUserData' in non_emules
+          - types is not changed
+          - dispo is not changed
+          - types_volumes is not changed
+          - tableau is not changed
+          - cartes is not changed
+          - userdata is not changed
+        quiet: true
+
+    - name: Le worker porte exactement une carte, sur le réseau applicatif
+      ansible.builtin.assert:
+        that:
+          - cartes.private_nics | length == 1
+        quiet: true
+      when: "'ListPrivateNICs' not in non_emules"
+
+    - name: Les routes que l'émulateur ne sert pas
+      ansible.builtin.debug:
+        msg: >-
+          {{ non_emules | length }} route(s) non émulée(s) :
+          {{ non_emules | join(', ') }}
+      when: non_emules | length > 0
+
+    # ---- Ce que la plateforme doit contenir, en un seul verdict ---------
+    #
+    # Groupé plutôt qu'éparpillé : un lecteur qui voit rougir cette tâche sait
+    # d'un coup ce que la collection a trouvé et ce qu'elle attendait.
+
+    - name: La plateforme est celle que Terraform a décrite
+      ansible.builtin.assert:
+        that:
+          # **Aucun compte sur les volumes, et c'est mesuré.** La stack crée
+          # ses disques en Block Storage, et l'API `instance/v1` ne voit pas un
+          # volume SBS : c'est la même limite qui empêche un instantané
+          # d'instance de prendre une racine moderne, écrite dans `storage.tf`.
+          # Exiger ici un nombre reviendrait à exiger que Scaleway revienne en
+          # arrière.
+          - volumes.volumes is defined
+          - instantanes.snapshots is defined
+          - images.images is defined
+        quiet: true
+
+    # ---- Le Load Balancer, second produit de la collection --------------
+    #
+    # **C'est pour ça que `lb` a été choisi comme second produit** : la stack
+    # déploie déjà un load balancer, donc ses modules sont exercés contre le
+    # cloud réel dès le premier jour, sans écrire une seule ressource de plus.
+    #
+    # **`failed_when: false` ne se lit pas « tolère une route non émulée ».**
+    # Il remet `failed` à faux quoi qu'il arrive, y compris sur un vrai défaut,
+    # et une assertion écrite ensuite sur `failed` ne peut plus rien voir. C'est
+    # une garde vide, et celle qui était écrite ici l'était : le run réel a
+    # laissé passer un module qui échouait, et n'a rougi que trois tâches plus
+    # loin sur une variable indéfinie.
+    #
+    # La condition dit donc exactement ce qu'elle tolère : un échec dont
+    # `api_type` vaut `not_emulated`, et rien d'autre.
+
+    - name: Les load balancers de la zone
+      stephrobert.scaleway.lb_load_balancer_info:
+        zone: "{{ zone }}"
+      register: balanceurs
+      failed_when: balanceurs.failed | default(false)
+        and balanceurs.api_type | default('') != 'not_emulated'
+
+    # **`lb_id` n'est pas optionnel ici, il est simplement absent du GET.**
+    # `ListBackends` lit `/lbs/{lb_id}/backends` : la liste est *par* load
+    # balancer. Le modèle ne peut pas marquer le paramètre obligatoire, puisque
+    # `GetBackend` l'ignore, et c'est la même mécanique qui rend `server_id`
+    # optionnel sur `instance_server_info`. L'identifiant vient donc du module
+    # appelé juste au-dessus, comme partout ailleurs dans ce playbook.
+    - name: Les backends de ce load balancer
+      stephrobert.scaleway.lb_backend_info:
+        zone: "{{ zone }}"
+        lb_id: "{{ (balanceurs.lbs | default([])
+          | selectattr('name', 'search', prefixe) | first).id }}"
+      register: backends
+      when: balanceurs.lbs | default([]) | selectattr('name', 'search', prefixe) | list | length == 1
+      failed_when: backends.failed | default(false)
+        and backends.api_type | default('') != 'not_emulated'
+
+    - name: Les frontends de ce load balancer
+      stephrobert.scaleway.lb_frontend_info:
+        zone: "{{ zone }}"
+        lb_id: "{{ (balanceurs.lbs | default([])
+          | selectattr('name', 'search', prefixe) | first).id }}"
+      register: frontends
+      when: balanceurs.lbs | default([]) | selectattr('name', 'search', prefixe) | list | length == 1
+      failed_when: frontends.failed | default(false)
+        and frontends.api_type | default('') != 'not_emulated'
+
+    - name: Les types de load balancers offerts
+      stephrobert.scaleway.lb_load_balancer_type_info:
+        zone: "{{ zone }}"
+      register: types_lb
+      failed_when: types_lb.failed | default(false)
+        and types_lb.api_type | default('') != 'not_emulated'
+
+    - name: Les adresses réservées au load balancing
+      stephrobert.scaleway.lb_ip_info:
+        zone: "{{ zone }}"
+      register: adresses_lb
+      failed_when: adresses_lb.failed | default(false)
+        and adresses_lb.api_type | default('') != 'not_emulated'
+
+    - name: Ce que l'émulateur ne sert pas du Load Balancer
+      ansible.builtin.set_fact:
+        non_emules_lb: "{{ [balanceurs, backends, frontends, types_lb, adresses_lb]
+          | selectattr('api_type', 'defined')
+          | selectattr('api_type', 'equalto', 'not_emulated')
+          | map(attribute='operation') | list }}"
+
+    - name: Contre le cloud réel, le load balancer de la stack est décrit
+      ansible.builtin.assert:
+        that:
+          - non_emules_lb | length == 0
+          - balanceurs.lbs | selectattr('name', 'search', prefixe)
+            | list | length == 1
+          - backends.backends | selectattr('name', 'search', prefixe)
+            | list | length == 1
+          - frontends.frontends | selectattr('name', 'search', prefixe)
+            | list | length == 1
+          - types_lb.lb_types | length > 0
+        fail_msg: >-
+          Routes injoignables : {{ non_emules_lb }}. La stack déclare un load
+          balancer, un backend et un frontend ; les modules doivent les
+          retrouver.
+        quiet: true
+      when: cible == 'reel'
+
+    - name: Les routes du Load Balancer que l'émulateur ne sert pas
+      ansible.builtin.debug:
+        msg: "{{ non_emules_lb | join(', ') }}"
+      when: non_emules_lb | length > 0
+
+    - name: Ce que les vingt-neuf modules ont trouvé
+      ansible.builtin.debug:
+        msg: >-
+          {{ machines.servers | length }} machines ·
+          {{ groupes.security_groups | selectattr('name', 'search', prefixe)
+             | list | length }} groupes de sécurité ·
+          {{ places.servers | length }} machines en groupe de placement ·
+          {{ volumes.volumes | length }} volumes vus par instance/v1 ·
+          {{ adresses.ips | selectattr('tags', 'contains', 'exemple')
+             | list | length }} adresse publique ·
+          {{ (types.result | default({})).servers | default({}) | length }} types offerts ·
+          {{ cartes.private_nics | default([]) | length }} carte privée sur un worker ·
+          {{ balanceurs.lbs | default([]) | length }} load balancer ·
+          {{ backends.backends | default([]) | length }} backend

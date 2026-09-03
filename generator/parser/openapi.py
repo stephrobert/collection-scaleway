@@ -441,14 +441,41 @@ def _parse_response(
     )
 
 
+#: Les noms sous lesquels Scaleway déclare une taille de page. Deux, mesurés :
+#: `per_page` sur Instance, `page_size` sur le Load Balancer. Une troisième
+#: orthographe s'ajoute ici, et nulle part ailleurs.
+_PAGE_SIZE_PARAMS: tuple[str, ...] = ("per_page", "page_size")
+
+
 def _parse_pagination(
     parameters: list[ApiParameter],
     response: ApiResponse | None,
     schemas: dict[str, Any],
 ) -> Pagination | None:
-    """Une opération est paginée si elle accepte `page` et `per_page`."""
+    """Une opération est paginée si elle accepte `page` et une taille de page.
+
+    **Scaleway emploie deux orthographes selon le produit**, et une règle qui
+    n'en connaît qu'une est pire qu'une règle absente : l'opération n'est pas
+    déclarée paginée, ses paramètres de pagination deviennent des options du
+    module, et une liste rend sa première page **en silence**. C'est le défaut
+    que le garde-fou de pagination existe pour empêcher, et il passait par la
+    porte d'à côté.
+
+    Mesuré : Instance pagine avec `per_page`, le Load Balancer avec
+    `page_size`. Onze opérations de `lb.v1` étaient dans ce cas, toutes des
+    listes. L'issue #27 avait nommé la construction avant qu'un contrat ne la
+    porte ; c'est le second produit qui l'a rendue réelle.
+
+    L'ordre d'essai est fixe et non alphabétique : `per_page` d'abord parce
+    qu'un contrat qui déclarerait les deux est plus probablement un contrat
+    Instance étendu qu'un contrat Load Balancer, et parce qu'un ordre stable
+    est ce qui rend la génération déterministe.
+    """
     names = {parameter.name for parameter in parameters}
-    if not {"page", "per_page"} <= names:
+    if "page" not in names:
+        return None
+    taille = next((nom for nom in _PAGE_SIZE_PARAMS if nom in names), None)
+    if taille is None:
         return None
 
     total_count_field = None
@@ -456,7 +483,7 @@ def _parse_pagination(
         properties = schemas.get(response.schema, {}).get("properties", {})
         if "total_count" in properties:
             total_count_field = "total_count"
-    return Pagination(total_count_field=total_count_field)
+    return Pagination(per_page_param=taille, total_count_field=total_count_field)
 
 
 def _scope_of(path: str) -> Scope:

@@ -63,7 +63,7 @@ class OverrideError(ValueError):
 
 
 #: Champs qu'un override de paramètre peut porter.
-_PARAMETER_FIELDS: frozenset[str] = frozenset({"choices", "required", "expose", "reason"})
+_PARAMETER_FIELDS: frozenset[str] = frozenset({"choices", "required", "expose", "csv", "reason"})
 
 #: Champs qu'un bloc `wait` peut porter.
 _WAIT_FIELDS: frozenset[str] = frozenset({"field", "states", "reason"})
@@ -87,6 +87,16 @@ class ParameterOverride:
     #: Faux retire le paramètre des options du module. Il reste dans le contrat
     #: et dans le rapport : ce qui est retiré est dit, pas effacé.
     expose: bool | None = None
+    #: Vrai expose un paramètre `string` du contrat comme une **liste**, jointe
+    #: par des virgules à l'envoi.
+    #:
+    #: Ce n'est pas le générateur qui devine : c'est la description du contrat
+    #: qui le dit, et l'override ne fait que la lire. Le cas mesuré est `tags`
+    #: de `ListServers`, dont la description est « use commas to separate
+    #: them ». Sans lui, `tags: [a, b]` en YAML n'échoue pas : Ansible produit
+    #: la chaîne `"['a', 'b']"`, l'API ne trouve rien, et le playbook lit zéro
+    #: machine sur un parc qui en porte cinq.
+    csv: bool | None = None
     reason: str | None = None
 
 
@@ -227,7 +237,7 @@ def _parse_parameters(key: str, raw: Any, path: Path) -> dict[str, ParameterOver
         if choices is not None and not isinstance(choices, list):
             raise OverrideError(f"{path} : {key}.parameters.{nom}.choices doit être une liste")
 
-        arbitrages = ("choices", "required", "expose")
+        arbitrages = ("choices", "required", "expose", "csv")
         decide = any(declaration.get(champ) is not None for champ in arbitrages)
         if decide and not declaration.get("reason"):
             raise OverrideError(
@@ -241,6 +251,7 @@ def _parse_parameters(key: str, raw: Any, path: Path) -> dict[str, ParameterOver
             choices=tuple(str(valeur) for valeur in choices or ()),
             required=declaration.get("required"),
             expose=declaration.get("expose"),
+            csv=declaration.get("csv"),
             reason=declaration.get("reason"),
         )
     return parametres

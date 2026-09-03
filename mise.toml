@@ -35,9 +35,25 @@ _.python.venv = { path = ".venv", create = true }
 PRODUCT = "{{ get_env(name='PRODUCT', default='instance') }}"
 
 # Périmètre de génération : les modules nommés ici, pas ceux que le générateur
-# saurait écrire. Le vider produit toutes les classes rendables (INFO, ACTION),
-# ce que rien ne prouve encore module par module.
-MODULES = "{{ get_env(name='MODULES', default='instance_server_info instance_server_action') }}"
+# saurait écrire. La liste reste **explicite** parce qu'un périmètre déduit
+# changerait tout seul le jour où l'API bouge, et personne ne le verrait dans
+# une revue.
+#
+# Elle porte les seize modules que le modèle sait construire aujourd'hui :
+# quinze lectures et une action, tous Day-2. Ce ne sont plus deux modules
+# « parce que rien ne prouve les autres », mais seize parce que
+# `ansible-test sanity` les accepte et que la stack d'exemple les exerce
+# chacun contre le cloud réel et contre l'émulateur. Les quinze modules du
+# plan qui manquent sont écartés **avec leur raison** par
+# `mise run generate`, et le compte rendu de génération la publie.
+MODULES = "{{ get_env(name='MODULES', default='instance_dashboard_info instance_image_info instance_ip_info instance_placement_group_info instance_placement_group_server_info instance_security_group_info instance_server_action instance_server_compatible_type_info instance_server_info instance_server_private_nic_info instance_server_type_availability_info instance_server_type_info instance_server_user_data_info instance_snapshot_info instance_volume_info instance_volume_type_info') }}"
+
+# Le périmètre du second produit, déclaré comme le premier. Treize lectures :
+# le modèle ne sait pas encore construire les dix modules MANAGE du plan, et
+# `lb_load_balancer_action` est écarté parce que `MigrateLb` ne porte aucun
+# paramètre d'action dans son corps. Les onze écarts sortent avec leur raison
+# dans le compte rendu de génération.
+MODULES_LB = "{{ get_env(name='MODULES_LB', default='lb_acl_info lb_backend_info lb_backend_stat_info lb_certificate_info lb_frontend_acl_info lb_frontend_info lb_ip_info lb_load_balancer_info lb_load_balancer_private_network_info lb_load_balancer_stat_info lb_load_balancer_type_info lb_route_info lb_subscriber_info') }}"
 
 # Ce qui porte un serveur allumé pendant la cible d'intégration : off, incus,
 # incus-vm, incus-ovn. Démarrer des machines est un effet de bord qui se
@@ -147,17 +163,29 @@ run = "python scripts/falsify.py"
 # ---- Générateur ------------------------------------------------------------
 
 [tasks.report]
-description = "Rapport de couverture d'un produit, en mode strict"
-run = "python -m generator report $PRODUCT --strict"
+description = "Rapport de couverture de chaque produit suivi, en mode strict"
+# Chaque produit, pas seulement `$PRODUCT` : le site refuse de se construire
+# quand un produit de `products.txt` n'a pas sa page de mesure, et le dire ici
+# vaut mieux que de le découvrir trois étapes plus loin. La liste vient de
+# l'index, elle n'est pas recopiée.
+run = "python scripts/report_all.py"
 
 [tasks.generate]
-description = "Écrire les modules dans plugins/modules"
+description = "Écrire les modules des deux produits dans plugins/modules"
 # `MODULES` porte une liste séparée par des espaces ; le shell la découpe, et
 # chaque nom devient un `--module`.
+#
+# Les deux produits sont générés l'un après l'autre, dans une seule collection.
+# Écrire deux tâches laisserait la porte ouverte à n'en lancer qu'une, et
+# `check:generated` mesurerait alors un arbre à moitié régénéré.
 run = """
 flags=""
 for module in $MODULES; do flags="$flags --module $module"; done
 python -m generator generate $PRODUCT $flags
+
+flags_lb=""
+for module in $MODULES_LB; do flags_lb="$flags_lb --module $module"; done
+python -m generator generate lb $flags_lb
 """
 
 [tasks."sync:api"]

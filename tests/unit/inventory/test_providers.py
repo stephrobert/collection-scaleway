@@ -26,21 +26,21 @@ from types import SimpleNamespace
 
 import pytest
 
-from ansible_collections.local.scaleway.plugins.module_utils.inventory import (
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory import (
     address,
     filtering,
     groups,
     hostname,
 )
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.errors import (
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.errors import (
     PermissionDenied,
 )
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.network import (
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.network import (
     IpamAddress,
     PrivateNetworkInfo,
     build_index,
 )
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.providers import (
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.providers import (
     apple_silicon,
     base,
     elastic_metal,
@@ -403,7 +403,7 @@ def test_aucune_couche_du_coeur_ne_nomme_un_produit(fichier: str, collection_imp
     Si cette assertion tombe un jour, c'est qu'un produit a fuité hors de son
     provider, et que le suivant coûtera une modification du cœur.
     """
-    racine = collection_importable / "ansible_collections/local/scaleway"
+    racine = collection_importable / "ansible_collections/stephrobert/scaleway"
     code = _code_sans_prose(racine / "plugins/module_utils/inventory" / fichier)
 
     # Les frontières de mot comptent : `isinstance` n'est pas le produit

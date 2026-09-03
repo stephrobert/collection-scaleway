@@ -6,6 +6,8 @@ Deux traductions vivent ici, et une seule fois : le **nom** d'un module et le
 
 from __future__ import annotations
 
+import re
+
 from generator.ir.enums import ApiType, OperationKind
 from generator.ir.models import ApiParameter
 
@@ -33,6 +35,16 @@ _ANSIBLE_TYPES: dict[ApiType, str] = {
 #: Fragments de nom qui rendent un paramètre sensible. La liste est
 #: volontairement large : un faux positif se corrige par un override, un faux
 #: négatif écrit un secret dans le journal d'Ansible.
+#: L'heuristique d'`ansible-test validate-modules`, recopiée pour pouvoir lui
+#: répondre plutôt que la subir. Elle vit dans `validate_modules/main.py` sous
+#: le nom `PASSWORD_MATCH`.
+_ANSIBLE_PASSWORD_MATCH = re.compile(
+    r"^(?:.+[-_\s])?(?:api[-_\s]?)?"
+    r"(?:key|pass(?:[-_\s]?(?:word|phrase|wrd|wd)?)|secret|token)"
+    r"(?:[-_\s].+)?$",
+    re.IGNORECASE,
+)
+
 _SENSITIVE_FRAGMENTS: tuple[str, ...] = (
     "secret",
     "token",
@@ -90,6 +102,35 @@ def is_sensitive(parameter: ApiParameter) -> bool:
     return any(fragment in name for fragment in _SENSITIVE_FRAGMENTS)
 
 
+def ansible_soupconne(name: str) -> bool:
+    """Vrai quand `validate-modules` va soupçonner ce nom d'être un secret.
+
+    Sa règle est plus large que la nôtre : elle attrape `key` tout court, là où
+    `_SENSITIVE_FRAGMENTS` s'en garde parce que `ssh_key_id` et `key_name` n'en
+    sont pas. Mesuré : `instance_server_user_data_info` porte un paramètre `key`
+    qui est le **nom** d'une entrée de user-data, et `ansible-test sanity`
+    refusait le module.
+
+    Ne rien dire n'est pas une réponse. `no_log=False` est la façon documentée
+    de dire « regardé, ce n'en est pas un », et elle vaut mieux qu'un module
+    qu'Ansible refuse ou qu'une exception dans une liste d'ignorés.
+    """
+    return bool(_ANSIBLE_PASSWORD_MATCH.match(name))
+
+
+def no_log_de(parameter: ApiParameter) -> bool | None:
+    """Ce que l'`argument_spec` doit déclarer : `True`, `False`, ou rien.
+
+    Trois issues et non deux, parce que « pas de secret » et « personne n'a
+    regardé » ne se disent pas pareil à `validate-modules`.
+    """
+    if is_sensitive(parameter):
+        return True
+    if ansible_soupconne(parameter.name.lower()):
+        return False
+    return None
+
+
 def argument_spec_entry(parameter: ApiParameter) -> dict[str, object]:
     """Traduit un paramètre de l'IR en entrée d'`argument_spec`.
 
@@ -119,6 +160,7 @@ def argument_spec_entry(parameter: ApiParameter) -> dict[str, object]:
     # liste qui se présente comme complète.
     if parameter.default is not None and parameter.type is not ApiType.ENUM:
         entry["default"] = parameter.default
-    if is_sensitive(parameter):
-        entry["no_log"] = True
+    no_log = no_log_de(parameter)
+    if no_log is not None:
+        entry["no_log"] = no_log
     return entry

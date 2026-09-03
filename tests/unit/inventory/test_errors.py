@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from ansible_collections.local.scaleway.plugins.module_utils.inventory.errors import (
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.errors import (
     AuthenticationFailed,
     DiscoveryFailed,
     InventoryError,

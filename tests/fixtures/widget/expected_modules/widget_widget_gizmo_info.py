@@ -89,6 +89,8 @@ MODULE = InfoModule(
         query_params=(),
         payload_field="widgets",
         is_list=True,
+        page_param="page",
+        per_page_param="page_size",
     ),
 )
 
