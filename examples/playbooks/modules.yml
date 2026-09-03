@@ -154,30 +154,41 @@
     # et le dire est tout l'intérêt de faire tourner ce playbook des deux
     # côtés. Contre le cloud réel il n'y en a aucun, et une route manquante y
     # est un vrai échec : c'est `cible` qui tranche, pas un `ignore_errors`.
+    #
+    # **La condition dit ce qu'elle tolère, et rien de plus.** `failed_when:
+    # false` remettait `failed` à faux quoi qu'il arrive, y compris sur un vrai
+    # défaut ; l'assertion écrite ensuite sur `failed` ne pouvait donc rien
+    # voir. C'était une garde vide, et le run réel l'a montrée en laissant
+    # passer un module qui échouait pour ne rougir que trois tâches plus loin,
+    # sur une variable indéfinie.
 
     - name: Les types de machines offerts dans la zone
       stephrobert.scaleway.instance_server_type_info:
         zone: "{{ zone }}"
       register: types
-      failed_when: false
+      failed_when: types.failed | default(false)
+        and types.api_type | default('') != 'not_emulated'
 
     - name: Leur disponibilité
       stephrobert.scaleway.instance_server_type_availability_info:
         zone: "{{ zone }}"
       register: dispo
-      failed_when: false
+      failed_when: dispo.failed | default(false)
+        and dispo.api_type | default('') != 'not_emulated'
 
     - name: Les types de volumes
       stephrobert.scaleway.instance_volume_type_info:
         zone: "{{ zone }}"
       register: types_volumes
-      failed_when: false
+      failed_when: types_volumes.failed | default(false)
+        and types_volumes.api_type | default('') != 'not_emulated'
 
     - name: Le tableau de bord du projet
       stephrobert.scaleway.instance_dashboard_info:
         zone: "{{ zone }}"
       register: tableau
-      failed_when: false
+      failed_when: tableau.failed | default(false)
+        and tableau.api_type | default('') != 'not_emulated'
 
     # ---- Ce qu'on sait d'une machine précise ----------------------------
 
@@ -186,21 +197,24 @@
         zone: "{{ zone }}"
         server_id: "{{ bastion_id }}"
       register: compatibles
-      failed_when: false
+      failed_when: compatibles.failed | default(false)
+        and compatibles.api_type | default('') != 'not_emulated'
 
     - name: Les cartes réseau privées d'un worker
       stephrobert.scaleway.instance_server_private_nic_info:
         zone: "{{ zone }}"
         server_id: "{{ worker_id }}"
       register: cartes
-      failed_when: false
+      failed_when: cartes.failed | default(false)
+        and cartes.api_type | default('') != 'not_emulated'
 
     - name: Le user-data du bastion
       stephrobert.scaleway.instance_server_user_data_info:
         zone: "{{ zone }}"
         server_id: "{{ bastion_id }}"
       register: userdata
-      failed_when: false
+      failed_when: userdata.failed | default(false)
+        and userdata.api_type | default('') != 'not_emulated'
 
     # ---- Le différentiel, en un seul endroit ----------------------------
 
@@ -211,17 +225,6 @@
           | selectattr('api_type', 'defined')
           | selectattr('api_type', 'equalto', 'not_emulated')
           | map(attribute='operation') | list }}"
-
-    - name: Aucun appel n'a échoué autrement que sur une route non émulée
-      ansible.builtin.assert:
-        that:
-          - "[types, dispo, types_volumes, tableau, compatibles, cartes, userdata]
-            | selectattr('failed', 'defined') | selectattr('failed')
-            | rejectattr('api_type', 'defined') | list | length == 0"
-        fail_msg: >-
-          Un module a échoué pour une raison qui n'est pas une route non
-          émulée. C'est un défaut de la collection, pas une limite de feint.
-        quiet: true
 
     - name: Contre le cloud réel, toutes les routes doivent répondre
       ansible.builtin.assert:
@@ -294,38 +297,62 @@
     # déploie déjà un load balancer, donc ses modules sont exercés contre le
     # cloud réel dès le premier jour, sans écrire une seule ressource de plus.
     #
-    # Même motif que les catalogues ci-dessus : un 501 `not_emulated` est
-    # nommé, jamais tu, et il n'échoue que sur la cible réelle.
+    # **`failed_when: false` ne se lit pas « tolère une route non émulée ».**
+    # Il remet `failed` à faux quoi qu'il arrive, y compris sur un vrai défaut,
+    # et une assertion écrite ensuite sur `failed` ne peut plus rien voir. C'est
+    # une garde vide, et celle qui était écrite ici l'était : le run réel a
+    # laissé passer un module qui échouait, et n'a rougi que trois tâches plus
+    # loin sur une variable indéfinie.
+    #
+    # La condition dit donc exactement ce qu'elle tolère : un échec dont
+    # `api_type` vaut `not_emulated`, et rien d'autre.
 
     - name: Les load balancers de la zone
       stephrobert.scaleway.lb_load_balancer_info:
         zone: "{{ zone }}"
       register: balanceurs
-      failed_when: false
+      failed_when: balanceurs.failed | default(false)
+        and balanceurs.api_type | default('') != 'not_emulated'
 
-    - name: Ses backends
+    # **`lb_id` n'est pas optionnel ici, il est simplement absent du GET.**
+    # `ListBackends` lit `/lbs/{lb_id}/backends` : la liste est *par* load
+    # balancer. Le modèle ne peut pas marquer le paramètre obligatoire, puisque
+    # `GetBackend` l'ignore, et c'est la même mécanique qui rend `server_id`
+    # optionnel sur `instance_server_info`. L'identifiant vient donc du module
+    # appelé juste au-dessus, comme partout ailleurs dans ce playbook.
+    - name: Les backends de ce load balancer
       stephrobert.scaleway.lb_backend_info:
         zone: "{{ zone }}"
+        lb_id: "{{ (balanceurs.lbs | default([])
+          | selectattr('name', 'search', prefixe) | first).id }}"
       register: backends
-      failed_when: false
+      when: balanceurs.lbs | default([]) | selectattr('name', 'search', prefixe) | list | length == 1
+      failed_when: backends.failed | default(false)
+        and backends.api_type | default('') != 'not_emulated'
 
-    - name: Ses frontends
+    - name: Les frontends de ce load balancer
       stephrobert.scaleway.lb_frontend_info:
         zone: "{{ zone }}"
+        lb_id: "{{ (balanceurs.lbs | default([])
+          | selectattr('name', 'search', prefixe) | first).id }}"
       register: frontends
-      failed_when: false
+      when: balanceurs.lbs | default([]) | selectattr('name', 'search', prefixe) | list | length == 1
+      failed_when: frontends.failed | default(false)
+        and frontends.api_type | default('') != 'not_emulated'
 
     - name: Les types de load balancers offerts
       stephrobert.scaleway.lb_load_balancer_type_info:
         zone: "{{ zone }}"
       register: types_lb
-      failed_when: false
+      failed_when: types_lb.failed | default(false)
+        and types_lb.api_type | default('') != 'not_emulated'
 
     - name: Les adresses réservées au load balancing
       stephrobert.scaleway.lb_ip_info:
         zone: "{{ zone }}"
       register: adresses_lb
-      failed_when: false
+      failed_when: adresses_lb.failed | default(false)
+        and adresses_lb.api_type | default('') != 'not_emulated'
 
     - name: Ce que l'émulateur ne sert pas du Load Balancer
       ansible.builtin.set_fact:
@@ -333,17 +360,6 @@
           | selectattr('api_type', 'defined')
           | selectattr('api_type', 'equalto', 'not_emulated')
           | map(attribute='operation') | list }}"
-
-    - name: Aucun module du Load Balancer n'a échoué autrement
-      ansible.builtin.assert:
-        that:
-          - "[balanceurs, backends, frontends, types_lb, adresses_lb]
-            | selectattr('failed', 'defined') | selectattr('failed')
-            | rejectattr('api_type', 'defined') | list | length == 0"
-        fail_msg: >-
-          Un module du Load Balancer a échoué pour une raison qui n'est pas une
-          route non émulée. C'est un défaut de la collection.
-        quiet: true
 
     - name: Contre le cloud réel, le load balancer de la stack est décrit
       ansible.builtin.assert:
