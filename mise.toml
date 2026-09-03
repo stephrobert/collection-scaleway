@@ -282,9 +282,29 @@ run = "python scripts/example.py reel"
 description = "Vérifier qu'aucune ressource de l'exemple ne survit sur le compte réel"
 run = "python scripts/residue.py verify"
 
+[tasks."readme"]
+description = "Réécrire les compteurs du README depuis ce qui est mesuré"
+# Un nombre recopié à la main vieillit en silence, et se lit exactement comme
+# une mesure. Le README en annonçait 366 quand pytest en collectait 420.
+run = "python scripts/readme_counters.py --write"
+
+[tasks."readme:check"]
+description = "Échouer si les compteurs du README ont vieilli"
+depends = ["report", "generate"]
+run = "python scripts/readme_counters.py --check"
+
 [tasks.check]
 description = "Ce qu'une pull request doit passer"
-depends = ["lint", "typecheck", "test", "report", "check:generated", "lint:changelog", "falsify"]
+depends = [
+  "lint",
+  "typecheck",
+  "test",
+  "report",
+  "check:generated",
+  "lint:changelog",
+  "falsify",
+  "readme:check",
+]
 
 [tasks.clean]
 description = "Supprimer les artefacts d'exécution"

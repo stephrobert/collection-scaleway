@@ -131,8 +131,15 @@ Mesuré sur Instance v1 : **42 candidates Day-2, 41 AUTO, 1 MANUAL, couverture
 97,6 %**, sur 74 opérations découvertes dont 19 LIFECYCLE et 13 IGNORE.
 
 Ce chiffre ne dit pas « le produit est couvert à 97,6 % ». Il dit que 41 des 42
-opérations *retenues comme Day-2* sont générables sans code manuel. Toute
-phrase publiée sur la couverture nomme son dénominateur.
+opérations *retenues comme Day-2* sont **classées pour la génération
+automatique**. Toute phrase publiée sur la couverture nomme son dénominateur.
+
+Et il ne dit pas non plus qu'un module les porte. « Générables » le laissait
+entendre, et c'était le défaut : la classification autorise la génération, elle
+ne la produit pas. Le compte rendu de génération publie donc **deux** ratios
+côte à côte, celui-ci et celui des opérations qu'un module écrit appelle
+vraiment, chacun avec son nom et sa fraction. L'écart entre les deux se lit
+module par module dans la liste des écarts, où chacun porte sa raison.
 
 ### 8. Ce que le générateur ne comprend pas reste visible
 

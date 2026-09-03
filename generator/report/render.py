@@ -220,11 +220,33 @@ def to_generation_markdown(
     tel module n'existe pas, et le générateur est le seul à pouvoir le dire.
     """
     service = plan.service
+    day2 = len(plan.day2)
+    classee = plan.coverage()
+    construite = plan.built_coverage(written)
     lines: list[str] = [
         f"# Génération : {service.name} {service.version}",
         "",
         f"Contrat : `{service.source}`  ",
         f"Modules écrits : **{len(written)}**, écartés : **{len(skipped)}**",
+        "",
+        "## Deux couvertures, et elles ne disent pas la même chose",
+        "",
+        "Un seul chiffre ne suffit pas ici, et publier le plus flatteur en",
+        "laissant croire qu'il désigne l'autre serait exactement le genre de",
+        "maquillage que ce rapport existe pour empêcher.",
+        "",
+        "| ce qu'on mesure | ratio | ce que ça veut dire |",
+        "|---|---|---|",
+        f"| opérations Day-2 **classées** pour génération automatique | {_ratio(classee, day2)} | "
+        "aucune règle ne demande de les écrire à la main |",
+        f"| opérations Day-2 **portées par un module que cette génération a écrit** "
+        f"| {_ratio(construite, day2)} | un module existe et les appelle |",
+        "",
+        "Le second dépend du périmètre demandé autant que du générateur : un",
+        "module hors périmètre et un module que le modèle refuse de construire",
+        "comptent pareil ici, et se distinguent dans la section suivante, où",
+        "chaque écart porte sa raison. C'est là que l'écart entre les deux",
+        "ratios se lit en entier, module par module.",
         "",
         "## Ce qui est écrit",
         "",
@@ -262,8 +284,21 @@ def to_generation_markdown(
     return "\n".join(lines) + "\n"
 
 
+def _ratio(value: float | None, denominator: int) -> str:
+    """Un pourcentage **et** sa fraction, parce que le dénominateur fait le sens.
+
+    « 97,6 % » ne dit pas sur quoi porte le calcul, et c'est précisément la
+    lecture qu'on veut empêcher. `41/42` la porte avec lui.
+    """
+    if value is None or not denominator:
+        return "n/a (aucune opération Day-2)"
+    return f"{value * 100:.1f} % ({round(value * denominator)}/{denominator})".replace(".", ",", 1)
+
+
 def _percent(value: float | None) -> str:
     """Formate un ratio, sans jamais présenter un indéfini comme un zéro."""
     if value is None:
         return "n/a (aucune opération Day-2)"
-    return f"{value * 100:.1f} %"
+    # La virgule décimale : le rapport est écrit en français, et « 97.6 % »
+    # au milieu d'une phrase française est une coquille, pas un format.
+    return f"{value * 100:.1f} %".replace(".", ",", 1)

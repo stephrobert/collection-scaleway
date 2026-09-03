@@ -7,6 +7,7 @@ ce qu'il a décidé.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -69,7 +70,14 @@ class ProductPlan:
         return counts
 
     def coverage(self) -> float | None:
-        """Part des opérations Day-2 que le générateur produit sans code manuel.
+        """Part des opérations Day-2 **classées** pour la génération automatique.
+
+        Ce n'est pas la part des opérations qu'un module porte aujourd'hui, et
+        la nuance a été publiée à l'envers pendant un temps : le mot
+        « générables » laissait entendre qu'un module existait, alors que ce
+        ratio ne regarde que la classification. Pour ce qu'un module porte
+        réellement, voir `built_coverage`, qui rend 25/42 là où celui-ci rend
+        41/42.
 
         `None` quand il n'y a aucune opération Day-2 : un ratio sans
         dénominateur n'est pas zéro, il est indéfini, et le rapport doit le
@@ -82,6 +90,39 @@ class ProductPlan:
             1 for plan in day2 if plan.mode in (GenerationMode.AUTO, GenerationMode.OVERRIDE)
         )
         return automated / len(day2)
+
+    def built_coverage(self, written: Sequence[str]) -> float | None:
+        """Part des opérations Day-2 qu'un module réellement écrit porte.
+
+        `coverage` dit ce que la classification autorise ; celui-ci dit ce que
+        la génération produit. L'écart n'est pas du bruit : sur Instance, 41
+        opérations sont classées pour la génération automatique et 25 sont
+        portées par un module. Les 16 autres appartiennent à des modules que le
+        renderer ne sait pas encore produire, ou que le modèle refuse de
+        construire, et chacun de ces écarts est déjà publié avec sa raison dans
+        le compte rendu de génération.
+
+        `written` vient de l'appelant plutôt que d'un appel à `build_module_specs`.
+        Le plan sait **nommer** un module, il ne sait pas le construire : c'est
+        le modèle Ansible qui décide qu'un module est irréalisable, et lui seul.
+        Recevoir la liste garde cette frontière et permet de mesurer la
+        couverture d'une génération partielle, celle que `--only` produit.
+
+        `None` sur une population Day-2 vide, pour la même raison que
+        `coverage` : un ratio sans dénominateur est indéfini.
+        """
+        day2 = self.day2
+        if not day2:
+            return None
+        day2_ids = {plan.operation.id for plan in day2}
+        modules = self.modules()
+        portees = {
+            item.operation.id
+            for name in written
+            for item in modules.get(name, ())
+            if item.operation.id in day2_ids
+        }
+        return len(portees) / len(day2)
 
     @property
     def unknown(self) -> tuple[OperationPlan, ...]:

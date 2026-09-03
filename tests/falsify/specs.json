@@ -590,6 +590,22 @@
       "find": "    if _est_un_sigle_invariable(lowered):",
       "replace": "    if _est_un_sigle_invariable(lowered) and False:",
       "test": "tests/unit/generator/test_mapping.py::test_un_sigle_qui_finit_par_s_nest_pas_un_pluriel"
+    },
+    {
+      "name": "couverture-construite-sans-denominateur",
+      "why": "Un ratio sans dénominateur est indéfini, pas nul. Rendre 0,0 % sur une population Day-2 vide serait une affirmation fausse, et elle se lirait comme une mesure.",
+      "file": "generator/plan.py",
+      "find": "        day2 = self.day2\n        if not day2:\n            return None\n        day2_ids = {plan.operation.id for plan in day2}",
+      "replace": "        day2 = self.day2\n        if not day2 and False:\n            return None\n        day2_ids = {plan.operation.id for plan in day2}",
+      "test": "tests/unit/generator/test_plan.py::test_une_couverture_construite_sans_operation_day2_est_indefinie"
+    },
+    {
+      "name": "couverture-construite-comptee-sur-tout-le-plan",
+      "why": "Compter toutes les opérations du plan au lieu des seuls modules écrits ramène le second ratio sur le premier, et le rapport publierait deux fois le même chiffre sous deux noms.",
+      "file": "generator/plan.py",
+      "find": "            for name in written\n            for item in modules.get(name, ())",
+      "replace": "            for name in modules\n            for item in modules.get(name, ())",
+      "test": "tests/unit/generator/test_plan.py::test_la_couverture_construite_ne_compte_que_les_modules_nommes"
     }
   ]
 }
