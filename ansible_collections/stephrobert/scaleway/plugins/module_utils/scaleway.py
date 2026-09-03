@@ -219,6 +219,32 @@ class InfoModule:
 
 
 @dataclass(frozen=True)
+class ManageModule:
+    """Ce qu'un module de gestion lit, compare, et écrit.
+
+    **Il n'écrit que la différence, et c'est toute sa raison d'être.** Un module
+    qui enverrait tous ses paramètres à chaque exécution rendrait `changed` à
+    chaque fois, et écraserait des champs que personne n'a demandé de changer.
+
+    Ne participent à la comparaison que les paramètres **fournis** par le
+    playbook. Un paramètre absent n'est pas géré : c'est la convention d'Ansible
+    et c'est ce qui permet à deux playbooks de gérer deux facettes d'une même
+    ressource sans se marcher dessus.
+    """
+
+    read_operation: Operation
+    update_operation: Operation
+    #: Champs du corps de l'écriture, dans l'ordre du contrat. Ce sont les seuls
+    #: que le module gère : le reste de la ressource ne le concerne pas.
+    managed_params: tuple[str, ...] = ()
+    #: Ceux de ces champs qui portent un secret. **Ils ne se comparent pas** :
+    #: l'API ne les rend jamais, donc les comparer reviendrait à comparer une
+    #: valeur à `None` et à conclure « différent » à chaque exécution, ce qui
+    #: ressemble à une mesure et n'en est pas une.
+    secret_params: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class ActionModule:
     """Ce qu'un module d'action déclenche, et ce qu'il attend ensuite.
 
@@ -781,6 +807,113 @@ def run_info_module(module: AnsibleModule, spec: InfoModule) -> None:
 
     field_name = operation.payload_field or "result"
     module.exit_json(changed=False, **{field_name: result})
+
+
+def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
+    """Amène une ressource existante à l'état que le playbook décrit.
+
+    Quatre propriétés, et chacune répond à une façon connue de se tromper.
+
+    **Lire d'abord.** Sans lecture, un module ne peut pas savoir s'il change
+    quelque chose, et `changed` devient un mensonge poli. La ressource est donc
+    lue avant toute écriture, par la lecture unitaire que le générateur a
+    trouvée.
+
+    **N'écrire que la différence.** Envoyer tout le corps à chaque exécution
+    écraserait les champs qu'un autre playbook gère, et rendrait `changed` à
+    chaque fois. Seuls les paramètres **fournis** et **différents** partent.
+
+    **En check mode, ne rien écrire et dire quoi.** Un check mode qui annonce
+    un changement sans dire lequel n'aide personne à décider.
+
+    **Rendre l'état observé, pas celui qu'on a envoyé.** La ressource est relue
+    après l'écriture : l'API normalise, complète, et parfois refuse en silence.
+    Ce que le module rend est ce que l'API dit, pas ce qu'on lui a demandé.
+
+    Une limite, dite plutôt que masquée : la comparaison est stricte. Un champ
+    que l'API réordonne ou normalise fera rendre `changed` à chaque exécution.
+    Le cas ne se corrige pas en triant au hasard, il se corrige par un override
+    quand il se présente, et il se voit tout de suite.
+    """
+    api = ScalewayApi(module)
+
+    try:
+        courant = api.fetch_one(spec.read_operation)
+    except ScalewayApiError as error:
+        module.fail_json(msg=error.message, **error.details())
+        return
+
+    if not isinstance(courant, dict):
+        module.fail_json(
+            msg=(
+                f"{spec.read_operation.id} n'a pas rendu un objet, "
+                "donc rien ne peut être comparé"
+            )
+        )
+        return
+
+    demande = {
+        nom: module.params[nom]
+        for nom in spec.managed_params
+        if module.params.get(nom) is not None
+    }
+
+    # **Un secret ne se compare pas, et il ne s'affiche pas non plus.** L'API ne
+    # le rend jamais, donc `courant` ne le porte pas et la comparaison conclut
+    # « différent » à chaque exécution : le champ part, et `changed` dit qu'on a
+    # écrit plutôt qu'on a constaté une différence. C'est la seule chose vraie
+    # qu'on puisse dire, et le rapport la publie dans les limites du module.
+    #
+    # Une condition explicite « si c'est un secret, écrire » a été écrite ici
+    # puis retirée : elle ne changeait le résultat dans aucun cas atteignable,
+    # et une garde qu'aucune mutation ne fait mordre est un commentaire. Ce qui
+    # reste, et qui compte, est que la valeur ne fuit pas dans le `diff`.
+    ecarts = {nom: valeur for nom, valeur in demande.items() if courant.get(nom) != valeur}
+
+    champ = spec.read_operation.payload_field or "resource"
+    masque = "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
+    avant = {
+        nom: (masque if nom in spec.secret_params else courant.get(nom)) for nom in ecarts
+    }
+    apres_demande = {
+        nom: (masque if nom in spec.secret_params else valeur)
+        for nom, valeur in ecarts.items()
+    }
+
+    if not ecarts:
+        module.exit_json(changed=False, **{champ: courant})
+        return
+
+    if module.check_mode:
+        module.exit_json(
+            changed=True,
+            diff={"before": avant, "after": apres_demande},
+            **{champ: courant},
+        )
+        return
+
+    try:
+        api.request(
+            spec.update_operation,
+            params=build_query(spec.update_operation, module.params),
+            body=ecarts,
+        )
+        apres = api.fetch_one(spec.read_operation)
+    except ScalewayApiError as error:
+        module.fail_json(msg=error.message, **error.details())
+        return
+
+    module.exit_json(
+        changed=True,
+        diff={
+            "before": avant,
+            "after": {
+                nom: (masque if nom in spec.secret_params else apres.get(nom))
+                for nom in ecarts
+            },
+        },
+        **{champ: apres},
+    )
 
 
 def run_action_module(module: AnsibleModule, spec: ActionModule) -> None:

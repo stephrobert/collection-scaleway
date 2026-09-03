@@ -695,3 +695,180 @@ def test_une_valeur_de_liste_devient_des_paires_repetees(runtime: Any, monkeypat
     )
 
     assert vus["params"] == [("tags", "a"), ("tags", "b"), ("zone", "fr-par-1")]
+
+
+# --- un module de gestion n'écrit que la différence -------------------------
+
+
+class _ApiGestionFactice:
+    """Une API qui note ce qu'on lui écrit, et rend ce qu'on lui a dit de rendre."""
+
+    def __init__(self, lectures: list[dict[str, Any]]) -> None:
+        self._lectures = lectures
+        self.ecritures: list[dict[str, Any]] = []
+
+    def fetch_one(self, _operation: Any) -> dict[str, Any]:
+        return self._lectures[min(len(self.ecritures), len(self._lectures) - 1)]
+
+    def request(self, _operation: Any, *, params: Any = None, body: Any = None) -> dict[str, Any]:
+        self.ecritures.append(dict(body or {}))
+        return {}
+
+
+def _spec_gestion(runtime: Any) -> Any:
+    return runtime.ManageModule(
+        read_operation=runtime.Operation(
+            id="GetChose", method="GET", path="/x/{chose_id}", payload_field="chose"
+        ),
+        update_operation=runtime.Operation(
+            id="UpdateChose",
+            method="PATCH",
+            path="/x/{chose_id}",
+            body_params=("name", "tags"),
+            payload_field="chose",
+        ),
+        managed_params=("name", "tags"),
+    )
+
+
+def test_une_ressource_deja_conforme_ne_declenche_aucune_ecriture(
+    runtime: Any, monkeypatch: Any
+) -> None:
+    """C'est l'idempotence, et c'est la seule raison d'être de la lecture préalable.
+
+    Un module qui enverrait tous ses paramètres à chaque exécution rendrait
+    `changed` à chaque fois, et écraserait des champs que personne n'a demandé
+    de changer.
+    """
+    api = _ApiGestionFactice([{"id": "c1", "name": "web", "tags": ["a"]}])
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
+    module = _ModuleFactice(chose_id="c1", name="web", tags=["a"])
+
+    with pytest.raises(SystemExit):
+        runtime.run_manage_module(module, _spec_gestion(runtime))
+
+    assert api.ecritures == [], "rien ne devait être écrit"
+    assert module.resultat is not None
+    assert module.resultat["changed"] is False
+    assert module.resultat["chose"]["name"] == "web"
+
+
+def test_seuls_les_champs_differents_sont_envoyes(runtime: Any, monkeypatch: Any) -> None:
+    """Envoyer tout le corps écraserait ce qu'un autre playbook gère."""
+    api = _ApiGestionFactice(
+        [
+            {"id": "c1", "name": "web", "tags": ["a"]},
+            {"id": "c1", "name": "api", "tags": ["a"]},
+        ]
+    )
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
+    module = _ModuleFactice(chose_id="c1", name="api", tags=["a"])
+
+    with pytest.raises(SystemExit):
+        runtime.run_manage_module(module, _spec_gestion(runtime))
+
+    assert api.ecritures == [{"name": "api"}], "seul `name` diffère"
+    assert module.resultat is not None
+    assert module.resultat["changed"] is True
+    assert module.resultat["diff"] == {"before": {"name": "web"}, "after": {"name": "api"}}
+
+
+def test_un_parametre_non_fourni_nest_pas_gere(runtime: Any, monkeypatch: Any) -> None:
+    """La convention d'Ansible, et ce qui permet à deux playbooks de coexister.
+
+    Un paramètre absent n'est pas « à vider » : il n'est pas géré. Sans cette
+    règle, un playbook qui règle les tags effacerait le nom.
+    """
+    api = _ApiGestionFactice([{"id": "c1", "name": "web", "tags": ["a"]}])
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
+    module = _ModuleFactice(chose_id="c1", name=None, tags=["a"])
+
+    with pytest.raises(SystemExit):
+        runtime.run_manage_module(module, _spec_gestion(runtime))
+
+    assert api.ecritures == []
+    assert module.resultat is not None
+    assert module.resultat["changed"] is False
+
+
+def test_en_check_mode_une_gestion_ne_declenche_rien_et_dit_quoi(
+    runtime: Any, monkeypatch: Any
+) -> None:
+    """Un check mode qui annonce un changement sans dire lequel n'aide personne."""
+    api = _ApiGestionFactice([{"id": "c1", "name": "web", "tags": ["a"]}])
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
+    module = _ModuleFactice(chose_id="c1", name="api", tags=["a"], _check_mode=True)
+
+    with pytest.raises(SystemExit):
+        runtime.run_manage_module(module, _spec_gestion(runtime))
+
+    assert api.ecritures == [], "le check mode ne doit rien écrire"
+    assert module.resultat is not None
+    assert module.resultat["changed"] is True
+    assert module.resultat["diff"]["after"] == {"name": "api"}
+
+
+def test_un_secret_est_ecrit_sans_avoir_ete_compare(runtime: Any, monkeypatch: Any) -> None:
+    """L'API ne rend jamais un secret : le comparer serait comparer à `None`.
+
+    Le module l'écrit dès qu'il est fourni, et `changed` dit alors qu'on a
+    écrit, pas qu'on a constaté une différence. C'est la seule chose vraie
+    qu'on puisse dire, et la valeur ne fuit pas dans le `diff`.
+    """
+    api = _ApiGestionFactice(
+        [
+            {"id": "c1", "name": "web", "tags": ["a"]},
+            {"id": "c1", "name": "web", "tags": ["a"]},
+        ]
+    )
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
+    spec = runtime.ManageModule(
+        read_operation=runtime.Operation(
+            id="GetChose", method="GET", path="/x/{chose_id}", payload_field="chose"
+        ),
+        update_operation=runtime.Operation(
+            id="UpdateChose", method="PATCH", path="/x/{chose_id}", body_params=("jeton",)
+        ),
+        managed_params=("jeton",),
+        secret_params=("jeton",),
+    )
+    module = _ModuleFactice(chose_id="c1", jeton="s3cr3t")
+
+    with pytest.raises(SystemExit):
+        runtime.run_manage_module(module, spec)
+
+    assert api.ecritures == [{"jeton": "s3cr3t"}]
+    assert module.resultat is not None
+    assert module.resultat["changed"] is True
+    assert "s3cr3t" not in str(module.resultat["diff"]), "le secret ne doit pas fuir"
+
+
+def test_un_secret_ne_fuit_pas_dans_le_diff_du_check_mode(runtime: Any, monkeypatch: Any) -> None:
+    """C'est là, et là seulement, que la valeur peut fuir.
+
+    Hors check mode, le `diff` montre ce que l'API **rend**, et elle ne rend
+    jamais un secret : rien ne fuit même sans masquage. En check mode il montre
+    ce que le playbook **demande**, donc la valeur en clair. Mon premier test
+    croyait mesurer la fuite et ne mesurait rien, ce que la mutation a dit.
+    """
+    api = _ApiGestionFactice([{"id": "c1"}])
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
+    spec = runtime.ManageModule(
+        read_operation=runtime.Operation(
+            id="GetChose", method="GET", path="/x/{chose_id}", payload_field="chose"
+        ),
+        update_operation=runtime.Operation(
+            id="UpdateChose", method="PATCH", path="/x/{chose_id}", body_params=("jeton",)
+        ),
+        managed_params=("jeton",),
+        secret_params=("jeton",),
+    )
+    module = _ModuleFactice(chose_id="c1", jeton="s3cr3t", _check_mode=True)
+
+    with pytest.raises(SystemExit):
+        runtime.run_manage_module(module, spec)
+
+    assert api.ecritures == []
+    assert module.resultat is not None
+    assert module.resultat["changed"] is True
+    assert "s3cr3t" not in str(module.resultat["diff"]), "le secret ne doit pas fuir"

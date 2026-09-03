@@ -59,8 +59,8 @@
       "name": "couverture-sans-denominateur",
       "why": "Un ratio sans population est indéfini, et l'afficher comme 0 % est une affirmation fausse.",
       "file": "generator/plan.py",
-      "find": "        if not day2:\n            return None",
-      "replace": "        if not day2:\n            return 0.0",
+      "find": "        day2 = self.day2\n        if not day2:\n            return None\n        automated = sum(",
+      "replace": "        day2 = self.day2\n        if not day2 and False:\n            return None\n        automated = sum(",
       "test": "tests/unit/generator/test_plan.py::test_une_couverture_sans_operation_day2_est_indefinie"
     },
     {
@@ -243,8 +243,8 @@
       "name": "check-mode-qui-agit",
       "why": "Un module qui declenche en check mode rend le mode inutile, et personne ne s'en apercoit avant le jour ou ca compte.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "    if module.check_mode:\n        module.exit_json(",
-      "replace": "    if module.check_mode and False:\n        module.exit_json(",
+      "find": "    if module.check_mode:\n        module.exit_json(\n            changed=True,\n            action=action,",
+      "replace": "    if module.check_mode and False:\n        module.exit_json(\n            changed=True,\n            action=action,",
       "test": "tests/unit/collection/test_runtime.py::test_en_check_mode_rien_nest_declenche"
     },
     {
@@ -638,6 +638,38 @@
       "find": "        if reponse is None or not (reponse.payload_field or reponse.schema):",
       "replace": "        if reponse is None or not reponse.payload_field:",
       "test": "tests/unit/generator/test_models.py::test_une_lecture_qui_repond_par_le_corps_reste_une_lecture"
+    },
+    {
+      "name": "gestion-ecrit-tout-le-corps",
+      "why": "Un module de gestion qui envoie tous ses paramètres au lieu de la seule différence rend `changed` à chaque exécution et écrase les champs qu'un autre playbook gère.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    ecarts = {nom: valeur for nom, valeur in demande.items() if courant.get(nom) != valeur}",
+      "replace": "    ecarts = dict(demande)",
+      "test": "tests/unit/collection/test_runtime.py::test_une_ressource_deja_conforme_ne_declenche_aucune_ecriture"
+    },
+    {
+      "name": "gestion-ecrit-en-check-mode",
+      "why": "Un module qui agit en check mode rend le mode inutile, et personne ne s'en aperçoit avant le jour où ça compte.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    if module.check_mode:\n        module.exit_json(\n            changed=True,\n            diff={\"before\": avant, \"after\": apres_demande},",
+      "replace": "    if module.check_mode and False:\n        module.exit_json(\n            changed=True,\n            diff={\"before\": avant, \"after\": apres_demande},",
+      "test": "tests/unit/collection/test_runtime.py::test_en_check_mode_une_gestion_ne_declenche_rien_et_dit_quoi"
+    },
+    {
+      "name": "gestion-gere-un-parametre-absent",
+      "why": "Un paramètre absent n'est pas « à vider », il n'est pas géré. Sans cette règle, un playbook qui règle les tags effacerait le nom.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        if module.params.get(nom) is not None\n    }",
+      "replace": "        if nom in module.params\n    }",
+      "test": "tests/unit/collection/test_runtime.py::test_un_parametre_non_fourni_nest_pas_gere"
+    },
+    {
+      "name": "secret-affiche-dans-le-diff",
+      "why": "Le `diff` d'Ansible s'affiche avec `--diff` et part dans les journaux. Un secret qui y figure en clair est une fuite, et le module est le seul endroit qui sache lequel de ses champs en est un.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    apres_demande = {\n        nom: (masque if nom in spec.secret_params else valeur)",
+      "replace": "    apres_demande = {\n        nom: valeur",
+      "test": "tests/unit/collection/test_runtime.py::test_un_secret_ne_fuit_pas_dans_le_diff_du_check_mode"
     }
   ]
 }

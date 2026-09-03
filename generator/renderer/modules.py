@@ -45,9 +45,19 @@ class RenderError(ValueError):
 def render_module(spec: AnsibleModuleSpec, *, source: str) -> str:
     """Rend le fichier d'un module, prêt à être écrit sur disque."""
     template = _environment().get_template(MODULE_TEMPLATE)
+    # L'en-tête nomme **toutes** les opérations du module, quelle que soit sa
+    # classe. Un module de gestion en porte deux, la lecture et l'écriture, et
+    # les omettre laissait un en-tête vide dont `ansible-test` signalait
+    # l'espace en fin de ligne plutôt que le vrai défaut.
     operations = [
         operation.id
-        for operation in (spec.get_operation, spec.list_operation, spec.action_operation)
+        for operation in (
+            spec.get_operation,
+            spec.list_operation,
+            spec.action_operation,
+            spec.read_operation,
+            spec.update_operation,
+        )
         if operation is not None
     ]
 
@@ -91,12 +101,14 @@ def write_modules(
 _RUN_FUNCTIONS: dict[OperationKind, str] = {
     OperationKind.INFO: "run_info_module",
     OperationKind.ACTION: "run_action_module",
+    OperationKind.MANAGE: "run_manage_module",
 }
 
 #: La dataclasse de description que chaque classe déclare.
 _SPEC_CLASSES: dict[OperationKind, str] = {
     OperationKind.INFO: "InfoModule",
     OperationKind.ACTION: "ActionModule",
+    OperationKind.MANAGE: "ManageModule",
 }
 
 
@@ -133,6 +145,8 @@ def _module_literal(spec: AnsibleModuleSpec) -> str:
     """Rend la déclaration que le module généré porte, selon sa classe."""
     if spec.kind is OperationKind.ACTION:
         return _action_module_literal(spec)
+    if spec.kind is OperationKind.MANAGE:
+        return _manage_module_literal(spec)
     return _info_module_literal(spec)
 
 
@@ -150,6 +164,21 @@ def _action_module_literal(spec: AnsibleModuleSpec) -> str:
         lines.append(f"    state_field={quote(spec.state_field)},")
         etats = dict(spec.wait_states)
         lines.append(f"    wait_states={python_literal(etats, indent=4)},")
+    lines.append(")")
+    return "\n".join(lines)
+
+
+def _manage_module_literal(spec: AnsibleModuleSpec) -> str:
+    """Rend l'appel `ManageModule(...)`."""
+    if spec.update_operation is None or spec.read_operation is None:
+        raise RenderError(f"{spec.name} : module de gestion sans lecture ou sans écriture")
+
+    lines = ["ManageModule("]
+    lines.append(f"    read_operation={_operation_literal(spec.read_operation, indent=4)},")
+    lines.append(f"    update_operation={_operation_literal(spec.update_operation, indent=4)},")
+    lines.append(f"    managed_params={python_literal(spec.managed_params, indent=4)},")
+    if spec.secret_params:
+        lines.append(f"    secret_params={python_literal(spec.secret_params, indent=4)},")
     lines.append(")")
     return "\n".join(lines)
 

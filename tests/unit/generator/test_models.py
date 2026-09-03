@@ -231,11 +231,34 @@ def test_le_retour_distingue_la_lecture_de_la_liste(instance_plan: ProductPlan) 
 
 
 def test_une_classe_sans_renderer_est_ecartee_avec_sa_raison(instance_plan: ProductPlan) -> None:
+    """WORKFLOW reste sans renderer, et le modèle le dit plutôt que d'inventer.
+
+    Ce test nommait `instance_server` et la classe MANAGE, qui a désormais son
+    renderer. Le réécrire plutôt que le supprimer garde ce qu'il mesurait
+    vraiment : une classe que le modèle ne sait pas produire sort **avec sa
+    raison**, jamais en silence.
+    """
     specs, ecartes = build_module_specs(instance_plan, COLLECTION)
     raisons = dict(ecartes)
-    assert "instance_server" in raisons
-    assert "MANAGE" in raisons["instance_server"]
-    assert all(spec.kind in (OperationKind.INFO, OperationKind.ACTION) for spec in specs)
+    assert "instance_security_group_rules" in raisons
+    assert "WORKFLOW" in raisons["instance_security_group_rules"]
+    assert all(
+        spec.kind in (OperationKind.INFO, OperationKind.ACTION, OperationKind.MANAGE)
+        for spec in specs
+    )
+
+
+def test_la_classe_manage_est_desormais_rendable(instance_plan: ProductPlan) -> None:
+    """Vingt et un modules du plan attendaient ce renderer, sur deux produits.
+
+    `instance_server` en est un : `UpdateServer` est une écriture Day-2, et le
+    module lit la ressource avant de comparer.
+    """
+    spec = _spec(instance_plan, "instance_server")
+    assert spec.kind is OperationKind.MANAGE
+    assert spec.update_operation is not None
+    assert spec.read_operation is not None, "un module de gestion lit avant d'écrire"
+    assert spec.managed_params, "il faut au moins un champ à gérer"
 
 
 def test_un_module_hors_perimetre_est_ecarte_pas_oublie(instance_plan: ProductPlan) -> None:
@@ -252,9 +275,14 @@ def test_un_module_demande_mais_inconnu_leve(instance_plan: ProductPlan) -> None
 
 
 def test_une_classe_non_rendable_leve_quand_on_la_demande(instance_plan: ProductPlan) -> None:
-    """MANAGE attend l'étape 4 : le modèle le dit plutôt que de produire à moitié."""
+    """Ce qu'on demande nommément doit sortir, ou faire échouer la commande.
+
+    Ce test visait `instance_server` quand MANAGE n'avait pas de renderer. Il
+    vise désormais la seule classe qui n'en a toujours pas, WORKFLOW, parce que
+    ce qu'il mesure est le refus explicite et non la classe elle-même.
+    """
     with pytest.raises(UnsupportedKind):
-        _spec(instance_plan, "instance_server")
+        _spec(instance_plan, "instance_security_group_rules")
 
 
 def test_un_module_de_forme_inconnue_est_ecarte_avec_son_message(

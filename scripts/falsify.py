@@ -103,10 +103,24 @@ def falsify(mutation: Mutation, source: Path, parent: Path) -> Verdict:
     target = workdir / mutation.file
     original = target.read_text(encoding="utf-8")
 
-    if mutation.find not in original:
+    occurrences = original.count(mutation.find)
+    if occurrences == 0:
         # Le fragment n'est plus dans le fichier : rien n'a été mesuré. Ce
         # verdict est un échec, pas une absence de résultat.
         return Verdict(mutation, "la mutation ne s'applique pas", mutation.find[:60])
+
+    if occurrences > 1:
+        # **Un motif ambigu mute le premier endroit, pas celui qu'on visait.**
+        # Le cas est arrivé : `if module.check_mode:` existait dans le module
+        # d'action, puis un module de gestion a été écrit avant lui dans le même
+        # fichier. La mutation a muté le second, le test du premier est resté
+        # vert, et le harnais a rapporté « garde non prouvée » sur une garde qui
+        # l'était. Une mutation qui ne sait pas où elle frappe ne prouve rien.
+        return Verdict(
+            mutation,
+            f"motif ambigu, {occurrences} occurrences",
+            mutation.find[:60],
+        )
 
     target.write_text(original.replace(mutation.find, mutation.replace, 1), encoding="utf-8")
     result = run_pytest(workdir, mutation.test)
