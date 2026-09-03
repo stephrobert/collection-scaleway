@@ -107,6 +107,37 @@ Le contrat ne dit pas quel champ observer pour savoir qu'une action est
 terminée. Le SDK, lui, expose des waiters. La configuration d'attente vient
 donc des overrides.
 
+### `ListPrivateNICs` ne liste pas toutes les cartes, et le contrat le dit
+
+Mesuré le 3 septembre 2026, par la première exécution du workflow de dérive.
+Scaleway a ajouté deux descriptions au contrat Instance v1 :
+
+> Some private NICs, such as those in deleting, detaching, or in error state
+> are not listed. We strongly recommend migrating to v2alpha1 to retrieve all
+> private NICs.
+
+C'est une limite de l'API, pas du générateur, et elle ne se voit que là :
+aucun paramètre, aucun enum, aucune opération n'a bougé, et le rapport strict
+reste à 0.
+
+**Ce qu'elle ne touche pas aujourd'hui.** L'inventaire dynamique ne joint pas
+le réseau par `ListPrivateNICs`. Il liste une fois par région
+(`ipam.list_i_ps_all`, `vpc.list_private_networks_all`, `vpc.list_vp_cs_all`),
+indexe, puis joint en mémoire : IPAM porte la relation carte/réseau/VPC, et
+c'est cette source qui décide. Le module `instance_server_private_nic_info`,
+seul consommateur de `ListPrivateNICs` dans le plan, n'est pas généré à ce
+stade.
+
+**Ce qu'elle touchera.** Le jour où ce module sort, il rendra une liste
+incomplète sans le dire, ce qui est exactement le défaut que ce dépôt refuse
+ailleurs. Sa documentation devra porter l'avertissement, ou le module devra
+viser `v2alpha1`. La décision demande d'ajouter un contrat, donc elle n'est pas
+prise ici : elle est écrite pour que personne ne la découvre après coup.
+
+`CreatePrivateNIC` porte un avertissement voisin sur les quotas. Il est
+classé LIFECYCLE, périmètre Terraform, et ne concerne donc pas cette
+collection.
+
 ## Deux rôles qui ne se confondent jamais
 
 | rôle | qui le tient |
