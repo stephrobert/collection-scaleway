@@ -35,13 +35,16 @@ options:
     description:
       - URL of the Scaleway API endpoint.
       - Point it at a local emulator to exercise a playbook without credentials.
+      - >-
+        Falls back to the Scaleway configuration file, then to
+        C(https://api.scaleway.com). It carries no module default on purpose:
+        a default is never unset, so it would always override the profile.
     type: str
-    default: https://api.scaleway.com
   api_allow_insecure:
     description:
       - Allow the API endpoint to be reached without verifying its TLS certificate.
+      - Falls back to the Scaleway configuration file, then to C(false).
     type: bool
-    default: false
   api_timeout:
     description:
       - Seconds allowed for a single API call, connection and read.

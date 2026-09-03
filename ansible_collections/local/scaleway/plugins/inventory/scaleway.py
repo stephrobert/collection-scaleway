@@ -56,14 +56,16 @@ options:
     description:
       - URL of the Scaleway API endpoint.
       - Point it at a local emulator to build an inventory without credentials.
+      - >-
+        Falls back to the Scaleway configuration file, then to
+        C(https://api.scaleway.com). It carries no default on purpose: a
+        default is never unset, so it would always override the profile.
     type: str
-    default: https://api.scaleway.com
     env:
       - name: SCW_API_URL
   api_allow_insecure:
     description: Reach the endpoint without verifying its TLS certificate.
     type: bool
-    default: false
   user_agent:
     description: Value of the User-Agent header sent to the API.
     type: str
