@@ -35,9 +35,18 @@ _.python.venv = { path = ".venv", create = true }
 PRODUCT = "{{ get_env(name='PRODUCT', default='instance') }}"
 
 # Périmètre de génération : les modules nommés ici, pas ceux que le générateur
-# saurait écrire. Le vider produit toutes les classes rendables (INFO, ACTION),
-# ce que rien ne prouve encore module par module.
-MODULES = "{{ get_env(name='MODULES', default='instance_server_info instance_server_action') }}"
+# saurait écrire. La liste reste **explicite** parce qu'un périmètre déduit
+# changerait tout seul le jour où l'API bouge, et personne ne le verrait dans
+# une revue.
+#
+# Elle porte les seize modules que le modèle sait construire aujourd'hui :
+# quinze lectures et une action, tous Day-2. Ce ne sont plus deux modules
+# « parce que rien ne prouve les autres », mais seize parce que
+# `ansible-test sanity` les accepte et que la stack d'exemple les exerce
+# chacun contre le cloud réel et contre l'émulateur. Les quinze modules du
+# plan qui manquent sont écartés **avec leur raison** par
+# `mise run generate`, et le compte rendu de génération la publie.
+MODULES = "{{ get_env(name='MODULES', default='instance_dashboard_info instance_image_info instance_ip_info instance_placement_group_info instance_placement_group_server_info instance_security_group_info instance_server_action instance_server_compatible_type_info instance_server_info instance_server_private_nic_info instance_server_type_availability_info instance_server_type_info instance_server_user_data_info instance_snapshot_info instance_volume_info instance_volume_type_info') }}"
 
 # Ce qui porte un serveur allumé pendant la cible d'intégration : off, incus,
 # incus-vm, incus-ovn. Démarrer des machines est un effet de bord qui se

@@ -726,13 +726,30 @@ def run_info_module(module: AnsibleModule, spec: InfoModule) -> None:
     identifiant fourni, on lit la ressource ; identifiant absent, on liste. Un
     module d'information ne modifie rien, donc `changed` est toujours faux et le
     check mode ne change pas son comportement.
+
+    **Un module sans sélecteur ni opération de liste n'a qu'une façon de
+    tourner, et il faut la prendre.** Cinq modules générés sont dans ce cas :
+    `instance_dashboard_info`, `instance_server_type_info`,
+    `instance_server_type_availability_info`, `instance_volume_type_info` et
+    `instance_server_compatible_type_info`. Leur opération unique rend un objet
+    ou une carte, pas un tableau, donc le générateur en fait une lecture
+    unitaire ; mais il n'existe aucun identifiant à fournir, le chemin étant
+    entièrement déterminé par ses paramètres de chemin. Exiger un sélecteur
+    absent rendait ces cinq modules **inappelables** : ils sortaient sur
+    « ce module exige None ».
+
+    `ansible-test sanity` les acceptait, et ne pouvait pas faire autrement :
+    ces fichiers s'importent, se documentent et construisent leur
+    `argument_spec` sans rien reprocher. Il a fallu les **exécuter** contre une
+    plateforme réelle pour que le défaut sorte. C'est la règle du dépôt,
+    vérifiée à ses dépens : un fichier qui s'analyse n'est pas un fichier qui
+    s'exécute.
     """
     api = ScalewayApi(module)
     selector = spec.selector
-    wants_one = (
-        spec.get_operation is not None
-        and selector is not None
-        and module.params.get(selector) is not None
+    wants_one = spec.get_operation is not None and (
+        (selector is not None and module.params.get(selector) is not None)
+        or (selector is None and spec.list_operation is None)
     )
 
     try:

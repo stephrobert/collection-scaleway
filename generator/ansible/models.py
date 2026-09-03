@@ -30,7 +30,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from generator.ansible.collection import Collection
-from generator.ansible.mapping import COMMON_PARAMETERS, argument_spec_entry, is_sensitive
+from generator.ansible.mapping import COMMON_PARAMETERS, argument_spec_entry, no_log_de
 from generator.ir.enums import ApiType, HTTPMethod, OperationKind, ParameterLocation
 from generator.ir.models import ApiOperation, ApiParameter, ApiService
 from generator.overrides.loader import OperationOverride, OverrideSet
@@ -93,7 +93,7 @@ class AnsibleOption:
     description: tuple[str, ...]
     choices: tuple[str, ...] = ()
     elements: str | None = None
-    no_log: bool = False
+    no_log: bool | None = None
     default: object | None = None
 
     def to_argument_spec(self) -> dict[str, Any]:
@@ -106,8 +106,8 @@ class AnsibleOption:
             entry["choices"] = list(self.choices)
         if self.elements:
             entry["elements"] = self.elements
-        if self.no_log:
-            entry["no_log"] = True
+        if self.no_log is not None:
+            entry["no_log"] = self.no_log
         return entry
 
     def to_documentation(self) -> dict[str, Any]:
@@ -804,7 +804,7 @@ def _build_options(
                 description=description,
                 choices=choices,
                 elements=str(entry["elements"]) if "elements" in entry else None,
-                no_log=is_sensitive(parameter),
+                no_log=no_log_de(parameter),
                 default=entry.get("default"),
             )
         )
@@ -889,6 +889,35 @@ def _returns(
                 elements="dict",
             )
         )
+
+    # **Un module rend toujours quelque chose, donc il le documente toujours.**
+    # Quand le contrat ne nomme aucun champ porteur, le runtime rend le corps
+    # entier sous `result`, et le `RETURN` restait vide : quatre modules
+    # publiaient `{}` en documentant leur retour, alors qu'ils rendaient bien
+    # une valeur. Un lecteur ne pouvait pas savoir quoi enregistrer, et
+    # `ansible-test sanity` ne dit rien d'un `RETURN` vide.
+    #
+    # `result` n'est pas un choix arbitraire : c'est le nom que
+    # `run_info_module` emploie déjà, `operation.payload_field or "result"`.
+    # Le documenter ici ne fait que dire ce que le code fait.
+    if not values:
+        source = get_operation or list_operation
+        if source is not None:
+            values.append(
+                ReturnValue(
+                    name="result",
+                    description=(
+                        source.documentation_line or UNDOCUMENTED,
+                        # En anglais comme le reste de la documentation d'un
+                        # module : c'est la langue du contrat et celle
+                        # d'`UNDOCUMENTED`. Le français reste au code.
+                        "The API contract names no payload field for this "
+                        "operation: the response body is returned as is.",
+                    ),
+                    returned="success",
+                    type="dict",
+                )
+            )
     return tuple(values)
 
 

@@ -23,10 +23,24 @@ instance v1 : 74 opérations découvertes
   INFO 27 · ACTION 3 · MANAGE 11 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 13 · UNKNOWN 0
   Day-2 42 · AUTO 41 · MANUAL 1 · classées pour génération automatique 97,6 % (41/42)
 
-collection local.scaleway : 2 modules produits sur 31 au plan
-  instance_server_info    lire une Instance, ou lister une zone entière
-  instance_server_action  allumer, arrêter, redémarrer, figer
-  scaleway (inventaire)   instance, elastic_metal, apple_silicon
+collection local.scaleway : 16 modules produits sur 31 au plan
+  instance_dashboard_info                Gather information about Scaleway Instance dashboards
+  instance_image_info                    Gather information about Scaleway Instance images
+  instance_ip_info                       Gather information about Scaleway Instance ips
+  instance_placement_group_info          Gather information about Scaleway Instance placement groups
+  instance_placement_group_server_info   Gather information about Scaleway Instance placement group servers
+  instance_security_group_info           Gather information about Scaleway Instance security groups
+  instance_server_action                 Perform an action on a Scaleway Instance server
+  instance_server_compatible_type_info   Gather information about Scaleway Instance server compatible types
+  instance_server_info                   Gather information about Scaleway Instance servers
+  instance_server_private_nic_info       Gather information about Scaleway Instance server private nics
+  instance_server_type_availability_info Gather information about Scaleway Instance server type availabilities
+  instance_server_type_info              Gather information about Scaleway Instance server types
+  instance_server_user_data_info         Gather information about Scaleway Instance server user data
+  instance_snapshot_info                 Gather information about Scaleway Instance snapshots
+  instance_volume_info                   Gather information about Scaleway Instance volumes
+  instance_volume_type_info              Gather information about Scaleway Instance volume types
+  scaleway (inventaire)                  instance, elastic_metal, apple_silicon
   423 tests unitaires · 75 mutations prouvées par /falsify
   CI : cinq jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks et inventaire contre l'émulateur :

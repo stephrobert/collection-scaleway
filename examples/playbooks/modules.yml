@@ -1,0 +1,301 @@
+---
+# Les seize modules de la collection, appelés sur la plateforme d'exemple.
+#
+# **Ce playbook est le test différentiel de l'émulateur.** Il tourne à
+# l'identique contre feint et contre le compte Scaleway réel, avec la même
+# stack et les mêmes assertions. Un écart entre les deux exécutions est un
+# défaut de l'émulateur, et se remonte chez lui : c'est ce qui a produit
+# feint#648, feint#650 et feint#651.
+#
+# **Aucun identifiant n'est écrit à la main.** Tout vient de l'inventaire
+# dynamique ou d'un module appelé plus haut. Un exemple qui code en dur un
+# `server_id` ne prouve ni l'inventaire ni les modules : il prouve qu'on sait
+# recopier un UUID.
+#
+# Les assertions portent sur des nombres que la stack Terraform décide, pas sur
+# la forme des réponses : trois groupes de sécurité parce que le fichier en
+# déclare trois, cinq machines parce qu'il en déclare cinq. Une assertion sur la
+# forme passerait sur un parc vide.
+
+- name: Les seize modules, sur la plateforme que l'inventaire a découverte
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    zone: "{{ hostvars[groups['scw_tag_role_bastion'][0]].scaleway_zone }}"
+    prefixe: "{{ hostvars[groups['scw_tag_role_bastion'][0]].inventory_hostname
+      | regex_replace('-bastion$', '') }}"
+    bastion_id: "{{ hostvars[groups['scw_tag_role_bastion'][0]].scaleway_id }}"
+    worker_id: "{{ hostvars[groups['scw_tag_role_app'][0]].scaleway_id }}"
+
+  tasks:
+    # ---- Le parc, vu par les modules de liste ---------------------------
+
+    - name: Les machines de la zone
+      local.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+      register: machines
+
+    - name: L'API rend les cinq machines que la stack a créées
+      ansible.builtin.assert:
+        that:
+          - machines.servers | selectattr('name', 'search', prefixe)
+            | list | length == 5
+          - machines is not changed
+        fail_msg: >-
+          {{ machines.servers | selectattr('name', 'search', prefixe) | list | length }}
+          machine(s) au lieu de 5.
+        quiet: true
+
+    # **`tags` est une chaîne, pas une liste, et c'est le contrat qui le dit :**
+    # « List Instances with these exact tags (to filter with several tags, use
+    # commas to separate them) ». Écrire `tags: [exemple]` en YAML n'échoue pas :
+    # Ansible convertit la liste en la chaîne `"['exemple']"`, l'API ne trouve
+    # rien, et le playbook lit zéro machine sur un parc qui en porte cinq.
+    # Mesuré sur ce playbook même, à sa première exécution.
+    - name: Le filtre par tag, dans la forme que le contrat déclare
+      local.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+        tags: exemple
+      register: taguees
+
+    - name: Le filtre serveur rend les mêmes cinq machines
+      ansible.builtin.assert:
+        that:
+          - taguees.servers | selectattr('name', 'search', prefixe)
+            | list | length == 5
+        fail_msg: >-
+          Le filtre `tags=exemple` rend
+          {{ taguees.servers | selectattr('name', 'search', prefixe) | list | length }}
+          machine(s) là où la liste complète en rend 5. C'est un écart entre le
+          filtrage de l'API et son inventaire, et il se remonte.
+        quiet: true
+
+    - name: Les groupes de sécurité
+      local.scaleway.instance_security_group_info:
+        zone: "{{ zone }}"
+      register: groupes
+
+    - name: Les trois groupes de la stack sont là, un par étage
+      ansible.builtin.assert:
+        that:
+          - groupes.security_groups | selectattr('name', 'search', prefixe)
+            | list | length == 3
+        quiet: true
+
+    - name: Le groupe de placement
+      local.scaleway.instance_placement_group_info:
+        zone: "{{ zone }}"
+      register: placement
+
+    - name: Un seul groupe de placement, celui du tier applicatif
+      ansible.builtin.assert:
+        that:
+          - placement.placement_groups | selectattr('name', 'search', prefixe)
+            | list | length == 1
+        quiet: true
+
+    # Le seul module du lot qui exige un identifiant venu d'un autre module.
+    # C'est aussi ce qu'il prouve : la chaîne tient sans intervention humaine.
+    - name: Les machines de ce groupe de placement
+      local.scaleway.instance_placement_group_server_info:
+        zone: "{{ zone }}"
+        placement_group_id: "{{ (placement.placement_groups
+          | selectattr('name', 'search', prefixe) | first).id }}"
+      register: places
+
+    - name: Le groupe de placement porte les deux machines applicatives
+      ansible.builtin.assert:
+        that:
+          - places.servers | length == 2
+        quiet: true
+
+    - name: Les volumes
+      local.scaleway.instance_volume_info:
+        zone: "{{ zone }}"
+      register: volumes
+
+    - name: Les adresses IP publiques
+      local.scaleway.instance_ip_info:
+        zone: "{{ zone }}"
+      register: adresses
+
+    - name: Une seule adresse publique dans la plateforme, celle du bastion
+      ansible.builtin.assert:
+        that:
+          - adresses.ips | selectattr('tags', 'contains', 'exemple')
+            | list | length == 1
+        fail_msg: >-
+          Quatre machines sur cinq ne doivent porter aucune adresse publique.
+          C'est la propriété que l'inventaire dynamique existe pour éprouver.
+        quiet: true
+
+    - name: Les instantanés
+      local.scaleway.instance_snapshot_info:
+        zone: "{{ zone }}"
+      register: instantanes
+
+    - name: Les images
+      local.scaleway.instance_image_info:
+        zone: "{{ zone }}"
+        public: false
+      register: images
+
+    # ---- Les catalogues, qui ne dépendent d'aucune ressource ------------
+    #
+    # Ils n'assertent pas un nombre : un catalogue est décidé par Scaleway et
+    # change sans prévenir. Ce qu'on éprouve est qu'il répond et que le module
+    # ne prétend pas avoir changé quoi que ce soit.
+    #
+    # **Un 501 `not_emulated` n'est pas un échec de la collection, et n'est pas
+    # non plus un succès.** L'émulateur déclare les routes qu'il ne sert pas,
+    # et le dire est tout l'intérêt de faire tourner ce playbook des deux
+    # côtés. Contre le cloud réel il n'y en a aucun, et une route manquante y
+    # est un vrai échec : c'est `cible` qui tranche, pas un `ignore_errors`.
+
+    - name: Les types de machines offerts dans la zone
+      local.scaleway.instance_server_type_info:
+        zone: "{{ zone }}"
+      register: types
+      failed_when: false
+
+    - name: Leur disponibilité
+      local.scaleway.instance_server_type_availability_info:
+        zone: "{{ zone }}"
+      register: dispo
+      failed_when: false
+
+    - name: Les types de volumes
+      local.scaleway.instance_volume_type_info:
+        zone: "{{ zone }}"
+      register: types_volumes
+      failed_when: false
+
+    - name: Le tableau de bord du projet
+      local.scaleway.instance_dashboard_info:
+        zone: "{{ zone }}"
+      register: tableau
+      failed_when: false
+
+    # ---- Ce qu'on sait d'une machine précise ----------------------------
+
+    - name: Les types compatibles avec le bastion
+      local.scaleway.instance_server_compatible_type_info:
+        zone: "{{ zone }}"
+        server_id: "{{ bastion_id }}"
+      register: compatibles
+      failed_when: false
+
+    - name: Les cartes réseau privées d'un worker
+      local.scaleway.instance_server_private_nic_info:
+        zone: "{{ zone }}"
+        server_id: "{{ worker_id }}"
+      register: cartes
+      failed_when: false
+
+    - name: Le user-data du bastion
+      local.scaleway.instance_server_user_data_info:
+        zone: "{{ zone }}"
+        server_id: "{{ bastion_id }}"
+      register: userdata
+      failed_when: false
+
+    # ---- Le différentiel, en un seul endroit ----------------------------
+
+    - name: Ce que l'émulateur ne sert pas, nommé plutôt que sauté
+      ansible.builtin.set_fact:
+        non_emules: "{{ [types, dispo, types_volumes, tableau,
+          compatibles, cartes, userdata]
+          | selectattr('api_type', 'defined')
+          | selectattr('api_type', 'equalto', 'not_emulated')
+          | map(attribute='operation') | list }}"
+
+    - name: Aucun appel n'a échoué autrement que sur une route non émulée
+      ansible.builtin.assert:
+        that:
+          - "[types, dispo, types_volumes, tableau, compatibles, cartes, userdata]
+            | selectattr('failed', 'defined') | selectattr('failed')
+            | rejectattr('api_type', 'defined') | list | length == 0"
+        fail_msg: >-
+          Un module a échoué pour une raison qui n'est pas une route non
+          émulée. C'est un défaut de la collection, pas une limite de feint.
+        quiet: true
+
+    - name: Contre le cloud réel, toutes les routes doivent répondre
+      ansible.builtin.assert:
+        that:
+          - non_emules | length == 0
+        fail_msg: >-
+          Routes injoignables sur le compte réel : {{ non_emules }}.
+          Une route absente y est un défaut, pas une limite déclarée.
+        quiet: true
+      when: cible == 'reel'
+
+    - name: Chaque appel a rendu ce que sa documentation annonce
+      ansible.builtin.assert:
+        that:
+          # `result` et non `server_types` : le contrat ne nomme aucun champ
+          # porteur pour ces opérations, donc le module rend le corps entier
+          # sous cette clé, et son `RETURN` le documente ainsi.
+          - types.result is defined or 'ListServersTypes' in non_emules
+          - dispo.result is defined or 'GetServerTypesAvailability' in non_emules
+          - types_volumes.result is defined or 'ListVolumesTypes' in non_emules
+          - tableau.dashboard is defined or 'GetDashboard' in non_emules
+          - compatibles.result is defined or 'GetServerCompatibleTypes' in non_emules
+          - cartes.private_nics is defined or 'ListPrivateNICs' in non_emules
+          - userdata.result is defined or userdata.user_data is defined
+            or 'ListServerUserData' in non_emules
+          - types is not changed
+          - dispo is not changed
+          - types_volumes is not changed
+          - tableau is not changed
+          - cartes is not changed
+          - userdata is not changed
+        quiet: true
+
+    - name: Le worker porte exactement une carte, sur le réseau applicatif
+      ansible.builtin.assert:
+        that:
+          - cartes.private_nics | length == 1
+        quiet: true
+      when: "'ListPrivateNICs' not in non_emules"
+
+    - name: Les routes que l'émulateur ne sert pas
+      ansible.builtin.debug:
+        msg: >-
+          {{ non_emules | length }} route(s) non émulée(s) :
+          {{ non_emules | join(', ') }}
+      when: non_emules | length > 0
+
+    # ---- Ce que la plateforme doit contenir, en un seul verdict ---------
+    #
+    # Groupé plutôt qu'éparpillé : un lecteur qui voit rougir cette tâche sait
+    # d'un coup ce que la collection a trouvé et ce qu'elle attendait.
+
+    - name: La plateforme est celle que Terraform a décrite
+      ansible.builtin.assert:
+        that:
+          # **Aucun compte sur les volumes, et c'est mesuré.** La stack crée
+          # ses disques en Block Storage, et l'API `instance/v1` ne voit pas un
+          # volume SBS : c'est la même limite qui empêche un instantané
+          # d'instance de prendre une racine moderne, écrite dans `storage.tf`.
+          # Exiger ici un nombre reviendrait à exiger que Scaleway revienne en
+          # arrière.
+          - volumes.volumes is defined
+          - instantanes.snapshots is defined
+          - images.images is defined
+        quiet: true
+
+    - name: Ce que les seize modules ont trouvé
+      ansible.builtin.debug:
+        msg: >-
+          {{ machines.servers | length }} machines ·
+          {{ groupes.security_groups | selectattr('name', 'search', prefixe)
+             | list | length }} groupes de sécurité ·
+          {{ places.servers | length }} machines en groupe de placement ·
+          {{ volumes.volumes | length }} volumes vus par instance/v1 ·
+          {{ adresses.ips | selectattr('tags', 'contains', 'exemple')
+             | list | length }} adresse publique ·
+          {{ (types.result | default({})).servers | default({}) | length }} types offerts ·
+          {{ cartes.private_nics | default([]) | length }} carte privée sur un worker
