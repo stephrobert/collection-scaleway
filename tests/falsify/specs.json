@@ -582,6 +582,14 @@
       "find": "    if not _est_une_enveloppe(schema_name):",
       "replace": "    if not _est_une_enveloppe(schema_name) and False:",
       "test": "tests/unit/generator/test_parser.py::test_une_reponse_qui_est_la_ressource_ne_rend_pas_une_liste"
+    },
+    {
+      "name": "sigle-depluralise",
+      "why": "Sans la lecture d'ACRONYMS, la règle générale fait `dn` de `dns` et `k8` de `k8s`. Le nom de ressource décide du nom de module et de la clé d'override : le module et son override seraient écrits sur un nom faux.",
+      "file": "generator/parser/naming.py",
+      "find": "    if _est_un_sigle_invariable(lowered):",
+      "replace": "    if _est_un_sigle_invariable(lowered) and False:",
+      "test": "tests/unit/generator/test_mapping.py::test_un_sigle_qui_finit_par_s_nest_pas_un_pluriel"
     }
   ]
 }

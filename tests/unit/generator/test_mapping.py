@@ -44,6 +44,34 @@ def test_la_singularisation_couvre_les_formes_de_scaleway() -> None:
     assert singularize_phrase("servers_types") == "server_type"
 
 
+def test_un_sigle_qui_finit_par_s_nest_pas_un_pluriel() -> None:
+    """`dns-zones` donnait `dn_zone`, et `k8s` donnait `k8`.
+
+    Le nom de ressource décide du nom de module **et** de la clé d'override :
+    un `dn_zone` produirait un module `domain_dn_zone_info`, et l'override
+    correspondant serait écrit sur un nom faux. Ce sont les chemins réels des
+    produits `domain` et `kubernetes`, dont les contrats ne sont pas encore
+    versionnés ici : le défaut serait sorti au premier `new-product`.
+    """
+    assert singularize("dns") == "dns"
+    assert singularize("k8s") == "k8s"
+    assert singularize_phrase("dns_zones") == "dns_zone"
+
+
+def test_le_pluriel_dun_sigle_perd_bien_son_s() -> None:
+    """Le cas voisin qui ne doit pas bouger, et que la règle doit distinguer.
+
+    `IPs`, `NICs`, `IDs` et `ACLs` sont déclarés avec un `s` minuscule parce que
+    ce sont des pluriels. `DNS` et `K8S` sont déclarés tout en capitales parce
+    qu'ils n'en sont pas. La casse de la déclaration porte la différence.
+    """
+    assert singularize("ips") == "ip"
+    assert singularize("nics") == "nic"
+    assert singularize("ids") == "id"
+    assert singularize("acls") == "acl"
+    assert singularize("vpcs") == "vpc"
+
+
 @pytest.mark.parametrize(
     ("kind", "attendu"),
     [
