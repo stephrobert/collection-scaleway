@@ -15,6 +15,7 @@ from generator.ansible.models import (
     UnknownChoice,
     UnreachableState,
     UnsupportedKind,
+    _unitary_read_operation,
     build_module_spec,
     build_module_specs,
 )
@@ -230,11 +231,34 @@ def test_le_retour_distingue_la_lecture_de_la_liste(instance_plan: ProductPlan) 
 
 
 def test_une_classe_sans_renderer_est_ecartee_avec_sa_raison(instance_plan: ProductPlan) -> None:
+    """WORKFLOW reste sans renderer, et le modèle le dit plutôt que d'inventer.
+
+    Ce test nommait `instance_server` et la classe MANAGE, qui a désormais son
+    renderer. Le réécrire plutôt que le supprimer garde ce qu'il mesurait
+    vraiment : une classe que le modèle ne sait pas produire sort **avec sa
+    raison**, jamais en silence.
+    """
     specs, ecartes = build_module_specs(instance_plan, COLLECTION)
     raisons = dict(ecartes)
-    assert "instance_server" in raisons
-    assert "MANAGE" in raisons["instance_server"]
-    assert all(spec.kind in (OperationKind.INFO, OperationKind.ACTION) for spec in specs)
+    assert "instance_security_group_rules" in raisons
+    assert "WORKFLOW" in raisons["instance_security_group_rules"]
+    assert all(
+        spec.kind in (OperationKind.INFO, OperationKind.ACTION, OperationKind.MANAGE)
+        for spec in specs
+    )
+
+
+def test_la_classe_manage_est_desormais_rendable(instance_plan: ProductPlan) -> None:
+    """Vingt et un modules du plan attendaient ce renderer, sur deux produits.
+
+    `instance_server` en est un : `UpdateServer` est une écriture Day-2, et le
+    module lit la ressource avant de comparer.
+    """
+    spec = _spec(instance_plan, "instance_server")
+    assert spec.kind is OperationKind.MANAGE
+    assert spec.update_operation is not None
+    assert spec.read_operation is not None, "un module de gestion lit avant d'écrire"
+    assert spec.managed_params, "il faut au moins un champ à gérer"
 
 
 def test_un_module_hors_perimetre_est_ecarte_pas_oublie(instance_plan: ProductPlan) -> None:
@@ -251,9 +275,14 @@ def test_un_module_demande_mais_inconnu_leve(instance_plan: ProductPlan) -> None
 
 
 def test_une_classe_non_rendable_leve_quand_on_la_demande(instance_plan: ProductPlan) -> None:
-    """MANAGE attend l'étape 4 : le modèle le dit plutôt que de produire à moitié."""
+    """Ce qu'on demande nommément doit sortir, ou faire échouer la commande.
+
+    Ce test visait `instance_server` quand MANAGE n'avait pas de renderer. Il
+    vise désormais la seule classe qui n'en a toujours pas, WORKFLOW, parce que
+    ce qu'il mesure est le refus explicite et non la classe elle-même.
+    """
     with pytest.raises(UnsupportedKind):
-        _spec(instance_plan, "instance_server")
+        _spec(instance_plan, "instance_security_group_rules")
 
 
 def test_un_module_de_forme_inconnue_est_ecarte_avec_son_message(
@@ -442,3 +471,69 @@ def test_un_etat_promis_pour_une_action_non_exposee_est_refuse(
             fautif,
         )
     assert "terminate" in str(erreur.value)
+
+
+# --- la lecture unitaire, quelle que soit la forme de sa réponse ------------
+
+
+def _lecture(payload_field: str | None, schema: str | None) -> ApiService:
+    """Un service d'une seule opération : un GET sur une ressource."""
+    return ApiService(
+        name="labo",
+        version="v1",
+        operations=(
+            ApiOperation(
+                id="GetChose",
+                service="labo",
+                version="v1",
+                resource="chose",
+                http_method=HTTPMethod.GET,
+                path="/labo/v1/choses/{chose_id}",
+                scope=Scope.ZONE,
+                parameters=(
+                    ApiParameter(
+                        name="chose_id",
+                        type=ApiType.STRING,
+                        required=True,
+                        location=ParameterLocation.PATH,
+                    ),
+                ),
+                response=ApiResponse(schema=schema, payload_field=payload_field),
+            ),
+        ),
+    )
+
+
+def test_une_lecture_qui_repond_par_le_corps_reste_une_lecture() -> None:
+    """`payload_field` vaut `None` quand la réponse **est** la ressource.
+
+    Le parser distingue une enveloppe `GetXxxResponse` d'une ressource rendue
+    telle quelle, et pose `payload_field=None` sur la seconde : c'est correct,
+    le corps entier est la ressource et `fetch_one` le rend déjà ainsi.
+
+    Exiger un `payload_field` privait ces ressources de toute lecture unitaire,
+    donc de toute attente d'état et de toute comparaison avant écriture.
+    Mesuré : 5 lectures sur Instance et 9 sur le Load Balancer sont dans ce cas,
+    `GetBackend` rend un `Backend` et `GetLb` rend un `Lb`.
+    """
+    service = _lecture(payload_field=None, schema="labo.v1.Chose")
+    trouvee = _unitary_read_operation(service, "chose")
+    assert trouvee is not None
+    assert trouvee.id == "GetChose"
+
+
+def test_une_lecture_par_enveloppe_reste_trouvee() -> None:
+    """Le cas voisin, qui ne doit pas bouger."""
+    service = _lecture(payload_field="chose", schema="labo.v1.GetChoseResponse")
+    trouvee = _unitary_read_operation(service, "chose")
+    assert trouvee is not None
+
+
+def test_une_reponse_qui_ne_decrit_rien_nest_pas_une_lecture() -> None:
+    """Ce qui reste exigé : qu'il y ait quelque chose à lire.
+
+    Sans schéma ni champ porteur, la réponse ne décrit rien, et un module qui
+    l'attendrait comparerait le vide au vide.
+    """
+    service = _lecture(payload_field=None, schema=None)
+    assert _unitary_read_operation(service, "chose") is None

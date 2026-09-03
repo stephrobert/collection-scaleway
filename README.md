@@ -23,38 +23,54 @@ instance v1 : 74 opérations découvertes
   INFO 27 · ACTION 3 · MANAGE 11 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 13 · UNKNOWN 0
   Day-2 42 · AUTO 41 · MANUAL 1 · classées pour génération automatique 97,6 % (41/42)
 
-collection stephrobert.scaleway : 16 modules produits sur 31 au plan
+collection stephrobert.scaleway : 25 modules produits sur 31 au plan
   instance_dashboard_info                Gather information about Scaleway Instance dashboards
+  instance_image                         Manage a Scaleway Instance image
   instance_image_info                    Gather information about Scaleway Instance images
+  instance_ip                            Manage a Scaleway Instance ip
   instance_ip_info                       Gather information about Scaleway Instance ips
+  instance_placement_group               Manage a Scaleway Instance placement group
   instance_placement_group_info          Gather information about Scaleway Instance placement groups
   instance_placement_group_server_info   Gather information about Scaleway Instance placement group servers
+  instance_security_group                Manage a Scaleway Instance security group
   instance_security_group_info           Gather information about Scaleway Instance security groups
+  instance_security_group_rule           Manage a Scaleway Instance security group rule
+  instance_server                        Manage a Scaleway Instance server
   instance_server_action                 Perform an action on a Scaleway Instance server
   instance_server_compatible_type_info   Gather information about Scaleway Instance server compatible types
   instance_server_info                   Gather information about Scaleway Instance servers
+  instance_server_private_nic            Manage a Scaleway Instance server private nic
   instance_server_private_nic_info       Gather information about Scaleway Instance server private nics
   instance_server_type_availability_info Gather information about Scaleway Instance server type availabilities
   instance_server_type_info              Gather information about Scaleway Instance server types
   instance_server_user_data_info         Gather information about Scaleway Instance server user data
+  instance_snapshot                      Manage a Scaleway Instance snapshot
   instance_snapshot_info                 Gather information about Scaleway Instance snapshots
+  instance_volume                        Manage a Scaleway Instance volume
   instance_volume_info                   Gather information about Scaleway Instance volumes
   instance_volume_type_info              Gather information about Scaleway Instance volume types
+  lb_acl                                 Manage a Scaleway Lb acl
   lb_acl_info                            Gather information about Scaleway Load Balancer acls
+  lb_backend                             Manage a Scaleway Lb backend
   lb_backend_info                        Gather information about Scaleway Load Balancer backends
   lb_backend_stat_info                   Gather information about Scaleway Load Balancer backend stats
+  lb_certificate                         Manage a Scaleway Lb certificate
   lb_certificate_info                    Gather information about Scaleway Load Balancer certificates
+  lb_frontend                            Manage a Scaleway Lb frontend
   lb_frontend_acl_info                   Gather information about Scaleway Load Balancer frontend acls
   lb_frontend_info                       Gather information about Scaleway Load Balancer frontends
+  lb_ip                                  Manage a Scaleway Lb ip
   lb_ip_info                             Gather information about Scaleway Load Balancer ips
+  lb_load_balancer                       Manage a Scaleway Lb load balancer
   lb_load_balancer_info                  Gather information about Scaleway Load Balancer load balancers
   lb_load_balancer_private_network_info  Gather information about Scaleway Load Balancer load balancer private networks
   lb_load_balancer_stat_info             Gather information about Scaleway Load Balancer load balancer stats
   lb_load_balancer_type_info             Gather information about Scaleway Load Balancer load balancer types
+  lb_route                               Manage a Scaleway Lb route
   lb_route_info                          Gather information about Scaleway Load Balancer routes
   lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
   scaleway (inventaire)                  instance, elastic_metal, apple_silicon
-  429 tests unitaires · 78 mutations prouvées par /falsify
+  439 tests unitaires · 83 mutations prouvées par /falsify
   CI : cinq jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks et inventaire contre l'émulateur :
   comptes rendus par `mise run sanity` et `mise run integration`

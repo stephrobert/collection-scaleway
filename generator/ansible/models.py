@@ -30,7 +30,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from generator.ansible.collection import Collection
-from generator.ansible.mapping import COMMON_PARAMETERS, argument_spec_entry, no_log_de
+from generator.ansible.mapping import (
+    COMMON_PARAMETERS,
+    UnmappedType,
+    argument_spec_entry,
+    no_log_de,
+)
 from generator.ir.enums import ApiType, HTTPMethod, OperationKind, ParameterLocation
 from generator.ir.models import ApiOperation, ApiParameter, ApiService
 from generator.overrides.loader import OperationOverride, OverrideSet
@@ -39,7 +44,9 @@ from generator.plan import OperationPlan, ProductPlan
 
 #: Classes que le renderer sait produire aujourd'hui. Une classe absente n'est
 #: pas ignorée : elle est rendue dans le rapport de génération avec sa raison.
-RENDERABLE_KINDS: frozenset[OperationKind] = frozenset({OperationKind.INFO, OperationKind.ACTION})
+RENDERABLE_KINDS: frozenset[OperationKind] = frozenset(
+    {OperationKind.INFO, OperationKind.ACTION, OperationKind.MANAGE}
+)
 
 #: Ce qu'on écrit quand le contrat ne décrit pas un paramètre. C'est une phrase
 #: vraie, et elle vaut mieux qu'une description inventée ou qu'un nom de
@@ -210,6 +217,11 @@ class AnsibleModuleSpec:
     selector: str | None
     #: L'opération déclenchée par un module d'action.
     action_operation: OperationBinding | None = None
+    #: L'écriture d'un module de gestion, et les champs qu'il gère.
+    update_operation: OperationBinding | None = None
+    managed_params: tuple[str, ...] = ()
+    #: Ceux de ces champs qui portent un secret, et qui ne se comparent donc pas.
+    secret_params: tuple[str, ...] = ()
     #: La lecture unitaire de la même ressource, pour attendre l'état visé.
     read_operation: OperationBinding | None = None
     #: Le paramètre qui porte l'action demandée.
@@ -290,7 +302,15 @@ def build_module_specs(
             continue
         try:
             specs.append(build_module_spec(name, plans, plan.service, collection, plan.overrides))
-        except ModuleModelError as error:
+        except (ModuleModelError, UnmappedType) as error:
+            # `UnmappedType` rejoint les erreurs de modèle, et c'est une
+            # correction plutôt qu'un élargissement. Un type que le contrat ne
+            # permet pas de traduire est une raison d'écarter **un** module,
+            # exactement comme une classe sans renderer ; le laisser remonter
+            # faisait tomber la génération entière du produit, et le premier cas
+            # est arrivé avec le Load Balancer, dont `UpdateSubscriber` porte un
+            # `email_config` déclaré par un `oneOf` que le parser signale sans
+            # le traduire.
             if only:
                 raise
             skipped.append((name, str(error)))
@@ -321,6 +341,9 @@ def build_module_spec(
 
     if kind is OperationKind.ACTION:
         return _build_action_module(name, plans, service, collection, overrides)
+
+    if kind is OperationKind.MANAGE:
+        return _build_manage_module(name, plans, service, collection, overrides)
 
     getters = [item for item in plans if not _is_list(item.operation)]
     listers = [item for item in plans if _is_list(item.operation)]
@@ -402,7 +425,9 @@ def _build_action_module(
     )
     choix = next((o.choices for o in options if o.name == parametre), ())
 
-    wait_states, state_field, read_operation = _wait_contract(name, service, item, override, choix)
+    wait_states, state_field, read_operation = _wait_contract(
+        name, service, item, override, choix, overrides
+    )
     resource = item.resource
 
     return AnsibleModuleSpec(
@@ -423,6 +448,136 @@ def _build_action_module(
         state_field=state_field,
         wait_states=wait_states,
         limits=limits,
+    )
+
+
+def _build_manage_module(
+    name: str,
+    plans: tuple[OperationPlan, ...],
+    service: ApiService,
+    collection: Collection,
+    overrides: OverrideSet | None,
+) -> AnsibleModuleSpec:
+    """Construit le modèle d'un module de gestion.
+
+    Un module de gestion écrit **une** opération, et il a besoin de la lecture
+    unitaire de la même ressource : sans elle, il ne peut pas savoir s'il change
+    quelque chose, et `changed` deviendrait un mensonge poli.
+
+    Trois modules du plan n'ont pas cette lecture, et ce n'est pas un hasard :
+    ce sont des remplacements complets d'une sous-collection ou d'un sous-objet,
+    `UpdatePlacementGroupServers`, `UpdateHealthCheck`, `SetAcls`. La frontière
+    du projet les écarte de toute façon ; le refus est explicite plutôt que
+    silencieux.
+    """
+    if len(plans) != 1:
+        raise AmbiguousModule(
+            f"{name} : {len(plans)} opérations pour un module de gestion, le modèle en attend une"
+        )
+    item = plans[0]
+    override = overrides.get(item.operation.key) if overrides else None
+    masques = frozenset(
+        nom
+        for nom, restriction in (override.parameters if override else {}).items()
+        if restriction.expose is False
+    )
+    update_operation = _bind(item.operation, masques, override)
+
+    read_operation = _unitary_read(service, item.resource, overrides)
+    if read_operation is None:
+        raise AmbiguousModule(
+            f"{name} : aucune lecture unitaire de `{item.resource}`, donc rien à "
+            "comparer avant d'écrire. Un module de gestion qui n'a pas lu ne peut "
+            "pas dire s'il a changé quelque chose."
+        )
+
+    manquants = [
+        nom
+        for nom in read_operation.path_params
+        if nom not in update_operation.path_params and nom not in COMMON_PARAMETERS
+    ]
+    if manquants:
+        raise AmbiguousModule(
+            f"{name} : la lecture {read_operation.id} exige {manquants}, que "
+            f"l'écriture {update_operation.id} ne porte pas. Le module ne saurait "
+            "pas quoi relire."
+        )
+
+    identifiants = tuple(
+        nom for nom in update_operation.path_params if nom not in ("zone", "region")
+    )
+    options, limits = _build_options([item.operation], ("zone", "region", *identifiants), override)
+    geres = tuple(nom for nom in update_operation.body_params)
+    if not geres:
+        raise AmbiguousModule(
+            f"{name} : {update_operation.id} ne porte aucun champ de corps, donc "
+            "le module n'aurait rien à écrire."
+        )
+
+    secrets = tuple(option.name for option in options if option.no_log and option.name in geres)
+    if secrets:
+        limits = (
+            *limits,
+            f"{', '.join(secrets)} : secret, écrit à chaque exécution car l'API "
+            "ne le rend pas et qu'il ne peut donc pas être comparé",
+        )
+
+    champ = read_operation.payload_field or "resource"
+    return AnsibleModuleSpec(
+        name=name,
+        kind=item.kind,
+        collection=collection,
+        short_description=f"Manage a Scaleway {_libelle(service, item.resource)}",
+        description=(
+            update_operation.documentation_line or UNDOCUMENTED,
+            "The module reads the resource first and writes only the fields that "
+            "differ, so a second run reports no change.",
+        ),
+        returns=(
+            ReturnValue(
+                name=champ,
+                description=(read_operation.documentation_line or UNDOCUMENTED,),
+                returned="success",
+                type="dict",
+            ),
+        ),
+        examples=_manage_examples(name, collection, options, geres),
+        options=options,
+        get_operation=None,
+        list_operation=None,
+        selector=None,
+        update_operation=update_operation,
+        read_operation=read_operation,
+        managed_params=geres,
+        secret_params=secrets,
+        limits=limits,
+    )
+
+
+def _libelle(service: ApiService, resource: str) -> str:
+    """`security_group` -> `Instance security group`, pour une phrase lisible."""
+    produit = service.name.capitalize()
+    return f"{produit} {resource.replace('_', ' ')}"
+
+
+def _manage_examples(
+    name: str,
+    collection: Collection,
+    options: tuple[AnsibleOption, ...],
+    geres: tuple[str, ...],
+) -> tuple[ExampleTask, ...]:
+    """Un exemple qui écrit un seul champ, parce que c'est l'usage courant."""
+    requis = {option.name: f"<{option.name}>" for option in options if option.required}
+    premier = next((nom for nom in geres if nom in {o.name for o in options}), None)
+    if premier is not None:
+        requis[premier] = f"<{premier}>"
+    return (
+        ExampleTask(
+            name=f"Update a Scaleway {name.replace('_', ' ')}",
+            module=collection.module_fqcn(name),
+            parameters=requis,
+            register="result",
+        ),
     )
 
 
@@ -452,6 +607,7 @@ def _wait_contract(
     item: OperationPlan,
     override: OperationOverride | None,
     choix: tuple[str, ...],
+    overrides: OverrideSet | None = None,
 ) -> tuple[tuple[tuple[str, str], ...], str, OperationBinding | None]:
     """Ce que le module attendra après l'action, ou rien s'il ne sait pas.
 
@@ -473,7 +629,7 @@ def _wait_contract(
             f"que le module n'expose pas ({list(choix)})"
         )
 
-    lecture = _unitary_read(service, item.resource)
+    lecture = _unitary_read(service, item.resource, overrides)
     if lecture is None:
         raise UnreachableState(
             f"{name} : `wait` déclare des états attendus, et aucune lecture unitaire "
@@ -545,20 +701,57 @@ def _pascal(field: str) -> str:
     return "".join(morceau.capitalize() for morceau in field.split("_"))
 
 
-def _unitary_read(service: ApiService, resource: str) -> OperationBinding | None:
+def _unitary_read(
+    service: ApiService, resource: str, overrides: OverrideSet | None = None
+) -> OperationBinding | None:
     """La lecture unitaire de la ressource, celle qui sert à observer un état."""
-    operation = _unitary_read_operation(service, resource)
+    operation = _unitary_read_operation(service, resource, overrides)
     return _bind(operation) if operation is not None else None
 
 
-def _unitary_read_operation(service: ApiService, resource: str) -> ApiOperation | None:
-    """La même, non aplatie : la vérification des états a besoin de sa réponse."""
+def _resource_effective(operation: ApiOperation, overrides: OverrideSet | None) -> str:
+    """La ressource après override, comme le plan la calcule.
+
+    **Chercher dans l'IR une ressource nommée par un override ne trouve rien.**
+    Le plan corrige la ressource déduite quand le chemin la nomme mal, et cette
+    correction ne redescend pas dans `service.operations`. Mesuré sur
+    `lb_load_balancer` : l'override renomme `lb` en `load_balancer` sur les
+    trois opérations, et la lecture unitaire devenait introuvable parce qu'elle
+    était cherchée sous le nouveau nom dans un IR qui porte l'ancien.
+    """
+    override = overrides.get(operation.key) if overrides else None
+    if override is not None and override.resource:
+        return override.resource
+    return operation.resource
+
+
+def _unitary_read_operation(
+    service: ApiService, resource: str, overrides: OverrideSet | None = None
+) -> ApiOperation | None:
+    """La même, non aplatie : la vérification des états a besoin de sa réponse.
+
+    **Une réponse sans champ porteur est une réponse quand même.** La condition
+    exigeait un `payload_field`, ce qui était juste tant que toute lecture
+    passait par une enveloppe `GetXxxResponse`. Depuis que le parser distingue
+    une enveloppe d'une ressource rendue telle quelle, `payload_field` vaut
+    `None` sur les secondes, et c'est **correct** : le corps entier est la
+    ressource, et `fetch_one` le rend déjà ainsi.
+
+    Mesuré : 5 lectures sur Instance et 9 sur le Load Balancer répondent par le
+    corps. `GetBackend` rend un `Backend`, `GetLb` rend un `Lb`. Les rejeter
+    privait ces ressources de toute lecture unitaire, donc de toute attente
+    d'état et de toute comparaison avant écriture.
+
+    Ce qui reste exigé est qu'il y ait quelque chose à lire : une réponse sans
+    champ porteur **et** sans schéma ne décrit rien.
+    """
     for operation in service.operations:
-        if operation.resource != resource:
+        if _resource_effective(operation, overrides) != resource:
             continue
         if operation.http_method is not HTTPMethod.GET or _is_list(operation):
             continue
-        if operation.response is None or not operation.response.payload_field:
+        reponse = operation.response
+        if reponse is None or not (reponse.payload_field or reponse.schema):
             continue
         return operation
     return None

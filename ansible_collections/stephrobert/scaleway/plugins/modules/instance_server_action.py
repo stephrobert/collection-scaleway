@@ -7,7 +7,7 @@
 # Do not edit manually.
 #
 # Contrat    : specs/scaleway/instance.v1.yml
-# Opérations : ServerAction
+# Opérations : ServerAction, GetServer
 # Régénérer  : mise run generate
 
 from __future__ import annotations

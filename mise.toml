@@ -46,14 +46,14 @@ PRODUCT = "{{ get_env(name='PRODUCT', default='instance') }}"
 # chacun contre le cloud réel et contre l'émulateur. Les quinze modules du
 # plan qui manquent sont écartés **avec leur raison** par
 # `mise run generate`, et le compte rendu de génération la publie.
-MODULES = "{{ get_env(name='MODULES', default='instance_dashboard_info instance_image_info instance_ip_info instance_placement_group_info instance_placement_group_server_info instance_security_group_info instance_server_action instance_server_compatible_type_info instance_server_info instance_server_private_nic_info instance_server_type_availability_info instance_server_type_info instance_server_user_data_info instance_snapshot_info instance_volume_info instance_volume_type_info') }}"
+MODULES = "{{ get_env(name='MODULES', default='instance_dashboard_info instance_image instance_image_info instance_ip instance_ip_info instance_placement_group instance_placement_group_info instance_placement_group_server_info instance_security_group instance_security_group_info instance_security_group_rule instance_server instance_server_action instance_server_compatible_type_info instance_server_info instance_server_private_nic instance_server_private_nic_info instance_server_type_availability_info instance_server_type_info instance_server_user_data_info instance_snapshot instance_snapshot_info instance_volume instance_volume_info instance_volume_type_info') }}"
 
 # Le périmètre du second produit, déclaré comme le premier. Treize lectures :
 # le modèle ne sait pas encore construire les dix modules MANAGE du plan, et
 # `lb_load_balancer_action` est écarté parce que `MigrateLb` ne porte aucun
 # paramètre d'action dans son corps. Les onze écarts sortent avec leur raison
 # dans le compte rendu de génération.
-MODULES_LB = "{{ get_env(name='MODULES_LB', default='lb_acl_info lb_backend_info lb_backend_stat_info lb_certificate_info lb_frontend_acl_info lb_frontend_info lb_ip_info lb_load_balancer_info lb_load_balancer_private_network_info lb_load_balancer_stat_info lb_load_balancer_type_info lb_route_info lb_subscriber_info') }}"
+MODULES_LB = "{{ get_env(name='MODULES_LB', default='lb_acl lb_acl_info lb_backend lb_backend_info lb_backend_stat_info lb_certificate lb_certificate_info lb_frontend lb_frontend_acl_info lb_frontend_info lb_ip lb_ip_info lb_load_balancer lb_load_balancer_info lb_load_balancer_private_network_info lb_load_balancer_stat_info lb_load_balancer_type_info lb_route lb_route_info lb_subscriber_info') }}"
 
 # Ce qui porte un serveur allumé pendant la cible d'intégration : off, incus,
 # incus-vm, incus-ovn. Démarrer des machines est un effet de bord qui se
