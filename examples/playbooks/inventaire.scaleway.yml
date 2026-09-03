@@ -1,0 +1,52 @@
+# L'inventaire de la plateforme déployée par `examples/stack/`.
+#
+# Il ne nomme aucune machine : c'est le plugin qui les découvre, et c'est
+# précisément ce qu'on veut prouver. Un exemple qui listerait les machines à la
+# main ne démontrerait rien de l'inventaire dynamique.
+#
+# Le point qui distingue ce plugin de l'officiel se joue ici : dans cette
+# plateforme, **seul le bastion a une adresse publique**. Le tier web et le
+# tier applicatif n'en ont aucune, et sont joints par leur adresse privée,
+# obtenue en joignant IPAM aux cartes réseau. Un inventaire qui ne saurait pas
+# faire ça ne verrait que le bastion.
+plugin: local.scaleway.scaleway
+
+products:
+  - instance
+
+# L'adresse privée d'abord : c'est la seule que les tiers web et applicatif
+# possèdent. Le bastion en a une aussi, et c'est par elle qu'on veut le
+# joindre depuis l'intérieur.
+address_priority:
+  - private_ipv4
+  - public_ipv4
+
+# Les groupes que les playbooks utilisent. `tags` porte les rôles posés par la
+# stack : `role=bastion`, `role=web`, `role=app`.
+group_by:
+  - product
+  - zone
+  - state
+  - tags
+  - private_network
+  - vpc
+
+hostnames:
+  - name
+  - id
+
+# Les machines de cet exemple, et rien d'autre : le compte peut en porter
+# d'autres, et un exemple qui les emporterait serait un piège.
+tags:
+  - exemple
+
+strict: true
+cache: false
+
+# Ce qu'Ansible construit lui-même par-dessus, pour montrer que les mécanismes
+# natifs sont réellement appliqués et pas seulement documentés.
+compose:
+  ansible_user: "'root'"
+keyed_groups:
+  - prefix: type
+    key: scaleway_instance.commercial_type

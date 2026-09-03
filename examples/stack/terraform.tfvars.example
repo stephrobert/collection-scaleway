@@ -1,0 +1,20 @@
+# Copier en terraform.tfvars et adapter. Tout a un défaut qui marche, sauf la
+# clé publique : sans elle, aucun playbook ne pourra se connecter.
+
+# Vide pour viser le vrai Scaleway, renseigné pour viser l'émulateur.
+# 4877 et non 4599 : ce dernier est le port par défaut de feint, donc celui
+# qu'occupe un poste où feint tourne déjà.
+endpoint = "http://127.0.0.1:4877"
+
+# Le marqueur de l'exécution. Le lanceur en pose un automatiquement ; le
+# renseigner à la main sert à reprendre un exercice interrompu.
+run_id = "local"
+
+ssh_public_key = "ssh-ed25519 AAAA... vous@machine"
+
+web_count = 2
+
+app_servers = {
+  worker-a = {}
+  worker-b = { data_gb = 20 }
+}
