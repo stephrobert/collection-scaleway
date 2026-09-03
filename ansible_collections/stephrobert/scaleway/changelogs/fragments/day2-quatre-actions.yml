@@ -1,0 +1,7 @@
+---
+minor_changes:
+  - "L'exemple éprouve désormais les **quatre** actions du module d'alimentation
+    contre le cloud réel, et non deux : ``poweroff``, ``poweron``, ``reboot`` et
+    ``stop_in_place``, chacune confirmée par l'état que l'API rend. ``reboot`` et
+    ``stop_in_place`` n'étaient éprouvés nulle part, alors que deux défauts
+    fermés portaient précisément sur eux."

@@ -117,7 +117,18 @@
     # la machine tourne après la relance ci-dessus, `reboot` la laisse en
     # marche, et `stop_in_place` peut donc l'arrêter ensuite.
 
+    # **Ces deux-là ne sont jouées que contre le cloud réel**, et c'est mesuré
+    # plutôt que prudent. L'émulateur accepte un `reboot` en répondant
+    # `success` et ne change jamais l'état de la machine : l'attente, qui exige
+    # d'observer l'état quitter `running`, expire alors sur une action pourtant
+    # acceptée. C'est feint#654, et le module a raison d'insister — une action
+    # acceptée n'est pas une action advenue.
+    #
+    # `stop_in_place` suit le même sort, parce qu'il vient après `reboot` dans
+    # une séquence dont l'état de départ compte.
+
     - name: Redémarrer, et attendre que la machine réponde à nouveau
+      when: cible | default('reel') == 'reel'
       stephrobert.scaleway.instance_server_action:
         zone: "{{ scaleway_zone }}"
         server_id: "{{ scaleway_id }}"
@@ -127,6 +138,7 @@
       register: redemarrage
 
     - name: Le redémarrage est observé, pas seulement déclenché
+      when: cible | default('reel') == 'reel'
       ansible.builtin.assert:
         that:
           - redemarrage is changed
@@ -138,6 +150,7 @@
         quiet: true
 
     - name: Arrêter sur place, un état que le contrat distingue de `stopped`
+      when: cible | default('reel') == 'reel'
       stephrobert.scaleway.instance_server_action:
         zone: "{{ scaleway_zone }}"
         server_id: "{{ scaleway_id }}"
@@ -147,6 +160,7 @@
       register: sur_place
 
     - name: L'état observé est bien `stopped in place`
+      when: cible | default('reel') == 'reel'
       ansible.builtin.assert:
         that:
           - sur_place is changed
@@ -159,6 +173,7 @@
         quiet: true
 
     - name: La remettre en marche, pour que la destruction parte d'un état connu
+      when: cible | default('reel') == 'reel'
       stephrobert.scaleway.instance_server_action:
         zone: "{{ scaleway_zone }}"
         server_id: "{{ scaleway_id }}"
@@ -168,6 +183,7 @@
       register: retour
 
     - name: Les quatre actions du module ont été jouées et observées
+      when: cible | default('reel') == 'reel'
       ansible.builtin.assert:
         that:
           - retour is changed
