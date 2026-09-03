@@ -78,6 +78,13 @@ def expected_modules() -> tuple[str, ...]:
     return tuple(sorted(p.stem for p in MODULES.glob("*.py") if p.stem != "__init__"))
 
 
+def _pourcent(valeur: float | None) -> str:
+    """Un ratio absent est `n/a`, jamais `0,0 %` : indéfini n'est pas nul."""
+    if valeur is None:
+        return "n/a"
+    return f"{valeur * 100:.1f} %".replace(".", ",", 1)
+
+
 def expected_products() -> tuple[tuple[str, str], ...]:
     """Les produits qui doivent avoir une page de mesure, lus dans l'index."""
     return tuple((produit, version) for _slug, produit, version in read_products())
@@ -125,7 +132,7 @@ def write_measure_pages() -> tuple[str, ...]:
             f"| [{produit} {version}]({base}.md) | {totaux['operations']} | "
             f"{totaux['day2_candidates']} | {totaux['by_mode']['auto']} | "
             f"{totaux['by_mode']['manual']} | "
-            f"{'n/a' if couverture is None else f'{couverture * 100:.1f} %'} |"
+            f"{_pourcent(couverture)} |"
         )
 
         entete = (
@@ -148,14 +155,18 @@ def write_measure_pages() -> tuple[str, ...]:
         "ne s'écrivent pas à la main, et elles changent le jour où l'API change.",
         "",
         "```{warning}",
-        "La couverture Day-2 se lit avec son dénominateur. **97,6 %** ne veut pas",
-        "dire « le produit est couvert à 97,6 % » : ça veut dire que 41 des 42",
-        "opérations *retenues comme Day-2* sont générables sans code manuel.",
-        "LIFECYCLE et IGNORE ne sont pas au dénominateur, parce que ce n'est pas",
-        "du travail automatisé mais du travail écarté.",
+        "La couverture Day-2 se lit avec son dénominateur, et cette colonne",
+        "compte les opérations **classées** pour la génération automatique.",
+        "LIFECYCLE et IGNORE n'y sont pas, parce que ce n'est pas du travail",
+        "automatisé mais du travail écarté.",
+        "",
+        "Classée n'est pas portée par un module : la classification autorise la",
+        "génération, elle ne la produit pas. Le compte rendu de génération de",
+        "chaque produit publie les deux ratios côte à côte, et l'écart s'y lit",
+        "module par module, chacun avec sa raison.",
         "```",
         "",
-        "| produit | opérations | candidates Day-2 | AUTO | MANUAL | couverture |",
+        "| produit | opérations | candidates Day-2 | AUTO | MANUAL | classées |",
         "|---|---|---|---|---|---|",
         *lignes,
         "",

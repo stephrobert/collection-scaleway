@@ -17,21 +17,22 @@ d'information, d'action ponctuelle et de gestion d'état Day-2.
 du contrat au module, le module tourne, et la collection emporte un plugin
 d'inventaire dynamique qui découvre trois produits derrière un même modèle.
 
+<!-- compteurs:début, produits par scripts/readme_counters.py -->
 ```text
 instance v1 : 74 opérations découvertes
   INFO 27 · ACTION 3 · MANAGE 11 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 13 · UNKNOWN 0
-  Day-2 42 · AUTO 41 · MANUAL 1 · couverture 97,6 %
+  Day-2 42 · AUTO 41 · MANUAL 1 · classées pour génération automatique 97,6 % (41/42)
 
-collection local.scaleway : 2 modules produits sur 2 demandés
+collection local.scaleway : 2 modules produits sur 31 au plan
   instance_server_info    lire une Instance, ou lister une zone entière
   instance_server_action  allumer, arrêter, redémarrer, figer
   scaleway (inventaire)   instance, elastic_metal, apple_silicon
-  ansible-test sanity : 24 tests, 0 échec
-  playbook contre feint : 104 serveurs listés, 1 arrêté puis relu
-  inventaire contre feint : 104 machines, 6 groupes natifs, joué par un playbook
-  366 tests unitaires · 46 mutations prouvées par /falsify
-  CI : quatre jobs, générateur · collection · archive · intégration
+  423 tests unitaires · 75 mutations prouvées par /falsify
+  CI : cinq jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
+  ansible-test sanity, playbooks et inventaire contre l'émulateur :
+  comptes rendus par `mise run sanity` et `mise run integration`
 ```
+<!-- compteurs:fin -->
 
 **Ce que l'inventaire a coûté au cœur.** Ajouter Elastic Metal et Apple Silicon
 après Instance a demandé douze lignes dans le registre de `discovery.py`, et
