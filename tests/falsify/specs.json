@@ -630,6 +630,14 @@
       "find": "_PAGE_SIZE_PARAMS: tuple[str, ...] = (\"per_page\", \"page_size\")",
       "replace": "_PAGE_SIZE_PARAMS: tuple[str, ...] = (\"per_page\",)",
       "test": "tests/unit/generator/test_parser.py::test_une_taille_de_page_ecrite_autrement_reste_de_la_pagination"
+    },
+    {
+      "name": "lecture-par-le-corps-rejetee",
+      "why": "Exiger un `payload_field` prive de lecture unitaire les 14 ressources dont le GET répond par le corps, `GetBackend` et `GetLb` en tête. Sans lecture, un module ne peut ni attendre un état ni comparer avant d'écrire.",
+      "file": "generator/ansible/models.py",
+      "find": "        if reponse is None or not (reponse.payload_field or reponse.schema):",
+      "replace": "        if reponse is None or not reponse.payload_field:",
+      "test": "tests/unit/generator/test_models.py::test_une_lecture_qui_repond_par_le_corps_reste_une_lecture"
     }
   ]
 }

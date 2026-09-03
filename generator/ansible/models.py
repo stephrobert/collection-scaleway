@@ -552,13 +552,30 @@ def _unitary_read(service: ApiService, resource: str) -> OperationBinding | None
 
 
 def _unitary_read_operation(service: ApiService, resource: str) -> ApiOperation | None:
-    """La même, non aplatie : la vérification des états a besoin de sa réponse."""
+    """La même, non aplatie : la vérification des états a besoin de sa réponse.
+
+    **Une réponse sans champ porteur est une réponse quand même.** La condition
+    exigeait un `payload_field`, ce qui était juste tant que toute lecture
+    passait par une enveloppe `GetXxxResponse`. Depuis que le parser distingue
+    une enveloppe d'une ressource rendue telle quelle, `payload_field` vaut
+    `None` sur les secondes, et c'est **correct** : le corps entier est la
+    ressource, et `fetch_one` le rend déjà ainsi.
+
+    Mesuré : 5 lectures sur Instance et 9 sur le Load Balancer répondent par le
+    corps. `GetBackend` rend un `Backend`, `GetLb` rend un `Lb`. Les rejeter
+    privait ces ressources de toute lecture unitaire, donc de toute attente
+    d'état et de toute comparaison avant écriture.
+
+    Ce qui reste exigé est qu'il y ait quelque chose à lire : une réponse sans
+    champ porteur **et** sans schéma ne décrit rien.
+    """
     for operation in service.operations:
         if operation.resource != resource:
             continue
         if operation.http_method is not HTTPMethod.GET or _is_list(operation):
             continue
-        if operation.response is None or not operation.response.payload_field:
+        reponse = operation.response
+        if reponse is None or not (reponse.payload_field or reponse.schema):
             continue
         return operation
     return None

@@ -15,6 +15,7 @@ from generator.ansible.models import (
     UnknownChoice,
     UnreachableState,
     UnsupportedKind,
+    _unitary_read_operation,
     build_module_spec,
     build_module_specs,
 )
@@ -442,3 +443,69 @@ def test_un_etat_promis_pour_une_action_non_exposee_est_refuse(
             fautif,
         )
     assert "terminate" in str(erreur.value)
+
+
+# --- la lecture unitaire, quelle que soit la forme de sa réponse ------------
+
+
+def _lecture(payload_field: str | None, schema: str | None) -> ApiService:
+    """Un service d'une seule opération : un GET sur une ressource."""
+    return ApiService(
+        name="labo",
+        version="v1",
+        operations=(
+            ApiOperation(
+                id="GetChose",
+                service="labo",
+                version="v1",
+                resource="chose",
+                http_method=HTTPMethod.GET,
+                path="/labo/v1/choses/{chose_id}",
+                scope=Scope.ZONE,
+                parameters=(
+                    ApiParameter(
+                        name="chose_id",
+                        type=ApiType.STRING,
+                        required=True,
+                        location=ParameterLocation.PATH,
+                    ),
+                ),
+                response=ApiResponse(schema=schema, payload_field=payload_field),
+            ),
+        ),
+    )
+
+
+def test_une_lecture_qui_repond_par_le_corps_reste_une_lecture() -> None:
+    """`payload_field` vaut `None` quand la réponse **est** la ressource.
+
+    Le parser distingue une enveloppe `GetXxxResponse` d'une ressource rendue
+    telle quelle, et pose `payload_field=None` sur la seconde : c'est correct,
+    le corps entier est la ressource et `fetch_one` le rend déjà ainsi.
+
+    Exiger un `payload_field` privait ces ressources de toute lecture unitaire,
+    donc de toute attente d'état et de toute comparaison avant écriture.
+    Mesuré : 5 lectures sur Instance et 9 sur le Load Balancer sont dans ce cas,
+    `GetBackend` rend un `Backend` et `GetLb` rend un `Lb`.
+    """
+    service = _lecture(payload_field=None, schema="labo.v1.Chose")
+    trouvee = _unitary_read_operation(service, "chose")
+    assert trouvee is not None
+    assert trouvee.id == "GetChose"
+
+
+def test_une_lecture_par_enveloppe_reste_trouvee() -> None:
+    """Le cas voisin, qui ne doit pas bouger."""
+    service = _lecture(payload_field="chose", schema="labo.v1.GetChoseResponse")
+    trouvee = _unitary_read_operation(service, "chose")
+    assert trouvee is not None
+
+
+def test_une_reponse_qui_ne_decrit_rien_nest_pas_une_lecture() -> None:
+    """Ce qui reste exigé : qu'il y ait quelque chose à lire.
+
+    Sans schéma ni champ porteur, la réponse ne décrit rien, et un module qui
+    l'attendrait comparerait le vide au vide.
+    """
+    service = _lecture(payload_field=None, schema=None)
+    assert _unitary_read_operation(service, "chose") is None
