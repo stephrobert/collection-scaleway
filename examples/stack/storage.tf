@@ -34,15 +34,26 @@ resource "scaleway_block_snapshot" "reference" {
 }
 
 # **L'image n'est bâtie que contre le cloud réel, et c'est écrit plutôt que
-# sauté en silence.** `scaleway_instance_image` résout son `root_volume_id` par
-# l'API Instance ; l'émulateur crée bien l'instantané par l'API Block, puis rend
-# 404 sur le même identifiant côté Instance, et sa liste d'instantanés Instance
-# est vide. Mesuré, et signalé en feint#651.
+# sauté en silence.** `createImage` accepte un instantané Block comme volume
+# racine sur le cloud réel, et le refusait sur l'émulateur, qui répondait
+# « resource snapshot ... is not found ». Signalé en feint#651, corrigé chez
+# eux.
 #
-# Le `count` porte donc la limite au lieu de la masquer : la sortie
-# `image_doree` vaut la chaîne vide quand l'image n'a pas été bâtie, et le
-# lanceur le dit. Le jour où feint#651 est corrigé, ce `count` disparaît et rien
-# d'autre ne bouge.
+# **Ce que ce commentaire a d'abord affirmé était faux, et la correction vaut
+# d'être lue.** Il disait que le cloud réel résout l'identifiant par l'API
+# Instance. Il ne le fait pas : `scw instance snapshot list` rend `[]` sur un
+# vrai compte, et le GET unitaire y rend 404 exactement comme sur l'émulateur.
+# C'est le contrat, pas un défaut. J'avais déduit un mécanisme d'un `apply` qui
+# marchait, au lieu de mesurer le mécanisme, et c'est précisément ce que ce
+# dépôt refuse partout ailleurs.
+#
+# Il y a donc deux objets, pas un identifiant partagé : un instantané Block,
+# dont l'API Instance sait **tailler** une image sans jamais le **lister**.
+#
+# Le `count` porte la limite au lieu de la masquer : la sortie `image_doree`
+# vaut la chaîne vide quand l'image n'a pas été bâtie, et le lanceur le dit. Le
+# jour où la version corrigée de l'émulateur est celle qu'on installe, ce
+# `count` disparaît et rien d'autre ne bouge.
 resource "scaleway_instance_image" "reference" {
   count = var.endpoint == "" ? 1 : 0
 

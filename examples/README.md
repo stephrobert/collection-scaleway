@@ -84,9 +84,11 @@ source d'ACL inertes, ACL sans état, sortie qui réautorise le VPC,
 `push_default_route` qui écrase la route publique du bastion, et la chaîne
 `b_ssd` retiré puis instantané d'une racine SBS.
 
-L'image d'or n'est bâtie que par `example:reel` : l'émulateur crée l'instantané
-par l'API Block puis rend 404 sur le même identifiant côté Instance (feint#651).
-Le contrôle ne se tait pas pour autant, il **exige l'absence** de l'image.
+L'image d'or n'est bâtie que par `example:reel` : `createImage` accepte un
+instantané Block comme volume racine sur le cloud réel, et le refusait sur
+l'émulateur (feint#651). L'API Instance ne **liste** cet instantané ni d'un
+côté ni de l'autre, et c'est le contrat plutôt qu'un défaut. Le contrôle ne se
+tait pas pour autant, il **exige l'absence** de l'image.
 
 ## Aucune ressource ne doit survivre
 
