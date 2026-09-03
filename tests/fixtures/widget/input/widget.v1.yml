@@ -23,6 +23,15 @@ components:
           type: string
         name:
           type: string
+        # Le tableau qui piège la déduction de `payload_field` : il vient avant
+        # toute autre indication, et la règle « le premier tableau gagne »
+        # décrivait l'opération comme rendant une liste de tags. Mesuré sur
+        # `UpdatePrivateNIC` du contrat Instance, reproduit ici pour que le test
+        # ne dépende pas de lui.
+        tags:
+          type: array
+          items:
+            type: string
     scaleway.widget.v1.Widget.State:
       type: string
       enum: [running, stopped]
@@ -169,7 +178,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/scaleway.widget.v1.GetWidgetResponse'
+                $ref: '#/components/schemas/scaleway.widget.v1.Widget'
     delete:
       operationId: DeleteWidget
       summary: Delete a widget

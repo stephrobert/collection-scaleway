@@ -30,6 +30,9 @@ ACRONYMS: tuple[str, ...] = (
     "TTL",
     "VPC",
     "SQL",
+    # `/k8s/v1/...` : le chemin réel du produit que le portail nomme
+    # `kubernetes`. Il finit par un `s` sans être un pluriel, comme `DNS`.
+    "K8S",
 )
 
 #: Pluriels que la règle générale casserait.
@@ -84,15 +87,34 @@ def snake_case(name: str) -> str:
     return "_".join(split_words(name))
 
 
+def _est_un_sigle_invariable(lowered: str) -> bool:
+    """Un sigle écrit tout en capitales ne se dépluralise pas.
+
+    `DNS` finit par un `s` sans être un pluriel, et la règle générale en faisait
+    `dn`. Le sigle était pourtant **déjà déclaré** dans `ACRONYMS` : le cas était
+    connu d'un côté du code et ignoré de l'autre, et il suffit de le lire.
+
+    La distinction se fait sur la casse de la déclaration, qui porte déjà
+    l'information : `DNS` et `K8S` sont des sigles entiers, tandis que `IPs`,
+    `NICs`, `IDs` et `ACLs` sont les **pluriels** de sigles et doivent, eux,
+    perdre leur `s`. Comparer en capitales suffit à les séparer.
+    """
+    return lowered.upper() in ACRONYMS
+
+
 def singularize(word: str) -> str:
     """Singularise un mot anglais avec les seules règles dont l'IR a besoin.
 
     >>> singularize("servers"), singularize("policies"), singularize("addresses")
     ('server', 'policy', 'address')
+    >>> singularize("dns"), singularize("k8s"), singularize("ips")
+    ('dns', 'k8s', 'ip')
     """
     lowered = word.lower()
     if lowered in IRREGULAR_SINGULARS:
         return IRREGULAR_SINGULARS[lowered]
+    if _est_un_sigle_invariable(lowered):
+        return lowered
     if lowered.endswith("ies") and len(lowered) > 4:
         return lowered[:-3] + "y"
     for suffix in ("sses", "shes", "ches", "xes", "zes"):

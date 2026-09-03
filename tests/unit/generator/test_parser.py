@@ -99,6 +99,37 @@ def test_total_count_absent_du_contrat_nest_pas_invente(widget_service: ApiServi
     assert liste.pagination.total_count_field is None
 
 
+def test_une_reponse_qui_est_la_ressource_ne_rend_pas_une_liste(
+    widget_service: ApiService,
+) -> None:
+    """Le premier tableau du schéma n'est pas toujours la charge utile.
+
+    `UpdateWidget` répond par la ressource `Widget`, pas par une enveloppe. Le
+    premier tableau qu'on y rencontre est `tags`, et la règle « le premier
+    tableau gagne » décrivait donc l'opération comme rendant **une liste de
+    tags**. L'IR est le produit de ce dépôt : un module rendu depuis cette
+    description lirait `tags` en croyant lire la ressource.
+
+    Reproduit du contrat réel, où `UpdatePrivateNIC` répond par `PrivateNIC`.
+    """
+    operation = widget_service.operation("UpdateWidget")
+    assert operation is not None
+    assert operation.response is not None
+    assert operation.response.schema == "scaleway.widget.v1.Widget"
+    assert operation.response.is_list is False, "la réponse est la ressource, pas une liste"
+    assert operation.response.payload_field != "tags"
+
+
+def test_une_enveloppe_reste_reconnue_comme_telle(widget_service: ApiService) -> None:
+    """Le cas voisin qui ne doit pas bouger : une enveloppe porte bien sa liste."""
+    liste = widget_service.operation("ListWidgets")
+    assert liste is not None
+    assert liste.response is not None
+    assert liste.response.schema == "scaleway.widget.v1.ListWidgetsResponse"
+    assert liste.response.payload_field == "widgets"
+    assert liste.response.is_list is True
+
+
 def test_la_reponse_designe_le_champ_utile(widget_service: ApiService) -> None:
     liste = widget_service.operation("ListWidgets")
     unite = widget_service.operation("GetWidget")

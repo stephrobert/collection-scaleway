@@ -2443,8 +2443,7 @@
       ],
       "response": {
         "schema": "scaleway.instance.v1.ServerCompatibleTypes",
-        "payload_field": "compatible_types",
-        "is_list": true
+        "payload_schema": "scaleway.instance.v1.ServerCompatibleTypes"
       }
     },
     {
@@ -2556,7 +2555,8 @@
         }
       ],
       "response": {
-        "schema": "scaleway.std.File"
+        "schema": "scaleway.std.File",
+        "payload_schema": "scaleway.std.File"
       }
     },
     {
@@ -5349,8 +5349,7 @@
       ],
       "response": {
         "schema": "scaleway.instance.v1.PrivateNIC",
-        "payload_field": "tags",
-        "is_list": true
+        "payload_schema": "scaleway.instance.v1.PrivateNIC"
       }
     },
     {
