@@ -240,7 +240,9 @@ from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory imp
 from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.address import (
     select_ansible_host,
 )
-from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.groups import group_names
+from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.groups import (
+    group_names,
+)
 from ansible_collections.stephrobert.scaleway.plugins.module_utils.inventory.hostname import (
     assign_hostnames,
 )

@@ -872,3 +872,66 @@ def test_un_secret_ne_fuit_pas_dans_le_diff_du_check_mode(runtime: Any, monkeypa
     assert module.resultat is not None
     assert module.resultat["changed"] is True
     assert "s3cr3t" not in str(module.resultat["diff"]), "le secret ne doit pas fuir"
+
+
+def test_une_reference_ecrite_par_id_se_compare_a_lobjet_relu(
+    runtime: Any, monkeypatch: Any
+) -> None:
+    """L'écriture prend `backend_id`, la lecture rend `backend`.
+
+    Scaleway écrit une référence par son identifiant et la relit par l'objet
+    entier. Chercher `backend_id` dans cette réponse ne trouve rien, la
+    comparaison conclut « différent », et le module rend `changed` à **chaque**
+    exécution. Trouvé en exerçant `lb_frontend` sur une plateforme réelle.
+    """
+    api = _ApiGestionFactice([{"id": "f1", "backend": {"id": "b1", "name": "web"}}])
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
+    spec = runtime.ManageModule(
+        read_operation=runtime.Operation(
+            id="GetFrontend", method="GET", path="/x/{frontend_id}", payload_field="frontend"
+        ),
+        update_operation=runtime.Operation(
+            id="UpdateFrontend",
+            method="PATCH",
+            path="/x/{frontend_id}",
+            body_params=("backend_id",),
+        ),
+        managed_params=("backend_id",),
+    )
+    module = _ModuleFactice(frontend_id="f1", backend_id="b1")
+
+    with pytest.raises(SystemExit):
+        runtime.run_manage_module(module, spec)
+
+    assert api.ecritures == [], "la référence est identique, rien ne doit partir"
+    assert module.resultat is not None
+    assert module.resultat["changed"] is False
+
+
+def test_une_reference_qui_change_vraiment_est_ecrite(runtime: Any, monkeypatch: Any) -> None:
+    """Le cas voisin : la règle ne doit pas rendre le module aveugle."""
+    api = _ApiGestionFactice(
+        [
+            {"id": "f1", "backend": {"id": "b1"}},
+            {"id": "f1", "backend": {"id": "b2"}},
+        ]
+    )
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
+    spec = runtime.ManageModule(
+        read_operation=runtime.Operation(
+            id="GetFrontend", method="GET", path="/x/{frontend_id}", payload_field="frontend"
+        ),
+        update_operation=runtime.Operation(
+            id="UpdateFrontend",
+            method="PATCH",
+            path="/x/{frontend_id}",
+            body_params=("backend_id",),
+        ),
+        managed_params=("backend_id",),
+    )
+    module = _ModuleFactice(frontend_id="f1", backend_id="b2")
+
+    with pytest.raises(SystemExit):
+        runtime.run_manage_module(module, spec)
+
+    assert api.ecritures == [{"backend_id": "b2"}]

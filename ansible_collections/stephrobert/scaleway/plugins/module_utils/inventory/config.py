@@ -149,9 +149,7 @@ def from_options(
     if known_zones:
         hors_zones = sorted(set(zones) - set(known_zones))
         if hors_zones:
-            raise ConfigError(
-                f"zone(s) inconnue(s) : {hors_zones}. Connues : {list(known_zones)}"
-            )
+            raise ConfigError(f"zone(s) inconnue(s) : {hors_zones}. Connues : {list(known_zones)}")
 
     sources = _liste(get_option("hostnames")) or DEFAULT_HOSTNAMES
     hors_sources = sorted(nom for nom in sources if not is_known_source(nom))

@@ -678,6 +678,14 @@
       "find": "        if len(utiles) == 1:\n            return _resolve_type(",
       "replace": "        if len(utiles) == 1 and False:\n            return _resolve_type(",
       "test": "tests/unit/generator/test_parser.py::test_un_oneof_avec_null_est_un_champ_optionnel"
+    },
+    {
+      "name": "reference-par-id-non-resolue",
+      "why": "Une écriture prend `backend_id`, la lecture rend `backend`. Sans la résolution, la comparaison ne trouve rien et le module rend `changed` à chaque exécution : l'idempotence est perdue sur cinq champs des deux produits.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    objet = ressource.get(nom[: -len(\"_id\")])",
+      "replace": "    objet = None",
+      "test": "tests/unit/collection/test_runtime.py::test_une_reference_ecrite_par_id_se_compare_a_lobjet_relu"
     }
   ]
 }
