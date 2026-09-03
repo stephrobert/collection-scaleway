@@ -574,6 +574,14 @@
       "find": "            if not batch:\n                raise ScalewayApiError(",
       "replace": "            if not batch and False:\n                raise ScalewayApiError(",
       "test": "tests/unit/collection/test_runtime.py::test_un_total_annonce_que_lapi_ne_tient_pas_est_une_erreur"
+    },
+    {
+      "name": "reponse-ressource-vue-comme-enveloppe",
+      "why": "Sans la distinction enveloppe/ressource, le premier tableau du schéma gagne toujours : `UpdatePrivateNIC`, qui répond par la ressource, est décrit comme rendant une liste de tags. Un module rendu depuis cette description lirait `tags` en croyant lire la ressource.",
+      "file": "generator/parser/openapi.py",
+      "find": "    if not _est_une_enveloppe(schema_name):",
+      "replace": "    if not _est_une_enveloppe(schema_name) and False:",
+      "test": "tests/unit/generator/test_parser.py::test_une_reponse_qui_est_la_ressource_ne_rend_pas_une_liste"
     }
   ]
 }

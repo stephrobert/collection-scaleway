@@ -153,7 +153,7 @@ def _parse_operation(
         )
     )
 
-    response = _parse_response(operation, schemas)
+    response = _parse_response(operation, schemas, warnings, operation_id)
     pagination = _parse_pagination(parameters, response, schemas)
 
     return ApiOperation(
@@ -358,8 +358,40 @@ def _resolve_type(
     return _ResolvedType(ApiType.UNKNOWN)
 
 
-def _parse_response(operation: dict[str, Any], schemas: dict[str, Any]) -> ApiResponse | None:
-    """Décrit la réponse 200, et le champ qui porte réellement la ressource."""
+def _est_une_enveloppe(schema_name: str | None) -> bool:
+    """Une enveloppe est un schéma de réponse, pas une ressource.
+
+    Scaleway nomme ses enveloppes par le suffixe `Response`, et **seulement**
+    elles. Mesuré sur le contrat vendorisé : 52 réponses 200 portant un corps,
+    49 en `...Response`, et trois ressources rendues telles quelles, `File`,
+    `PrivateNIC` et `ServerCompatibleTypes`.
+
+    Le nom est le seul signal fiable. On pourrait croire qu'un tableau dont les
+    éléments sont une référence désigne une liste, mais une ressource porte
+    couramment un tableau de sous-objets : la règle rangerait alors `Server`
+    parmi les enveloppes à cause de ses volumes.
+    """
+    if schema_name is None:
+        return False
+    return schema_name.rsplit(".", 1)[-1].endswith("Response")
+
+
+def _parse_response(
+    operation: dict[str, Any],
+    schemas: dict[str, Any],
+    warnings: list[str],
+    operation_id: str,
+) -> ApiResponse | None:
+    """Décrit la réponse 200, et le champ qui porte réellement la ressource.
+
+    **Le premier tableau du schéma ne gagne que dans une enveloppe.** Une
+    réponse qui est la ressource elle-même n'a aucun champ porteur : sa charge
+    utile est son corps entier. La règle « le premier tableau gagne » décrivait
+    `UpdatePrivateNIC`, qui répond par `PrivateNIC`, comme rendant **une liste
+    de tags**, parce que `tags` est le premier tableau du schéma de la
+    ressource. L'IR est le produit de ce dépôt : un module rendu depuis cette
+    description lirait `tags` en croyant lire la ressource.
+    """
     responses = operation.get("responses", {})
     success = responses.get("200") or responses.get(200)
     if not success:
@@ -371,6 +403,18 @@ def _parse_response(operation: dict[str, Any], schemas: dict[str, Any]) -> ApiRe
     schema_name = schema.get("$ref", "").rsplit("/", 1)[-1] or None
     resolved = _deref(schema, schemas)
     properties: dict[str, Any] = resolved.get("properties", {})
+
+    if not _est_une_enveloppe(schema_name):
+        if schema_name is None:
+            # Un schéma de réponse sans nom ne permet pas de trancher. Le
+            # contrat vendorisé n'en porte aucun ; le jour où il en portera, le
+            # rapport le dira plutôt que le parser ne le devine.
+            warnings.append(
+                f"{operation_id} : réponse 200 au schéma anonyme, "
+                "enveloppe ou ressource indécidable"
+            )
+        # La réponse **est** la ressource : pas de champ porteur, pas de liste.
+        return ApiResponse(schema=schema_name, payload_schema=schema_name)
 
     payload_field: str | None = None
     payload_schema: str | None = None
