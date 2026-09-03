@@ -352,11 +352,11 @@ def controler_plan_de_controle(env: dict[str, str], sorties: dict[str, Any]) -> 
     if sorties["image_doree"]["value"]:
         exige(len(images) == 1, "une image d'or taillée dedans")
     else:
-        # Écarté, et dit. L'émulateur crée l'instantané par l'API Block puis rend
-        # 404 sur le même identifiant côté Instance (feint#651), donc la stack ne
-        # déclare pas l'image hors cible réelle. Le contrôle ne se tait pas pour
-        # autant : il affirme l'absence, sans quoi une image oubliée un jour sur
-        # le compte passerait inaperçue ici.
+        # Écarté, et dit. `createImage` accepte un instantané Block comme volume
+        # racine sur le cloud réel, et le refusait sur l'émulateur (feint#651),
+        # donc la stack ne déclare pas l'image hors cible réelle. Le contrôle ne
+        # se tait pas pour autant : il affirme l'absence, sans quoi une image
+        # oubliée un jour sur le compte passerait inaperçue ici.
         exige(
             len(images) == 0,
             "image d'or écartée hors cible réelle, et absente comme prévu (feint#651)",
