@@ -1,0 +1,14 @@
+---
+bugfixes:
+  - "La pagination ne tronque plus une liste quand l'API plafonne la taille de
+    page. La condition « la page est plus courte que demandée » était testée
+    **avant** ``total_count``, alors que l'information pour continuer était
+    dans la même réponse : face à une API qui plafonne ``per_page`` à 50 pour
+    100 demandés en annonçant 120 éléments, la fonction rendait 50 éléments,
+    ne demandait qu'une page, et ne signalait rien. C'est le défaut que sa
+    propre documentation nommait comme le pire des trois, une liste incomplète
+    qui se présente comme complète. Instance plafonne à 100, donc le cas était
+    latent ; ce runtime est commun à tous les produits à venir."
+  - "Une API qui annonce un ``total_count`` qu'elle ne tient pas produit
+    désormais une erreur nommée. Rendre la liste partielle en silence serait
+    exactement ce que cette fonction existe pour empêcher."

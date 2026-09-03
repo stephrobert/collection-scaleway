@@ -361,17 +361,31 @@ def paginate(
 ) -> list[Any]:
     """Parcourt toutes les pages d'une opération de liste.
 
-    Trois conditions d'arrêt, dans cet ordre :
+    **`total_count` prime sur la longueur de la page, et l'ordre est le sujet.**
+    Le contrat publié ne déclare pas ce champ, mais le SDK le reconstitue depuis
+    l'en-tête `x-total-count` : on l'utilise s'il est là, on ne l'exige pas.
+    Quand il est là, il sait ce qu'une page courte ne dit pas.
 
-    1. la page rendue contient moins d'éléments que demandé, donc c'est la
-       dernière ;
-    2. `total_count` est présent dans la réponse et le compte est atteint. Le
-       contrat publié ne déclare pas ce champ, mais le SDK le reconstitue depuis
-       l'en-tête `x-total-count` : on l'utilise s'il est là, on ne l'exige pas ;
-    3. `max_pages` est atteint, et c'est une erreur : une API qui ignorerait
+    S'arrêter d'abord sur « la page est plus courte que demandée » paraît sûr et
+    ne l'est pas : une API qui **plafonne** `per_page` sous ce qu'on demande rend
+    une page courte dès la première. Mesuré avec un plafond à 50 pour 100
+    demandés et `total_count: 120`, l'ancienne version rendait 50 éléments, ne
+    demandait qu'une page, et ne signalait rien. Instance plafonne à 100, donc
+    le cas est latent aujourd'hui ; ce runtime est commun à tous les produits
+    qui viendront.
+
+    Les conditions d'arrêt, donc :
+
+    1. `total_count` est présent et le compte est atteint ;
+    2. `total_count` est absent et la page rendue est plus courte que demandée,
+       donc c'est la dernière ;
+    3. `total_count` est présent, le compte n'est pas atteint, et l'API rend une
+       page vide : elle se contredit, et on le dit plutôt que de rendre une
+       liste incomplète ;
+    4. `max_pages` est atteint, et c'est une erreur : une API qui ignorerait
        `per_page` ferait boucler cette fonction indéfiniment.
 
-    Rendre la première page en silence serait le pire des trois : l'utilisateur
+    Rendre la première page en silence serait le pire de tous : l'utilisateur
     verrait une liste plausible et incomplète.
     """
     items: list[Any] = []
@@ -380,12 +394,23 @@ def paginate(
         batch = payload.get(payload_field) or []
         items.extend(batch)
 
-        if len(batch) < per_page:
-            return items
-
         total = payload.get("total_count")
-        if total is not None and len(items) >= int(total):
-            return items
+        if total is None:
+            if len(batch) < per_page:
+                return items
+        else:
+            annonce = int(total)
+            if len(items) >= annonce:
+                return items
+            if not batch:
+                raise ScalewayApiError(
+                    operation=payload_field,
+                    message=(
+                        f"l'API annonce {annonce} éléments et n'en rend que "
+                        f"{len(items)} avant de rendre une page vide : la liste "
+                        "serait incomplète sans le dire"
+                    ),
+                )
 
     raise ScalewayApiError(
         operation=payload_field,
