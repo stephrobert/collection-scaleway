@@ -48,16 +48,17 @@
           machine(s) au lieu de 5.
         quiet: true
 
-    # **`tags` est une chaîne, pas une liste, et c'est le contrat qui le dit :**
-    # « List Instances with these exact tags (to filter with several tags, use
-    # commas to separate them) ». Écrire `tags: [exemple]` en YAML n'échoue pas :
-    # Ansible convertit la liste en la chaîne `"['exemple']"`, l'API ne trouve
-    # rien, et le playbook lit zéro machine sur un parc qui en porte cinq.
-    # Mesuré sur ce playbook même, à sa première exécution.
-    - name: Le filtre par tag, dans la forme que le contrat déclare
+    # **`tags` s'écrit en liste, et c'est un override qui l'a rendu possible.**
+    # Le contrat le déclare `string` et décrit la virgule dans sa propre
+    # description ; l'override lit cette phrase, le module expose une liste, et
+    # le runtime joint. Avant lui, `tags: [exemple]` ne levait aucune erreur :
+    # Ansible produisait la chaîne `"['exemple']"`, l'API ne trouvait rien, et
+    # ce playbook lisait zéro machine sur un parc qui en porte cinq. Mesuré ici
+    # même, à sa première exécution, en capturant la requête émise.
+    - name: Le filtre par tag, écrit comme un opérateur l'écrirait
       stephrobert.scaleway.instance_server_info:
         zone: "{{ zone }}"
-        tags: exemple
+        tags: [exemple]
       register: taguees
 
     - name: Le filtre serveur rend les mêmes cinq machines

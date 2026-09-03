@@ -104,7 +104,8 @@ options:
     description:
     - List Instances with these exact tags (to filter with several tags, use commas to separate
       them).
-    type: str
+    type: list
+    elements: str
   with_ip:
     description:
     - List Instances by IP (both private_ip and public_ip are supported). (IP address)
@@ -193,7 +194,7 @@ MODULE_ARGUMENT_SPEC = {
         "type": "str",
         "choices": ["running", "stopped", "stopped in place", "starting", "stopping", "locked"],
     },
-    "tags": {"type": "str"},
+    "tags": {"type": "list", "elements": "str"},
     "with_ip": {"type": "str"},
     "without_ip": {"type": "bool"},
 }
@@ -234,6 +235,7 @@ MODULE = InfoModule(
             "private_nic_mac_address",
             "servers",
         ),
+        csv_params=("tags",),
         payload_field="servers",
         is_list=True,
         page_param="page",

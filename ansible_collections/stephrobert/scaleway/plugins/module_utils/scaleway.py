@@ -191,6 +191,10 @@ class Operation:
     path_params: tuple[str, ...] = ()
     query_params: tuple[str, ...] = ()
     body_params: tuple[str, ...] = ()
+    #: Filtres que l'API attend en une seule valeur séparée par des virgules.
+    #: Le contrat les déclare `string` en le disant dans leur description, et un
+    #: override les expose en liste : c'est ici qu'on referme la boucle.
+    csv_params: tuple[str, ...] = ()
     #: Champ de la réponse qui porte la ressource utile (`server`, `servers`).
     payload_field: str | None = None
     is_list: bool = False
@@ -333,12 +337,21 @@ def build_query(operation: Operation, parameters: dict[str, Any]) -> dict[str, A
 
     Un paramètre absent n'est pas envoyé : le module ne doit jamais restreindre
     un résultat que personne n'a demandé de restreindre.
+
+    **Un filtre déclaré `csv` est joint ici, et pas plus loin.** L'API attend
+    une seule valeur séparée par des virgules ; le module l'expose en liste
+    parce que c'est ce que le paramètre est. Sans cette jointure, `requests`
+    enverrait des paires répétées, ou pire, `str(liste)`.
     """
     query: dict[str, Any] = {}
     for name in operation.query_params:
         value = parameters.get(name)
-        if value is not None:
-            query[name] = query_value(value)
+        if value is None:
+            continue
+        if name in operation.csv_params and isinstance(value, (list, tuple)):
+            query[name] = ",".join(str(item) for item in value)
+            continue
+        query[name] = query_value(value)
     return query
 
 

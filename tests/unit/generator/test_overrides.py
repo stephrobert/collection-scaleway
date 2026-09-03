@@ -185,3 +185,24 @@ def test_une_attente_sans_raison_est_refusee(tmp_path: Path) -> None:
     with pytest.raises(OverrideError) as erreur:
         load_overrides("demo", root=tmp_path)
     assert "reason" in str(erreur.value)
+
+
+def test_un_parametre_csv_sans_raison_est_refuse(tmp_path: Path) -> None:
+    """Exposer autrement qu'à l'identique un paramètre du contrat est un arbitrage.
+
+    Le chargeur refuse déjà `choices`, `required` et `expose` sans raison. `csv`
+    change la forme sous laquelle un utilisateur écrit un filtre : il rejoint la
+    liste plutôt que d'y échapper.
+    """
+    fichier = tmp_path / "instance.yml"
+    fichier.write_text(
+        "operations:\n"
+        "  instance.v1.Server.ListServers:\n"
+        "    parameters:\n"
+        "      tags:\n"
+        "        csv: true\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(OverrideError) as erreur:
+        load_overrides("instance", root=tmp_path)
+    assert "reason" in str(erreur.value)

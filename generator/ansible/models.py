@@ -141,8 +141,13 @@ class OperationBinding:
     is_list: bool
     page_param: str | None
     per_page_param: str | None
+    #: Filtres que le contrat déclare `string` en décrivant la virgule comme
+    #: séparateur, et qu'un override expose donc en liste. Le runtime les joint
+    #: à l'envoi ; sans cette liste il n'aurait aucun moyen de les distinguer
+    #: d'une valeur qui contient une virgule.
     summary: str | None
     description: str | None
+    csv_params: tuple[str, ...] = ()
 
     @property
     def documentation_line(self) -> str | None:
@@ -327,12 +332,20 @@ def build_module_spec(
     if not getters and not listers:
         raise AmbiguousModule(f"{name} : aucune opération à exécuter")
 
-    get_operation = _bind(getters[0].operation) if getters else None
-    list_operation = _bind(listers[0].operation) if listers else None
+    # Un module d'information porte au plus deux opérations, chacune avec sa
+    # propre clé d'override. On les cherche séparément plutôt que de supposer
+    # qu'un seul override vaut pour les deux.
+    override_get = overrides.get(getters[0].operation.key) if overrides and getters else None
+    override_list = overrides.get(listers[0].operation.key) if overrides and listers else None
+
+    get_operation = _bind(getters[0].operation, override=override_get) if getters else None
+    list_operation = _bind(listers[0].operation, override=override_list) if listers else None
     selector = _selector(get_operation, list_operation, name)
 
     operations = [item.operation for item in plans]
-    options, limits = _build_options(operations, ("zone", "region", selector or ""))
+    options, limits = _build_options(
+        operations, ("zone", "region", selector or ""), override_list or override_get
+    )
     resource = plans[0].resource
 
     return AnsibleModuleSpec(
@@ -376,7 +389,7 @@ def _build_action_module(
         for nom, restriction in (override.parameters if override else {}).items()
         if restriction.expose is False
     )
-    action_operation = _bind(item.operation, masques)
+    action_operation = _bind(item.operation, masques, override)
 
     parametre = _action_parameter(item.operation, name)
     identifiants = tuple(
@@ -649,12 +662,21 @@ def _is_list(operation: ApiOperation) -> bool:
     return bool(operation.response and operation.response.is_list)
 
 
-def _bind(operation: ApiOperation, hidden: frozenset[str] = frozenset()) -> OperationBinding:
+def _bind(
+    operation: ApiOperation,
+    hidden: frozenset[str] = frozenset(),
+    override: OperationOverride | None = None,
+) -> OperationBinding:
     """Traduit une opération de l'IR en ce que le runtime exécutera.
 
     `hidden` retire les paramètres qu'un override masque : le module ne peut
     pas les recevoir, donc les déclarer dans la liaison serait annoncer un
     envoi qui n'aura jamais lieu.
+
+    `override` sert à une seule chose ici, et c'est délibérément peu : savoir
+    quels filtres le contrat décrit comme séparés par des virgules. Le runtime
+    ne peut pas le deviner d'une chaîne, et le générateur n'a pas à le deviner
+    non plus.
     """
     pagination = operation.pagination
     paginated = {pagination.page_param, pagination.per_page_param} if pagination else set()
@@ -675,6 +697,14 @@ def _bind(operation: ApiOperation, hidden: frozenset[str] = frozenset()) -> Oper
         if parameter.location is ParameterLocation.BODY and parameter.name not in hidden
     )
 
+    restrictions = override.parameters if override else {}
+    csv_params = tuple(
+        nom
+        for nom in query_params
+        for restriction in (restrictions.get(nom),)
+        if restriction is not None and restriction.csv
+    )
+
     return OperationBinding(
         id=operation.id,
         method=operation.http_method.value,
@@ -682,6 +712,7 @@ def _bind(operation: ApiOperation, hidden: frozenset[str] = frozenset()) -> Oper
         path_params=path_params,
         query_params=query_params,
         body_params=body_params,
+        csv_params=csv_params,
         payload_field=operation.response.payload_field if operation.response else None,
         is_list=_is_list(operation),
         page_param=pagination.page_param if pagination else None,
@@ -796,14 +827,31 @@ def _build_options(
             )
             choices = restriction.choices
 
+        # **Un filtre que le contrat décrit comme séparé par des virgules.**
+        # Le contrat le déclare `string`, et sa description dit « use commas to
+        # separate them » : l'override lit cette phrase, il ne devine rien. Le
+        # module l'expose en liste, et le runtime joint. Sans ça, `tags: [a, b]`
+        # en YAML ne lève aucune erreur et n'atteint aucune machine.
+        type_ansible = str(entry["type"])
+        elements = str(entry["elements"]) if "elements" in entry else None
+        if restriction is not None and restriction.csv:
+            if parameter.type is not ApiType.STRING:
+                raise ConflictingOption(
+                    f"{name} : `csv` ne vaut que pour un paramètre que le contrat "
+                    f"déclare `string`, et celui-ci est {parameter.type.value}."
+                )
+            type_ansible = "list"
+            elements = "str"
+            limits.append(f"{name} : exposé en liste, joint par des virgules (override)")
+
         options.append(
             AnsibleOption(
                 name=name,
-                type=str(entry["type"]),
+                type=type_ansible,
                 required=required,
                 description=description,
                 choices=choices,
-                elements=str(entry["elements"]) if "elements" in entry else None,
+                elements=elements,
                 no_log=no_log_de(parameter),
                 default=entry.get("default"),
             )

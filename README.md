@@ -41,7 +41,7 @@ collection stephrobert.scaleway : 16 modules produits sur 31 au plan
   instance_volume_info                   Gather information about Scaleway Instance volumes
   instance_volume_type_info              Gather information about Scaleway Instance volume types
   scaleway (inventaire)                  instance, elastic_metal, apple_silicon
-  423 tests unitaires · 75 mutations prouvées par /falsify
+  427 tests unitaires · 77 mutations prouvées par /falsify
   CI : cinq jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks et inventaire contre l'émulateur :
   comptes rendus par `mise run sanity` et `mise run integration`

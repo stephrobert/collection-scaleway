@@ -109,6 +109,58 @@ def test_une_api_qui_ignore_la_taille_de_page_fait_echouer(runtime: Any) -> None
         )
 
 
+# --- filtres joints par virgules -------------------------------------------
+
+
+def test_un_filtre_csv_part_en_une_seule_valeur(runtime: Any) -> None:
+    """L'API attend `tags=a,b`, pas `tags=a&tags=b` ni `tags=['a', 'b']`.
+
+    Le contrat déclare `tags` en `string` et décrit la virgule dans sa propre
+    description. Le module l'expose en liste parce que c'est ce que le
+    paramètre est ; la jointure appartient donc au runtime.
+    """
+    operation = runtime.Operation(
+        id="ListServers",
+        method="GET",
+        path="/instance/v1/zones/{zone}/servers",
+        query_params=("tags",),
+        csv_params=("tags",),
+    )
+    assert runtime.build_query(operation, {"tags": ["a", "b"]}) == {"tags": "a,b"}
+    assert runtime.build_query(operation, {"tags": ["seul"]}) == {"tags": "seul"}
+
+
+def test_un_filtre_non_csv_nest_pas_joint(runtime: Any) -> None:
+    """Le cas voisin : sans déclaration, la valeur passe telle quelle.
+
+    Sans cette distinction, une valeur qui contient une virgule serait
+    silencieusement coupée en deux filtres.
+    """
+    operation = runtime.Operation(
+        id="ListServers",
+        method="GET",
+        path="/instance/v1/zones/{zone}/servers",
+        query_params=("name",),
+    )
+    assert runtime.build_query(operation, {"name": "un,nom"}) == {"name": "un,nom"}
+
+
+def test_un_filtre_csv_recu_en_chaine_reste_intact(runtime: Any) -> None:
+    """Ansible convertit un scalaire en liste d'un élément, mais pas toujours.
+
+    Une chaîne déjà écrite avec ses virgules doit traverser sans être
+    retouchée : la joindre reviendrait à la couper puis la recoller.
+    """
+    operation = runtime.Operation(
+        id="ListServers",
+        method="GET",
+        path="/instance/v1/zones/{zone}/servers",
+        query_params=("tags",),
+        csv_params=("tags",),
+    )
+    assert runtime.build_query(operation, {"tags": "a,b"}) == {"tags": "a,b"}
+
+
 # --- chemins ---------------------------------------------------------------
 
 

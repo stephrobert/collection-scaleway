@@ -606,6 +606,22 @@
       "find": "            for name in written\n            for item in modules.get(name, ())",
       "replace": "            for name in modules\n            for item in modules.get(name, ())",
       "test": "tests/unit/generator/test_plan.py::test_la_couverture_construite_ne_compte_que_les_modules_nommes"
+    },
+    {
+      "name": "filtre-csv-non-joint",
+      "why": "Sans la jointure, une liste part en paires répétées ou en `str(liste)`. L'API ne trouve rien, aucune erreur n'est levée, et le playbook lit zéro machine sur un parc qui en porte cinq.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        if name in operation.csv_params and isinstance(value, (list, tuple)):",
+      "replace": "        if name in operation.csv_params and isinstance(value, (list, tuple)) and False:",
+      "test": "tests/unit/collection/test_runtime.py::test_un_filtre_csv_part_en_une_seule_valeur"
+    },
+    {
+      "name": "csv-sans-raison-accepte",
+      "why": "Changer la forme sous laquelle un utilisateur écrit un filtre est un arbitrage, pas une correction. Sans le refus, un `csv: true` posé sans raison passerait, et personne ne saurait dans six mois pourquoi ce paramètre diverge du contrat.",
+      "file": "generator/overrides/loader.py",
+      "find": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\")",
+      "replace": "        arbitrages = (\"choices\", \"required\", \"expose\")",
+      "test": "tests/unit/generator/test_overrides.py::test_un_parametre_csv_sans_raison_est_refuse"
     }
   ]
 }

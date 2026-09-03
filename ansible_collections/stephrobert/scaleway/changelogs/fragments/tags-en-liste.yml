@@ -1,0 +1,14 @@
+---
+minor_changes:
+  - "``instance_server_info`` accepte désormais ``tags`` sous forme de **liste**,
+    et le runtime la joint par des virgules à l'envoi. Le contrat déclare ce
+    filtre en ``string`` tout en décrivant sa forme dans sa propre description,
+    « to filter with several tags, use commas to separate them » : l'override
+    lit cette phrase, il ne devine rien."
+bugfixes:
+  - "Écrire ``tags: [exemple]`` ne rendait plus aucune machine, sans lever la
+    moindre erreur. Ansible convertissait la liste en la chaîne
+    ``\"['exemple']\"``, l'API ne trouvait rien, et un playbook lisait zéro
+    machine sur un parc qui en portait cinq. Mesuré en capturant la requête
+    émise. Les deux formes fonctionnent désormais, la liste comme la chaîne à
+    virgules déjà écrite."
