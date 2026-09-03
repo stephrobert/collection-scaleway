@@ -32,6 +32,30 @@ jobs:
 
       # La liste de licences est celle qu'une collection publiée sous
       # GPL-3.0-or-later peut consommer sans se contredire.
+      #
+      # **Ce contrôle est rouge sur toute pull request qui touche
+      # `meta/ee-requirements.txt`, et ce n'est pas un faux positif.** Le paquet
+      # PyPI `scaleway` déclare deux classifiers qui s'excluent, « BSD License »
+      # et « Other/Proprietary License », et ne livre aucun fichier de licence.
+      # L'outil en tire
+      # `BSD-2-Clause AND BSD-3-Clause AND LicenseRef-scancode-proprietary-license`,
+      # et le `AND` est le mot décisif : aucune liste de licences ouvertes ne
+      # peut accepter cette expression.
+      #
+      # Le dépôt amont, lui, est **Apache-2.0**, licence déjà autorisée
+      # ci-dessous. Les trois sources se contredisent, mesuré le 3 septembre
+      # 2026 sur les versions 2.9.0 à 2.12.0.
+      #
+      # **Aucune exemption n'est posée ici, et c'est délibéré.**
+      # `allow-dependencies-licenses: pkg:pypi/scaleway` rendrait le contrôle
+      # vert en acceptant une licence inconnue sur parole, ce qui est
+      # exactement ce qu'une revue de licences existe pour empêcher. Le défaut
+      # est signalé à la source, scaleway/scaleway-sdk-python#2131, avec la
+      # mesure et un correctif proposé. Le vert reviendra quand le paquet
+      # dira ce qu'il est.
+      #
+      # Se passer du SDK n'est pas l'issue : l'inventaire dynamique s'appuie sur
+      # cinq de ses APIs produit, et le dépôt assume ce partage des rôles.
       - name: Revue des dépendances
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
