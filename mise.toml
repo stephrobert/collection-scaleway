@@ -163,8 +163,12 @@ run = "python scripts/falsify.py"
 # ---- Générateur ------------------------------------------------------------
 
 [tasks.report]
-description = "Rapport de couverture d'un produit, en mode strict"
-run = "python -m generator report $PRODUCT --strict"
+description = "Rapport de couverture de chaque produit suivi, en mode strict"
+# Chaque produit, pas seulement `$PRODUCT` : le site refuse de se construire
+# quand un produit de `products.txt` n'a pas sa page de mesure, et le dire ici
+# vaut mieux que de le découvrir trois étapes plus loin. La liste vient de
+# l'index, elle n'est pas recopiée.
+run = "python scripts/report_all.py"
 
 [tasks.generate]
 description = "Écrire les modules des deux produits dans plugins/modules"
