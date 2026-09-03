@@ -42,5 +42,7 @@ __pycache__/
 .terraform/
 terraform.tfstate
 terraform.tfstate.backup
+# Le verrou d'état, present tant qu'un apply tourne.
+.terraform.tfstate.lock.info
 terraform.tfvars
 *.tfplan

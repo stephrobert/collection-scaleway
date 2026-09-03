@@ -382,6 +382,48 @@ def _valeur(brut: Any) -> Any:
     return brut
 
 
+def controler_sortie_internet(bastion_ip: str) -> None:
+    """Les machines peuvent-elles joindre l'internet, avant de leur demander d'installer.
+
+    Sans cette sonde, l'absence de sortie se manifeste dix tâches plus loin par
+    « Failed to update apt cache after 5 retries », qui désigne le dépôt de
+    paquets, le miroir, ou le DNS. Trois choses innocentes. La cause se mesure
+    en six secondes depuis le bastion, et une cause nommée vaut mieux qu'un
+    symptôme.
+    """
+    sonde = [
+        "ssh",
+        "-F",
+        "/dev/null",
+        "-i",
+        str(CLE),
+        "-o",
+        "StrictHostKeyChecking=no",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
+        "-o",
+        "ConnectTimeout=15",
+        "-o",
+        "BatchMode=yes",
+        f"root@{bastion_ip}",
+        'timeout 6 bash -c "</dev/tcp/1.1.1.1/443"',
+    ]
+    if lancer(sonde, capture=True).returncode == 0:
+        print("sortie internet : joignable depuis le bastion")
+        return
+    raise ExempleError(
+        "les machines n'ont aucune sortie vers l'internet, donc aucun paquet ne "
+        "s'installera.\n"
+        "  Sous `incus-ovn`, c'est feint#647 : le bastion porte bien une route par "
+        "défaut et le trafic\n"
+        "  ne sort pas, et `push_default_route` n'installe aucune route. Mesuré, "
+        "et la même stack\n"
+        "  converge sur le cloud réel. Ce n'est pas un défaut de la plateforme "
+        "d'exemple :\n"
+        "  `mise run example:reel` la joue entièrement."
+    )
+
+
 def jouer(playbook: str, env: dict[str, str], variables: dict[str, str]) -> int:
     binaire_ansible = str(Path(sys.executable).parent / "ansible-playbook")
     inventaire_fichier = str(PLAYBOOKS / "inventaire.scaleway.yml")
@@ -470,6 +512,7 @@ def main(argv: list[str]) -> int:
         controler_inventaire(inventaire(env), attendu)
 
         if cible["ssh"]:
+            controler_sortie_internet(bastion_ip)
             extra = {
                 "bastion_ip": bastion_ip,
                 "application_url": application_url,
