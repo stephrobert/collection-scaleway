@@ -164,6 +164,13 @@ python -m generator generate $PRODUCT $flags
 description = "Retélécharger les contrats depuis le portail Scaleway"
 run = "python scripts/sync_specs.py"
 
+[tasks."drift"]
+description = "Dire ce que les contrats téléchargés changent pour le générateur"
+# À lancer après `sync:api`. Sort en 3 quand quelque chose a bougé, code
+# distinct des trois que la CI connaît : une dérive n'est pas une erreur du
+# dépôt, c'est une nouvelle du monde extérieur.
+run = "python scripts/drift_report.py"
+
 [tasks."golden:update"]
 description = "Régénérer les golden fixtures, après lecture du diff"
 run = "python scripts/update_golden.py"

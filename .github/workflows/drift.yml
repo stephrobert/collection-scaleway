@@ -1,0 +1,112 @@
+# La dérive de l'API Scaleway, mesurée sans qu'on le demande.
+#
+# **C'est l'angle du projet, et rien ne le déclenchait.** Le dépôt affirme
+# mesurer l'API plutôt que la suivre à la main : le contrat est versionné, le
+# golden fait rougir la CI dès qu'une opération bouge, et le rapport strict sort
+# en 2 sur toute opération non classée. Ces trois mécanismes fonctionnent, et
+# ils ne voyaient rien tant que personne ne lançait `mise run sync:api` à la
+# main. Scaleway a ajouté 453 méthodes SDK et en a retiré 26 en douze mois ; un
+# dépôt qui en fait son argument doit être le premier averti, pas le dernier.
+#
+# **Ce workflow ouvre une issue, il ne corrige rien.** Une opération apparue en
+# amont demande une décision de classification, et personne ne veut la voir
+# prise toute seule par un robot à 5 h du matin. Il télécharge, il compare, il
+# raconte, et il s'arrête là.
+#
+# **Un job vert veut dire « mesuré, rien n'a bougé ».** Un job rouge veut dire
+# que l'outillage a cassé, pas que l'API a bougé : `drift_report.py` sort en 3
+# pour la dérive, code délibérément distinct des trois que la CI connaît déjà.
+# Sans cette distinction, un portail injoignable et une API qui bouge se
+# liraient pareil.
+
+name: dérive
+
+on:
+  schedule:
+    # Le mercredi, décalé du cron de `ci.yml` qui tourne le lundi : deux jobs
+    # qui rougissent le même matin pour des raisons différentes se confondent.
+    - cron: "0 5 * * 3"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: derive
+  cancel-in-progress: false
+
+jobs:
+  derive:
+    name: Contrats amont
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # Pour ouvrir l'issue, et pour elle seule. Le job ne pousse rien.
+      issues: write
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          # Le job télécharge les contrats depuis le portail Scaleway : `audit`
+          # documente ce trafic au lieu de le deviner.
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Installer mise
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
+        with:
+          version: 2026.2.23
+
+      - name: Installer
+        run: mise run setup
+
+      - name: Retélécharger les contrats depuis le portail
+        run: mise run sync:api
+
+      # Le rapport sort en 3 quand quelque chose a bougé, en 0 sinon, et en 1
+      # si son propre outillage casse. `continue-on-error` serait un aveu
+      # d'ambiguïté : ici les trois cas se distinguent, et chacun est traité.
+      - name: Mesurer ce qui a bougé
+        id: derive
+        run: |
+          set +e
+          python scripts/drift_report.py > "${RUNNER_TEMP}/derive.md"
+          code=$?
+          set -e
+          cat "${RUNNER_TEMP}/derive.md"
+          if [ "$code" -eq 3 ]; then
+            echo "derive=true" >> "$GITHUB_OUTPUT"
+          elif [ "$code" -ne 0 ]; then
+            echo "le rapport de dérive a échoué (code $code)" >&2
+            exit "$code"
+          fi
+
+      # Une issue par dérive, et pas une par semaine : tant que celle de la
+      # semaine dernière est ouverte, on lui ajoute un commentaire. Un robot qui
+      # empile les doublons finit par n'être lu par personne.
+      - name: Ouvrir ou compléter l'issue de dérive
+        if: steps.derive.outputs.derive == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RAPPORT: ${{ runner.temp }}/derive.md
+          TITRE: "Les contrats Scaleway ont bougé en amont"
+        run: |
+          ouverte=$(gh issue list --state open --label derive --limit 1 --json number --jq '.[0].number // ""')
+          if [ -n "$ouverte" ]; then
+            gh issue comment "$ouverte" --body-file "$RAPPORT"
+            echo "issue #$ouverte complétée"
+          else
+            gh issue create --title "$TITRE" --label derive --body-file "$RAPPORT"
+          fi
+
+      - name: Ce que la CI dit du contrat téléchargé
+        if: steps.derive.outputs.derive == 'true'
+        # Informatif : le golden et le rapport strict vont échouer, c'est le
+        # but. La sortie est jointe au journal du job, où le lecteur de l'issue
+        # ira voir les nombres.
+        continue-on-error: true
+        run: mise run check
