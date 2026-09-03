@@ -49,8 +49,22 @@ def classify(status_code: int | None, message: str = "") -> type[InventoryError]
 
     Le statut est ce que l'API dit d'elle-même. S'en remettre au texte du
     message serait deviner, et un message change sans prévenir.
+
+    Une exception, et elle a coûté cher : Scaleway rend parfois 401 pour un
+    droit manquant, pas seulement pour des identifiants refusés. Le test du
+    message est donc conservé, mais il cherche `permission` et non `denied`.
+
+    `denied` était présent dans le corps 401 **normal** de Scaleway, celui d'un
+    refus d'authentification :
+
+        {"message": "denied authentication", "type": "denied_authentication"}
+
+    Résultat : aucun jeton révoqué ne levait jamais `AuthenticationFailed`. La
+    moitié fatale de cette taxonomie ne servait à rien, et un inventaire vide
+    sortait avec un code de retour 0, exactement le défaut qu'elle existe pour
+    empêcher.
     """
-    if status_code in (401, 403) and "denied" in message.lower():
+    if status_code in (401, 403) and "permission" in message.lower():
         return PermissionDenied
     if status_code == 401:
         return AuthenticationFailed

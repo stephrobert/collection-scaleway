@@ -249,6 +249,7 @@ from ansible_collections.local.scaleway.plugins.module_utils.inventory.models im
     NetworkAttachment,
 )
 from ansible_collections.local.scaleway.plugins.module_utils.inventory.providers.base import (
+    SCALEWAY_ZONES,
     DiscoveryContext,
     region_of,
 )
@@ -284,6 +285,26 @@ CLIENT_OPTIONS = (
 )
 
 
+def _plain(valeur):
+    """Réduit un objet du SDK à des structures qu'un cache sait écrire.
+
+    Un cache `jsonfile` ne sait pas écrire une dataclass du SDK, ni un enum,
+    ni une date. Ce qui n'a pas d'équivalent JSON devient sa représentation
+    textuelle plutôt que de faire échouer l'écriture : le champ est un confort
+    de diagnostic, il n'a pas à casser un inventaire.
+    """
+    if valeur is None or isinstance(valeur, (str, int, float, bool)):
+        return valeur
+    if isinstance(valeur, dict):
+        return {str(cle): _plain(item) for cle, item in valeur.items()}
+    if isinstance(valeur, (list, tuple, set)):
+        return [_plain(item) for item in valeur]
+    interne = getattr(valeur, "__dict__", None)
+    if interne:
+        return {str(cle): _plain(item) for cle, item in interne.items()}
+    return str(valeur)
+
+
 class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
     """Le dialogue avec Ansible, et rien d'autre.
 
@@ -313,13 +334,17 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
             raise AnsibleError(missing_required_lib("scaleway"))
 
         try:
-            settings = configuration.from_options(self.get_option, discovery.HOST_PROVIDERS)
+            settings = configuration.from_options(
+                self.get_option, discovery.HOST_PROVIDERS, SCALEWAY_ZONES
+            )
         except configuration.ConfigError as erreur:
             raise AnsibleParserError(str(erreur)) from erreur
 
         self.load_cache_plugin()
         empreinte = settings.cache_fingerprint(
-            self.get_option("profile"), self.get_option("api_url")
+            self.get_option("profile"),
+            self.get_option("api_url"),
+            self.get_option("access_key"),
         )
         cache_key = "%s_%s" % (self.get_cache_key(path), empreinte)
 
@@ -430,6 +455,12 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
             "private_ipv6": list(host.private_ipv6),
             "private_networks": [a.to_variable() for a in host.private_networks],
             "metadata": dict(host.metadata),
+            # `raw` traverse le cache comme le reste, converti en structures
+            # simples. Sans ce passage, l'option `include_raw` était
+            # entièrement inerte : documentée, comptée dans la clé de cache,
+            # testée côté provider, et sans le moindre effet observable, parce
+            # que tout run passe par cette sérialisation.
+            "raw": _plain(host.raw),
         }
 
     @staticmethod
@@ -461,6 +492,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 for reseau in donnees.get("private_networks") or ()
             ),
             metadata=donnees.get("metadata") or {},
+            raw=donnees.get("raw"),
         )
 
     def _populate(self, materiel, settings):

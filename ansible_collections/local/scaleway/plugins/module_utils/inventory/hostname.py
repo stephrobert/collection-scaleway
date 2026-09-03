@@ -29,6 +29,26 @@ LEGACY_SOURCES: dict[str, str] = {
 #: Préfixe qui lit un tag de la forme `<clé>=<valeur>`.
 TAG_PREFIX = "tag:"
 
+#: Les champs du modèle qu'une source de nom peut lire, et **rien d'autre**.
+#: Sans cette table, `resolve_source` faisait un `getattr` libre : une faute de
+#: frappe donnait un inventaire vide, et `private_networks` rendait un objet
+#: `NetworkAttachment` là où le type promet une chaîne.
+SOURCES: tuple[str, ...] = (
+    "name",
+    "id",
+    "public_ipv4",
+    "public_ipv6",
+    "private_ipv4",
+    "private_ipv6",
+)
+
+
+def is_known_source(source: str) -> bool:
+    """Vrai pour une source que `resolve_source` sait lire."""
+    if source.startswith(TAG_PREFIX):
+        return bool(source[len(TAG_PREFIX) :].strip())
+    return LEGACY_SOURCES.get(source, source) in SOURCES
+
 
 def resolve_source(host: InventoryHost, source: str) -> str | None:
     """La valeur d'une source pour cette machine, ou `None` si elle manque."""
@@ -43,6 +63,8 @@ def resolve_source(host: InventoryHost, source: str) -> str | None:
                 return valeur or None
         return None
 
+    if source not in SOURCES:
+        return None
     valeur = getattr(host, source, None)
     if isinstance(valeur, tuple):
         return valeur[0] if valeur else None

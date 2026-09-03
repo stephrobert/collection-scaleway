@@ -25,6 +25,7 @@ from typing import Any
 from .address import DEFAULT_PRIORITY, FAMILIES, AddressPolicy
 from .filtering import Filters
 from .groups import AXES
+from .hostname import is_known_source
 
 #: Les axes de groupes proposés par défaut. Assez pour reconnaître son parc,
 #: pas assez pour produire des centaines de groupes vides.
@@ -57,15 +58,26 @@ class InventoryConfig:
     include_raw: bool
     strict: bool
 
-    def cache_fingerprint(self, profile: str | None, api_url: str | None) -> str:
+    def cache_fingerprint(
+        self,
+        profile: str | None,
+        api_url: str | None,
+        access_key: str | None = None,
+    ) -> str:
         """Une empreinte de tout ce qui change le résultat.
 
         Deux configurations différentes ne doivent jamais partager un
         inventaire en cache, même depuis le même fichier.
+
+        La clé d'accès en fait partie, et c'est le cas le plus grave : sans
+        elle, deux exécutions **sur deux comptes différents**, sans `profile`
+        déclaré, produisaient la même empreinte, et la seconde recevait le parc
+        de la première. Seule son empreinte entre ici, jamais sa valeur.
         """
         materiel = {
             "profile": profile,
             "api_url": api_url,
+            "identity": hashlib.sha256((access_key or "").encode("utf-8")).hexdigest()[:16],
             "products": self.products,
             "zones": self.zones,
             "regions": self.regions,
@@ -106,6 +118,7 @@ def _liste(valeur: Any) -> tuple[str, ...]:
 def from_options(
     get_option: Callable[[str], Any],
     known_products: tuple[str, ...],
+    known_zones: tuple[str, ...] = (),
 ) -> InventoryConfig:
     """Lit et valide les options, et refuse ce qu'elle ne sait pas faire.
 
@@ -132,6 +145,23 @@ def from_options(
             f"famille(s) d'adresse inconnue(s) : {hors_familles}. Connues : {list(FAMILIES)}"
         )
 
+    zones = _liste(get_option("zones"))
+    if known_zones:
+        hors_zones = sorted(set(zones) - set(known_zones))
+        if hors_zones:
+            raise ConfigError(
+                f"zone(s) inconnue(s) : {hors_zones}. Connues : {list(known_zones)}"
+            )
+
+    sources = _liste(get_option("hostnames")) or DEFAULT_HOSTNAMES
+    hors_sources = sorted(nom for nom in sources if not is_known_source(nom))
+    if hors_sources:
+        raise ConfigError(
+            f"source(s) de nom d'hôte inconnue(s) : {hors_sources}. "
+            f"Connues : {list(DEFAULT_HOSTNAMES)}, les familles d'adresses, "
+            "et `tag:<clé>`"
+        )
+
     correspondance = get_option("tags_match") or "any"
     if correspondance not in ("any", "all"):
         raise ConfigError(f"tags_match vaut '{correspondance}', attendu 'any' ou 'all'")
@@ -139,11 +169,11 @@ def from_options(
     adresse = get_option("address") or {}
     return InventoryConfig(
         products=tuple(produits),
-        zones=_liste(get_option("zones")),
+        zones=zones,
         regions=_liste(get_option("regions")),
         project_ids=_liste(get_option("projects")),
         organization_ids=_liste(get_option("organizations")),
-        hostnames=_liste(get_option("hostnames")) or DEFAULT_HOSTNAMES,
+        hostnames=sources,
         address=AddressPolicy(
             priority=tuple(priorite),
             private_network=adresse.get("private_network") or adresse.get("private_network_id"),

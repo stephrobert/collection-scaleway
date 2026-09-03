@@ -154,3 +154,46 @@ def test_les_organisations_entrent_dans_la_cle_de_cache() -> None:
     une = from_options(_options(organizations=["org-1"]), PRODUITS).cache_fingerprint("scw", None)
     autre = from_options(_options(organizations=["org-2"]), PRODUITS).cache_fingerprint("scw", None)
     assert une != autre
+
+
+def test_une_zone_inconnue_est_refusee() -> None:
+    """Une faute de frappe donnait zéro zone interrogée, zéro appel, zéro
+    avertissement, et un inventaire vide en code 0."""
+    with pytest.raises(ConfigError, match="fr-par1"):
+        from_options(_options(zones=["fr-par1"]), PRODUITS, ("fr-par-1", "fr-par-2"))
+
+
+def test_une_zone_connue_passe() -> None:
+    config = from_options(_options(zones=["fr-par-1"]), PRODUITS, ("fr-par-1", "fr-par-2"))
+    assert config.zones == ("fr-par-1",)
+
+
+def test_une_source_de_nom_dhote_inconnue_est_refusee() -> None:
+    """`hostnames: [nmae]` était accepté, et chaque machine écartée ensuite."""
+    with pytest.raises(ConfigError, match="nmae"):
+        from_options(_options(hostnames=["nmae"]), PRODUITS)
+
+
+def test_une_source_qui_lit_un_objet_est_refusee() -> None:
+    """`private_networks` rendait un objet là où le type promet une chaîne."""
+    with pytest.raises(ConfigError, match="private_networks"):
+        from_options(_options(hostnames=["private_networks"]), PRODUITS)
+
+
+def test_les_sources_par_tag_et_les_alias_restent_acceptes() -> None:
+    config = from_options(_options(hostnames=["tag:role", "hostname", "id"]), PRODUITS)
+    assert config.hostnames == ("tag:role", "hostname", "id")
+
+
+def test_deux_comptes_ne_partagent_pas_leur_inventaire_en_cache() -> None:
+    """Sans `profile` déclaré, deux clés d'accès différentes produisaient la
+    même empreinte, et la seconde exécution recevait le parc de la première."""
+    config = from_options(_options(), PRODUITS)
+    un = config.cache_fingerprint(None, None, "SCW-COMPTE-A")
+    autre = config.cache_fingerprint(None, None, "SCW-COMPTE-B")
+    assert un != autre
+
+
+def test_la_cle_dacces_nentre_jamais_en_clair_dans_lempreinte() -> None:
+    config = from_options(_options(), PRODUITS)
+    assert "SCW-SECRET" not in config.cache_fingerprint(None, None, "SCW-SECRET")

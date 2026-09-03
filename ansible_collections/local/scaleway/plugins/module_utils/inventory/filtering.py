@@ -38,11 +38,25 @@ class Filters:
     exclude_states: tuple[str, ...] = ()
 
     def api_tags(self) -> tuple[str, ...]:
-        """Les tags à passer à l'API.
+        """Les tags à passer à l'API, et rien d'autre.
 
-        En mode `all`, l'API ne sait pas l'exprimer : on lui demande quand même
-        les tags, ce qui réduit déjà le transfert, et on affine ici.
+        L'API Instance applique un **ET** sur `tags`, pas un OU. Trois sources
+        concordantes : sa documentation (« servers with these exact tags »), le
+        SDK Python qui joint les valeurs par des virgules, et l'émulateur,
+        mesuré, où `?tags=a,absent` rend zéro.
+
+        Conséquence du malentendu d'origine : en mode `any`, qui est le
+        **défaut**, demander deux tags à l'API ne rendait que les machines
+        portant les deux. Une machine ne portant que le premier n'était jamais
+        téléchargée, et le filtrage local ne peut pas récupérer ce qu'il n'a
+        pas reçu. L'inventaire était silencieusement partiel.
+
+        En mode `any` avec plusieurs tags, on ne filtre donc plus côté API : on
+        transfère et on affine ici. Avec un seul tag, les deux modes coïncident
+        et le filtre reste utile.
         """
+        if self.tags_match == "any" and len(self.tags) > 1:
+            return ()
         return self.tags
 
 

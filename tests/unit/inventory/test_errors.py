@@ -36,11 +36,6 @@ def test_chaque_statut_va_dans_sa_categorie(statut, attendu) -> None:
     assert classify(statut) is attendu
 
 
-def test_un_401_qui_parle_de_droit_refuse_reste_tolerable() -> None:
-    """Scaleway rend parfois 401 pour un droit manquant : ce n'est pas fatal."""
-    assert classify(401, "permission denied on this resource") is PermissionDenied
-
-
 def test_toutes_les_categories_descendent_de_la_meme_racine() -> None:
     """Un appelant peut donc attraper `InventoryError` sans les énumérer."""
     for categorie in (AuthenticationFailed, PermissionDenied, ProductUnavailable, DiscoveryFailed):
@@ -50,3 +45,20 @@ def test_toutes_les_categories_descendent_de_la_meme_racine() -> None:
 def test_authentification_et_droit_ne_se_confondent_pas() -> None:
     """La distinction qui décide entre « on continue » et « on s'arrête »."""
     assert classify(401) is not classify(403)
+
+
+def test_le_corps_401_reel_de_scaleway_est_bien_fatal() -> None:
+    """Le défaut le plus coûteux de cette taxonomie, et le plus discret.
+
+    Scaleway rend `{"message": "denied authentication", ...}` sur un refus
+    d'authentification, et la règle cherchait `denied`. Aucun jeton révoqué ne
+    levait donc `AuthenticationFailed` : la moitié fatale ne servait à rien, et
+    un inventaire vide sortait avec un code de retour 0.
+    """
+    corps = '{"message": "denied authentication", "type": "denied_authentication"}'
+    assert classify(401, corps) is AuthenticationFailed
+
+
+def test_un_401_qui_parle_de_permission_reste_tolerable() -> None:
+    """Scaleway rend parfois 401 pour un droit manquant : la nuance survit."""
+    assert classify(401, "permission denied on this resource") is PermissionDenied
