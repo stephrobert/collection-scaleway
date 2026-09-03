@@ -643,7 +643,7 @@
       "name": "gestion-ecrit-tout-le-corps",
       "why": "Un module de gestion qui envoie tous ses paramètres au lieu de la seule différence rend `changed` à chaque exécution et écrase les champs qu'un autre playbook gère.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "    ecarts = {nom: valeur for nom, valeur in demande.items() if courant.get(nom) != valeur}",
+      "find": "    ecarts = {\n        nom: valeur for nom, valeur in demande.items() if _valeur_courante(courant, nom) != valeur\n    }",
       "replace": "    ecarts = dict(demande)",
       "test": "tests/unit/collection/test_runtime.py::test_une_ressource_deja_conforme_ne_declenche_aucune_ecriture"
     },
@@ -659,8 +659,8 @@
       "name": "gestion-gere-un-parametre-absent",
       "why": "Un paramètre absent n'est pas « à vider », il n'est pas géré. Sans cette règle, un playbook qui règle les tags effacerait le nom.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "        if module.params.get(nom) is not None\n    }",
-      "replace": "        if nom in module.params\n    }",
+      "find": "        nom: module.params[nom] for nom in spec.managed_params if module.params.get(nom) is not None",
+      "replace": "        nom: module.params.get(nom) for nom in spec.managed_params if nom in module.params",
       "test": "tests/unit/collection/test_runtime.py::test_un_parametre_non_fourni_nest_pas_gere"
     },
     {
