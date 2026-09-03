@@ -61,6 +61,43 @@ def test_le_total_annonce_arrete_la_pagination(runtime: Any) -> None:
     assert appels == [1]
 
 
+def test_une_api_qui_plafonne_la_taille_de_page_ne_tronque_pas(runtime: Any) -> None:
+    """Une page courte ne veut pas dire dernière page quand `total_count` est là.
+
+    C'est le cas que l'ordre des conditions d'arrêt décidait : l'API plafonne
+    `per_page` à 50 alors qu'on demande 100, et annonce 120 éléments. Tester
+    « la page est plus courte que demandée » en premier rend 50 éléments, une
+    seule page, et aucun avertissement.
+    """
+    appels: list[int] = []
+
+    def page(numero: int) -> dict[str, Any]:
+        appels.append(numero)
+        debut = (numero - 1) * 50
+        return {
+            "servers": [f"s{i}" for i in range(debut, min(debut + 50, 120))],
+            "total_count": 120,
+        }
+
+    resultats = runtime.paginate(page, payload_field="servers", per_page=100)
+    assert len(resultats) == 120
+    assert appels == [1, 2, 3]
+
+
+def test_un_total_annonce_que_lapi_ne_tient_pas_est_une_erreur(runtime: Any) -> None:
+    """Rendre une liste incomplète en silence est exactement ce qu'on refuse."""
+
+    def page(numero: int) -> dict[str, Any]:
+        if numero == 1:
+            return {"servers": ["a", "b"], "total_count": 120}
+        return {"servers": [], "total_count": 120}
+
+    with pytest.raises(runtime.ScalewayApiError) as erreur:
+        runtime.paginate(page, payload_field="servers", per_page=2)
+    assert "120" in str(erreur.value)
+    assert "incomplète" in str(erreur.value)
+
+
 def test_une_api_qui_ignore_la_taille_de_page_fait_echouer(runtime: Any) -> None:
     """Sans cette garde, la boucle tournerait indéfiniment sans rien dire."""
     with pytest.raises(runtime.ScalewayApiError):

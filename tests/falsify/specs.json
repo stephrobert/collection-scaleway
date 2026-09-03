@@ -91,8 +91,8 @@
       "name": "pagination-incomplete",
       "why": "Rendre la première page en silence donne une liste plausible et fausse.",
       "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
-      "find": "        if len(batch) < per_page:\n            return items",
-      "replace": "        if len(batch) <= per_page:\n            return items",
+      "find": "            if len(batch) < per_page:\n                return items",
+      "replace": "            if len(batch) <= per_page:\n                return items",
       "test": "tests/unit/collection/test_runtime.py::test_la_pagination_va_jusquau_bout"
     },
     {
@@ -558,6 +558,22 @@
       "find": "            \"raw\": _plain(host.raw),",
       "replace": "            \"raw\": None,",
       "test": "tests/unit/inventory/test_plugin.py::test_la_reponse_brute_survit_a_laller_retour"
+    },
+    {
+      "name": "page-courte-avant-total",
+      "why": "Tester « la page est plus courte que demandée » avant `total_count` tronque la liste dès la première page quand l'API plafonne `per_page`, et rend une liste incomplète qui se présente comme complète.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        total = payload.get(\"total_count\")\n        if total is None:",
+      "replace": "        total = payload.get(\"total_count\")\n        if len(batch) < per_page:\n            return items\n        if total is None:",
+      "test": "tests/unit/collection/test_runtime.py::test_une_api_qui_plafonne_la_taille_de_page_ne_tronque_pas"
+    },
+    {
+      "name": "total-menteur-tolere",
+      "why": "Une API qui annonce un total qu'elle ne tient pas doit le dire. Rendre la liste partielle en silence est le défaut que toute cette fonction existe pour empêcher.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/scaleway.py",
+      "find": "            if not batch:\n                raise ScalewayApiError(",
+      "replace": "            if not batch and False:\n                raise ScalewayApiError(",
+      "test": "tests/unit/collection/test_runtime.py::test_un_total_annonce_que_lapi_ne_tient_pas_est_une_erreur"
     }
   ]
 }

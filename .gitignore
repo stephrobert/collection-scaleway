@@ -29,3 +29,20 @@ __pycache__/
 
 # Ansible laisse ceci derrière un playbook interrompu.
 *.retry
+
+# Ce que Terraform pose à côté de la stack d'exemple : le fournisseur
+# téléchargé, l'état, et les valeurs locales. L'état décrit un compte à un
+# instant, et `terraform.tfvars` porte une clé publique de poste : ni l'un
+# ni l'autre n'est un artefact du produit.
+#
+# `.terraform.lock.hcl` n'est **pas** ici, et c'est délibéré : il porte les
+# empreintes du fournisseur téléchargé. Ce dépôt épingle ses actions GitHub par
+# SHA et installe ses dépendances Python avec `--require-hashes` ; écarter le
+# verrou Terraform laisserait la seule dépendance non vérifiée de la chaîne.
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+# Le verrou d'état, present tant qu'un apply tourne.
+.terraform.tfstate.lock.info
+terraform.tfvars
+*.tfplan

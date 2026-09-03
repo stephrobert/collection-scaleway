@@ -18,6 +18,10 @@ ruff = "0.16.5"
 # même raison que ruff : l'outil qui décide quelles versions entrent dans le
 # projet ne doit pas changer d'avis tout seul.
 uv = "0.11.26"
+# Terraform bâtit la plateforme d'exemple. Épinglé comme le reste : la stack
+# doit produire le même plan sur un poste et dans la CI, et un fournisseur
+# résolu différemment selon la machine ferait mentir le contrôle de résidu.
+terraform = "1.15.4"
 
 [env]
 # Le venv du projet, créé et activé par mise. Les dépendances de développement
@@ -251,6 +255,32 @@ depends = ["generate"]
 run = "python scripts/integration.py"
 
 # ---- Le tout ---------------------------------------------------------------
+
+# ---- La plateforme d'exemple ----------------------------------------------
+
+[tasks."example"]
+description = "Déployer la plateforme d'exemple contre l'émulateur, l'exploiter, la détruire"
+# Le plan de contrôle seul : rien ne démarre, donc aucun playbook SSH. C'est la
+# cible rapide, gratuite et hors ligne, celle qui prouve que la stack tient et
+# que l'inventaire trouve ce qu'elle a créé.
+run = "python scripts/example.py emulateur"
+
+[tasks."example:machines"]
+description = "La même, avec de vraies machines : l'application se déploie pour de bon"
+# `incus-ovn` fait démarrer de vraies machines avec un vrai réseau. Les
+# playbooks se connectent, installent, et une requête traverse toute la chaîne.
+run = "python scripts/example.py machines"
+
+[tasks."example:reel"]
+description = "La même, contre le compte Scaleway réel, encadrée par le contrôle de résidu"
+# À lancer à la main, jamais depuis la CI : cette cible crée des ressources
+# facturées. La destruction est dans un `finally`, et le contrôle de résidu
+# compare l'état du compte avant et après.
+run = "python scripts/example.py reel"
+
+[tasks."example:residu"]
+description = "Vérifier qu'aucune ressource de l'exemple ne survit sur le compte réel"
+run = "python scripts/residue.py verify"
 
 [tasks.check]
 description = "Ce qu'une pull request doit passer"

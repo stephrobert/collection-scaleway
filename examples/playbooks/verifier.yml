@@ -1,0 +1,106 @@
+# La preuve que la plateforme fonctionne, et pas seulement qu'elle est déployée.
+#
+# Deux vérifications, et la première est celle qui compte : une requête HTTP
+# émise depuis le poste, qui traverse le load balancer, entre dans le réseau
+# privé, atteint une machine web **sans adresse publique**, et revient. Si elle
+# aboutit, toute la chaîne tient : le load balancer, ses cibles IPAM, le réseau
+# privé, le groupe de sécurité et nginx.
+#
+# La seconde exerce la collection elle-même sur les machines découvertes.
+
+- name: La chaîne complète répond depuis l'extérieur
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Interroger l'application par le load balancer
+      ansible.builtin.uri:
+        url: "{{ application_url }}"
+        return_content: true
+        status_code: 200
+      register: reponse
+      retries: 30
+      delay: 5
+      until: reponse.status is defined and reponse.status == 200
+
+    - name: La réponse vient bien d'une machine du tier web
+      ansible.builtin.assert:
+        that:
+          - "'collection-scaleway' in reponse.content"
+          - "'adresse privée' in reponse.content"
+        success_msg: >-
+          la requête a traversé le load balancer et atteint une machine sans
+          adresse publique
+        fail_msg: >-
+          le load balancer répond, mais pas avec la page du tier web :
+          {{ reponse.content[:120] | default('rien') }}
+
+- name: Ce que la collection sait dire de chaque machine découverte
+  hosts: scw_product_instance
+  connection: local
+  gather_facts: false
+
+  tasks:
+    # Chaque machine est lue par l'API avec ses seules variables d'inventaire.
+    # C'est l'intégration Day-2 : l'inventaire découvre, les modules agissent,
+    # et aucun identifiant n'est écrit à la main nulle part.
+    - name: Lire la machine par l'API
+      local.scaleway.instance_server_info:
+        zone: "{{ scaleway_zone }}"
+        server_id: "{{ scaleway_id }}"
+      delegate_to: localhost
+      register: lue
+
+    - name: L'API décrit bien la machine que l'inventaire a nommée
+      ansible.builtin.assert:
+        that:
+          - lue.server.id == scaleway_id
+          - lue.server.name == inventory_hostname
+          - lue.server.state == 'running'
+          - lue is not changed
+        quiet: true
+
+- name: Le cycle Day-2 sur une machine, arrêt puis redémarrage
+  hosts: scw_tag_role_app
+  connection: local
+  gather_facts: false
+  run_once: true
+
+  tasks:
+    # Une seule machine, et une machine applicative : arrêter le bastion
+    # couperait le chemin de tout le reste, et arrêter une machine web ferait
+    # sortir une cible du load balancer.
+    - name: Arrêter la machine, et attendre qu'elle le soit
+      local.scaleway.instance_server_action:
+        zone: "{{ scaleway_zone }}"
+        server_id: "{{ scaleway_id }}"
+        action: poweroff
+        wait: true
+      delegate_to: localhost
+      register: arret
+
+    - name: L'arrêt est confirmé par l'état observé
+      ansible.builtin.assert:
+        that:
+          - arret is changed
+          - arret.state == 'stopped'
+        quiet: true
+
+    - name: La relancer, et attendre qu'elle réponde
+      local.scaleway.instance_server_action:
+        zone: "{{ scaleway_zone }}"
+        server_id: "{{ scaleway_id }}"
+        action: poweron
+        wait: true
+      delegate_to: localhost
+      register: relance
+
+    - name: Le cycle complet est prouvé
+      ansible.builtin.assert:
+        that:
+          - relance is changed
+          - relance.state == 'running'
+        success_msg: >-
+          {{ inventory_hostname }} arrêtée puis relancée, états observés par
+          l'API et non supposés

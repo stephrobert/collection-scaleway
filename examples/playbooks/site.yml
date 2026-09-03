@@ -1,0 +1,185 @@
+# Déploie l'application à trois étages sur la plateforme découverte.
+#
+# Rien ici ne nomme une machine : tout part des groupes que le plugin
+# d'inventaire construit à partir des tags posés par Terraform. Ajouter une
+# machine web à la stack suffit à ce qu'elle soit configurée, sans toucher à ce
+# fichier. C'est ce qu'un inventaire dynamique doit permettre, et c'est ce que
+# cet exemple existe pour montrer.
+#
+# Les machines des tiers web et applicatif **n'ont aucune adresse publique** :
+# on les joint par leur adresse privée, à travers le bastion. C'est la
+# configuration d'une vraie plateforme, et c'est aussi ce qui rend la
+# découverte d'adresses privées indispensable plutôt que confortable.
+
+# `-F /dev/null` ignore la configuration SSH du poste, et ce n'est pas de la
+# prudence gratuite : `feint doctor` mesure qu'un `ProxyJump` déclaré pour
+# `10.*` dans un `~/.ssh/config` capture la plage privée du runtime, et que ssh
+# meurt alors sur « timed out during banner exchange » alors que sshd écoute
+# parfaitement. L'outillage de conformance de feint fait exactement pareil.
+- name: Le bastion, seule porte de la plateforme
+  hosts: scw_tag_role_bastion
+  # `gather_facts: false` et non `true`, et ce n'est pas un détail de style :
+  # la collecte de faits s'exécute **avant** la première tâche. Avec `true`, le
+  # jeu meurt sur « Connection timed out » sans jamais atteindre
+  # `wait_for_connection`, qui est pourtant là pour ça. Terraform rend la main
+  # quand l'API dit « running », pas quand sshd écoute : sur le cloud réel il
+  # y a une minute d'écart, et sous l'émulateur il n'y en a pas, donc seul un
+  # run réel pouvait le montrer.
+  gather_facts: false
+  vars:
+    ansible_host: "{{ bastion_ip }}"
+    ansible_ssh_common_args: >-
+      -F /dev/null
+      -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
+
+  tasks:
+    - name: Attendre que la machine réponde
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+        delay: 5
+        sleep: 5
+
+    - name: Collecter les faits, maintenant qu'il y a quelqu'un
+      ansible.builtin.setup:
+
+    - name: Ce que le bastion sait de lui-même
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }} : {{ ansible_distribution }}
+          {{ ansible_distribution_version }}, adresse privée
+          {{ scaleway_private_ipv4 | first }}
+
+- name: Le tier web, servi derrière le load balancer
+  hosts: scw_tag_role_web
+  gather_facts: false
+  vars:
+    # `ProxyCommand` et non `ProxyJump` : le rebond est un second ssh, et
+    # `-F /dev/null` lui retire la configuration du poste, donc le chemin de la
+    # clé. `ProxyJump` ne permet pas de la lui passer ; `ProxyCommand` si.
+    # Symptôme quand on l'oublie, mesuré : « Connection closed by UNKNOWN
+    # port 65535 », qui ne dit rien d'une clé manquante.
+    ansible_ssh_common_args: >-
+      -F /dev/null
+      -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
+      -o ProxyCommand="ssh -F /dev/null -i {{ ssh_key }}
+      -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+      -W %h:%p root@{{ bastion_ip }}"
+
+  tasks:
+    - name: Attendre que la machine réponde
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+        delay: 5
+        sleep: 5
+
+    - name: Collecter les faits, maintenant qu'il y a quelqu'un
+      ansible.builtin.setup:
+
+    - name: Installer le serveur web
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: true
+
+    - name: Servir une page qui nomme la machine
+      ansible.builtin.copy:
+        dest: /var/www/html/index.html
+        mode: "0644"
+        content: |
+          <!doctype html>
+          <title>collection-scaleway</title>
+          <h1>{{ inventory_hostname }}</h1>
+          <p>adresse privée : {{ scaleway_private_ipv4 | first }}</p>
+          <p>réseau : {{ (scaleway_private_networks | first).name }}</p>
+          <p>zone : {{ scaleway_zone }}</p>
+      notify: Recharger nginx
+
+    - name: Le service est démarré et actif
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+
+  handlers:
+    - name: Recharger nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
+
+- name: Le tier applicatif, sans aucune sortie directe
+  hosts: scw_tag_role_app
+  gather_facts: false
+  vars:
+    # `ProxyCommand` et non `ProxyJump` : le rebond est un second ssh, et
+    # `-F /dev/null` lui retire la configuration du poste, donc le chemin de la
+    # clé. `ProxyJump` ne permet pas de la lui passer ; `ProxyCommand` si.
+    # Symptôme quand on l'oublie, mesuré : « Connection closed by UNKNOWN
+    # port 65535 », qui ne dit rien d'une clé manquante.
+    ansible_ssh_common_args: >-
+      -F /dev/null
+      -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
+      -o ProxyCommand="ssh -F /dev/null -i {{ ssh_key }}
+      -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+      -W %h:%p root@{{ bastion_ip }}"
+
+  tasks:
+    - name: Attendre que la machine réponde
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+        delay: 5
+        sleep: 5
+
+    - name: Collecter les faits, maintenant qu'il y a quelqu'un
+      ansible.builtin.setup:
+
+    # Ces machines sortent par la passerelle publique et n'ont pas d'adresse
+    # publique : si ce paquet s'installe, c'est que la passerelle fonctionne.
+    - name: Installer de quoi porter un service
+      ansible.builtin.apt:
+        name: python3
+        state: present
+        update_cache: true
+
+    - name: Le service applicatif, réduit à ce qu'il doit prouver
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/exemple.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Service applicatif de l'exemple collection-scaleway
+          After=network-online.target
+
+          [Service]
+          ExecStart=/usr/bin/python3 -m http.server 8080 --directory /srv/exemple
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Recharger systemd
+
+    - name: Le répertoire servi existe avant ce qu'on y dépose
+      ansible.builtin.file:
+        path: /srv/exemple
+        state: directory
+        mode: "0755"
+
+    - name: Ce que le service sert
+      ansible.builtin.copy:
+        dest: /srv/exemple/index.html
+        mode: "0644"
+        content: "{{ inventory_hostname }} répond sur 8080\n"
+
+    - name: Le service est démarré et actif
+      ansible.builtin.systemd_service:
+        name: exemple
+        state: started
+        enabled: true
+        daemon_reload: true
+
+  handlers:
+    - name: Recharger systemd
+      ansible.builtin.systemd_service:
+        daemon_reload: true
