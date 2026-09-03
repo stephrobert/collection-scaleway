@@ -245,6 +245,20 @@ paths:
           required: true
           schema:
             type: string
+        # `page_size` et non `per_page` : Scaleway emploie les deux
+        # orthographes selon le produit. Instance pagine avec `per_page`, le
+        # Load Balancer avec `page_size`, et une règle qui ne connaît qu'une
+        # des deux laisse onze opérations rendre leur première page en silence.
+        - in: query
+          name: page_size
+          schema:
+            type: integer
+            format: int32
+        - in: query
+          name: page
+          schema:
+            type: integer
+            format: int32
       responses:
         '200':
           content:

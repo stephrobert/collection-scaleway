@@ -45,14 +45,6 @@ options:
     - Load Balancer ID.
     type: str
     required: true
-  page:
-    description:
-    - The page number to return, from the paginated results.
-    type: int
-  page_size:
-    description:
-    - Number of items to return.
-    type: int
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
 """
@@ -102,8 +94,6 @@ MODULE_ARGUMENT_SPEC = {
     },
     "backend_id": {"type": "str"},
     "lb_id": {"type": "str", "required": True},
-    "page": {"type": "int"},
-    "page_size": {"type": "int"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -118,9 +108,11 @@ MODULE = InfoModule(
         method="GET",
         path="/lb/v1/zones/{zone}/lbs/{lb_id}/backend-stats",
         path_params=("zone", "lb_id"),
-        query_params=("page", "page_size", "backend_id"),
+        query_params=("backend_id",),
         payload_field="backend_servers_stats",
         is_list=True,
+        page_param="page",
+        per_page_param="page_size",
     ),
 )
 

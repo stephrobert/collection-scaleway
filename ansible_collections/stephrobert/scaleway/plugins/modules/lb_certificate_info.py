@@ -60,14 +60,6 @@ options:
     - created_at_desc
     - name_asc
     - name_desc
-  page:
-    description:
-    - The page number to return, from the paginated results.
-    type: int
-  page_size:
-    description:
-    - Number of certificates to return.
-    type: int
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
 """
@@ -126,8 +118,6 @@ MODULE_ARGUMENT_SPEC = {
         "type": "str",
         "choices": ["created_at_asc", "created_at_desc", "name_asc", "name_desc"],
     },
-    "page": {"type": "int"},
-    "page_size": {"type": "int"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -149,9 +139,11 @@ MODULE = InfoModule(
         method="GET",
         path="/lb/v1/zones/{zone}/lbs/{lb_id}/certificates",
         path_params=("zone", "lb_id"),
-        query_params=("order_by", "page", "page_size", "name"),
+        query_params=("order_by", "name"),
         payload_field="certificates",
         is_list=True,
+        page_param="page",
+        per_page_param="page_size",
     ),
     selector="certificate_id",
 )

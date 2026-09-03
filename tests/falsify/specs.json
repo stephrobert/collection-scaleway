@@ -622,6 +622,14 @@
       "find": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\")",
       "replace": "        arbitrages = (\"choices\", \"required\", \"expose\")",
       "test": "tests/unit/generator/test_overrides.py::test_un_parametre_csv_sans_raison_est_refuse"
+    },
+    {
+      "name": "taille-de-page-a-une-seule-orthographe",
+      "why": "Une règle de pagination qui ne connaît que `per_page` ne déclare pas paginées les onze listes du Load Balancer, qui emploie `page_size`. Elles rendraient leur première page en silence, ce qui est le défaut que le garde-fou de pagination existe pour empêcher.",
+      "file": "generator/parser/openapi.py",
+      "find": "_PAGE_SIZE_PARAMS: tuple[str, ...] = (\"per_page\", \"page_size\")",
+      "replace": "_PAGE_SIZE_PARAMS: tuple[str, ...] = (\"per_page\",)",
+      "test": "tests/unit/generator/test_parser.py::test_une_taille_de_page_ecrite_autrement_reste_de_la_pagination"
     }
   ]
 }

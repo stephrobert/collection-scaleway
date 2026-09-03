@@ -36,14 +36,6 @@ options:
     - pl-waw-1
     - pl-waw-2
     - pl-waw-3
-  page:
-    description:
-    - The page number to return, from the paginated results.
-    type: int
-  page_size:
-    description:
-    - The number of items to return.
-    type: int
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
 """
@@ -90,8 +82,6 @@ MODULE_ARGUMENT_SPEC = {
             "pl-waw-3",
         ],
     },
-    "page": {"type": "int"},
-    "page_size": {"type": "int"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -106,9 +96,11 @@ MODULE = InfoModule(
         method="GET",
         path="/lb/v1/zones/{zone}/lb-types",
         path_params=("zone",),
-        query_params=("page", "page_size"),
+        query_params=(),
         payload_field="lb_types",
         is_list=True,
+        page_param="page",
+        per_page_param="page_size",
     ),
 )
 

@@ -53,14 +53,6 @@ options:
     - all
     - ipv4
     - ipv6
-  page:
-    description:
-    - The page number to return, from the paginated results.
-    type: int
-  page_size:
-    description:
-    - Number of IP addresses to return.
-    type: int
   tags:
     description:
     - Tag to filter for, only IPs with one or more matching tags will be returned.
@@ -123,8 +115,6 @@ MODULE_ARGUMENT_SPEC = {
         "type": "str",
         "choices": ["all", "ipv4", "ipv6"],
     },
-    "page": {"type": "int"},
-    "page_size": {"type": "int"},
     "tags": {"type": "list", "elements": "str"},
 }
 
@@ -147,17 +137,11 @@ MODULE = InfoModule(
         method="GET",
         path="/lb/v1/zones/{zone}/ips",
         path_params=("zone",),
-        query_params=(
-            "page",
-            "page_size",
-            "ip_address",
-            "organization_id",
-            "project_id",
-            "ip_type",
-            "tags",
-        ),
+        query_params=("ip_address", "organization_id", "project_id", "ip_type", "tags"),
         payload_field="ips",
         is_list=True,
+        page_param="page",
+        per_page_param="page_size",
     ),
     selector="ip_id",
 )

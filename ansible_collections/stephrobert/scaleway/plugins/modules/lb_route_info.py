@@ -54,14 +54,6 @@ options:
     choices:
     - created_at_asc
     - created_at_desc
-  page:
-    description:
-    - The page number to return, from the paginated results.
-    type: int
-  page_size:
-    description:
-    - The number of route objects to return.
-    type: int
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
 """
@@ -120,8 +112,6 @@ MODULE_ARGUMENT_SPEC = {
         "type": "str",
         "choices": ["created_at_asc", "created_at_desc"],
     },
-    "page": {"type": "int"},
-    "page_size": {"type": "int"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -143,9 +133,11 @@ MODULE = InfoModule(
         method="GET",
         path="/lb/v1/zones/{zone}/routes",
         path_params=("zone",),
-        query_params=("order_by", "page_size", "page", "frontend_id"),
+        query_params=("order_by", "frontend_id"),
         payload_field="routes",
         is_list=True,
+        page_param="page",
+        per_page_param="page_size",
     ),
     selector="route_id",
 )

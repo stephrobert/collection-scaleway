@@ -1942,6 +1942,11 @@
         "payload_field": "acls",
         "payload_schema": "scaleway.lb.v1.Acl",
         "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
       }
     },
     {
@@ -2012,6 +2017,11 @@
         "payload_field": "backend_servers_stats",
         "payload_schema": "scaleway.lb.v1.BackendServerStats",
         "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
       }
     },
     {
@@ -2098,6 +2108,11 @@
         "payload_field": "backends",
         "payload_schema": "scaleway.lb.v1.Backend",
         "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
       }
     },
     {
@@ -2184,6 +2199,11 @@
         "payload_field": "certificates",
         "payload_schema": "scaleway.lb.v1.Certificate",
         "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
       }
     },
     {
@@ -2270,6 +2290,11 @@
         "payload_field": "frontends",
         "payload_schema": "scaleway.lb.v1.Frontend",
         "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
       }
     },
     {
@@ -2370,6 +2395,11 @@
         "payload_field": "ips",
         "payload_schema": "scaleway.lb.v1.Ip",
         "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
       }
     },
     {
@@ -2447,6 +2477,11 @@
         "payload_field": "private_network",
         "payload_schema": "scaleway.lb.v1.PrivateNetwork",
         "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
       }
     },
     {
@@ -2503,6 +2538,11 @@
         "payload_field": "lb_types",
         "payload_schema": "scaleway.lb.v1.LbType",
         "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
       }
     },
     {
@@ -2612,6 +2652,11 @@
         "payload_field": "lbs",
         "payload_schema": "scaleway.lb.v1.Lb",
         "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
       }
     },
     {
@@ -2689,6 +2734,11 @@
         "payload_field": "routes",
         "payload_schema": "scaleway.lb.v1.Route",
         "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
       }
     },
     {
@@ -2782,6 +2832,11 @@
         "payload_field": "subscribers",
         "payload_schema": "scaleway.lb.v1.Subscriber",
         "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
       }
     },
     {

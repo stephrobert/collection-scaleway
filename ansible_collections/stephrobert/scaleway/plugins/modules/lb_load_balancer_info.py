@@ -61,14 +61,6 @@ options:
     - created_at_desc
     - name_asc
     - name_desc
-  page:
-    description:
-    - Page number to return, from the paginated results.
-    type: int
-  page_size:
-    description:
-    - Number of Load Balancers to return.
-    type: int
   tags:
     description:
     - Filter by tag, only Load Balancers with one or more matching tags will be returned.
@@ -133,8 +125,6 @@ MODULE_ARGUMENT_SPEC = {
         "type": "str",
         "choices": ["created_at_asc", "created_at_desc", "name_asc", "name_desc"],
     },
-    "page": {"type": "int"},
-    "page_size": {"type": "int"},
     "tags": {"type": "list", "elements": "str"},
 }
 
@@ -157,18 +147,11 @@ MODULE = InfoModule(
         method="GET",
         path="/lb/v1/zones/{zone}/lbs",
         path_params=("zone",),
-        query_params=(
-            "name",
-            "order_by",
-            "page_size",
-            "page",
-            "organization_id",
-            "project_id",
-            "tags",
-            "lb_ids",
-        ),
+        query_params=("name", "order_by", "organization_id", "project_id", "tags", "lb_ids"),
         payload_field="lbs",
         is_list=True,
+        page_param="page",
+        per_page_param="page_size",
     ),
     selector="lb_id",
 )

@@ -91,6 +91,32 @@ def test_la_pagination_se_deduit_des_parametres(widget_service: ApiService) -> N
     assert unite.pagination is None
 
 
+def test_une_taille_de_page_ecrite_autrement_reste_de_la_pagination(
+    widget_service: ApiService,
+) -> None:
+    """Scaleway emploie deux orthographes, et n'en connaître qu'une coûte cher.
+
+    Instance pagine avec `per_page`, le Load Balancer avec `page_size`. Une
+    règle qui n'en connaît qu'une ne déclare pas l'opération paginée : ses
+    paramètres de pagination deviennent des options du module, et la liste rend
+    sa **première page en silence**. Onze opérations de `lb.v1` étaient dans ce
+    cas.
+    """
+    gizmos = widget_service.operation("ListWidgetGizmos")
+    assert gizmos is not None
+    assert gizmos.pagination is not None
+    assert gizmos.pagination.page_param == "page"
+    assert gizmos.pagination.per_page_param == "page_size"
+
+
+def test_lorthographe_dorigine_nest_pas_perdue(widget_service: ApiService) -> None:
+    """Le cas voisin qui ne doit pas bouger : `per_page` reste `per_page`."""
+    widgets = widget_service.operation("ListWidgets")
+    assert widgets is not None
+    assert widgets.pagination is not None
+    assert widgets.pagination.per_page_param == "per_page"
+
+
 def test_total_count_absent_du_contrat_nest_pas_invente(widget_service: ApiService) -> None:
     """Le SDK expose `total_count` ; le document publié ne le déclare pas."""
     liste = widget_service.operation("ListWidgets")
