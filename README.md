@@ -68,9 +68,10 @@ collection stephrobert.scaleway : 25 modules produits sur 30 au plan
   lb_load_balancer_type_info             Gather information about Scaleway Load Balancer load balancer types
   lb_route                               Manage a Scaleway Lb route
   lb_route_info                          Gather information about Scaleway Load Balancer routes
+  lb_subscriber                          Manage a Scaleway Lb subscriber
   lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
   scaleway (inventaire)                  instance, elastic_metal, apple_silicon
-  439 tests unitaires · 83 mutations prouvées par /falsify
+  440 tests unitaires · 84 mutations prouvées par /falsify
   CI : cinq jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks et inventaire contre l'émulateur :
   comptes rendus par `mise run sanity` et `mise run integration`

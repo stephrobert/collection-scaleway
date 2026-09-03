@@ -91,6 +91,23 @@ def test_la_pagination_se_deduit_des_parametres(widget_service: ApiService) -> N
     assert unite.pagination is None
 
 
+def test_un_oneof_avec_null_est_un_champ_optionnel(widget_service: ApiService) -> None:
+    """`oneOf: [X, null]` veut dire « un X, ou rien », pas une union de formes.
+
+    C'est la façon dont Scaleway écrit un champ optionnel, et les 24 occurrences
+    du contrat du Load Balancer ont toutes exactement cette forme. Les traiter
+    comme un type non traité laissait `UpdateSubscriber` sans type et écartait
+    un module Day-2 entier.
+    """
+    operation = widget_service.operation("UpdateWidget")
+    assert operation is not None
+    champ = operation.parameter("email_config")
+    assert champ is not None
+    assert champ.type is ApiType.OBJECT
+    assert champ.ref == "scaleway.widget.v1.Widget.EmailConfig"
+    assert not [w for w in widget_service.warnings if "email_config" in w]
+
+
 def test_une_taille_de_page_ecrite_autrement_reste_de_la_pagination(
     widget_service: ApiService,
 ) -> None:
