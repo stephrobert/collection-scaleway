@@ -20,10 +20,10 @@ d'inventaire dynamique qui découvre trois produits derrière un même modèle.
 <!-- compteurs:début, produits par scripts/readme_counters.py -->
 ```text
 instance v1 : 74 opérations découvertes
-  INFO 27 · ACTION 3 · MANAGE 11 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 13 · UNKNOWN 0
-  Day-2 42 · AUTO 41 · MANUAL 1 · classées pour génération automatique 97,6 % (41/42)
+  INFO 27 · ACTION 3 · MANAGE 10 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 14 · UNKNOWN 0
+  Day-2 41 · AUTO 40 · MANUAL 1 · classées pour génération automatique 97,6 % (40/41)
 
-collection stephrobert.scaleway : 25 modules produits sur 31 au plan
+collection stephrobert.scaleway : 25 modules produits sur 30 au plan
   instance_dashboard_info                Gather information about Scaleway Instance dashboards
   instance_image                         Manage a Scaleway Instance image
   instance_image_info                    Gather information about Scaleway Instance images
