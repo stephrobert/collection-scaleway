@@ -651,6 +651,7 @@
       "path": "/instance/v1/zones/{zone}/servers/{server_id}/private_nics",
       "scope": "zone",
       "summary": "Create a private NIC connecting an Instance to a Private Network",
+      "description": "Create a private NIC connecting an Instance to a Private Network.\nSome private NICs, such as those in deleting, detaching, or in error state are\nnot listed in v1.\nTherefore, you may encounter quota limits errors when creating a new private NIC, even if your visible\ncount is below the threshold.\nWe strongly recommend migrating to v2alpha1 to see all private NICs.",
       "tags": [
         "Private NICs"
       ],
@@ -2996,7 +2997,7 @@
       "path": "/instance/v1/zones/{zone}/servers/{server_id}/private_nics",
       "scope": "zone",
       "summary": "List all private NICs",
-      "description": "List all private NICs of a specified Instance.",
+      "description": "List all private NICs of a specified Instance.\nSome private NICs, such as those in deleting, detaching, or in error state are\nnot listed. We strongly recommend migrating to v2alpha1 to retrieve all private NICs.",
       "tags": [
         "Private NICs"
       ],
