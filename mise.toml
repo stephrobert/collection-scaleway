@@ -192,6 +192,15 @@ python -m generator generate lb $flags_lb
 description = "Retélécharger les contrats depuis le portail Scaleway"
 run = "python scripts/sync_specs.py"
 
+[tasks."parser:coverage"]
+description = "Ce que le parser ne couvre pas, contrat par contrat"
+# À passer sur le contrat d'un produit **avant** de l'importer. Le parser ne
+# couvre pas tout OpenAPI, et généraliser sans cas déclenchant produirait du
+# code que rien ne juge : la liste des travaux se déduit de ce que ce script
+# trouve. Le Load Balancer l'a prouvé, en apportant `page_size` et 24 `oneOf`
+# qu'Instance n'employait nulle part.
+run = "python scripts/parser_coverage.py"
+
 [tasks."drift"]
 description = "Dire ce que les contrats téléchargés changent pour le générateur"
 # À lancer après `sync:api`. Sort en 3 quand quelque chose a bougé, code
