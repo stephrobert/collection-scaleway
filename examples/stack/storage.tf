@@ -33,7 +33,19 @@ resource "scaleway_block_snapshot" "reference" {
   tags      = local.tags
 }
 
+# **L'image n'est bâtie que contre le cloud réel, et c'est écrit plutôt que
+# sauté en silence.** `scaleway_instance_image` résout son `root_volume_id` par
+# l'API Instance ; l'émulateur crée bien l'instantané par l'API Block, puis rend
+# 404 sur le même identifiant côté Instance, et sa liste d'instantanés Instance
+# est vide. Mesuré, et signalé en feint#651.
+#
+# Le `count` porte donc la limite au lieu de la masquer : la sortie
+# `image_doree` vaut la chaîne vide quand l'image n'a pas été bâtie, et le
+# lanceur le dit. Le jour où feint#651 est corrigé, ce `count` disparaît et rien
+# d'autre ne bouge.
 resource "scaleway_instance_image" "reference" {
+  count = var.endpoint == "" ? 1 : 0
+
   name           = "${local.prefixe}-reference"
   root_volume_id = scaleway_block_snapshot.reference.id
   architecture   = "x86_64"

@@ -349,7 +349,18 @@ def controler_plan_de_controle(env: dict[str, str], sorties: dict[str, Any]) -> 
         for i in api(env, f"/instance/v1/zones/{zone}/images")["images"]
         if i["name"].startswith(prefixe)
     ]
-    exige(len(images) == 1, "une image d'or taillée dedans")
+    if sorties["image_doree"]["value"]:
+        exige(len(images) == 1, "une image d'or taillée dedans")
+    else:
+        # Écarté, et dit. L'émulateur crée l'instantané par l'API Block puis rend
+        # 404 sur le même identifiant côté Instance (feint#651), donc la stack ne
+        # déclare pas l'image hors cible réelle. Le contrôle ne se tait pas pour
+        # autant : il affirme l'absence, sans quoi une image oubliée un jour sur
+        # le compte passerait inaperçue ici.
+        exige(
+            len(images) == 0,
+            "image d'or écartée hors cible réelle, et absente comme prévu (feint#651)",
+        )
 
     charge = api(env, f"/block/v1alpha1/zones/{zone}/volumes")["volumes"]
     volumes = [v for v in charge if v["name"].startswith(prefixe)]

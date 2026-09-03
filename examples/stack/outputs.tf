@@ -34,3 +34,10 @@ output "attendu" {
     total   = 1 + var.web_count + length(var.app_servers)
   }
 }
+
+output "image_doree" {
+  description = "L'identifiant de l'image d'or, ou la chaîne vide quand la cible ne sait pas la bâtir."
+  # `try` plutôt qu'un index nu : la ressource porte un `count` conditionnel,
+  # et une sortie qui casse quand la cible change ne rend service à personne.
+  value = try(scaleway_instance_image.reference[0].id, "")
+}
