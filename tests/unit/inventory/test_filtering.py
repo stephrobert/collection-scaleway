@@ -101,3 +101,25 @@ def test_sans_organisation_demandee_rien_nest_ecarte() -> None:
     fonction qui refuserait tout."""
     assert keep(_host(organization_id="org-1"), Filters())[0]
     assert keep(_host(), Filters())[0]
+
+
+def test_en_mode_any_plusieurs_tags_ne_partent_pas_a_lapi() -> None:
+    """L'API Instance applique un ET, pas un OU : trois sources concordantes.
+
+    Demander deux tags à l'API en mode `any`, qui est le défaut, ne rendait que
+    les machines portant les deux. Une machine ne portant que le premier
+    n'était jamais téléchargée, et le filtrage local ne peut pas récupérer ce
+    qu'il n'a pas reçu.
+    """
+    assert Filters(tags=("a", "b"), tags_match="any").api_tags() == ()
+
+
+def test_un_seul_tag_part_toujours_a_lapi() -> None:
+    """Avec un seul tag les deux modes coïncident : autant ne pas transférer."""
+    assert Filters(tags=("a",), tags_match="any").api_tags() == ("a",)
+    assert Filters(tags=("a",), tags_match="all").api_tags() == ("a",)
+
+
+def test_en_mode_all_les_tags_partent_a_lapi() -> None:
+    """Le ET de l'API est exactement ce que `all` demande."""
+    assert Filters(tags=("a", "b"), tags_match="all").api_tags() == ("a", "b")

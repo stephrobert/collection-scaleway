@@ -1,0 +1,29 @@
+---
+bugfixes:
+  - "Un refus d'authentification n'était jamais fatal. Scaleway rend
+    ``{\"message\": \"denied authentication\"}`` sur un 401, et la règle de
+    classification cherchait le mot ``denied`` pour distinguer un droit
+    manquant : aucun jeton révoqué ne levait donc ``AuthenticationFailed``, et
+    l'inventaire sortait **vide avec un code de retour 0**. La règle cherche
+    désormais ``permission``, et la nuance sur les 401 de droit survit."
+  - "``tags_match: any``, qui est le défaut, perdait des machines. L'API
+    Instance applique un **ET** sur ``tags`` et non un OU, mesuré sur trois
+    sources concordantes : demander deux tags ne rendait que les machines
+    portant les deux, et le filtrage local ne peut pas récupérer ce qui n'a pas
+    été téléchargé. Avec plusieurs tags en mode ``any``, le filtre n'est plus
+    délégué à l'API."
+  - "``include_raw`` était entièrement inerte. L'option était documentée,
+    comptée dans la clé de cache et testée côté provider, mais la réponse brute
+    n'entrait pas dans la sérialisation par laquelle **toute** exécution passe :
+    ``scaleway_raw`` n'apparaissait jamais."
+  - "Une zone mal orthographiée était écartée en silence : zéro zone
+    interrogée, zéro appel, zéro avertissement, et un inventaire vide en code
+    0. Une zone inconnue est désormais refusée, comme l'étaient déjà les
+    produits, les axes de groupes et les familles d'adresses."
+  - "Une source de nom d'hôte inconnue était acceptée, et chaque machine
+    ensuite écartée faute de nom. Une source qui désigne un champ non textuel,
+    ``private_networks``, rendait un objet là où le type promet une chaîne."
+  - "Deux comptes pouvaient partager un inventaire en cache. Sans ``profile``
+    déclaré, deux clés d'accès différentes produisaient la même empreinte, et
+    la seconde exécution recevait le parc de la première. Seule l'empreinte de
+    la clé entre dans la clé de cache, jamais sa valeur."

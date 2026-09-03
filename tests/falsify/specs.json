@@ -510,6 +510,54 @@
       "find": "            return f\"le format de {champ} est refusé par le SDK (valeur non affichée)\"",
       "replace": "            return str(error)",
       "test": "tests/unit/collection/test_runtime.py::test_une_cle_refusee_par_le_sdk_ne_sort_jamais_dans_le_message"
+    },
+    {
+      "name": "401-non-fatal",
+      "why": "Le corps 401 réel de Scaleway contient « denied » : chercher ce mot rendait tout jeton révoqué tolérable, et l'inventaire sortait vide en code 0.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/errors.py",
+      "find": "    if status_code in (401, 403) and \"permission\" in message.lower():",
+      "replace": "    if status_code in (401, 403) and \"denied\" in message.lower():",
+      "test": "tests/unit/inventory/test_errors.py::test_le_corps_401_reel_de_scaleway_est_bien_fatal"
+    },
+    {
+      "name": "tags-any-envoyes-a-lapi",
+      "why": "L'API applique un ET : envoyer plusieurs tags en mode any ne rend que les machines qui les portent tous, et le filtrage local ne récupère pas ce qu'il n'a pas reçu.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/filtering.py",
+      "find": "        if self.tags_match == \"any\" and len(self.tags) > 1:\n            return ()",
+      "replace": "        if self.tags_match == \"any\" and len(self.tags) > 1 and False:\n            return ()",
+      "test": "tests/unit/inventory/test_filtering.py::test_en_mode_any_plusieurs_tags_ne_partent_pas_a_lapi"
+    },
+    {
+      "name": "zone-inconnue-acceptee",
+      "why": "Une faute de frappe dans une zone donnait zéro appel, zéro avertissement et un inventaire vide en code 0.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/config.py",
+      "find": "        if hors_zones:",
+      "replace": "        if hors_zones and False:",
+      "test": "tests/unit/inventory/test_config.py::test_une_zone_inconnue_est_refusee"
+    },
+    {
+      "name": "source-de-nom-inconnue-acceptee",
+      "why": "Une source non reconnue écartait chaque machine, et une source qui lit un objet produisait un nom d'hôte non textuel.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/config.py",
+      "find": "    if hors_sources:",
+      "replace": "    if hors_sources and False:",
+      "test": "tests/unit/inventory/test_config.py::test_une_source_de_nom_dhote_inconnue_est_refusee"
+    },
+    {
+      "name": "cache-partage-entre-comptes",
+      "why": "Sans profil déclaré, deux clés d'accès différentes partageaient une empreinte : le second run recevait le parc du premier.",
+      "file": "ansible_collections/local/scaleway/plugins/module_utils/inventory/config.py",
+      "find": "            \"identity\": hashlib.sha256((access_key or \"\").encode(\"utf-8\")).hexdigest()[:16],",
+      "replace": "            \"identity\": \"\",",
+      "test": "tests/unit/inventory/test_config.py::test_deux_comptes_ne_partagent_pas_leur_inventaire_en_cache"
+    },
+    {
+      "name": "reponse-brute-perdue",
+      "why": "L'option include_raw était documentée, mise en cache et sans le moindre effet observable.",
+      "file": "ansible_collections/local/scaleway/plugins/inventory/scaleway.py",
+      "find": "            \"raw\": _plain(host.raw),",
+      "replace": "            \"raw\": None,",
+      "test": "tests/unit/inventory/test_plugin.py::test_la_reponse_brute_survit_a_laller_retour"
     }
   ]
 }
