@@ -1,0 +1,6 @@
+---
+minor_changes:
+  - "Le Load Balancer zoné rejoint la collection : treize modules de lecture,
+    de ``lb_load_balancer_info`` à ``lb_backend_stat_info``, produits par le
+    même générateur et depuis le même mécanisme que ceux d'Instance. La
+    collection en compte désormais 29."

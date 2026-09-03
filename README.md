@@ -40,6 +40,19 @@ collection stephrobert.scaleway : 16 modules produits sur 31 au plan
   instance_snapshot_info                 Gather information about Scaleway Instance snapshots
   instance_volume_info                   Gather information about Scaleway Instance volumes
   instance_volume_type_info              Gather information about Scaleway Instance volume types
+  lb_acl_info                            Gather information about Scaleway Load Balancer acls
+  lb_backend_info                        Gather information about Scaleway Load Balancer backends
+  lb_backend_stat_info                   Gather information about Scaleway Load Balancer backend stats
+  lb_certificate_info                    Gather information about Scaleway Load Balancer certificates
+  lb_frontend_acl_info                   Gather information about Scaleway Load Balancer frontend acls
+  lb_frontend_info                       Gather information about Scaleway Load Balancer frontends
+  lb_ip_info                             Gather information about Scaleway Load Balancer ips
+  lb_load_balancer_info                  Gather information about Scaleway Load Balancer load balancers
+  lb_load_balancer_private_network_info  Gather information about Scaleway Load Balancer load balancer private networks
+  lb_load_balancer_stat_info             Gather information about Scaleway Load Balancer load balancer stats
+  lb_load_balancer_type_info             Gather information about Scaleway Load Balancer load balancer types
+  lb_route_info                          Gather information about Scaleway Load Balancer routes
+  lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
   scaleway (inventaire)                  instance, elastic_metal, apple_silicon
   427 tests unitaires · 77 mutations prouvées par /falsify
   CI : cinq jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple

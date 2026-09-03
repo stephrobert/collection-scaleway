@@ -1,0 +1,151 @@
+# Les décisions humaines sur le Load Balancer zoné.
+#
+# Ce produit est le second du dépôt, et il a été choisi pour une raison
+# mesurable : la stack d'exemple déploie déjà un load balancer, donc ses modules
+# sont exercés contre le cloud réel dès le premier jour. Il a rendu ce qu'on
+# attendait d'un second produit, c'est-à-dire des défauts qu'un seul contrat ne
+# pouvait pas montrer.
+
+operations:
+  # --- Ce que la dérivation nomme mal ---------------------------------------
+  #
+  # **Une ressource sous deux noms, et c'est le défaut que ce dépôt connaît.**
+  # `GetBackend` lit `/backends/{id}` et donne la ressource `backend` ;
+  # `ListBackends` lit `/lbs/{lb_id}/backends` et donne `lb_backend`. Même
+  # chose, deux noms, donc deux modules pour une chose, et le module de liste
+  # sans son unitaire. C'est exactement le cas `security_group_rule` contre
+  # `rule` déjà rencontré sur Instance, ressorti sur un contrat neuf parce que
+  # ce produit imbrique bien plus ses collections.
+  #
+  # La règle de dérivation n'est pas élargie ici : ce sont trois cas nommés, et
+  # une règle écrite sans mesurer le produit suivant produirait du code que rien
+  # ne juge. Ils sont corrigés un par un, et le jour où un quatrième contrat
+  # montre la même forme, la règle aura ses cas.
+
+  lb.v1.LbBackend.ListBackends:
+    resource: backend
+
+  lb.v1.LbFrontend.ListFrontends:
+    resource: frontend
+
+  lb.v1.LbCertificate.ListCertificates:
+    resource: certificate
+
+  # **Le produit et la ressource portent le même nom, et le module bégaie.**
+  # `<produit>_<ressource>` donne `lb_lb_info`, que personne n'écrirait à la
+  # main. La ressource s'appelle `load_balancer` : c'est son nom dans la
+  # documentation de Scaleway, et il ne coûte que d'être écrit.
+
+  lb.v1.Lb.GetLb:
+    resource: load_balancer
+
+  lb.v1.Lb.ListLbs:
+    resource: load_balancer
+
+  lb.v1.Lb.UpdateLb:
+    resource: load_balancer
+
+  lb.v1.LbMigrate.MigrateLb:
+    resource: load_balancer
+
+  lb.v1.LbStat.GetLbStats:
+    resource: load_balancer_stat
+
+  lb.v1.LbBackendStat.ListBackendStats:
+    resource: backend_stat
+
+  lb.v1.LbPrivateNetwork.ListLbPrivateNetworks:
+    resource: load_balancer_private_network
+
+  lb.v1.LbType.ListLbTypes:
+    resource: load_balancer_type
+
+  # --- Ce qui relie des ressources, donc relève de Terraform ----------------
+  #
+  # **La frontière du projet, pas une préférence.** Un backend déclare la liste
+  # des serveurs qu'il équilibre ; l'écrire, l'étendre ou la réduire décrit
+  # l'infrastructure, et c'est Terraform qui la décrit. Trois opérations
+  # forment cette famille, et les exposer à moitié serait pire que ne pas les
+  # exposer : un module qui ajoute sans savoir retirer laisse un parc dans un
+  # état que personne n'a déclaré.
+  #
+  # `RemoveBackendServers` arrivait ici en UNKNOWN, parce qu'aucune des six
+  # règles ne tranche un `DELETE` sur une sous-collection. C'est le rapport
+  # strict qui l'a signalée, et la décision porte sur les trois d'un coup
+  # plutôt que sur celle-là seule.
+
+  lb.v1.BackendServer.AddBackendServers:
+    generation: ignore
+    reason: >-
+      Ajoute des serveurs à la liste qu'un backend équilibre. Relier deux
+      ressources relève de Terraform, qui déclare cette liste ; un module qui
+      l'étend produirait un écart entre l'état déclaré et l'état réel, invisible
+      jusqu'au prochain `terraform apply`.
+
+  lb.v1.BackendServer.RemoveBackendServers:
+    generation: ignore
+    reason: >-
+      Le symétrique d'AddBackendServers, et écarté pour la même raison. Aucune
+      des six règles ne tranche un DELETE sur une sous-collection, donc elle
+      sortait en UNKNOWN : c'est le rapport strict qui l'a montrée, et la
+      décision est prise sur la famille entière.
+
+  lb.v1.BackendServer.SetBackendServers:
+    generation: ignore
+    reason: >-
+      PUT de remplacement complet de la liste des serveurs d'un backend. C'est
+      la forme la plus dangereuse des trois, et la même frontière la range du
+      côté de Terraform.
+
+  # **Un abonnement relie un load balancer à un destinataire d'alertes.** Même
+  # frontière, et le contrat le dit à sa façon : les chemins `/subscribe` et
+  # `/unsubscribe` sont des verbes, pas des ressources, et la dérivation en tire
+  # les ressources fantômes `LbSubscribe` et `LbUnsubscribe`. Une ressource qui
+  # n'existe que parce qu'un chemin porte un verbe est un signe, et il est lu
+  # ici plutôt qu'ignoré.
+
+  lb.v1.LbSubscribe.SubscribeToLb:
+    generation: ignore
+    reason: >-
+      Relie un load balancer à un abonné aux alertes. Le lien est de
+      l'infrastructure déclarée, et le chemin porte un verbe plutôt qu'une
+      ressource, ce qui produit la ressource fantôme LbSubscribe.
+
+  lb.v1.LbUnsubscribe.UnsubscribeFromLb:
+    generation: ignore
+    reason: >-
+      Le symétrique de SubscribeToLb, arrivé en UNKNOWN pour la même raison que
+      RemoveBackendServers : un DELETE sur un chemin-verbe qu'aucune règle ne
+      tranche. Écarté avec sa famille.
+
+  # --- Ce qui détruit une ressource sous un autre verbe ---------------------
+
+  lb.v1.Ip.ReleaseIp:
+    generation: lifecycle
+    reason: >-
+      Libère une adresse IP réservée, c'est-à-dire la détruit. Le verbe diffère
+      de `Delete`, donc aucune règle ne la tranchait et elle sortait en UNKNOWN ;
+      l'effet est celui d'une suppression, et `CreateIp` son symétrique est déjà
+      LIFECYCLE.
+
+  # **Attacher un réseau privé relie deux ressources**, comme attacher un volume
+  # à une Instance, et la frontière est la même. Le chemin porte là encore un
+  # verbe, `attach-private-network`, d'où les ressources fantômes
+  # `LbAttachPrivateNetwork` et `LbDetachPrivateNetwork` : le bégaiement du nom
+  # de module, `lb_lb_attach_private_network_action`, était le symptôme d'une
+  # opération qui n'avait pas sa place ici.
+  #
+  # La lecture reste, elle : `ListLbPrivateNetworks` dit à quels réseaux un load
+  # balancer est rattaché, et lire l'état d'un parc est précisément Day-2.
+
+  lb.v1.LbAttachPrivateNetwork.AttachPrivateNetwork:
+    generation: ignore
+    reason: >-
+      Relie un load balancer à un réseau privé. Terraform déclare ce
+      rattachement ; un module qui l'ajoute produirait un écart entre l'état
+      déclaré et l'état réel.
+
+  lb.v1.LbDetachPrivateNetwork.DetachPrivateNetwork:
+    generation: ignore
+    reason: >-
+      Le symétrique d'AttachPrivateNetwork, écarté pour la même raison.

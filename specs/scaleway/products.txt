@@ -8,7 +8,12 @@
 # appelle load-balancer/zoned. Un produit ajouté ici se vérifie sur sa page,
 # il ne se devine pas depuis le SDK.
 #
-# Le MVP ne suit qu'Instance : la chaîne complète doit fonctionner sur un
-# produit avant d'en ajouter un second.
+# Instance a servi de premier produit : la chaîne complète a fonctionné sur lui
+# avant qu'un second n'arrive. `lb` est ce second, et il est choisi pour une
+# raison mesurable plutôt que par appétence : la stack d'exemple déploie déjà un
+# load balancer, donc ses modules sont exercés contre le cloud réel dès le
+# premier jour, sans écrire de nouvelle plateforme. C'est le produit dont la
+# preuve coûte le moins cher.
 
 instance v1
+load-balancer/zoned lb v1
