@@ -772,8 +772,6 @@
       failed_when: une_acl.failed | default(false)
         and une_acl.api_type | default('') != 'not_emulated'
       when: acls.acls | default([]) | length > 0
-      failed_when: une_acl.failed | default(false)
-        and une_acl.api_type | default('') != 'not_emulated'
 
     - name: Réécrire cette ACL à l'identique
       stephrobert.scaleway.lb_acl:
@@ -828,6 +826,68 @@
           backend={{ repris_backend.changed | default('non joué') }}
           frontend={{ repris_frontend.changed | default('non joué') }}
         quiet: true
+
+    # ---- Ce que ces réécritures ont prouvé, et ce qu'elles n'ont pas mesuré
+    #
+    # **Une tolérance sans compte se lit comme une preuve.** Chaque assertion
+    # d'idempotence ci-dessus tolère une route non émulée par une disjonction, et
+    # c'est voulu : contre l'émulateur, une route absente n'est pas un défaut de
+    # la collection. Mais une assertion satisfaite par sa branche de tolérance ne
+    # vérifie rien, et rien ne distinguait ensuite « prouvé » de « non mesuré ».
+    # Le compte rendu annonçait « les modules de gestion sont idempotents » sans
+    # dire sur combien.
+    #
+    # Le recensement se construit **depuis les noms de variables**, pas depuis
+    # une liste tenue à la main. Une liste écrite à la main dériverait le jour où
+    # quelqu'un ajoute une écriture sans l'y inscrire, et ce serait le même
+    # défaut remonté d'un cran : un compte qui se lit comme une mesure.
+
+    - name: Les réécritures identiques, recensées par leur registre
+      ansible.builtin.set_fact:
+        noms_repris: "{{ query('varnames', '^repris_') | sort }}"
+
+    - name: Chaque réécriture, avec ce que son module a rendu
+      ansible.builtin.set_fact:
+        reecritures: "{{ dict(noms_repris
+          | zip(noms_repris | map('extract', vars))) | dict2items }}"
+
+    - name: Ce que la cible n'a pas mesuré, faute de cible ou faute de route
+      ansible.builtin.set_fact:
+        # Sautée : la stack n'a pas fourni la ressource, donc rien n'a été
+        # écrit. Non émulée : feint ne sert pas la route. Dans les deux cas
+        # l'assertion est passée sans rien vérifier.
+        reecritures_non_mesurees: "{{ ((reecritures
+          | selectattr('value.skipped', 'defined')
+          | map(attribute='key') | list) + (reecritures
+          | selectattr('value.api_type', 'defined')
+          | selectattr('value.api_type', 'equalto', 'not_emulated')
+          | map(attribute='key') | list)) | unique | sort }}"
+
+    - name: Les idempotences réellement prouvées
+      ansible.builtin.set_fact:
+        idempotences_prouvees: "{{ noms_repris
+          | reject('in', reecritures_non_mesurees) | list }}"
+
+    - name: Combien d'idempotences cette exécution a prouvées
+      ansible.builtin.debug:
+        msg: >-
+          {{ idempotences_prouvees | length }} idempotence(s) prouvée(s)
+          sur {{ noms_repris | length }} réécriture(s) jouée(s){{
+          '' if reecritures_non_mesurees | length == 0
+          else ' · non mesurée(s) : ' ~ reecritures_non_mesurees | join(', ') }}
+
+    - name: Contre le cloud réel, chaque réécriture doit être mesurée
+      ansible.builtin.assert:
+        that:
+          - reecritures_non_mesurees | length == 0
+        fail_msg: >-
+          Réécritures non mesurées sur le compte réel :
+          {{ reecritures_non_mesurees | join(', ') }}.
+          Une route absente ou une cible manquante y est un défaut, pas une
+          limite déclarée : les neuf ressources visées sont toutes créées par
+          la stack Terraform.
+        quiet: true
+      when: cible == 'reel'
 
     # **Six modules de gestion n'ont aucune cible dans cette stack**, et le
     # dire vaut mieux que de laisser croire qu'ils sont couverts :
