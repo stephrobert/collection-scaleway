@@ -894,6 +894,14 @@
       "find": "    if len(plugins) != 1:",
       "replace": "    if len(plugins) != 1 and False:",
       "test": "tests/unit/outillage/test_verdicts.py::test_le_nom_du_plugin_dinventaire_se_lit_sur_le_disque"
+    },
+    {
+      "name": "repertoire-interdit-invisible",
+      "why": "Le contrôle des fuites ne regardait que les fichiers, et l'archive de la 0.1.0 emportait un répertoire `tests/` vide sans que rien ne le dise. Un répertoire seul ne porte rien, mais il annonce au lecteur du tarball quelque chose qui n'a pas sa place chez lui, et le jour où un fichier s'y glisse, c'est le `build_ignore` qui décide seul.",
+      "file": "scripts/package.py",
+      "find": "        for chemin in entrees(archive)",
+      "replace": "        for chemin in members(archive)",
+      "test": "tests/unit/outillage/test_verdicts.py::test_un_repertoire_interdit_meme_vide_est_une_fuite"
     }
   ]
 }
