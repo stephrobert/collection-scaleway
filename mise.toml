@@ -336,6 +336,13 @@ run = "python scripts/example.py reel"
 description = "Vérifier qu'aucune ressource de l'exemple ne survit sur le compte réel"
 run = "python scripts/residue.py verify"
 
+[tasks."coverage:example"]
+description = "Les trois étages de couverture, et ce que le dernier run a joué"
+# Hors de `check` : les deux derniers étages dépendent d'un artefact de run, et
+# `check` doit rester déterministe et hors ligne. Le premier étage, lui, entre
+# dans le bloc du README, donc `readme:check` le juge à chaque CI.
+run = "python scripts/example_coverage.py"
+
 [tasks."readme"]
 description = "Réécrire les compteurs du README depuis ce qui est mesuré"
 # Un nombre recopié à la main vieillit en silence, et se lit exactement comme

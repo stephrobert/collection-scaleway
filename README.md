@@ -71,7 +71,8 @@ collection stephrobert.scaleway : 46 modules produits sur 52 au plan
   lb_subscriber                          Manage a Scaleway Lb subscriber
   lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
   scaleway (inventaire)                  instance, elastic_metal, apple_silicon
-  477 tests unitaires · 100 mutations prouvées par /falsify
+  39 modules appelés par le playbook d'exemple sur 46 (84,8 %), ce qui n'est pas la même chose que joués
+  483 tests unitaires · 102 mutations prouvées par /falsify
   CI : cinq jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks et inventaire contre l'émulateur :
   comptes rendus par `mise run sanity` et `mise run integration`

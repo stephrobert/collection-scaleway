@@ -806,6 +806,22 @@
       "find": "        if only and name not in only:",
       "replace": "        if name not in only:",
       "test": "tests/unit/generator/test_perimetre.py::test_sans_perimetre_tout_ecart_porte_une_raison_du_modele"
+    },
+    {
+      "name": "nom-inconnu-avale-par-la-couverture",
+      "why": "Sans ce refus, `instance_serveur` sort du compte comme le plugin d'inventaire : le ratio se lit comme une mesure alors que le playbook produit une tâche qui n'existe pas. Une faute de frappe ne doit pas se ranger toute seule du bon côté.",
+      "file": "scripts/example_coverage.py",
+      "find": "    if inconnus:",
+      "replace": "    if inconnus and False:",
+      "test": "tests/unit/outillage/test_couverture_exemple.py::test_un_nom_qui_ne_designe_aucun_module_est_refuse"
+    },
+    {
+      "name": "troisieme-ratio-sans-denominateur",
+      "why": "Un ratio sans dénominateur est indéfini, pas nul. Écrire « 0,0 % » sur zéro module écrit se lirait comme une couverture nulle, alors que rien n'a été mesuré. C'est la règle du dépôt, appliquée au troisième étage.",
+      "file": "scripts/example_coverage.py",
+      "find": "    if denominateur == 0:\n        return \"n/a\"",
+      "replace": "    if denominateur == 0:\n        return \"0,0 %\"",
+      "test": "tests/unit/outillage/test_couverture_exemple.py::test_sans_module_le_ratio_est_indefini_pas_nul"
     }
   ]
 }

@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from example_coverage import mesurer as mesurer_exemple
 
 from generator.ansible.collection import load_collection
 
@@ -193,6 +194,7 @@ def bloc() -> str:
     couverture = rapport["day2_automation_coverage"]
     ecrits, plan = _modules_ecrits()
     nb_jobs, noms_jobs = _jobs()
+    exemple = mesurer_exemple()
 
     return "\n".join(
         [
@@ -210,6 +212,19 @@ def bloc() -> str:
             f"collection stephrobert.scaleway : {ecrits} modules produits sur {plan} au plan",
             *_lignes_de_modules(),
             f"  {'scaleway (inventaire)':<38s} instance, elastic_metal, apple_silicon",
+            # **Le troisième étage, et il ne dit pas la même chose que les deux
+            # autres.** « Classées » dit ce que le générateur autorise,
+            # « produites » ce qu'il écrit, et celui-ci ce que l'exemple appelle.
+            # Un module écrit n'est pas un module éprouvé.
+            #
+            # Il s'arrête là où le hors-ligne s'arrête : ce ratio dit que le
+            # playbook nomme le module, pas qu'un run l'a joué. Ce second
+            # nombre existe, il vient de l'artefact qu'un run laisse derrière
+            # lui, et il ne peut pas entrer ici puisqu'il dépend d'une
+            # exécution. `mise run coverage:example` le publie.
+            f"  {len(exemple['appeles_par_lexemple'])} modules appelés par le playbook "
+            f"d'exemple sur {ecrits} ({exemple['ratio_appeles']}), "
+            "ce qui n'est pas la même chose que joués",
             f"  {_tests()} tests unitaires · {_mutations()} mutations prouvées par /falsify",
             f"  CI : {_en_lettres(nb_jobs)} jobs, {' · '.join(noms_jobs)}",
             "  ansible-test sanity, playbooks et inventaire contre l'émulateur :",
