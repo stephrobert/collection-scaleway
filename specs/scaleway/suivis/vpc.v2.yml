@@ -1,0 +1,3276 @@
+openapi: 3.1.0
+info:
+  title: VPC API
+  description: "VPC allows you to build your own **V**irtual **P**rivate **C**loud
+    on top of Scaleway’s shared public cloud.\n\nVPC currently comprises the regional
+    Private Networks product. Layer 2 regional Private Networks sit inside the layer
+    3 VPC. Private Networks allows Scaleway resources (Instances, Load Balancers,
+    Managed Databases etc.) within a single region to be interconnected through a
+    dedicated, private, and flexible [L2 network](https://en.wikipedia.org/wiki/Data_link_layer).\n\nYou
+    can add as many resources to your networks as you want, and add up to eight (8)
+    different networks\nper resource. This allows you to run services isolated from
+    the public internet and expose them to the rest of your infrastructure without
+    worrying about public network filtering.\n\n<Message type=\"note\">\nVPC v2 is
+    now in **General Availability**.\n</Message>\n\n<Message type=\"tip\">\nCheck
+    out our [IPAM API](https://www.scaleway.com/en/developers/api/ipam/) to facilitate
+    the management of IP addresses across your different Scaleway resources.\n</Message>\n\n##
+    Concepts\n\nRefer to our [dedicated concepts page](https://www.scaleway.com/en/docs/vpc/concepts/)
+    to find definitions of all concepts and terminology related to VPC.\n\n## Quickstart\n\n1.
+    **Configure your environment variables**\n\n   <Message type=\"note\">\n   This
+    is an optional step that seeks to simplify your usage of the API. See the [Technical
+    information](#technical-information) section below for help choosing an Availability
+    Zone and Region. You can find your Project ID in the [Scaleway console](https://console.scaleway.com/project/settings).\n
+    \  </Message>\n\n    ```bash\n    export SCW_SECRET_KEY=\"<API secret key>\"\n
+    \   export SCW_DEFAULT_REGION=\"<Scaleway region>\"\n    export SCW_DEFAULT_ZONE=\"<Scaleway
+    Availability Zone>\"\n    export SCW_PROJECT_ID=\"<Scaleway Project ID>\"\n    ```\n\n2.
+    **Create a Private Network**. Run the following command to create a Private Network.
+    You can customize the details in the payload (name, tags etc.) to your needs.\n\n
+    \   ```bash\n    curl -X POST \\\n        -H \"X-Auth-Token: $SCW_SECRET_KEY\"
+    \\\n        -H \"Content-Type: application/json\" \\\n        \"https://api.scaleway.com/vpc/v2/regions/$SCW_DEFAULT_REGION/private-networks\"
+    \\\n        -d '{\n            \"name\": \"My new Private Network\",\n            \"project_id\":
+    \"'\"$SCW_PROJECT_ID\"'\", \n            \"tags\": [\"test\", \"dev\"]\n        }'\n
+    \   ```\n\n   <Message type=\"tip\">\n   Keep the `id` field of the response:
+    it is your Private Network ID, and is useable across all Scaleway products that
+    support Private Networks. It may be useful to you to export the Private Network
+    ID as a new environment variable `export PN_ID=\"<Your Private Network ID>`\n
+    \  </Message>\n\n   <Message type=\"tip\">\n   If you create a Private Network
+    without specifying a VPC to create it in, the behavior depends on when you created
+    your Scaleway Project. [Find out more](https://www.scaleway.com/en/docs/vpc/concepts/#default-vpc)\n
+    \  </Message>\n\n3. **Attach a resource to your Private Network**. Each Scaleway
+    product has its own API to interact with Private Networks. To attach an Instance,
+    Managed Database, Elastic Metal server, Load Balancer or Public Gateway to your
+    Private Network, see instructions in the documentation of the relevant product
+    API. Here, we take the example of an Instance.\n\n   Use the following call to
+    attach an Instance to your Private Network. Ensure you replace `<Instance ID>`
+    with the ID of your Instance, and `<Private Network ID>` with the ID of your Private
+    Network. Note that the Instance must be in an Availability Zone that is part of
+    the region of your Private Network.\n\n    ```bash\n    curl -X POST \\\n        -H
+    \"X-Auth-Token: $SCW_SECRET_KEY\" \\\n        -H \"Content-Type: application/json\"
+    \\\n        \"https://api.scaleway.com/instance/v1/zones/$SCW_DEFAULT_ZONE/servers/<Instance
+    ID>/private_nics\" \\\n        -d '{\"private_network_id\": \"<Private Network
+    ID>\"}'\n    ```\n\n   <Message type=\"tip\">\n   Keep the `id` field of the response:
+    it is your Private NIC ID. It may be useful to you to export\n   the Private NIC
+    ID as a new environment variable `export NIC_ID=\"<Your Private NIC ID>`.\n   </Message>\n\n
+    \  <Message type=\"tip\">\n   Keep the `mac_address` field of the response, as
+    it will allow you to identify the Private NIC inside your Instance. If successful,
+    a new network interface will appear inside your Instance, ready to be configured
+    to transmit traffic to other Instances of the same network, with the MAC address
+    returned by the API call.\n   </Message>\n\n4. **Confirm that the network interface
+    has been plugged in**. To do this, connect to your Instance and run `dmseg`. You
+    should see an output similar to the following:\n\n    ```bash\n    [1579004.592869]
+    pci 0000:00:05.0: [1af4:1000] type 00 class 0x020000\n    [1579004.594835] pci
+    0000:00:05.0: reg 0x10: [io  0x0000-0x003f]\n    [1579004.596715] pci 0000:00:05.0:
+    reg 0x14: [mem 0x00000000-0x00000fff]\n    [1579004.598732] pci 0000:00:05.0:
+    reg 0x20: [mem 0x00000000-0x00003fff 64bit pref]\n    [1579004.600765] pci 0000:00:05.0:
+    reg 0x30: [mem 0x00000000-0x0007ffff pref]\n    [1579004.603819] pci 0000:00:05.0:
+    BAR 6: assigned [mem 0xc0100000-0xc017ffff pref]\n    [1579004.604582] pci 0000:00:05.0:
+    BAR 4: assigned [mem 0x100000c000-0x100000ffff 64bit pref]\n    [1579004.605555]
+    pci 0000:00:05.0: BAR 1: assigned [mem 0xc0003000-0xc0003fff]\n    [1579004.606383]
+    pci 0000:00:05.0: BAR 0: assigned [io  0x1000-0x103f]\n    [1579004.607212] virtio-pci
+    0000:00:05.0: enabling device (0000 -> 0003)\n    [1579004.625149] PCI Interrupt
+    Link [LNKA] enabled at IRQ 11\n    [1579004.644930] virtio_net virtio3 ens5: renamed
+    from eth0\n    ```\n\n5. **Confirm the presence of the network interface, and
+    confirm its name if several networks are plugged into your Instance**. To do this,
+    run `ip -br link`. You should see an output similar to the following:\n\n    ```bash\n
+    \   lo               UNKNOWN        00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP>\n
+    \   ens2             UP             de:1c:94:44:d0:04 <BROADCAST,MULTICAST,UP,LOWER_UP>\n
+    \   ens5             DOWN           02:00:00:00:00:31 <BROADCAST,MULTICAST>\n
+    \   ens6             DOWN           02:00:00:00:01:5b <BROADCAST,MULTICAST>\n
+    \   ens7             DOWN           02:00:00:00:01:5e <BROADCAST,MULTICAST>\n
+    \   ```\n\n6. **Configure the Instance's IP address**. DHCP is activated by default
+    on new Private Networks, and automatically assigns IP addresses to resources on
+    the network. If you have an older Private Network, [check whether DHCP is activated](https://www.scaleway.com/en/docs/vpc/reference-content/vpc-migration/)
+    and either activate DHCP for automatic IP configuration, or [manually configure](https://www.scaleway.com/en/docs/instances/reference-content/manual-configuration-private-ips/)
+    the network interface on your Instance if necessary.\n\n7. **Delete your Private
+    NIC**, which equates to unplugging your Instance from the Private Network. Use
+    the following call. Ensure you replace `<Instance ID>` with the ID of your Instance,
+    `<Private Network ID>` with the ID of your Private Network, and `<NIC ID>` with
+    the ID of your Private NIC.\n\n    ```bash\n    curl -X DELETE \\\n        -H
+    \"X-Auth-Token: $SCW_SECRET_KEY\" \\\n        -H \"Content-Type: application/json\"
+    \\\n        \"https://api.scaleway.com/instance/v1/zones/$SCW_DEFAULT_ZONE/servers/<Instance
+    ID>/private_nics/<NIC ID>\"\n    ```\n\n   The network interface disappears from
+    your Instance.\n\n8. **Delete your Private Network**. Use the following call.
+    Ensure you replace `<Private Network ID>` with the ID of your Private Network.\n\n
+    \   ```bash\n    curl -X DELETE \\\n        -H \"X-Auth-Token: $SCW_SECRET_KEY\"
+    \\\n        -H \"Content-Type: application/json\" \\\n        \"https://api.scaleway.com/vpc/v2/regions/$SCW_DEFAULT_REGION/private-networks/<Private
+    Network ID>\"\n    ```\n\n   <Message type=\"note\">\n   Private Networks must
+    be empty to be deleted. Ensure you have detached all resources and deleted all
+    reserved IPs from your network prior to deletion.\n   </Message>\n\n   <Message
+    type=\"requirement\">\n    - You have a [Scaleway account](https://console.scaleway.com/)\n
+    \   - You have created an [API key](https://www.scaleway.com/en/docs/iam/how-to/create-api-keys/)
+    and that the API key has sufficient [IAM permissions](https://www.scaleway.com/en/docs/iam/reference-content/permission-sets/)
+    to perform the actions described on this page\n    - You have [installed `curl`](https://curl.se/download.html)\n
+    \  </Message>\n\n## Technical information\n\nVPC and Private Networks are available
+    in the Paris, Amsterdam and Warsaw regions, which are represented by the following
+    path parameters:\n\n- `fr-par`\n- `it-mil`\n- `nl-ams`\n- `pl-waw`\n\n## Technical
+    limitations\n\nThe following limitations apply to Scaleway VPC:\n\n- Up to 250
+    resources can be attached to a Private Network.\n- A resource can be attached
+    to up to 8 Private Networks.\n- The following resource types can be attached to
+    a Private Network:\n  - Instances\n  - Elastic Metal servers\n  - Apple silicon\n
+    \ - Managed Inference\n  - Load Balancers\n  - Public Gateways\n  - Managed Databases
+    for PostgreSQL and MySQL\n  - Managed Databases for Redis (only at the time of
+    resource creation)\n  - Kubernetes Kapsule (only at the time of resource creation)\n-
+    The MAC address of an Instance in a Private Network cannot be changed.\n- Broadcast
+    and multicast traffic, while supported, are heavily rate-limited.\n\n## Going
+    further\n\nFor more help using Scaleway VPC and Private Networks, check out the
+    following resources:\n\n- Our [main documentation](https://www.scaleway.com/en/docs/vpc/)\n-
+    The #virtual-private-cloud channel on our [Slack Community](https://www.scaleway.com/en/docs/tutorials/scaleway-slack-community/)\n-
+    Our [support ticketing system](https://www.scaleway.com/en/docs/account/how-to/open-a-support-ticket/)."
+  version: v2
+servers:
+- url: https://api.scaleway.com
+tags:
+- name: VPCs
+  description: |
+    A Virtual Private Cloud (VPC) allows you to group your regional
+    Private Networks together. Note that a Private Network can be a
+    part of only one VPC.
+- name: Private Networks
+  description: |
+    A Private Network allows you to interconnect your Scaleway resources
+    in an isolated and private network. Network reachability is limited
+    to resources that are on the same Private Network. Note that a
+    resource can be a part of multiple private networks.
+- name: Subnets
+  description: |
+    CIDR subnet management for your Private Networks.
+- name: Routes
+  description: |
+    Custom routes that will be pushed to your private networks resources.
+- name: Network ACLs
+  description: |
+    A Network **A**ccess **C**ontrol **L**ist (ACL) is a set of stateless, IP-based rules
+    used to filter packets between Private Networks in a VPC.
+    Each VPC can have a maximum of two Network ACLs: one for IPv4 rules,
+    and one for IPv6 rules. IPv4 and IPv6 rules cannot be mixed in the same ACL.
+- name: VPC Connectors
+  description: A VPC peering connector constitutes one side of a VPC peering connection.
+    It represents an intent to peer with another VPC. Two matching, compatible VPC
+    connectors create a VPC peering connection.
+- name: Ingress Rules
+  description: |
+    An Ingress rule (or ingress routing rule) matches packets coming into your VPC through VPC Connectors,
+    and redirects the traffic to a local resource (usually a firewall or router).
+- name: Object Storage private access
+  description: |
+    Object Storage private access enables resources connected to selected Private Networks
+    to access Scaleway Object Storage over a private network, without traversing the public Internet.
+components:
+  schemas:
+    scaleway.vpc.v2.AclRule:
+      type: object
+      properties:
+        protocol:
+          description: Protocol to which this rule applies.
+          $ref: '#/components/schemas/scaleway.vpc.v2.AclRule.Protocol'
+        source:
+          type: string
+          description: Source IP range to which this rule applies (CIDR notation with
+            subnet mask). (IP network)
+          example: 1.2.3.4/32
+        src_port_low:
+          type: integer
+          description: Starting port of the source port range to which this rule applies
+            (inclusive).
+          format: uint32
+        src_port_high:
+          type: integer
+          description: Ending port of the source port range to which this rule applies
+            (inclusive).
+          format: uint32
+        destination:
+          type: string
+          description: Destination IP range to which this rule applies (CIDR notation
+            with subnet mask). (IP network)
+          example: 1.2.3.4/32
+        dst_port_low:
+          type: integer
+          description: Starting port of the destination port range to which this rule
+            applies (inclusive).
+          format: uint32
+        dst_port_high:
+          type: integer
+          description: Ending port of the destination port range to which this rule
+            applies (inclusive).
+          format: uint32
+        action:
+          description: Policy to apply to the packet.
+          $ref: '#/components/schemas/scaleway.vpc.v2.Action'
+        description:
+          type:
+          - string
+          - "null"
+          description: Rule description.
+      required:
+      - protocol
+      - source
+      - src_port_low
+      - src_port_high
+      - destination
+      - dst_port_low
+      - dst_port_high
+      - action
+      - description
+      x-properties-order:
+      - protocol
+      - source
+      - src_port_low
+      - src_port_high
+      - destination
+      - dst_port_low
+      - dst_port_high
+      - action
+      - description
+    scaleway.vpc.v2.AclRule.Protocol:
+      type: string
+      enum:
+      - ANY
+      - TCP
+      - UDP
+      - ICMP
+      default: ANY
+    scaleway.vpc.v2.Action:
+      type: string
+      enum:
+      - unknown_action
+      - accept
+      - drop
+      default: unknown_action
+    scaleway.vpc.v2.AddPrivateNetworkObjectStoragePrivateAccessResponse:
+      type: object
+      properties:
+        vpc_id:
+          type: string
+          description: ID of the VPC containing the Object Storage private access.
+            (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        private_network_ids:
+          type: array
+          description: IDs of the Private Networks associated with the Object Storage
+            private access.
+          items:
+            type: string
+      x-properties-order:
+      - vpc_id
+      - private_network_ids
+    scaleway.vpc.v2.GetAclResponse:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/scaleway.vpc.v2.AclRule'
+        default_policy:
+          $ref: '#/components/schemas/scaleway.vpc.v2.Action'
+      x-properties-order:
+      - rules
+      - default_policy
+    scaleway.vpc.v2.IngressRule:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID of the ingress rule. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        vpc_id:
+          type: string
+          description: ID of the VPC this rule belongs to. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        created_at:
+          type:
+          - string
+          - "null"
+          description: Date the ingress rule was created. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        updated_at:
+          type:
+          - string
+          - "null"
+          description: Date the ingress rule was last modified. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        is_ipv6:
+          type: boolean
+          description: Whether this rule applies to IPv4 or IPv6 traffic.
+        source:
+          type: string
+          description: Source network to apply this rule on. (IP network)
+          example: 1.2.3.4/32
+        nexthop_resource_ip:
+          type: string
+          description: IP of the local resource to redirect ingress traffic to. (IP
+            address)
+          example: 1.2.3.4
+        nexthop_private_network_id:
+          type: string
+          description: ID of the Private Network the destination resource is in. (UUID
+            format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        description:
+          type:
+          - string
+          - "null"
+          description: Description of this ingress rule.
+        tags:
+          type: array
+          description: Tags of this ingress rule.
+          items:
+            type: string
+        organization_id:
+          type: string
+          description: Scaleway Organization the ingress rule belongs to. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        project_id:
+          type: string
+          description: Scaleway Project the ingress rule belongs to. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        region:
+          type: string
+          description: Region of the ingress rule.
+      x-properties-order:
+      - id
+      - vpc_id
+      - created_at
+      - updated_at
+      - is_ipv6
+      - source
+      - nexthop_resource_ip
+      - nexthop_private_network_id
+      - description
+      - tags
+      - organization_id
+      - project_id
+      - region
+    scaleway.vpc.v2.ListIngressRulesRequest.OrderBy:
+      type: string
+      enum:
+      - created_at_asc
+      - created_at_desc
+      - source_asc
+      - source_desc
+      - prefix_len_asc
+      - prefix_len_desc
+      default: created_at_asc
+    scaleway.vpc.v2.ListIngressRulesResponse:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/scaleway.vpc.v2.IngressRule'
+        total_count:
+          type: integer
+          format: uint64
+      x-properties-order:
+      - rules
+      - total_count
+    scaleway.vpc.v2.ListPrivateNetworksRequest.OrderBy:
+      type: string
+      enum:
+      - created_at_asc
+      - created_at_desc
+      - name_asc
+      - name_desc
+      default: created_at_asc
+    scaleway.vpc.v2.ListPrivateNetworksResponse:
+      type: object
+      properties:
+        private_networks:
+          type: array
+          items:
+            $ref: '#/components/schemas/scaleway.vpc.v2.PrivateNetwork'
+        total_count:
+          type: integer
+          format: uint32
+      x-properties-order:
+      - private_networks
+      - total_count
+    scaleway.vpc.v2.ListSubnetOverlapsRequest.OrderBy:
+      type: string
+      enum:
+      - subnet_asc
+      - subnet_desc
+      - target_subnet_asc
+      - target_subnet_desc
+      default: subnet_asc
+    scaleway.vpc.v2.ListSubnetOverlapsResponse:
+      type: object
+      properties:
+        subnet_overlaps:
+          type: array
+          items:
+            $ref: '#/components/schemas/scaleway.vpc.v2.ListSubnetOverlapsResponse.SubnetOverlap'
+        total_count:
+          type: integer
+          format: uint64
+      x-properties-order:
+      - subnet_overlaps
+      - total_count
+    scaleway.vpc.v2.ListSubnetOverlapsResponse.SubnetOverlap:
+      type: object
+      properties:
+        subnet_id:
+          type: string
+          description: (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        subnet:
+          type: string
+          description: (IP network)
+          example: 1.2.3.4/32
+        target_subnet_id:
+          type: string
+          description: (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        target_subnet:
+          type: string
+          description: (IP network)
+          example: 1.2.3.4/32
+      x-properties-order:
+      - subnet_id
+      - subnet
+      - target_subnet_id
+      - target_subnet
+    scaleway.vpc.v2.ListSubnetsRequest.OrderBy:
+      type: string
+      enum:
+      - created_at_asc
+      - created_at_desc
+      default: created_at_asc
+    scaleway.vpc.v2.ListSubnetsResponse:
+      type: object
+      properties:
+        subnets:
+          type: array
+          items:
+            $ref: '#/components/schemas/scaleway.vpc.v2.Subnet'
+        total_count:
+          type: integer
+          format: uint32
+      x-properties-order:
+      - subnets
+      - total_count
+    scaleway.vpc.v2.ListVPCConnectorsRequest.OrderBy:
+      type: string
+      enum:
+      - created_at_asc
+      - created_at_desc
+      - name_asc
+      - name_desc
+      default: created_at_asc
+    scaleway.vpc.v2.ListVPCConnectorsResponse:
+      type: object
+      properties:
+        vpc_connectors:
+          type: array
+          items:
+            $ref: '#/components/schemas/scaleway.vpc.v2.VPCConnector'
+        total_count:
+          type: integer
+          format: uint32
+      x-properties-order:
+      - vpc_connectors
+      - total_count
+    scaleway.vpc.v2.ListVPCsRequest.OrderBy:
+      type: string
+      enum:
+      - created_at_asc
+      - created_at_desc
+      - name_asc
+      - name_desc
+      default: created_at_asc
+    scaleway.vpc.v2.ListVPCsResponse:
+      type: object
+      properties:
+        vpcs:
+          type: array
+          items:
+            $ref: '#/components/schemas/scaleway.vpc.v2.VPC'
+        total_count:
+          type: integer
+          format: uint32
+      x-properties-order:
+      - vpcs
+      - total_count
+    scaleway.vpc.v2.PrivateNetwork:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Private Network ID. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        name:
+          type: string
+          description: Private Network name.
+        organization_id:
+          type: string
+          description: Scaleway Organization the Private Network belongs to. (UUID
+            format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        project_id:
+          type: string
+          description: Scaleway Project the Private Network belongs to. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        region:
+          type: string
+          description: Region in which the Private Network is available.
+        tags:
+          type: array
+          description: Tags of the Private Network.
+          items:
+            type: string
+        created_at:
+          type:
+          - string
+          - "null"
+          description: Date the Private Network was created. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        updated_at:
+          type:
+          - string
+          - "null"
+          description: Date the Private Network was last modified. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        subnets:
+          type: array
+          description: Private Network subnets.
+          items:
+            $ref: '#/components/schemas/scaleway.vpc.v2.Subnet'
+        vpc_id:
+          type: string
+          description: VPC the Private Network belongs to. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        dhcp_enabled:
+          type: boolean
+          description: Defines whether managed DHCP is enabled for this Private Network.
+        default_route_propagation_enabled:
+          type: boolean
+          description: Defines whether default v4 and v6 routes are propagated for
+            this Private Network.
+        has_object_storage_private_access:
+          type: boolean
+          description: Defines whether this Private Network is enabled for Object
+            Storage private access.
+      x-properties-order:
+      - id
+      - name
+      - organization_id
+      - project_id
+      - region
+      - tags
+      - created_at
+      - updated_at
+      - subnets
+      - vpc_id
+      - dhcp_enabled
+      - default_route_propagation_enabled
+      - has_object_storage_private_access
+    scaleway.vpc.v2.Route:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Route ID. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        description:
+          type: string
+          description: Route description.
+        tags:
+          type: array
+          description: Tags of the Route.
+          items:
+            type: string
+        vpc_id:
+          type: string
+          description: VPC the Route belongs to. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        destination:
+          type: string
+          description: Destination of the Route. (IP network)
+          example: 1.2.3.4/32
+        nexthop_resource_id:
+          type:
+          - string
+          - "null"
+          description: ID of the nexthop resource. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        nexthop_private_network_id:
+          type:
+          - string
+          - "null"
+          description: ID of the nexthop private network. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        nexthop_vpc_connector_id:
+          type:
+          - string
+          - "null"
+          description: ID of the nexthop VPC connector. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        created_at:
+          type:
+          - string
+          - "null"
+          description: Date the Route was created. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        updated_at:
+          type:
+          - string
+          - "null"
+          description: Date the Route was last modified. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        is_read_only:
+          type: boolean
+          description: Defines whether the route can be modified or deleted by the
+            user.
+        type:
+          description: Type of the Route.
+          $ref: '#/components/schemas/scaleway.vpc.v2.RouteType'
+        region:
+          type: string
+          description: Region of the Route.
+      x-properties-order:
+      - id
+      - description
+      - tags
+      - vpc_id
+      - destination
+      - nexthop_resource_id
+      - nexthop_private_network_id
+      - nexthop_vpc_connector_id
+      - created_at
+      - updated_at
+      - is_read_only
+      - type
+      - region
+    scaleway.vpc.v2.RouteType:
+      type: string
+      enum:
+      - unknown_route_type
+      - subnet
+      - default
+      - custom
+      - interlink
+      - s2s_vpn
+      default: unknown_route_type
+    scaleway.vpc.v2.SetAclResponse:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/scaleway.vpc.v2.AclRule'
+        default_policy:
+          $ref: '#/components/schemas/scaleway.vpc.v2.Action'
+      x-properties-order:
+      - rules
+      - default_policy
+    scaleway.vpc.v2.SetPrivateNetworksObjectStoragePrivateAccessResponse:
+      type: object
+      properties:
+        vpc_id:
+          type: string
+          description: ID of the VPC containing the Object Storage private access.
+            (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        private_network_ids:
+          type: array
+          description: IDs of the Private Networks associated with the Object Storage
+            private access.
+          items:
+            type: string
+      x-properties-order:
+      - vpc_id
+      - private_network_ids
+    scaleway.vpc.v2.Subnet:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID of the subnet. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        created_at:
+          type:
+          - string
+          - "null"
+          description: Subnet creation date. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        updated_at:
+          type:
+          - string
+          - "null"
+          description: Subnet last modification date. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        subnet:
+          type: string
+          description: Subnet CIDR. (IP network)
+          example: 1.2.3.4/32
+        project_id:
+          type: string
+          description: Scaleway Project the subnet belongs to. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        private_network_id:
+          type: string
+          description: Private Network the subnet belongs to. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        vpc_id:
+          type: string
+          description: VPC the subnet belongs to. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        region:
+          type: string
+          description: Region in which the Subnet can be used.
+      x-properties-order:
+      - id
+      - created_at
+      - updated_at
+      - subnet
+      - project_id
+      - private_network_id
+      - vpc_id
+      - region
+    scaleway.vpc.v2.VPC:
+      type: object
+      properties:
+        id:
+          type: string
+          description: VPC ID. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        name:
+          type: string
+          description: VPC name.
+        organization_id:
+          type: string
+          description: Scaleway Organization the VPC belongs to. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        project_id:
+          type: string
+          description: Scaleway Project the VPC belongs to. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        region:
+          type: string
+          description: Region of the VPC.
+        tags:
+          type: array
+          description: Tags for the VPC.
+          items:
+            type: string
+        is_default:
+          type: boolean
+          description: Defines whether the VPC is the default one for its Project.
+        created_at:
+          type:
+          - string
+          - "null"
+          description: Date the VPC was created. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        updated_at:
+          type:
+          - string
+          - "null"
+          description: Date the VPC was last modified. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        private_network_count:
+          type: integer
+          description: Number of Private Networks within this VPC.
+          format: uint32
+        routing_enabled:
+          type: boolean
+          description: Defines whether the VPC routes traffic between its Private
+            Networks.
+        custom_routes_propagation_enabled:
+          type: boolean
+          description: Defines whether the VPC advertises custom routes between its
+            Private Networks.
+        transitivity_enabled:
+          type: boolean
+          description: Defines whether the VPC allows packets from peered VPCs to
+            transit through.
+        object_storage_private_access_enabled:
+          type: boolean
+          description: Defines whether the Object Storage private access is enabled
+            for the VPC.
+      x-properties-order:
+      - id
+      - name
+      - organization_id
+      - project_id
+      - region
+      - tags
+      - is_default
+      - created_at
+      - updated_at
+      - private_network_count
+      - routing_enabled
+      - custom_routes_propagation_enabled
+      - transitivity_enabled
+      - object_storage_private_access_enabled
+    scaleway.vpc.v2.VPCConnector:
+      type: object
+      properties:
+        id:
+          type: string
+          description: VPC connector ID. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        name:
+          type: string
+          description: VPC connector name.
+        organization_id:
+          type: string
+          description: Scaleway Organization the VPC connector belongs to. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        project_id:
+          type: string
+          description: Scaleway Project the VPC connector belongs to. (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        vpc_id:
+          type: string
+          description: VPC the VPC connector belongs to (origin VPC). (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        target_vpc_id:
+          type: string
+          description: VPC with which the VPC connector is peered (target VPC). (UUID
+            format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        status:
+          description: Status of the VPC connector.
+          $ref: '#/components/schemas/scaleway.vpc.v2.VPCConnectorStatus'
+        peer_info:
+          description: Peer info of target VPC. Available when status is Peered.
+          $ref: '#/components/schemas/scaleway.vpc.v2.VPCConnector.PeerInfo'
+        region:
+          type: string
+          description: Region of the VPC connector.
+        tags:
+          type: array
+          description: Tags for the VPC connector.
+          items:
+            type: string
+        created_at:
+          type:
+          - string
+          - "null"
+          description: Date the VPC connector was created. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        updated_at:
+          type:
+          - string
+          - "null"
+          description: Date the VPC connector was last modified. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+      x-properties-order:
+      - id
+      - name
+      - organization_id
+      - project_id
+      - vpc_id
+      - target_vpc_id
+      - status
+      - peer_info
+      - region
+      - tags
+      - created_at
+      - updated_at
+    scaleway.vpc.v2.VPCConnector.PeerInfo:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          description: (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        project_id:
+          type: string
+          description: (UUID format)
+          example: 6170692e-7363-616c-6577-61792e636f6d
+        vpc_name:
+          type: string
+      x-properties-order:
+      - organization_id
+      - project_id
+      - vpc_name
+    scaleway.vpc.v2.VPCConnectorStatus:
+      type: string
+      enum:
+      - unknown_vpc_connector_status
+      - orphan
+      - peered
+      - conflict
+      default: unknown_vpc_connector_status
+  securitySchemes:
+    scaleway:
+      in: header
+      name: X-Auth-Token
+      type: apiKey
+paths:
+  /vpc/v2/regions/{region}/ingress-rules:
+    get:
+      tags:
+      - Ingress Rules
+      operationId: ListIngressRules
+      summary: List ingress rules
+      description: List existing ingress rules in the specified region.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: query
+        name: order_by
+        description: Sort order of the returned ingress rules.
+        schema:
+          $ref: '#/components/schemas/scaleway.vpc.v2.ListIngressRulesRequest.OrderBy'
+      - in: query
+        name: page
+        description: Page number to return, from the paginated results.
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: page_size
+        description: Maximum number of ingress rules to return per page.
+        schema:
+          type: integer
+          format: uint32
+      - in: query
+        name: vpc_id
+        description: ID of the VPC to filter for. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: nexthop_resource_ip
+        description: Next hop IP to filter for. (IP address)
+        schema:
+          type: string
+          example: 1.2.3.4
+      - in: query
+        name: nexthop_private_network_id
+        description: Next hop Private Network ID to filter for. Only ingress rules
+          with this Private Network as next hop will be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: is_ipv6
+        description: Whether to return only IPv4 or IPv6 ingress rules.
+        schema:
+          type: boolean
+      - in: query
+        name: tags
+        description: Tags to filter for. Only ingress rules with one or more matching
+          tags will be returned.
+        schema:
+          type: array
+          items:
+            type: string
+      - in: query
+        name: organization_id
+        description: Organization ID to filter for. Only ingress rules belonging to
+          this Organization will be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: project_id
+        description: Project ID to filter for. Only ingress rules belonging to this
+          Project will be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.ListIngressRulesResponse'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/ingress-rules"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/vpc/v2/regions/{region}/ingress-rules" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    post:
+      tags:
+      - Ingress Rules
+      operationId: CreateIngressRule
+      summary: Create an ingress rule
+      description: Create an ingress rule in the specified region.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.IngressRule'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                vpc_id:
+                  type: string
+                  description: ID of the VPC this rule will belong to. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+                source:
+                  type: string
+                  description: Source network to match ingress traffic on. Can be
+                    IPv6 or IPv4. (IP network)
+                  example: 1.2.3.4/32
+                nexthop_resource_ip:
+                  type: string
+                  description: IP of the local resource to redirect ingress traffic
+                    to. IP version must be consistent with the source network. (IP
+                    address)
+                  example: 1.2.3.4
+                nexthop_private_network_id:
+                  type: string
+                  description: ID of the Private Network the destination resource
+                    is in. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+                description:
+                  type:
+                  - string
+                  - "null"
+                  description: Description for this ingress rule.
+                tags:
+                  type: array
+                  description: Tags for this ingress rule.
+                  items:
+                    type: string
+              required:
+              - vpc_id
+              - source
+              - nexthop_resource_ip
+              - nexthop_private_network_id
+              x-properties-order:
+              - vpc_id
+              - source
+              - nexthop_resource_ip
+              - nexthop_private_network_id
+              - description
+              - tags
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "nexthop_private_network_id": "6170692e-7363-616c-6577-61792e636f6d",
+              "nexthop_resource_ip": "1.2.3.4",
+              "source": "1.2.3.4/32",
+              "vpc_id": "6170692e-7363-616c-6577-61792e636f6d"
+            }' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/ingress-rules"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/vpc/v2/regions/{region}/ingress-rules" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            nexthop_private_network_id="6170692e-7363-616c-6577-61792e636f6d" \
+            nexthop_resource_ip="1.2.3.4" \
+            source="1.2.3.4/32" \
+            vpc_id="6170692e-7363-616c-6577-61792e636f6d"
+  /vpc/v2/regions/{region}/ingress-rules/{rule_id}:
+    get:
+      tags:
+      - Ingress Rules
+      operationId: GetIngressRule
+      summary: Get an ingress rule
+      description: Retrieve details of an existing ingress rule, specified by its
+        ingress rule ID.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: rule_id
+        description: ID of the ingress rule to return. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.IngressRule'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/ingress-rules/{rule_id}"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/vpc/v2/regions/{region}/ingress-rules/{rule_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    patch:
+      tags:
+      - Ingress Rules
+      operationId: UpdateIngressRule
+      summary: Update an ingress rule
+      description: Update an ingress rule specified by its ingress rule ID.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: rule_id
+        description: ID of the ingress rule to update. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.IngressRule'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                source:
+                  type:
+                  - string
+                  - "null"
+                  description: Source network to match ingress traffic on. Can be
+                    IPv4 or IPv6. (IP network)
+                  example: 1.2.3.4/32
+                nexthop_resource_ip:
+                  type:
+                  - string
+                  - "null"
+                  description: IP of the local resource to redirect ingress traffic
+                    to. IP version must be consistent with the source network. (IP
+                    address)
+                  example: 1.2.3.4
+                nexthop_private_network_id:
+                  type:
+                  - string
+                  - "null"
+                  description: ID of the Private Network the destination resource
+                    is in. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+                description:
+                  type:
+                  - string
+                  - "null"
+                  description: Description to set for this ingress rule.
+                tags:
+                  type:
+                  - array
+                  - "null"
+                  description: Tags to set for this ingress rule.
+              x-properties-order:
+              - source
+              - nexthop_resource_ip
+              - nexthop_private_network_id
+              - description
+              - tags
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X PATCH \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/ingress-rules/{rule_id}"
+      - lang: HTTPie
+        source: |-
+          http PATCH "https://api.scaleway.com/vpc/v2/regions/{region}/ingress-rules/{rule_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    delete:
+      tags:
+      - Ingress Rules
+      operationId: DeleteIngressRule
+      summary: Delete an ingress rule
+      description: Delete an ingress rule specified by its ingress rule ID.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: rule_id
+        description: ID of the ingress rule to delete. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "204":
+          description: ""
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X DELETE \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/ingress-rules/{rule_id}"
+      - lang: HTTPie
+        source: |-
+          http DELETE "https://api.scaleway.com/vpc/v2/regions/{region}/ingress-rules/{rule_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/disable:
+    post:
+      tags:
+      - Object Storage private access
+      operationId: DisableObjectStoragePrivateAccess
+      summary: Disable Object Storage private access
+      description: Disable Object Storage private access for a VPC.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_id
+        description: ID of the VPC for which to disable Object Storage private access.
+          (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.VPC'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/disable"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/disable" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/enable:
+    post:
+      tags:
+      - Object Storage private access
+      operationId: EnableObjectStoragePrivateAccess
+      summary: Enable Object Storage private access
+      description: Enable Object Storage private access for a VPC.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_id
+        description: ID of the VPC for which to enable Object Storage private access.
+          (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: private_network_ids
+        description: IDs of the Private Networks for which to enable Object Storage
+          private access.
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.VPC'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/enable"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/enable" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/private-networks:
+    post:
+      tags:
+      - Object Storage private access
+      operationId: AddPrivateNetworkObjectStoragePrivateAccess
+      summary: Add a Private Network to an Object Storage private access
+      description: Add a Private Network to the Object Storage private access to enable
+        Object Storage integration for its resources.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_id
+        description: ID of the VPC containing the Object Storage private access. (UUID
+          format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.AddPrivateNetworkObjectStoragePrivateAccessResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                private_network_id:
+                  type: string
+                  description: ID of the Private Network to add to the Object Storage
+                    private access. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+              required:
+              - private_network_id
+              x-properties-order:
+              - private_network_id
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"private_network_id":"6170692e-7363-616c-6577-61792e636f6d"}' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/private-networks"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/private-networks" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            private_network_id="6170692e-7363-616c-6577-61792e636f6d"
+    put:
+      tags:
+      - Object Storage private access
+      operationId: SetPrivateNetworksObjectStoragePrivateAccess
+      summary: Set Object Storage private access Private Networks
+      description: Set the Private Networks associated with the Object Storage private
+        access to enable Object Storage integration for their resources.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_id
+        description: ID of the VPC containing the Object Storage private access. (UUID
+          format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.SetPrivateNetworksObjectStoragePrivateAccessResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                private_network_ids:
+                  type: array
+                  description: IDs of the Private Networks to associate with the Object
+                    Storage private access.
+                  items:
+                    type: string
+              required:
+              - private_network_ids
+              x-properties-order:
+              - private_network_ids
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X PUT \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"private_network_ids":["string"]}' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/private-networks"
+      - lang: HTTPie
+        source: |-
+          http PUT "https://api.scaleway.com/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/private-networks" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            private_network_ids:='["string"]'
+  /vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/private-networks/{private_network_id}:
+    delete:
+      tags:
+      - Object Storage private access
+      operationId: DeletePrivateNetworkObjectStoragePrivateAccess
+      summary: Remove a Private Network from an Object Storage private access
+      description: Remove a Private Network from the Object Storage private access
+        to disable Object Storage integration for its resources.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_id
+        description: ID of the VPC containing the Object Storage private access. (UUID
+          format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: path
+        name: private_network_id
+        description: ID of the Private Network to remove from the Object Storage private
+          access. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "204":
+          description: ""
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X DELETE \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/private-networks/{private_network_id}"
+      - lang: HTTPie
+        source: |-
+          http DELETE "https://api.scaleway.com/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/private-networks/{private_network_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /vpc/v2/regions/{region}/private-networks:
+    get:
+      tags:
+      - Private Networks
+      operationId: ListPrivateNetworks
+      summary: List Private Networks
+      description: List existing Private Networks in the specified region. By default,
+        the Private Networks returned in the list are ordered by creation date in
+        ascending order, though this can be modified via the order_by field.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: query
+        name: order_by
+        description: Sort order of the returned Private Networks.
+        schema:
+          $ref: '#/components/schemas/scaleway.vpc.v2.ListPrivateNetworksRequest.OrderBy'
+      - in: query
+        name: page
+        description: Page number to return, from the paginated results.
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: page_size
+        description: Maximum number of Private Networks to return per page.
+        schema:
+          type: integer
+          format: uint32
+      - in: query
+        name: name
+        description: Name to filter for. Only Private Networks with names containing
+          this string will be returned.
+        schema:
+          type: string
+      - in: query
+        name: tags
+        description: Tags to filter for. Only Private Networks with one or more matching
+          tags will be returned.
+        schema:
+          type: array
+          items:
+            type: string
+      - in: query
+        name: organization_id
+        description: Organization ID to filter for. Only Private Networks belonging
+          to this Organization will be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: project_id
+        description: Project ID to filter for. Only Private Networks belonging to
+          this Project will be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: private_network_ids
+        description: Private Network IDs to filter for. Only Private Networks with
+          one of these IDs will be returned.
+        schema:
+          type: array
+          items:
+            type: string
+      - in: query
+        name: vpc_id
+        description: VPC ID to filter for. Only Private Networks belonging to this
+          VPC will be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: dhcp_enabled
+        description: DHCP status to filter for. When true, only Private Networks with
+          managed DHCP enabled will be returned.
+        schema:
+          type: boolean
+      - in: query
+        name: object_storage_private_access_enabled
+        description: Filter by whether Object Storage private access is enabled. When
+          set, only matching Private Networks will be returned.
+        schema:
+          type: boolean
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.ListPrivateNetworksResponse'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/private-networks"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/vpc/v2/regions/{region}/private-networks" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    post:
+      tags:
+      - Private Networks
+      operationId: CreatePrivateNetwork
+      summary: Create a Private Network
+      description: Create a new Private Network. Once created, you can attach Scaleway
+        resources which are in the same region.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.PrivateNetwork'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Name for the Private Network.
+                project_id:
+                  type: string
+                  description: Scaleway Project in which to create the Private Network.
+                    (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+                tags:
+                  type: array
+                  description: Tags for the Private Network.
+                  items:
+                    type: string
+                subnets:
+                  type: array
+                  description: Private Network subnets CIDR. (IP network)
+                  example:
+                  - 1.2.3.4/32
+                  items:
+                    type: string
+                vpc_id:
+                  type:
+                  - string
+                  - "null"
+                  description: VPC in which to create the Private Network. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+                default_route_propagation_enabled:
+                  type: boolean
+                  description: Defines whether default v4 and v6 routes are propagated
+                    for this Private Network.
+              required:
+              - name
+              - project_id
+              x-properties-order:
+              - name
+              - project_id
+              - tags
+              - subnets
+              - vpc_id
+              - default_route_propagation_enabled
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "default_route_propagation_enabled": false,
+              "name": "string",
+              "project_id": "6170692e-7363-616c-6577-61792e636f6d"
+            }' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/private-networks"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/vpc/v2/regions/{region}/private-networks" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            default_route_propagation_enabled:=false \
+            name="string" \
+            project_id="6170692e-7363-616c-6577-61792e636f6d"
+  /vpc/v2/regions/{region}/private-networks/{private_network_id}:
+    get:
+      tags:
+      - Private Networks
+      operationId: GetPrivateNetwork
+      summary: Get a Private Network
+      description: Retrieve information about an existing Private Network, specified
+        by its Private Network ID. Its full details are returned in the response object.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: private_network_id
+        description: Private Network ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.PrivateNetwork'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/private-networks/{private_network_id}"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/vpc/v2/regions/{region}/private-networks/{private_network_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    patch:
+      tags:
+      - Private Networks
+      operationId: UpdatePrivateNetwork
+      summary: Update Private Network
+      description: Update parameters (such as name or tags) of an existing Private
+        Network, specified by its Private Network ID.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: private_network_id
+        description: Private Network ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.PrivateNetwork'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type:
+                  - string
+                  - "null"
+                  description: Name for the Private Network.
+                tags:
+                  type:
+                  - array
+                  - "null"
+                  description: Tags for the Private Network.
+                default_route_propagation_enabled:
+                  type:
+                  - boolean
+                  - "null"
+                  description: Defines whether default v4 and v6 routes are propagated
+                    for this Private Network.
+              x-properties-order:
+              - name
+              - tags
+              - default_route_propagation_enabled
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X PATCH \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/private-networks/{private_network_id}"
+      - lang: HTTPie
+        source: |-
+          http PATCH "https://api.scaleway.com/vpc/v2/regions/{region}/private-networks/{private_network_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    delete:
+      tags:
+      - Private Networks
+      operationId: DeletePrivateNetwork
+      summary: Delete a Private Network
+      description: Delete an existing Private Network. Note that you must first detach
+        all resources from the network, in order to delete it.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: private_network_id
+        description: Private Network ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "204":
+          description: ""
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X DELETE \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/private-networks/{private_network_id}"
+      - lang: HTTPie
+        source: |-
+          http DELETE "https://api.scaleway.com/vpc/v2/regions/{region}/private-networks/{private_network_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /vpc/v2/regions/{region}/private-networks/{private_network_id}/enable-dhcp:
+    post:
+      tags:
+      - Private Networks
+      operationId: EnableDHCP
+      summary: Enable DHCP on a Private Network
+      description: Enable DHCP managed on an existing Private Network. Note that you
+        will not be able to deactivate it afterwards.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: private_network_id
+        description: Private Network ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.PrivateNetwork'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/private-networks/{private_network_id}/enable-dhcp"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/vpc/v2/regions/{region}/private-networks/{private_network_id}/enable-dhcp" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /vpc/v2/regions/{region}/routes:
+    post:
+      tags:
+      - Routes
+      operationId: CreateRoute
+      summary: Create a Route
+      description: Create a new custom Route.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.Route'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type: string
+                  description: Route description.
+                tags:
+                  type: array
+                  description: Tags of the Route.
+                  items:
+                    type: string
+                vpc_id:
+                  type: string
+                  description: VPC the Route belongs to. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+                destination:
+                  type: string
+                  description: Destination of the Route. (IP network)
+                  example: 1.2.3.4/32
+                nexthop_resource_id:
+                  type:
+                  - string
+                  - "null"
+                  description: ID of the nexthop resource. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+                nexthop_private_network_id:
+                  type:
+                  - string
+                  - "null"
+                  description: ID of the nexthop private network. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+                nexthop_vpc_connector_id:
+                  type:
+                  - string
+                  - "null"
+                  description: ID of the nexthop VPC Connector. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+              x-properties-order:
+              - description
+              - tags
+              - vpc_id
+              - destination
+              - nexthop_resource_id
+              - nexthop_private_network_id
+              - nexthop_vpc_connector_id
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "description": "string",
+              "destination": "1.2.3.4/32",
+              "vpc_id": "6170692e-7363-616c-6577-61792e636f6d"
+            }' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/routes"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/vpc/v2/regions/{region}/routes" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            description="string" \
+            destination="1.2.3.4/32" \
+            vpc_id="6170692e-7363-616c-6577-61792e636f6d"
+  /vpc/v2/regions/{region}/routes/{route_id}:
+    get:
+      tags:
+      - Routes
+      operationId: GetRoute
+      summary: Get a Route
+      description: Retrieve details of an existing Route, specified by its Route ID.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: route_id
+        description: Route ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.Route'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/routes/{route_id}"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/vpc/v2/regions/{region}/routes/{route_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    patch:
+      tags:
+      - Routes
+      operationId: UpdateRoute
+      summary: Update Route
+      description: Update parameters of the specified Route.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: route_id
+        description: Route ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.Route'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type:
+                  - string
+                  - "null"
+                  description: Route description.
+                tags:
+                  type:
+                  - array
+                  - "null"
+                  description: Tags of the Route.
+                destination:
+                  type:
+                  - string
+                  - "null"
+                  description: Destination of the Route. (IP network)
+                  example: 1.2.3.4/32
+                nexthop_resource_id:
+                  type:
+                  - string
+                  - "null"
+                  description: ID of the nexthop resource. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+                nexthop_private_network_id:
+                  type:
+                  - string
+                  - "null"
+                  description: ID of the nexthop private network. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+                nexthop_vpc_connector_id:
+                  type:
+                  - string
+                  - "null"
+                  description: ID of the nexthop VPC connector. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+              x-properties-order:
+              - description
+              - tags
+              - destination
+              - nexthop_resource_id
+              - nexthop_private_network_id
+              - nexthop_vpc_connector_id
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X PATCH \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/routes/{route_id}"
+      - lang: HTTPie
+        source: |-
+          http PATCH "https://api.scaleway.com/vpc/v2/regions/{region}/routes/{route_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    delete:
+      tags:
+      - Routes
+      operationId: DeleteRoute
+      summary: Delete a Route
+      description: Delete a Route specified by its Route ID.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: route_id
+        description: Route ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "204":
+          description: ""
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X DELETE \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/routes/{route_id}"
+      - lang: HTTPie
+        source: |-
+          http DELETE "https://api.scaleway.com/vpc/v2/regions/{region}/routes/{route_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /vpc/v2/regions/{region}/subnets:
+    get:
+      tags:
+      - Subnets
+      operationId: ListSubnets
+      summary: List subnets
+      description: List any Private Network's subnets. See ListPrivateNetworks to
+        list a specific Private Network's subnets.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: query
+        name: order_by
+        description: Sort order of the returned subnets.
+        schema:
+          $ref: '#/components/schemas/scaleway.vpc.v2.ListSubnetsRequest.OrderBy'
+      - in: query
+        name: page
+        description: Page number to return, from the paginated results.
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: page_size
+        description: Maximum number of Private Networks to return per page.
+        schema:
+          type: integer
+          format: uint32
+      - in: query
+        name: organization_id
+        description: Organization ID to filter for. Only subnets belonging to this
+          Organization will be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: project_id
+        description: Project ID to filter for. Only subnets belonging to this Project
+          will be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: subnet_ids
+        description: Subnet IDs to filter for. Only subnets matching the specified
+          IDs will be returned.
+        schema:
+          type: array
+          items:
+            type: string
+      - in: query
+        name: vpc_id
+        description: VPC ID to filter for. Only subnets belonging to this VPC will
+          be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.ListSubnetsResponse'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/subnets"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/vpc/v2/regions/{region}/subnets" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /vpc/v2/regions/{region}/vpc-connectors:
+    get:
+      tags:
+      - VPC Connectors
+      operationId: ListVPCConnectors
+      summary: List VPC connectors
+      description: List existing VPC connectors in the specified region.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: query
+        name: order_by
+        description: Sort order of the returned VPC connectors.
+        schema:
+          $ref: '#/components/schemas/scaleway.vpc.v2.ListVPCConnectorsRequest.OrderBy'
+      - in: query
+        name: page
+        description: Page number to return, from the paginated results.
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: page_size
+        description: Maximum number of VPC connectors to return per page.
+        schema:
+          type: integer
+          format: uint32
+      - in: query
+        name: name
+        description: Name to filter for. Only connectors with names containing this
+          string will be returned.
+        schema:
+          type: string
+      - in: query
+        name: tags
+        description: Tags to filter for. Only connectors with one or more matching
+          tags will be returned.
+        schema:
+          type: array
+          items:
+            type: string
+      - in: query
+        name: organization_id
+        description: Organization ID to filter for. Only connectors belonging to this
+          Organization will be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: project_id
+        description: Project ID to filter for. Only connectors belonging to this Project
+          will be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: vpc_id
+        description: VPC ID to filter for. Only connectors belonging to this VPC will
+          be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: target_vpc_id
+        description: Target VPC ID to filter for. Only connectors belonging to this
+          target VPC will be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: status
+        description: Status of the VPC connector.
+        schema:
+          $ref: '#/components/schemas/scaleway.vpc.v2.VPCConnectorStatus'
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.ListVPCConnectorsResponse'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/vpc-connectors"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/vpc/v2/regions/{region}/vpc-connectors" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    post:
+      tags:
+      - VPC Connectors
+      operationId: CreateVPCConnector
+      summary: Create a VPC connector
+      description: Create a new VPC connector in the specified region.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.VPCConnector'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Name for the VPC connector.
+                tags:
+                  type: array
+                  description: Tags for the VPC connector.
+                  items:
+                    type: string
+                vpc_id:
+                  type: string
+                  description: VPC ID to filter for. Only connectors belonging to
+                    this VPC will be returned. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+                target_vpc_id:
+                  type: string
+                  description: Target VPC ID to filter for. Only connectors belonging
+                    to this target VPC will be returned. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+              required:
+              - name
+              x-properties-order:
+              - name
+              - tags
+              - vpc_id
+              - target_vpc_id
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "string",
+              "target_vpc_id": "6170692e-7363-616c-6577-61792e636f6d",
+              "vpc_id": "6170692e-7363-616c-6577-61792e636f6d"
+            }' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/vpc-connectors"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/vpc/v2/regions/{region}/vpc-connectors" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            name="string" \
+            target_vpc_id="6170692e-7363-616c-6577-61792e636f6d" \
+            vpc_id="6170692e-7363-616c-6577-61792e636f6d"
+  /vpc/v2/regions/{region}/vpc-connectors/{vpc_connector_id}:
+    get:
+      tags:
+      - VPC Connectors
+      operationId: GetVPCConnector
+      summary: Get a VPC connector
+      description: Retrieve details of an existing VPC connector, specified by its
+        VPC connector ID.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_connector_id
+        description: VPC connector ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.VPCConnector'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/vpc-connectors/{vpc_connector_id}"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/vpc/v2/regions/{region}/vpc-connectors/{vpc_connector_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    patch:
+      tags:
+      - VPC Connectors
+      operationId: UpdateVPCConnector
+      summary: Update VPC connector
+      description: Update parameters including name and tags of the specified VPC
+        connector.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_connector_id
+        description: VPC connector ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.VPCConnector'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type:
+                  - string
+                  - "null"
+                  description: Name for the VPC connector.
+                tags:
+                  type:
+                  - array
+                  - "null"
+                  description: Tags for the VPC connector.
+              x-properties-order:
+              - name
+              - tags
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X PATCH \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/vpc-connectors/{vpc_connector_id}"
+      - lang: HTTPie
+        source: |-
+          http PATCH "https://api.scaleway.com/vpc/v2/regions/{region}/vpc-connectors/{vpc_connector_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    delete:
+      tags:
+      - VPC Connectors
+      operationId: DeleteVPCConnector
+      summary: Delete a VPC connector
+      description: Delete a VPC connector specified by its VPC connector ID.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_connector_id
+        description: VPC connector ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "204":
+          description: ""
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X DELETE \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/vpc-connectors/{vpc_connector_id}"
+      - lang: HTTPie
+        source: |-
+          http DELETE "https://api.scaleway.com/vpc/v2/regions/{region}/vpc-connectors/{vpc_connector_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /vpc/v2/regions/{region}/vpc-connectors/{vpc_connector_id}/subnet-overlaps:
+    get:
+      tags:
+      - VPC Connectors
+      operationId: ListSubnetOverlaps
+      summary: List subnet overlaps
+      description: List subnet overlaps between the VPCs on both sides of a connector,
+        or for a specific subnet if specified.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_connector_id
+        description: VPC Peering connector ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: order_by
+        description: Sort order of the returned Subnet overlaps.
+        schema:
+          $ref: '#/components/schemas/scaleway.vpc.v2.ListSubnetOverlapsRequest.OrderBy'
+      - in: query
+        name: page
+        description: Page number to return, from the paginated results.
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: page_size
+        description: Maximum number of Subnet overlaps to return per page.
+        schema:
+          type: integer
+          format: uint32
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.ListSubnetOverlapsResponse'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/vpc-connectors/{vpc_connector_id}/subnet-overlaps"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/vpc/v2/regions/{region}/vpc-connectors/{vpc_connector_id}/subnet-overlaps" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /vpc/v2/regions/{region}/vpcs:
+    get:
+      tags:
+      - VPCs
+      operationId: ListVPCs
+      summary: List VPCs
+      description: List existing VPCs in the specified region.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: query
+        name: order_by
+        description: Sort order of the returned VPCs.
+        schema:
+          $ref: '#/components/schemas/scaleway.vpc.v2.ListVPCsRequest.OrderBy'
+      - in: query
+        name: page
+        description: Page number to return, from the paginated results.
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: page_size
+        description: Maximum number of VPCs to return per page.
+        schema:
+          type: integer
+          format: uint32
+      - in: query
+        name: name
+        description: Name to filter for. Only VPCs with names containing this string
+          will be returned.
+        schema:
+          type: string
+      - in: query
+        name: tags
+        description: Tags to filter for. Only VPCs with one or more matching tags
+          will be returned.
+        schema:
+          type: array
+          items:
+            type: string
+      - in: query
+        name: organization_id
+        description: Organization ID to filter for. Only VPCs belonging to this Organization
+          will be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: project_id
+        description: Project ID to filter for. Only VPCs belonging to this Project
+          will be returned. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: is_default
+        description: Defines whether to filter only for VPCs which are the default
+          one for their Project.
+        schema:
+          type: boolean
+      - in: query
+        name: routing_enabled
+        description: Defines whether to filter only for VPCs which route traffic between
+          their Private Networks.
+        schema:
+          type: boolean
+      - in: query
+        name: object_storage_private_access_enabled
+        description: Defines whether to filter only for VPCs with Object Storage private
+          access enabled.
+        schema:
+          type: boolean
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.ListVPCsResponse'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    post:
+      tags:
+      - VPCs
+      operationId: CreateVPC
+      summary: Create a VPC
+      description: Create a new VPC in the specified region.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.VPC'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Name for the VPC.
+                project_id:
+                  type: string
+                  description: Scaleway Project in which to create the VPC. (UUID
+                    format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+                tags:
+                  type: array
+                  description: Tags for the VPC.
+                  items:
+                    type: string
+                enable_routing:
+                  type: boolean
+                  description: Enable routing between Private Networks in the VPC.
+                enable_transitivity:
+                  type: boolean
+                  description: Enable packets from peered VPCs to transit through
+                    this VPC.
+              required:
+              - name
+              - project_id
+              x-properties-order:
+              - name
+              - project_id
+              - tags
+              - enable_routing
+              - enable_transitivity
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "enable_routing": false,
+              "enable_transitivity": false,
+              "name": "string",
+              "project_id": "6170692e-7363-616c-6577-61792e636f6d"
+            }' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            enable_routing:=false \
+            enable_transitivity:=false \
+            name="string" \
+            project_id="6170692e-7363-616c-6577-61792e636f6d"
+  /vpc/v2/regions/{region}/vpcs/{vpc_id}:
+    get:
+      tags:
+      - VPCs
+      operationId: GetVPC
+      summary: Get a VPC
+      description: Retrieve details of an existing VPC, specified by its VPC ID.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_id
+        description: VPC ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.VPC'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs/{vpc_id}"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs/{vpc_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    patch:
+      tags:
+      - VPCs
+      operationId: UpdateVPC
+      summary: Update VPC
+      description: Update parameters including name and tags of the specified VPC.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_id
+        description: VPC ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.VPC'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type:
+                  - string
+                  - "null"
+                  description: Name for the VPC.
+                tags:
+                  type:
+                  - array
+                  - "null"
+                  description: Tags for the VPC.
+              x-properties-order:
+              - name
+              - tags
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X PATCH \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs/{vpc_id}"
+      - lang: HTTPie
+        source: |-
+          http PATCH "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs/{vpc_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    delete:
+      tags:
+      - VPCs
+      operationId: DeleteVPC
+      summary: Delete a VPC
+      description: Delete a VPC specified by its VPC ID.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_id
+        description: VPC ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "204":
+          description: ""
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X DELETE \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs/{vpc_id}"
+      - lang: HTTPie
+        source: |-
+          http DELETE "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs/{vpc_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /vpc/v2/regions/{region}/vpcs/{vpc_id}/acl-rules:
+    get:
+      tags:
+      - Network ACLs
+      operationId: GetAcl
+      summary: Get ACL Rules for VPC
+      description: Retrieve a list of ACL rules for a VPC, specified by its VPC ID.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_id
+        description: ID of the Network ACL's VPC. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: is_ipv6
+        description: Defines whether this set of ACL rules is for IPv6 (false = IPv4).
+          Each Network ACL can have rules for only one IP type.
+        required: true
+        schema:
+          type: boolean
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.GetAclResponse'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs/{vpc_id}/acl-rules?is_ipv6=false"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs/{vpc_id}/acl-rules" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            is_ipv6==false
+    put:
+      tags:
+      - Network ACLs
+      operationId: SetAcl
+      summary: Set VPC ACL rules
+      description: Set the list of ACL rules and the default routing policy for a
+        VPC.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_id
+        description: ID of the Network ACL's VPC. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.SetAclResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rules:
+                  type: array
+                  description: List of Network ACL rules.
+                  items:
+                    $ref: '#/components/schemas/scaleway.vpc.v2.AclRule'
+                is_ipv6:
+                  type: boolean
+                  description: Defines whether this set of ACL rules is for IPv6 (false
+                    = IPv4). Each Network ACL can have rules for only one IP type.
+                default_policy:
+                  description: Action to take for packets which do not match any rules.
+                  $ref: '#/components/schemas/scaleway.vpc.v2.Action'
+              required:
+              - rules
+              - is_ipv6
+              - default_policy
+              x-properties-order:
+              - rules
+              - is_ipv6
+              - default_policy
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X PUT \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "default_policy": "unknown_action",
+              "is_ipv6": false,
+              "rules": [
+                  ""
+              ]
+            }' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs/{vpc_id}/acl-rules"
+      - lang: HTTPie
+        source: |-
+          http PUT "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs/{vpc_id}/acl-rules" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            default_policy="unknown_action" \
+            is_ipv6:=false \
+            rules:='[
+              ""
+            ]'
+  /vpc/v2/regions/{region}/vpcs/{vpc_id}/enable-routing:
+    post:
+      tags:
+      - VPCs
+      operationId: EnableRouting
+      summary: Enable routing on a VPC
+      description: Enable routing on an existing VPC. Note that you will not be able
+        to deactivate it afterwards.
+      parameters:
+      - in: path
+        name: region
+        description: The region you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par
+          - it-mil
+          - nl-ams
+          - pl-waw
+      - in: path
+        name: vpc_id
+        description: VPC ID. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.vpc.v2.VPC'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs/{vpc_id}/enable-routing"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/vpc/v2/regions/{region}/vpcs/{vpc_id}/enable-routing" \
+            X-Auth-Token:$SCW_SECRET_KEY

@@ -742,6 +742,30 @@
       "find": "        that:\n          - reecritures_non_mesurees | length == 0",
       "replace": "        that:\n          - reecritures_non_mesurees | length >= 0",
       "test": "tests/unit/outillage/test_recensement_exemple.py::test_sur_le_cloud_reel_une_reecriture_non_mesuree_fait_rougir"
+    },
+    {
+      "name": "ipam-renomme-le-champ-de-la-jointure",
+      "why": "Simule la dérive amont que ce contrôle existe pour voir : IPAM renomme `private_network_id`. La jointure le lit par `getattr(..., None)`, donc elle ne lèverait pas : elle rendrait des machines avec un réseau, une adresse MAC et aucune adresse, et l'inventaire un parc muet.",
+      "file": "specs/scaleway/suivis/ipam.v1.yml",
+      "find": "        private_network_id:\n          type:\n          - string\n          - \"null\"\n          description: |-\n            Private Network the IP lives in if the IP is a private IP.",
+      "replace": "        private_network_uuid:\n          type:\n          - string\n          - \"null\"\n          description: |-\n            Private Network the IP lives in if the IP is a private IP.",
+      "test": "tests/unit/inventory/test_derive_ipam_vpc.py::test_chaque_champ_lu_par_la_jointure_existe_dans_le_contrat"
+    },
+    {
+      "name": "jointure-lit-un-champ-non-declare",
+      "why": "La garde de la garde. Sans elle, une lecture ajoutée à la jointure échappe aux deux contrôles de dérive : ils restent verts, et le fichier affirme couvrir une jointure qu'il ne mesure plus.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/discovery.py",
+      "find": "getattr(source, \"vpc_id\", None) if source else None",
+      "replace": "getattr(source, \"vpc_uuid\", None) if source else None",
+      "test": "tests/unit/inventory/test_derive_ipam_vpc.py::test_la_declaration_couvre_tout_ce_que_le_code_lit"
+    },
+    {
+      "name": "methode-sdk-renommee-dans-la-jointure",
+      "why": "Le verrou est `scaleway>=2.9.0`, et `list_i_ps_all` sort d'une dépluralisation automatique : c'est le genre de nom qu'un générateur amont corrige un jour. Les méthodes attendues sont lues dans le code, donc un appel renommé se confronte au SDK installé.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/discovery.py",
+      "find": "partial(ipam.list_i_ps_all, region=region, project_id=projet)",
+      "replace": "partial(ipam.list_ips_all, region=region, project_id=projet)",
+      "test": "tests/unit/inventory/test_derive_ipam_vpc.py::test_le_sdk_installe_porte_les_methodes_que_la_jointure_appelle"
     }
   ]
 }
