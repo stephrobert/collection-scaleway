@@ -321,10 +321,16 @@ def controler_plan_de_controle(env: dict[str, str], sorties: dict[str, Any]) -> 
     # load balancer déjà facturé.
     cibles = api(env, f"/lb/v1/zones/{zone}/lbs/{lbs[0]['id']}/backends")["backends"]
     exige(len(cibles) == 2, f"deux backends déclarés ({len(cibles)} trouvé(s))")
-    exige(
-        len(cibles[0]["pool"]) == attendu["web"],
-        f"le backend pointe les {attendu['web']} machines web ({len(cibles[0]['pool'])} cibles)",
-    )
+    # **Chaque** backend, et pas le premier venu : ils sont deux depuis que
+    # `lb_route` a eu besoin d'une cible, et l'ordre d'une liste d'API n'est
+    # promis nulle part. Contrôler `cibles[0]` reviendrait à mesurer celui que
+    # l'API a rendu en premier ce jour-là.
+    for cible_lb in cibles:
+        exige(
+            len(cible_lb["pool"]) == attendu["web"],
+            f"le backend {cible_lb['name']} pointe les {attendu['web']} machines web "
+            f"({len(cible_lb['pool'])} cibles)",
+        )
 
     passerelles = [
         g

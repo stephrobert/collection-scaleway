@@ -447,15 +447,20 @@
           - non_emules_lb | length == 0
           - balanceurs.lbs | selectattr('name', 'search', prefixe)
             | list | length == 1
+          # Deux backends : celui du service, et celui que la route vise.
+          # Ce compte est passé de un à deux le jour où `lb_route` a eu besoin
+          # d'une cible, et **seul le run réel l'a dit**, parce que cette
+          # assertion ne s'évalue que là.
           - backends.backends | selectattr('name', 'search', prefixe)
-            | list | length == 1
+            | list | length == 2
           - frontends.frontends | selectattr('name', 'search', prefixe)
             | list | length == 1
+          - routes.routes | default([]) | length == 1
           - types_lb.lb_types | length > 0
         fail_msg: >-
           Routes injoignables : {{ non_emules_lb }}. La stack déclare un load
-          balancer, un backend et un frontend ; les modules doivent les
-          retrouver.
+          balancer, deux backends, un frontend et une route ; les modules
+          doivent les retrouver.
         quiet: true
       when: cible == 'reel'
 
@@ -853,19 +858,47 @@
         quiet: true
       when: regles.api_type | default('') != 'not_emulated'
 
+    # **Toutes les règles rendues n'ont pas d'identifiant.** Mesuré sur le
+    # compte réel : `ListSecurityGroupRules` rend neuf règles pour un groupe qui
+    # en déclare trois. Les six autres matérialisent la politique par défaut,
+    # portent `editable: false` et un identifiant de remplissage,
+    # `11111111-2222-4333-8444-000000000001` et la suite. Le GET unitaire y
+    # répond **404**, et il a raison : ces règles-là n'existent pas comme
+    # ressources.
+    #
+    # Prendre la première rendue faisait donc échouer la réécriture sur un
+    # 404 qui n'était le défaut de personne. `editable` est le critère, et il
+    # vient de l'API.
+    - name: Une règle que l'API sait adresser
+      ansible.builtin.set_fact:
+        regle_editable: "{{ (regles.rules | default([])
+          | selectattr('editable', 'defined') | selectattr('editable')
+          | list | first) | default({}, true) }}"
+
     - name: Réécrire une règle à l'identique
       stephrobert.scaleway.instance_security_group_rule:
         zone: "{{ zone }}"
         security_group_id: "{{ groupe_web }}"
-        security_group_rule_id: "{{ (regles.rules | first).id }}"
-        action: "{{ (regles.rules | first).action }}"
-        protocol: "{{ (regles.rules | first).protocol }}"
-        direction: "{{ (regles.rules | first).direction }}"
-        ip_range: "{{ (regles.rules | first).ip_range }}"
+        security_group_rule_id: "{{ regle_editable.id }}"
+        action: "{{ regle_editable.action }}"
+        protocol: "{{ regle_editable.protocol }}"
+        direction: "{{ regle_editable.direction }}"
+        ip_range: "{{ regle_editable.ip_range }}"
       register: repris_regle
       failed_when: repris_regle.failed | default(false)
         and repris_regle.api_type | default('') != 'not_emulated'
-      when: regles.rules | default([]) | length > 0
+      when: regle_editable.id is defined
+
+    - name: Contre le cloud réel, un groupe de la stack porte une règle éditable
+      ansible.builtin.assert:
+        that:
+          - regle_editable.id is defined
+        fail_msg: >-
+          Aucune règle éditable dans le groupe web, alors que Terraform en
+          déclare trois. La stack a changé, ou l'API a cessé de marquer
+          `editable` les règles qu'elle laisse modifier.
+        quiet: true
+      when: cible == 'reel'
 
     # ---- La migration du load balancer -----------------------------------
     #
