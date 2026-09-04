@@ -298,7 +298,11 @@ def build_module_specs(
 
     for name, plans in plan.modules().items():
         if only and name not in only:
-            skipped.append((name, "hors du périmètre demandé"))
+            # Nommer le mécanisme plutôt que la conclusion : « hors du
+            # périmètre » était circulaire, et un lecteur ne pouvait pas
+            # distinguer un module qu'on a choisi de ne pas produire d'un
+            # module que le modèle ne sait pas produire.
+            skipped.append((name, "non demandé : `--module` restreint cette production"))
             continue
         try:
             specs.append(build_module_spec(name, plans, plan.service, collection, plan.overrides))

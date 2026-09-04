@@ -798,6 +798,14 @@
       "find": "    if arguments.strict and not plan.operations:",
       "replace": "    if arguments.strict and not plan.operations and False:",
       "test": "tests/unit/generator/test_cli_strict.py::test_un_contrat_sans_operation_est_rouge"
+    },
+    {
+      "name": "perimetre-vide-ecarte-tout",
+      "why": "`only and` est ce qui fait qu'un périmètre vide veut dire « tout ». Sans lui, une génération sans restriction écarte tous les modules sous une étiquette de périmètre, et le compte rendu déguise chaque refus du modèle en décision humaine, ce qui est exactement le défaut corrigé.",
+      "file": "generator/ansible/models.py",
+      "find": "        if only and name not in only:",
+      "replace": "        if name not in only:",
+      "test": "tests/unit/generator/test_perimetre.py::test_sans_perimetre_tout_ecart_porte_une_raison_du_modele"
     }
   ]
 }
