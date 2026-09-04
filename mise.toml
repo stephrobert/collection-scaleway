@@ -336,6 +336,29 @@ run = "python scripts/example.py reel"
 description = "Vérifier qu'aucune ressource de l'exemple ne survit sur le compte réel"
 run = "python scripts/residue.py verify"
 
+[tasks."release:check"]
+description = "Ce qui doit être vrai avant de publier sur Galaxy"
+# **Hors de `check`**, et c'est délibéré : cette garde exige un tag qui désigne
+# HEAD et un arbre propre, donc elle refuserait toute pull request. Elle se
+# lance avant une publication, et c'est le workflow de release qui l'appellera
+# une fois la première publication faite à la main.
+run = "python scripts/release.py --check"
+
+[tasks."coverage:check"]
+description = "Refuser un module livré qu'aucun playbook d'exemple n'appelle"
+# Dans `check`, donc à chaque issue traitée : hors ligne, déterministe, il lit
+# les clés de tâches des playbooks et le répertoire des modules, jamais un
+# artefact de run. Un module écrit que rien n'exerce est un module dont on
+# ignore s'il marche.
+depends = ["generate"]
+run = "python scripts/example_coverage.py --check"
+
+[tasks."coverage:diff"]
+description = "Comparer le dernier run réel au dernier run contre l'émulateur"
+# Hors de `check` : il lui faut deux artefacts, donc deux exécutions. C'est le
+# matériau d'une issue de feint, mesuré des deux côtés le même jour.
+run = "python scripts/example_coverage.py --diff"
+
 [tasks."coverage:example"]
 description = "Les trois étages de couverture, et ce que le dernier run a joué"
 # Hors de `check` : les deux derniers étages dépendent d'un artefact de run, et
@@ -365,6 +388,13 @@ depends = [
   "lint:changelog",
   "falsify",
   "readme:check",
+  "coverage:check",
+  # **Le job Archive de la CI en fait partie, donc `check` doit le porter.**
+  # Il n'y était pas, et une pull request est passée localement sur un contrôle
+  # qui interrogeait un plugin d'inventaire renommé la veille. `check` promet
+  # « ce qu'une pull request doit passer » : l'omission le rendait faux, et
+  # coûte trois secondes à réparer.
+  "package",
 ]
 
 [tasks.clean]

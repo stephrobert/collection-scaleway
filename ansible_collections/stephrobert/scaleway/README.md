@@ -61,7 +61,7 @@ An inventory, then a playbook that reboots what it found:
 
 ```yaml
 # production.scaleway.yml
-plugin: stephrobert.scaleway.scaleway
+plugin: stephrobert.scaleway.compute
 products:
   - instance
 states:
@@ -119,7 +119,7 @@ second run reports no change.
 ## Included content
 
 <!-- compteurs:début, produits par scripts/readme_counters.py -->
-### Instance (25 modules)
+### Instance (28 modules)
 
 | module | what it does |
 |---|---|
@@ -127,6 +127,7 @@ second run reports no change.
 | `instance_image` | Manage a Scaleway Instance image |
 | `instance_image_info` | Gather information about Scaleway Instance images |
 | `instance_ip` | Manage a Scaleway Instance ip |
+| `instance_ip_action` | Perform an action on a Scaleway Instance ip |
 | `instance_ip_info` | Gather information about Scaleway Instance ips |
 | `instance_placement_group` | Manage a Scaleway Instance placement group |
 | `instance_placement_group_info` | Gather information about Scaleway Instance placement groups |
@@ -134,6 +135,7 @@ second run reports no change.
 | `instance_security_group` | Manage a Scaleway Instance security group |
 | `instance_security_group_info` | Gather information about Scaleway Instance security groups |
 | `instance_security_group_rule` | Manage a Scaleway Instance security group rule |
+| `instance_security_group_rule_info` | Gather information about Scaleway Instance security group rules |
 | `instance_server` | Manage a Scaleway Instance server |
 | `instance_server_action` | Perform an action on a Scaleway Instance server |
 | `instance_server_compatible_type_info` | Gather information about Scaleway Instance server compatible types |
@@ -144,12 +146,13 @@ second run reports no change.
 | `instance_server_type_info` | Gather information about Scaleway Instance server types |
 | `instance_server_user_data_info` | Gather information about Scaleway Instance server user data |
 | `instance_snapshot` | Manage a Scaleway Instance snapshot |
+| `instance_snapshot_action` | Perform an action on a Scaleway Instance snapshot |
 | `instance_snapshot_info` | Gather information about Scaleway Instance snapshots |
 | `instance_volume` | Manage a Scaleway Instance volume |
 | `instance_volume_info` | Gather information about Scaleway Instance volumes |
 | `instance_volume_type_info` | Gather information about Scaleway Instance volume types |
 
-### Load Balancer (21 modules)
+### Load Balancer (22 modules)
 
 | module | what it does |
 |---|---|
@@ -166,6 +169,7 @@ second run reports no change.
 | `lb_ip` | Manage a Scaleway Lb ip |
 | `lb_ip_info` | Gather information about Scaleway Load Balancer ips |
 | `lb_load_balancer` | Manage a Scaleway Lb load balancer |
+| `lb_load_balancer_action` | Perform an action on a Scaleway Load Balancer load balancer |
 | `lb_load_balancer_info` | Gather information about Scaleway Load Balancer load balancers |
 | `lb_load_balancer_private_network_info` | Gather information about Scaleway Load Balancer load balancer private networks |
 | `lb_load_balancer_stat_info` | Gather information about Scaleway Load Balancer load balancer stats |
@@ -179,7 +183,7 @@ second run reports no change.
 
 | plugin | what it discovers |
 |---|---|
-| `scaleway` | Instances, Elastic Metal and Apple Silicon, with their private-network addresses |
+| `compute` | Instances, Elastic Metal and Apple Silicon, with their private-network addresses |
 <!-- compteurs:fin -->
 
 ### What the action module refuses

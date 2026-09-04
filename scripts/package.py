@@ -136,7 +136,20 @@ def check_inventory_plugin(collections_path: Path, collection: Collection) -> No
     charge le plugin comme Ansible le fera, et une option manquante dit que
     l'archive porte le fichier sans porter le plugin.
     """
-    fqcn = f"{collection.fqcn}.scaleway"
+    # **Le nom du plugin se lit sur le disque.** Il était écrit `scaleway` en
+    # dur, et le renommer en `compute` a fait interroger un plugin qui n'existe
+    # plus : `ansible-doc` a répondu, l'archive était bonne, et le contrôle a
+    # accusé le paquet. C'est le quatrième endroit aujourd'hui où un nom
+    # recopié survit à son renommage, et le seul que `mise run check` ne
+    # regarde pas, parce que `package` n'en fait pas partie.
+    inventaire = collection.path / "plugins" / "inventory"
+    plugins = sorted(f.stem for f in inventaire.glob("*.py") if not f.stem.startswith("_"))
+    if len(plugins) != 1:
+        raise PackageError(
+            f"{len(plugins)} plugin(s) d'inventaire dans {inventaire} : ce contrôle en "
+            f"interroge un, et ne sait pas lequel choisir ({plugins})."
+        )
+    fqcn = f"{collection.fqcn}.{plugins[0]}"
     result = subprocess.run(
         [executable("ansible-doc"), "-t", "inventory", "--json", fqcn],
         env={**os.environ, "ANSIBLE_COLLECTIONS_PATH": str(collections_path)},

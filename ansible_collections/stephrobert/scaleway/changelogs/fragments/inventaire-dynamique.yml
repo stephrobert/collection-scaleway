@@ -1,6 +1,6 @@
 ---
 minor_changes:
-  - "New inventory plugin ``stephrobert.scaleway.scaleway``. It discovers
+  - "New inventory plugin ``stephrobert.scaleway.compute``. It discovers
     machines product by product, then links them to their private networks and
     their VPCs by listing IPAM **once per region** instead of once per network
     card, and it keeps the network relation rather than a single private

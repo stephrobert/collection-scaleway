@@ -11,6 +11,7 @@ from generator.ansible.models import (
     DEPRECATED_NOTICE,
     UNDOCUMENTED,
     AmbiguousModule,
+    ConflictingOption,
     ModuleModelError,
     UnknownChoice,
     UnreachableState,
@@ -285,25 +286,64 @@ def test_une_classe_non_rendable_leve_quand_on_la_demande(instance_plan: Product
         _spec(instance_plan, "instance_security_group_rules")
 
 
-def test_un_module_de_forme_inconnue_est_ecarte_avec_son_message(
-    instance_plan: ProductPlan,
-) -> None:
+def _plan_a_deux_listes() -> ProductPlan:
+    """Une ressource lue par deux listes distinctes, construite à la main.
+
+    **Le cas réel a disparu, et la garde doit survivre.** Ces deux tests
+    portaient sur `instance_security_group_rule_info`, qui réunissait
+    `ListSecurityGroupRules` et `ListDefaultSecurityGroupRules` ; la seconde est
+    depuis écartée par override, parce qu'elle est le même appel avec
+    `security_group_id: default`.
+
+    Les rebâtir sur un contrat construit ici plutôt que de les supprimer est la
+    même règle que pour le parser : un test qui dépend d'une bizarrerie du
+    contrat réel meurt le jour où la bizarrerie est corrigée, et la garde meurt
+    avec lui sans que personne ne le décide.
+    """
+    zone = ApiParameter(
+        name="zone", type=ApiType.STRING, required=True, location=ParameterLocation.PATH
+    )
+    premiere = ApiOperation(
+        id="ListThings",
+        service="demo",
+        version="v1",
+        resource="thing",
+        http_method=HTTPMethod.GET,
+        path="/demo/v1/zones/{zone}/parents/{parent_id}/things",
+        scope=Scope.ZONE,
+        parameters=(zone,),
+        response=ApiResponse(payload_field="things", is_list=True),
+    )
+    seconde = ApiOperation(
+        id="ListDefaultThings",
+        service="demo",
+        version="v1",
+        resource="thing",
+        http_method=HTTPMethod.GET,
+        path="/demo/v1/zones/{zone}/parents/default/things",
+        scope=Scope.ZONE,
+        parameters=(zone,),
+        response=ApiResponse(payload_field="things", is_list=True),
+    )
+    service = ApiService(name="demo", version="v1", operations=(premiere, seconde))
+    return plan_service(service, OverrideSet(source=None))
+
+
+def test_un_module_de_forme_inconnue_est_ecarte_avec_son_message() -> None:
     """Deux listes pour une ressource : le modèle refuse, et le rapport le dit.
 
-    `instance_security_group_rule_info` réunit `ListSecurityGroupRules` et
-    `ListDefaultSecurityGroupRules`. Ce n'est pas une erreur du générateur,
-    c'est un arbitrage qui n'a pas encore été rendu ; il se lit dans la sortie
-    de `generate` plutôt que de faire tomber toute la génération.
+    Ce n'est pas une erreur du générateur, c'est un arbitrage qui n'a pas été
+    rendu ; il se lit dans la sortie de `generate` plutôt que de faire tomber
+    toute la génération du produit.
     """
-    _, ecartes = build_module_specs(instance_plan, COLLECTION)
-    raison = dict(ecartes)["instance_security_group_rule_info"]
-    assert "2 liste(s)" in raison
+    _, ecartes = build_module_specs(_plan_a_deux_listes(), COLLECTION)
+    assert "2 liste(s)" in dict(ecartes)["demo_thing_info"]
 
 
-def test_un_module_demande_et_impossible_fait_echouer(instance_plan: ProductPlan) -> None:
+def test_un_module_demande_et_impossible_fait_echouer() -> None:
     """Ce qu'on a demandé sort, ou la commande échoue. Jamais un silence."""
     with pytest.raises(AmbiguousModule):
-        build_module_specs(instance_plan, COLLECTION, only=("instance_security_group_rule_info",))
+        build_module_specs(_plan_a_deux_listes(), COLLECTION, only=("demo_thing_info",))
 
 
 # --- ce qu'un module d'action expose, et ce qu'il refuse -------------------
@@ -537,3 +577,225 @@ def test_une_reponse_qui_ne_decrit_rien_nest_pas_une_lecture() -> None:
     """
     service = _lecture(payload_field=None, schema=None)
     assert _unitary_read_operation(service, "chose") is None
+
+
+# --- l'action dont l'action est l'opération --------------------------------
+
+
+def _plan_daction(nom_operation: str, corps: tuple[ApiParameter, ...]) -> ProductPlan:
+    """Une opération d'action construite à la main, avec le corps demandé."""
+    zone = ApiParameter(
+        name="zone", type=ApiType.STRING, required=True, location=ParameterLocation.PATH
+    )
+    cible = ApiParameter(
+        name="thing_id", type=ApiType.STRING, required=True, location=ParameterLocation.PATH
+    )
+    operation = ApiOperation(
+        id=nom_operation,
+        service="demo",
+        version="v1",
+        resource="thing",
+        http_method=HTTPMethod.POST,
+        path="/demo/v1/zones/{zone}/things/{thing_id}/migrate",
+        scope=Scope.ZONE,
+        parameters=(zone, cible, *corps),
+        response=ApiResponse(payload_field="task"),
+    )
+    service = ApiService(name="demo", version="v1", operations=(operation,))
+    return plan_service(service, OverrideSet(source=None))
+
+
+def test_une_action_sans_enum_de_corps_nexpose_pas_doption_action() -> None:
+    """`MigrateLb` migre, et n'a pas à le dire une seconde fois.
+
+    Le modèle exigeait un enum de corps, parce qu'il avait été écrit pour
+    `ServerAction`, où un point d'entrée porte quatre actions. Trois opérations
+    des deux contrats font **une** chose que leur chemin nomme, et n'en portent
+    donc aucun.
+    """
+    taille = ApiParameter(
+        name="type", type=ApiType.STRING, required=True, location=ParameterLocation.BODY
+    )
+    spec = _spec(_plan_daction("MigrateThing", (taille,)), "demo_thing_action")
+    assert spec.action_parameter is None
+    noms = {option.name for option in spec.options}
+    assert "action" not in noms
+    assert {"zone", "thing_id", "type"} <= noms
+
+
+def test_une_action_sans_corps_du_tout_reste_constructible() -> None:
+    """`ReleaseIpToIpam` ne prend aucun paramètre : l'identifiant suffit."""
+    spec = _spec(_plan_daction("ReleaseThingToIpam", ()), "demo_thing_action")
+    assert spec.action_parameter is None
+    assert {option.name for option in spec.options} >= {"zone", "thing_id"}
+
+
+def test_deux_enums_de_corps_restent_un_refus() -> None:
+    """Choisir au hasard produirait un module qui déclenche autre chose.
+
+    C'est la moitié de la garde qui ne bouge pas : passer de « exactement un »
+    à « au plus un » ne devait pas ouvrir la porte à l'ambiguïté.
+    """
+    premier = ApiParameter(
+        name="action",
+        type=ApiType.ENUM,
+        required=True,
+        location=ParameterLocation.BODY,
+        enum_values=("a", "b"),
+    )
+    second = ApiParameter(
+        name="mode",
+        type=ApiType.ENUM,
+        required=True,
+        location=ParameterLocation.BODY,
+        enum_values=("x", "y"),
+    )
+    with pytest.raises(AmbiguousModule, match="2 paramètre"):
+        _spec(_plan_daction("DoThing", (premier, second)), "demo_thing_action")
+
+
+# --- deux opérations qui décrivent le même paramètre -----------------------
+
+
+def _plan_deux_lectures(description_get: str | None, description_list: str | None) -> ProductPlan:
+    """Une lecture unitaire et une liste, qui décrivent le parent différemment."""
+    zone = ApiParameter(
+        name="zone", type=ApiType.STRING, required=True, location=ParameterLocation.PATH
+    )
+    get = ApiOperation(
+        id="GetThing",
+        service="demo",
+        version="v1",
+        resource="thing",
+        http_method=HTTPMethod.GET,
+        path="/demo/v1/zones/{zone}/parents/{parent_id}/things/{thing_id}",
+        scope=Scope.ZONE,
+        parameters=(
+            zone,
+            ApiParameter(
+                name="parent_id",
+                type=ApiType.STRING,
+                required=True,
+                location=ParameterLocation.PATH,
+                description=description_get,
+            ),
+            ApiParameter(
+                name="thing_id",
+                type=ApiType.STRING,
+                required=True,
+                location=ParameterLocation.PATH,
+            ),
+        ),
+        response=ApiResponse(payload_field="thing"),
+    )
+    liste = ApiOperation(
+        id="ListThings",
+        service="demo",
+        version="v1",
+        resource="thing",
+        http_method=HTTPMethod.GET,
+        path="/demo/v1/zones/{zone}/parents/{parent_id}/things",
+        scope=Scope.ZONE,
+        parameters=(
+            zone,
+            ApiParameter(
+                name="parent_id",
+                type=ApiType.STRING,
+                required=True,
+                location=ParameterLocation.PATH,
+                description=description_list,
+            ),
+        ),
+        response=ApiResponse(payload_field="things", is_list=True),
+    )
+    service = ApiService(name="demo", version="v1", operations=(get, liste))
+    return plan_service(service, OverrideSet(source=None))
+
+
+def test_la_description_absente_ne_gagne_pas_sur_celle_qui_existe() -> None:
+    """Le premier vu gagnait, et le module mentait sur le contrat.
+
+    Mesuré sur le contrat réel : `security_group_id` est décrit par
+    `ListSecurityGroupRules` et pas par `GetSecurityGroupRule`, et le module
+    livré annonçait « Not documented by the Scaleway API contract » sur un
+    paramètre que le contrat documente.
+
+    L'ordre est éprouvé dans les deux sens, parce que le défaut **était** un
+    effet d'ordre.
+    """
+    for avant, apres in ((None, "UUID of the parent."), ("UUID of the parent.", None)):
+        spec = _spec(_plan_deux_lectures(avant, apres), "demo_thing_info")
+        option = next(o for o in spec.options if o.name == "parent_id")
+        assert option.description == ("UUID of the parent.",)
+
+
+def test_deux_descriptions_differentes_sont_signalees_dans_les_limites() -> None:
+    """Un vrai arbitrage, que le modèle ne tranche pas en douce.
+
+    Aucun contrat versionné ne porte ce cas. Le jour où il arrive, garder la
+    première reste faux : le rapport le dit plutôt que de le taire.
+    """
+    spec = _spec(_plan_deux_lectures("Le parent.", "Un autre parent."), "demo_thing_info")
+    assert any("deux descriptions différentes" in limite for limite in spec.limits)
+
+
+def test_deux_enums_differents_sous_un_meme_nom_sont_refuses() -> None:
+    """Un module qui garde un enum tronqué refuse une valeur que l'API accepte."""
+    zone = ApiParameter(
+        name="zone", type=ApiType.STRING, required=True, location=ParameterLocation.PATH
+    )
+
+    def _lecture(
+        identifiant: str,
+        chemin: str,
+        valeurs: tuple[str, ...],
+        *,
+        liste: bool,
+        extra: tuple[ApiParameter, ...] = (),
+    ) -> ApiOperation:
+        return ApiOperation(
+            id=identifiant,
+            service="demo",
+            version="v1",
+            resource="thing",
+            http_method=HTTPMethod.GET,
+            path=chemin,
+            scope=Scope.ZONE,
+            parameters=(
+                zone,
+                *extra,
+                ApiParameter(
+                    name="state",
+                    type=ApiType.ENUM,
+                    required=False,
+                    location=ParameterLocation.QUERY,
+                    enum_values=valeurs,
+                ),
+            ),
+            response=ApiResponse(payload_field="things" if liste else "thing", is_list=liste),
+        )
+
+    cible = ApiParameter(
+        name="thing_id", type=ApiType.STRING, required=True, location=ParameterLocation.PATH
+    )
+    service = ApiService(
+        name="demo",
+        version="v1",
+        operations=(
+            _lecture(
+                "GetThing",
+                "/demo/v1/zones/{zone}/things/{thing_id}",
+                ("running",),
+                liste=False,
+                extra=(cible,),
+            ),
+            _lecture(
+                "ListThings",
+                "/demo/v1/zones/{zone}/things",
+                ("running", "stopped"),
+                liste=True,
+            ),
+        ),
+    )
+    with pytest.raises(ConflictingOption, match="deux énumérations"):
+        _spec(plan_service(service, OverrideSet(source=None)), "demo_thing_info")

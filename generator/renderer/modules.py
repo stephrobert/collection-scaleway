@@ -152,12 +152,17 @@ def _module_literal(spec: AnsibleModuleSpec) -> str:
 
 def _action_module_literal(spec: AnsibleModuleSpec) -> str:
     """Rend l'appel `ActionModule(...)`."""
-    if spec.action_operation is None or spec.action_parameter is None:
+    if spec.action_operation is None:
         raise RenderError(f"{spec.name} : module d'action sans opération à déclencher")
 
     lines = ["ActionModule("]
     lines.append(f"    operation={_operation_literal(spec.action_operation, indent=4)},")
-    lines.append(f"    action_parameter={quote(spec.action_parameter)},")
+    # `None` quand l'action est l'opération elle-même : le runtime rend alors
+    # l'identifiant de l'opération plutôt que la valeur d'une option absente.
+    if spec.action_parameter is None:
+        lines.append("    action_parameter=None,")
+    else:
+        lines.append(f"    action_parameter={quote(spec.action_parameter)},")
     if spec.read_operation is not None:
         lines.append(f"    read_operation={_operation_literal(spec.read_operation, indent=4)},")
     if spec.wait_states:

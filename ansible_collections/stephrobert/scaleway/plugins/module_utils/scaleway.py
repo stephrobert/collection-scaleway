@@ -255,7 +255,10 @@ class ActionModule:
 
     operation: Operation
     #: Le paramètre qui porte l'action demandée, `action` chez Scaleway.
-    action_parameter: str = "action"
+    #: `None` quand l'action **est** l'opération : `MigrateLb` migre,
+    #: `ExportSnapshot` exporte, et leur demander `action: migrate` reviendrait
+    #: à faire nommer une seconde fois ce que le chemin dit déjà.
+    action_parameter: str | None = "action"
     #: La lecture unitaire de la même ressource, pour attendre l'état visé.
     read_operation: Operation | None = None
     #: Champ de la ressource qui porte son état, déclaré par l'override.
@@ -990,7 +993,15 @@ def run_action_module(module: AnsibleModule, spec: ActionModule) -> None:
     * **attendre, si on sait quoi attendre.** L'état visé vient d'un override ;
       sans lui le module rend la main tout de suite, et le dit.
     """
-    action = module.params.get(spec.action_parameter)
+    # Sous les deux formes, `action` nomme ce qui est déclenché : la valeur
+    # demandée quand le module en expose une, l'identifiant de l'opération
+    # sinon. Un lecteur de journal veut savoir ce qui s'est passé, et
+    # « MigrateLb » le dit mieux qu'un champ vide.
+    action = (
+        module.params.get(spec.action_parameter)
+        if spec.action_parameter is not None
+        else spec.operation.id
+    )
     attendu = spec.wait_states.get(str(action))
 
     if module.check_mode:

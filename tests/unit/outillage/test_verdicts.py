@@ -38,10 +38,20 @@ def _sortie(stdout: str, code: int = 0) -> subprocess.CompletedProcess[str]:
     return subprocess.CompletedProcess(args=[], returncode=code, stdout=stdout, stderr="")
 
 
-def _collection_factice(racine: Path) -> Collection:
-    """Une collection qui existe sur disque et ne contient rien."""
+def _collection_factice(racine: Path, plugins: tuple[str, ...] = ()) -> Collection:
+    """Une collection qui existe sur disque et ne contient que ce qu'on lui donne.
+
+    `plugins` pose des fichiers sous `plugins/inventory/` : le nom du plugin
+    d'inventaire se lit sur le disque depuis qu'un nom recopié en dur a survécu
+    à son renommage jusqu'en CI.
+    """
     chemin = racine / "ansible_collections" / "stephrobert" / "scaleway"
     chemin.mkdir(parents=True, exist_ok=True)
+    if plugins:
+        inventaire = chemin / "plugins" / "inventory"
+        inventaire.mkdir(parents=True, exist_ok=True)
+        for nom in plugins:
+            (inventaire / f"{nom}.py").write_text("", encoding="utf-8")
     return Collection(namespace="stephrobert", name="scaleway", version="0.0.0", path=chemin)
 
 
@@ -419,14 +429,14 @@ def test_un_plugin_dinventaire_sans_options_nest_pas_charge(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Un `module_utils/` oublié au build laisse le fichier et perd le plugin."""
-    collection = _collection_factice(tmp_path)
+    collection = _collection_factice(tmp_path, plugins=("compute",))
     monkeypatch.setattr(
         package,
         "subprocess",
         type(
             "FauxSubprocess",
             (),
-            {"run": staticmethod(lambda *a, **k: _sortie('{"stephrobert.scaleway.scaleway": {}}'))},
+            {"run": staticmethod(lambda *a, **k: _sortie('{"stephrobert.scaleway.compute": {}}'))},
         ),
     )
 
@@ -436,13 +446,31 @@ def test_un_plugin_dinventaire_sans_options_nest_pas_charge(
     assert "products" in str(erreur.value)
 
 
+def test_le_nom_du_plugin_dinventaire_se_lit_sur_le_disque(tmp_path: Path) -> None:
+    """Il était écrit en dur, et un renommage lui a survécu jusqu'en CI.
+
+    Le contrôle interrogeait `stephrobert.scaleway.scaleway` après que le plugin
+    fut devenu `compute` : `ansible-doc` répondait que la configuration était
+    introuvable, et le contrôle accusait l'archive, qui était bonne.
+    """
+    with pytest.raises(package.PackageError, match="0 plugin"):
+        package.check_inventory_plugin(tmp_path, _collection_factice(tmp_path))
+
+
+def test_deux_plugins_dinventaire_font_refuser_plutot_que_choisir(tmp_path: Path) -> None:
+    """Ce contrôle en interroge un, et deviner lequel mesurerait l'autre."""
+    collection = _collection_factice(tmp_path, plugins=("compute", "managed"))
+    with pytest.raises(package.PackageError, match="2 plugin"):
+        package.check_inventory_plugin(tmp_path, collection)
+
+
 def test_un_plugin_dinventaire_complet_est_accepte(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    collection = _collection_factice(tmp_path)
+    collection = _collection_factice(tmp_path, plugins=("compute",))
     documente = json.dumps(
         {
-            "stephrobert.scaleway.scaleway": {
+            "stephrobert.scaleway.compute": {
                 "doc": {"options": {nom: {} for nom in package.INVENTORY_OPTIONS}}
             }
         }

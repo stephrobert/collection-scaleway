@@ -315,12 +315,22 @@ def controler_plan_de_controle(env: dict[str, str], sorties: dict[str, Any]) -> 
         if item["name"].startswith(prefixe)
     ]
     exige(len(lbs) == 1, f"un load balancer ({len(lbs)} trouvé)")
+    # **Deux backends, et le second n'est pas décoratif.** Il porte la route que
+    # `lb_route` réécrit : sans lui, ce module était livré sans qu'aucun exemple
+    # ne l'exerce. Un backend ne coûte rien, c'est de la configuration dans un
+    # load balancer déjà facturé.
     cibles = api(env, f"/lb/v1/zones/{zone}/lbs/{lbs[0]['id']}/backends")["backends"]
-    exige(len(cibles) == 1, "un backend déclaré")
-    exige(
-        len(cibles[0]["pool"]) == attendu["web"],
-        f"le backend pointe les {attendu['web']} machines web ({len(cibles[0]['pool'])} cibles)",
-    )
+    exige(len(cibles) == 2, f"deux backends déclarés ({len(cibles)} trouvé(s))")
+    # **Chaque** backend, et pas le premier venu : ils sont deux depuis que
+    # `lb_route` a eu besoin d'une cible, et l'ordre d'une liste d'API n'est
+    # promis nulle part. Contrôler `cibles[0]` reviendrait à mesurer celui que
+    # l'API a rendu en premier ce jour-là.
+    for cible_lb in cibles:
+        exige(
+            len(cible_lb["pool"]) == attendu["web"],
+            f"le backend {cible_lb['name']} pointe les {attendu['web']} machines web "
+            f"({len(cible_lb['pool'])} cibles)",
+        )
 
     passerelles = [
         g
@@ -603,6 +613,9 @@ def main(argv: list[str]) -> int:
             # cloud réel. Sans cette variable, il faudrait un `ignore_errors`,
             # qui tairait les deux.
             "cible": arguments.cible,
+            # L'image d'or n'existe que sur le cloud réel : la stack la met à
+            # zéro ailleurs, et le playbook saute la tâche plutôt que d'échouer.
+            "image_doree": sorties.get("image_doree", {}).get("value", ""),
         }
 
         # Les seize modules parlent à l'API et n'ont besoin d'aucune machine

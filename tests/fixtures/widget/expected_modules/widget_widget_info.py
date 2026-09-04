@@ -24,7 +24,7 @@ author:
 options:
   zone:
     description:
-    - Not documented by the Scaleway API contract.
+    - The zone you want to target
     type: str
     required: true
     choices:

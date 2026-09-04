@@ -177,6 +177,17 @@ def _lignes_de_modules() -> list[str]:
     return lignes
 
 
+def _plugins_dinventaire() -> list[str]:
+    """Les plugins d'inventaire livrés, lus sur le disque.
+
+    Le nom du plugin a changé une fois, de `scaleway` à `compute`, et cette
+    ligne l'aurait annoncé sous son ancien nom : un bloc dérivé qui code un nom
+    en dur n'est dérivé qu'à moitié.
+    """
+    dossier = load_collection().path / "plugins" / "inventory"
+    return sorted(p.stem for p in dossier.glob("*.py") if not p.stem.startswith("_"))
+
+
 def _table_des_modules() -> list[str]:
     """La table des modules du README de la collection, par produit.
 
@@ -287,7 +298,13 @@ def bloc() -> str:
             "",
             f"collection stephrobert.scaleway: {ecrits} modules written out of {plan} planned",
             *_lignes_de_modules(),
-            f"  {'scaleway (inventory)':<38s} instance, elastic_metal, apple_silicon",
+            # Le nom du plugin se lit sur le disque, il ne se recopie pas : il
+            # vient d'être renommé, et cette ligne aurait continué d'annoncer
+            # `scaleway` sur un plugin qui s'appelle `compute`.
+            *(
+                f"  {nom + ' (inventory)':<38s} instance, elastic_metal, apple_silicon"
+                for nom in _plugins_dinventaire()
+            ),
             # **Le troisième étage, et il ne dit pas la même chose que les deux
             # autres.** « Classées » dit ce que le générateur autorise,
             # « produites » ce qu'il écrit, et celui-ci ce que l'exemple appelle.

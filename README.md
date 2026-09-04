@@ -26,7 +26,7 @@ An inventory discovers the fleet, a playbook acts on it:
 
 ```yaml
 # production.scaleway.yml
-plugin: stephrobert.scaleway.scaleway
+plugin: stephrobert.scaleway.compute
 products: [instance]
 states: [running]
 group_by: [product, zone, tags]
@@ -66,14 +66,15 @@ dynamic inventory plugin that discovers three products behind one model.
 <!-- compteurs:début, produits par scripts/readme_counters.py -->
 ```text
 instance v1: 74 operations discovered
-  INFO 27 · ACTION 3 · MANAGE 10 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 14 · UNKNOWN 0
-  Day-2 41 · AUTO 40 · MANUAL 1 · classified for automatic generation 97.6% (40/41)
+  INFO 26 · ACTION 3 · MANAGE 10 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 15 · UNKNOWN 0
+  Day-2 40 · AUTO 39 · MANUAL 1 · classified for automatic generation 97.5% (39/40)
 
-collection stephrobert.scaleway: 46 modules written out of 52 planned
+collection stephrobert.scaleway: 50 modules written out of 52 planned
   instance_dashboard_info                Gather information about Scaleway Instance dashboards
   instance_image                         Manage a Scaleway Instance image
   instance_image_info                    Gather information about Scaleway Instance images
   instance_ip                            Manage a Scaleway Instance ip
+  instance_ip_action                     Perform an action on a Scaleway Instance ip
   instance_ip_info                       Gather information about Scaleway Instance ips
   instance_placement_group               Manage a Scaleway Instance placement group
   instance_placement_group_info          Gather information about Scaleway Instance placement groups
@@ -81,6 +82,7 @@ collection stephrobert.scaleway: 46 modules written out of 52 planned
   instance_security_group                Manage a Scaleway Instance security group
   instance_security_group_info           Gather information about Scaleway Instance security groups
   instance_security_group_rule           Manage a Scaleway Instance security group rule
+  instance_security_group_rule_info      Gather information about Scaleway Instance security group rules
   instance_server                        Manage a Scaleway Instance server
   instance_server_action                 Perform an action on a Scaleway Instance server
   instance_server_compatible_type_info   Gather information about Scaleway Instance server compatible types
@@ -91,6 +93,7 @@ collection stephrobert.scaleway: 46 modules written out of 52 planned
   instance_server_type_info              Gather information about Scaleway Instance server types
   instance_server_user_data_info         Gather information about Scaleway Instance server user data
   instance_snapshot                      Manage a Scaleway Instance snapshot
+  instance_snapshot_action               Perform an action on a Scaleway Instance snapshot
   instance_snapshot_info                 Gather information about Scaleway Instance snapshots
   instance_volume                        Manage a Scaleway Instance volume
   instance_volume_info                   Gather information about Scaleway Instance volumes
@@ -108,6 +111,7 @@ collection stephrobert.scaleway: 46 modules written out of 52 planned
   lb_ip                                  Manage a Scaleway Lb ip
   lb_ip_info                             Gather information about Scaleway Load Balancer ips
   lb_load_balancer                       Manage a Scaleway Lb load balancer
+  lb_load_balancer_action                Perform an action on a Scaleway Load Balancer load balancer
   lb_load_balancer_info                  Gather information about Scaleway Load Balancer load balancers
   lb_load_balancer_private_network_info  Gather information about Scaleway Load Balancer load balancer private networks
   lb_load_balancer_stat_info             Gather information about Scaleway Load Balancer load balancer stats
@@ -116,9 +120,9 @@ collection stephrobert.scaleway: 46 modules written out of 52 planned
   lb_route_info                          Gather information about Scaleway Load Balancer routes
   lb_subscriber                          Manage a Scaleway Lb subscriber
   lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
-  scaleway (inventory)                   instance, elastic_metal, apple_silicon
-  39 modules called by the example playbook out of 46 (84.8%), which is not the same as played
-  483 unit tests · 102 mutations proven by /falsify
+  compute (inventory)                    instance, elastic_metal, apple_silicon
+  44 modules called by the example playbook out of 50 (88.0%), which is not the same as played
+  505 unit tests · 111 mutations proven by /falsify
   CI: 5 jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks and inventory against the emulator:
   reported by `mise run sanity` and `mise run integration`

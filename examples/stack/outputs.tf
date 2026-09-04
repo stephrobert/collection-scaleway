@@ -36,8 +36,28 @@ output "attendu" {
 }
 
 output "image_doree" {
-  description = "L'identifiant de l'image d'or, ou la chaîne vide quand la cible ne sait pas la bâtir."
+  description = "L'identifiant d'API de l'image d'or, ou la chaîne vide quand la cible ne sait pas la bâtir."
   # `try` plutôt qu'un index nu : la ressource porte un `count` conditionnel,
   # et une sortie qui casse quand la cible change ne rend service à personne.
-  value = try(scaleway_instance_image.reference[0].id, "")
+  #
+  # **Un identifiant Terraform n'est pas un identifiant d'API.** Le provider
+  # préfixe les siens par la portée, `fr-par-1/<uuid>`, et le passer tel quel à
+  # un module produit l'URL `/images/fr-par-1/<uuid>`, qui rend un 404
+  # générique : pas celui de l'API, celui du serveur web devant elle. Le
+  # message ne ressemble donc à rien de ce que le runtime sait interpréter.
+  #
+  # `reverse(split(...))[0]` plutôt qu'un index fixe : le jour où la portée
+  # gagne un segment, prendre le dernier reste juste.
+  value = try(reverse(split("/", scaleway_instance_image.reference[0].id))[0], "")
+}
+
+
+output "volume_instance" {
+  description = "Le volume que l'API Instance voit, cible de `instance_volume`."
+  value       = scaleway_instance_volume.vu_par_instance.id
+}
+
+output "route_lb" {
+  description = "La route du frontend, cible de `lb_route`."
+  value       = scaleway_lb_route.secondaire.id
 }

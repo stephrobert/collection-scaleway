@@ -562,7 +562,7 @@
     {
       "name": "reponse-brute-perdue",
       "why": "L'option include_raw était documentée, mise en cache et sans le moindre effet observable.",
-      "file": "ansible_collections/stephrobert/scaleway/plugins/inventory/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/inventory/compute.py",
       "find": "            \"raw\": _plain(host.raw),",
       "replace": "            \"raw\": None,",
       "test": "tests/unit/inventory/test_plugin.py::test_la_reponse_brute_survit_a_laller_retour"
@@ -731,8 +731,8 @@
       "name": "non-mesurees-comptees-comme-prouvees",
       "why": "Sans le retrait des non mesurées, le nombre publié compte toutes les réécritures jouées, y compris celles que la cible n'a pas servies : « 9 idempotences prouvées » se lirait sur une exécution qui en a prouvé 7.",
       "file": "examples/playbooks/modules.yml",
-      "find": "          | reject('in', reecritures_non_mesurees) | list }}",
-      "replace": "          | reject('in', []) | list }}",
+      "find": "          + (reecritures\n          | rejectattr('key', 'in', reecritures_non_mesurees)",
+      "replace": "          + (reecritures\n          | rejectattr('key', 'in', [])",
       "test": "tests/unit/outillage/test_recensement_exemple.py::test_seule_une_reecriture_jouee_compte_comme_prouvee"
     },
     {
@@ -822,6 +822,78 @@
       "find": "    if denominateur == 0:\n        return \"n/a\"",
       "replace": "    if denominateur == 0:\n        return \"0,0 %\"",
       "test": "tests/unit/outillage/test_couverture_exemple.py::test_sans_module_le_ratio_est_indefini_pas_nul"
+    },
+    {
+      "name": "deux-actions-de-corps-acceptees",
+      "why": "Le modèle accepte désormais zéro enum de corps, pour les opérations dont l'action est l'opération. Accepter aussi **deux** enums ferait choisir au hasard lequel porte l'action, et le module déclencherait autre chose que ce que le playbook croit demander.",
+      "file": "generator/ansible/models.py",
+      "find": "    if len(candidats) > 1:",
+      "replace": "    if len(candidats) > 2:",
+      "test": "tests/unit/generator/test_models.py::test_deux_enums_de_corps_restent_un_refus"
+    },
+    {
+      "name": "action-implicite-sans-nom",
+      "why": "Sans le repli sur l'identifiant de l'opération, un module d'action implicite rend `action: None` : le journal d'un playbook ne dit plus ce qui a été déclenché, sur les seules opérations qui ne le disent pas déjà par une option.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        else spec.operation.id\n    )",
+      "replace": "        else None\n    )",
+      "test": "tests/unit/collection/test_runtime.py::test_une_action_implicite_rend_le_nom_de_loperation"
+    },
+    {
+      "name": "description-absente-gagne-sur-celle-qui-existe",
+      "why": "Le premier paramètre vu gagnait. Mesuré sur le contrat réel, le module livré annonçait « Not documented by the Scaleway API contract » sur `security_group_id`, que `ListSecurityGroupRules` documente : le module mentait sur le contrat, dans le sens le plus discret possible.",
+      "file": "generator/ansible/models.py",
+      "find": "    if not (connu.description or \"\").strip():\n        return candidat",
+      "replace": "    if not (connu.description or \"\").strip() and False:\n        return candidat",
+      "test": "tests/unit/generator/test_models.py::test_la_description_absente_ne_gagne_pas_sur_celle_qui_existe"
+    },
+    {
+      "name": "enums-divergents-fusionnes-en-silence",
+      "why": "Deux énumérations différentes sous un même nom produisent un module qui refuse une valeur que l'API accepte, ou en accepte une qu'elle refuse. Aucun contrat versionné ne porte le cas : la garde est écrite avant, parce qu'après il serait trop tard pour s'en apercevoir.",
+      "file": "generator/ansible/models.py",
+      "find": "                and known.enum_values != parameter.enum_values\n            ):",
+      "replace": "                and known.enum_values == parameter.enum_values\n            ):",
+      "test": "tests/unit/generator/test_models.py::test_deux_enums_differents_sous_un_meme_nom_sont_refuses"
+    },
+    {
+      "name": "reecriture-changeante-comptee-comme-prouvee",
+      "why": "Le recensement comptait comme prouvée toute réécriture que la cible avait servie, en s'appuyant sur les assertions écrites à côté. Quatre réécritures ajoutées sans assertion ont suffi à rendre ce compte faux : il lit désormais `changed` lui-même, et ne dépend plus de la discipline de qui étend le playbook.",
+      "file": "examples/playbooks/modules.yml",
+      "find": "          | rejectattr('value.changed')\n          | map(attribute='key') | list) | sort }}\"",
+      "replace": "          | selectattr('value.changed', 'defined')\n          | map(attribute='key') | list) | sort }}\"",
+      "test": "tests/unit/outillage/test_recensement_exemple.py::test_seule_une_reecriture_jouee_compte_comme_prouvee"
+    },
+    {
+      "name": "tag-et-galaxy-peuvent-diverger",
+      "why": "L'archive est nommée d'après `galaxy.yml`, pas d'après le tag. Sans ce refus, on publie une version que l'historique ne porte pas, et une version publiée sur Galaxy est immuable : il n'y a pas de correction, seulement une version de plus.",
+      "file": "scripts/release.py",
+      "find": "    elif normaliser(tag) != collection.version:",
+      "replace": "    elif normaliser(tag) != collection.version and False:",
+      "test": "tests/unit/outillage/test_release.py::test_un_tag_qui_ne_dit_pas_la_version_de_galaxy_est_refuse"
+    },
+    {
+      "name": "fragments-en-attente-publies-dehors",
+      "why": "Les fragments décrivent ce que la version apporte. Douze s'étaient accumulés sous une 0.1.0 composée quand la collection portait un module, dont le correctif de pagination qui rendait une première page en silence : la publier livrait un changelog décrivant la collection de juillet.",
+      "file": "scripts/release.py",
+      "find": "    if fragments:",
+      "replace": "    if fragments and False:",
+      "test": "tests/unit/outillage/test_release.py::test_des_fragments_en_attente_sont_refuses"
+    },
+    {
+      "name": "arbre-sale-publiable",
+      "why": "Une archive construite sur des modifications non versionnées ne se reproduit pas : personne ne peut retrouver ce qui a été publié.",
+      "file": "scripts/release.py",
+      "find": "    if sale:",
+      "replace": "    if sale and False:",
+      "test": "tests/unit/outillage/test_release.py::test_un_arbre_sale_est_refuse"
+    },
+    {
+      "name": "nom-du-plugin-recopie-dans-le-paquet",
+      "why": "Le contrôle de l'archive interrogeait le plugin d'inventaire sous un nom écrit en dur. Le renommer a fait interroger un plugin qui n'existe plus : le contrôle accusait l'archive, qui était bonne, et le défaut a voyagé jusqu'en CI parce que `package` n'était pas dans `mise run check`.",
+      "file": "scripts/package.py",
+      "find": "    if len(plugins) != 1:",
+      "replace": "    if len(plugins) != 1 and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_le_nom_du_plugin_dinventaire_se_lit_sur_le_disque"
     }
   ]
 }

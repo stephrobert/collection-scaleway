@@ -447,15 +447,20 @@
           - non_emules_lb | length == 0
           - balanceurs.lbs | selectattr('name', 'search', prefixe)
             | list | length == 1
+          # Deux backends : celui du service, et celui que la route vise.
+          # Ce compte est passé de un à deux le jour où `lb_route` a eu besoin
+          # d'une cible, et **seul le run réel l'a dit**, parce que cette
+          # assertion ne s'évalue que là.
           - backends.backends | selectattr('name', 'search', prefixe)
-            | list | length == 1
+            | list | length == 2
           - frontends.frontends | selectattr('name', 'search', prefixe)
             | list | length == 1
+          - routes.routes | default([]) | length == 1
           - types_lb.lb_types | length > 0
         fail_msg: >-
           Routes injoignables : {{ non_emules_lb }}. La stack déclare un load
-          balancer, un backend et un frontend ; les modules doivent les
-          retrouver.
+          balancer, deux backends, un frontend et une route ; les modules
+          doivent les retrouver.
         quiet: true
       when: cible == 'reel'
 
@@ -827,6 +832,171 @@
           frontend={{ repris_frontend.changed | default('non joué') }}
         quiet: true
 
+    # ---- Les règles d'un groupe de sécurité ------------------------------
+    #
+    # Ces deux modules n'avaient aucune cible tant que `instance_security_group_rule_info`
+    # n'existait pas : le modèle le refusait, parce que deux listes visaient la
+    # même ressource. La stack en fournit une depuis le premier jour, puisque
+    # chaque groupe qu'elle déclare porte ses règles.
+
+    - name: Les règles du groupe web
+      stephrobert.scaleway.instance_security_group_rule_info:
+        zone: "{{ zone }}"
+        security_group_id: "{{ groupe_web }}"
+      register: regles
+      failed_when: regles.failed | default(false)
+        and regles.api_type | default('') != 'not_emulated'
+
+    - name: Le groupe web porte les règles que Terraform y a mises
+      ansible.builtin.assert:
+        that:
+          - regles.rules | default([]) | length > 0
+        fail_msg: >-
+          Le groupe web ne porte aucune règle, alors que la stack en déclare.
+          Soit la lecture ne rend pas ce qu'elle annonce, soit la plateforme
+          n'est pas celle que Terraform a décrite.
+        quiet: true
+      when: regles.api_type | default('') != 'not_emulated'
+
+    # **Toutes les règles rendues n'ont pas d'identifiant.** Mesuré sur le
+    # compte réel : `ListSecurityGroupRules` rend neuf règles pour un groupe qui
+    # en déclare trois. Les six autres matérialisent la politique par défaut,
+    # portent `editable: false` et un identifiant de remplissage,
+    # `11111111-2222-4333-8444-000000000001` et la suite. Le GET unitaire y
+    # répond **404**, et il a raison : ces règles-là n'existent pas comme
+    # ressources.
+    #
+    # Prendre la première rendue faisait donc échouer la réécriture sur un
+    # 404 qui n'était le défaut de personne. `editable` est le critère, et il
+    # vient de l'API.
+    - name: Une règle que l'API sait adresser
+      ansible.builtin.set_fact:
+        regle_editable: "{{ (regles.rules | default([])
+          | selectattr('editable', 'defined') | selectattr('editable')
+          | list | first) | default({}, true) }}"
+
+    - name: Réécrire une règle à l'identique
+      stephrobert.scaleway.instance_security_group_rule:
+        zone: "{{ zone }}"
+        security_group_id: "{{ groupe_web }}"
+        security_group_rule_id: "{{ regle_editable.id }}"
+        action: "{{ regle_editable.action }}"
+        protocol: "{{ regle_editable.protocol }}"
+        direction: "{{ regle_editable.direction }}"
+        ip_range: "{{ regle_editable.ip_range }}"
+      register: repris_regle
+      failed_when: repris_regle.failed | default(false)
+        and repris_regle.api_type | default('') != 'not_emulated'
+      when: regle_editable.id is defined
+
+    - name: Contre le cloud réel, un groupe de la stack porte une règle éditable
+      ansible.builtin.assert:
+        that:
+          - regle_editable.id is defined
+        fail_msg: >-
+          Aucune règle éditable dans le groupe web, alors que Terraform en
+          déclare trois. La stack a changé, ou l'API a cessé de marquer
+          `editable` les règles qu'elle laisse modifier.
+        quiet: true
+      when: cible == 'reel'
+
+    # ---- Le stockage que l'API Instance voit -----------------------------
+    #
+    # **Tout le stockage de cette stack est du Block Storage**, parce que c'est
+    # ce qu'un serveur moderne utilise, et l'API `instance/v1` ne le voit pas :
+    # `ListVolumes` y rendait une liste vide sur le compte réel. `instance_volume`
+    # n'avait donc aucune cible, et il était livré sans que rien ne l'exerce.
+    #
+    # La stack déclare depuis un volume `l_ssd` de 10 Go, détaché, dont le seul
+    # rôle est d'être vu par cette API-là.
+
+    - name: Le volume que l'API Instance voit
+      ansible.builtin.set_fact:
+        notre_volume: "{{ (volumes.volumes | default([])
+          | selectattr('name', 'search', prefixe) | list | first).id | default('') }}"
+
+    # **Écrire, puis réécrire.** Une écriture unique ne prouve rien : le tag
+    # posé pour la première fois change forcément quelque chose, et le
+    # recensement l'a dit en refusant de compter cette réécriture comme
+    # prouvée. C'est exactement ce qu'on lui demande.
+    - name: Écrire le tag de ce volume
+      stephrobert.scaleway.instance_volume:
+        zone: "{{ zone }}"
+        volume_id: "{{ notre_volume }}"
+        tags: [exemple, "{{ marque }}"]
+      register: ecrit_volume
+      failed_when: ecrit_volume.failed | default(false)
+        and ecrit_volume.api_type | default('') != 'not_emulated'
+      when: notre_volume | length > 0
+
+    - name: Réécrire le tag de ce volume, à l'identique
+      stephrobert.scaleway.instance_volume:
+        zone: "{{ zone }}"
+        volume_id: "{{ notre_volume }}"
+        tags: [exemple, "{{ marque }}"]
+      register: repris_volume
+      failed_when: repris_volume.failed | default(false)
+        and repris_volume.api_type | default('') != 'not_emulated'
+      when: notre_volume | length > 0
+
+    # **L'instantané et son export n'ont de cible nulle part**, et le dire vaut
+    # mieux que de fabriquer une cible pour décorer un compte :
+    #
+    # * `instance_snapshot` et `instance_snapshot_action` demandent un instantané
+    #   que l'API Instance liste. Celui de la stack passe par l'API Block, seule
+    #   à voir un volume SBS, et l'API Instance ne le liste pas. En tailler un
+    #   dans le volume `l_ssd` ci-dessus échoue : « cannot create a RO disk from
+    #   an empty disk », mesuré, et le remplir demanderait de l'attacher à une
+    #   machine et d'y écrire ;
+    # * `instance_ip_action` rend une adresse à l'IPAM. Toutes les adresses de
+    #   cette stack appartiennent à Terraform : en rendre une laisserait son état
+    #   en désaccord avec le compte, et c'est exactement le résidu que la règle
+    #   du dépôt interdit ;
+    # * `lb_certificate` demande un certificat, donc un domaine ou un PEM, et
+    #   `lb_subscriber` un destinataire d'alertes que le provider Terraform ne
+    #   sait pas déclarer.
+    #
+    # Ces quatre-là sont déclarés dans `scripts/example_coverage.py`, chacun
+    # avec sa raison, et le contrôle échoue si un cinquième s'y ajoute sans
+    # qu'on l'écrive.
+
+    # ---- L'image d'or, qui n'existe que sur le cloud réel -----------------
+
+    - name: Écrire le tag de l'image d'or
+      stephrobert.scaleway.instance_image:
+        zone: "{{ zone }}"
+        image_id: "{{ image_doree }}"
+        tags: [exemple, "{{ marque }}"]
+      register: ecrit_image
+      failed_when: ecrit_image.failed | default(false)
+        and ecrit_image.api_type | default('') != 'not_emulated'
+      when: image_doree | default('') | length > 0
+
+    - name: Réécrire le tag de l'image d'or, à l'identique
+      stephrobert.scaleway.instance_image:
+        zone: "{{ zone }}"
+        image_id: "{{ image_doree }}"
+        tags: [exemple, "{{ marque }}"]
+      register: repris_image
+      failed_when: repris_image.failed | default(false)
+        and repris_image.api_type | default('') != 'not_emulated'
+      when: image_doree | default('') | length > 0
+
+    # ---- La route du frontend --------------------------------------------
+
+    - name: Réécrire la route à l'identique
+      stephrobert.scaleway.lb_route:
+        zone: "{{ zone }}"
+        route_id: "{{ (routes.routes | first).id }}"
+        backend_id: "{{ (routes.routes | first).backend_id }}"
+        # `match` est un objet dans le contrat, et le module l'expose tel quel :
+        # `match_host_header` est le nom Terraform, pas celui de l'API.
+        match: "{{ (routes.routes | first).match }}"
+      register: repris_route
+      failed_when: repris_route.failed | default(false)
+        and repris_route.api_type | default('') != 'not_emulated'
+      when: routes.routes | default([]) | length > 0
+
     # ---- Ce que ces réécritures ont prouvé, et ce qu'elles n'ont pas mesuré
     #
     # **Une tolérance sans compte se lit comme une preuve.** Chaque assertion
@@ -848,8 +1018,13 @@
 
     - name: Chaque réécriture, avec ce que son module a rendu
       ansible.builtin.set_fact:
-        reecritures: "{{ dict(noms_repris
-          | zip(noms_repris | map('extract', vars))) | dict2items }}"
+        # `hostvars[inventory_hostname]` et non `vars` : le dictionnaire interne
+        # `vars` est déprécié et disparaît en ansible-core 2.24, que la matrice
+        # de CI atteindra. L'avertissement est sorti à chaque exécution sans que
+        # personne ne le lise, ce qui est la façon habituelle dont une
+        # dépréciation devient une panne.
+        reecritures: "{{ dict(noms_repris | zip(noms_repris
+          | map('extract', hostvars[inventory_hostname]))) | dict2items }}"
 
     - name: Ce que la cible n'a pas mesuré, faute de cible ou faute de route
       ansible.builtin.set_fact:
@@ -865,8 +1040,22 @@
 
     - name: Les idempotences réellement prouvées
       ansible.builtin.set_fact:
-        idempotences_prouvees: "{{ noms_repris
-          | reject('in', reecritures_non_mesurees) | list }}"
+        # **Mesurée, et pas seulement jouée.** Le premier recensement comptait
+        # comme prouvée toute réécriture que la cible avait servie, en
+        # s'appuyant sur les assertions écrites à côté pour garantir qu'elle
+        # n'avait rien changé. C'était vrai tant que chaque réécriture portait
+        # son assertion, et ça a cessé de l'être dès qu'on en a ajouté quatre
+        # sans. Le compte lit maintenant `changed` lui-même : il ne dépend plus
+        # de la discipline de qui étend le playbook.
+        idempotences_prouvees: "{{ reecritures
+          | rejectattr('key', 'in', reecritures_non_mesurees)
+          | rejectattr('value.changed', 'defined')
+          | map(attribute='key') | list
+          + (reecritures
+          | rejectattr('key', 'in', reecritures_non_mesurees)
+          | selectattr('value.changed', 'defined')
+          | rejectattr('value.changed')
+          | map(attribute='key') | list) | sort }}"
 
     - name: Combien d'idempotences cette exécution a prouvées
       ansible.builtin.debug:

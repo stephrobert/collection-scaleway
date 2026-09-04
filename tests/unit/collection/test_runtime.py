@@ -998,3 +998,36 @@ def test_un_patch_ne_recoit_que_la_difference(runtime: Any, monkeypatch: Any) ->
         runtime.run_manage_module(module, spec)
 
     assert api.ecritures == [{"name": "api"}]
+
+
+# --- l'action dont l'action est l'opération --------------------------------
+
+
+def test_une_action_implicite_rend_le_nom_de_loperation(
+    runtime: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sans option `action`, le module dit quand même ce qu'il a déclenché.
+
+    `MigrateLb` migre, `ExportSnapshot` exporte : leur demander `action:
+    migrate` reviendrait à faire nommer une seconde fois ce que le chemin dit
+    déjà. Mais un lecteur de journal veut savoir ce qui s'est passé, et un champ
+    `action` vide ne le lui dit pas.
+    """
+
+    def interdit(_module: Any) -> None:
+        raise AssertionError("le client d'API ne doit pas être construit en check mode")
+
+    monkeypatch.setattr(runtime, "ScalewayApi", interdit)
+
+    spec = runtime.ActionModule(
+        operation=runtime.Operation(id="MigrateLb", method="POST", path="/lbs/{lb_id}/migrate"),
+        action_parameter=None,
+    )
+    module = _ModuleFactice(lb_id="abc", type="LB-GP-M", _check_mode=True)
+
+    with pytest.raises(SystemExit):
+        runtime.run_action_module(module, spec)
+
+    assert module.resultat is not None
+    assert module.resultat["changed"] is True
+    assert module.resultat["action"] == "MigrateLb"

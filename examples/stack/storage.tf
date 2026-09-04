@@ -62,3 +62,26 @@ resource "scaleway_instance_image" "reference" {
   architecture   = "x86_64"
   tags           = local.tags
 }
+
+
+# **Un volume que l'API `instance/v1` voit, et pourquoi il en faut un.**
+#
+# Tout le stockage ci-dessus passe par Block Storage, parce que c'est ce qu'un
+# serveur moderne utilise. La conséquence, mesurée sur le compte réel, est que
+# `ListVolumes` de l'API Instance rend une liste **vide** : le module
+# `instance_volume` n'avait donc aucune cible, et il était livré sans que rien
+# ne l'exerce.
+#
+# `l_ssd` est un volume local, et c'est le seul type que l'API Instance liste
+# encore. 10 Go détaché, c'est le plus petit prix à payer pour que deux modules
+# livrés cessent d'être des inconnues.
+#
+# Il reste **détaché**, et c'est délibéré : l'attacher demanderait de choisir un
+# serveur, et un volume local suit le cycle de vie de sa machine. Détaché, la
+# destruction l'emporte comme le reste.
+resource "scaleway_instance_volume" "vu_par_instance" {
+  name       = "${local.prefixe}-vu-par-instance"
+  type       = "l_ssd"
+  size_in_gb = 10
+  tags       = local.tags
+}
