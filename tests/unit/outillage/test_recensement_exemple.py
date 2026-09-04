@@ -43,6 +43,11 @@ TACHES = (
 # le recensement ne doit pas ramasser.
 REGISTRES: dict[str, Any] = {
     "repris_ok": {"changed": False, "failed": False},
+    # Une réécriture qui a changé quelque chose n'est pas une idempotence
+    # prouvée. Le premier recensement la comptait quand même, en s'appuyant sur
+    # les assertions écrites à côté ; quatre réécritures ajoutées sans assertion
+    # ont suffi à rendre ce compte faux.
+    "repris_a_change": {"changed": True, "failed": False},
     "repris_saute": {"changed": False, "skipped": True, "skip_reason": "pas de cible"},
     "repris_absent": {"changed": False, "failed": True, "api_type": "not_emulated"},
     "ecrit_serveur": {"changed": True},
@@ -113,7 +118,12 @@ def test_le_recensement_ne_ramasse_que_les_reecritures(recensement: dict[str, An
     `ecrit_serveur` est une écriture, pas une réécriture : la compter
     doublerait le dénominateur et gonflerait le taux d'idempotence.
     """
-    assert recensement["noms"] == ["repris_absent", "repris_ok", "repris_saute"]
+    assert recensement["noms"] == [
+        "repris_a_change",
+        "repris_absent",
+        "repris_ok",
+        "repris_saute",
+    ]
 
 
 def test_une_reecriture_sautee_ou_non_emulee_nest_pas_une_preuve(
@@ -128,7 +138,11 @@ def test_une_reecriture_sautee_ou_non_emulee_nest_pas_une_preuve(
 
 
 def test_seule_une_reecriture_jouee_compte_comme_prouvee(recensement: dict[str, Any]) -> None:
-    """Le nombre publié est celui des idempotences que quelqu'un a vraiment vues."""
+    """Le nombre publié est celui des idempotences que quelqu'un a vraiment vues.
+
+    Trois façons de ne pas compter, et la troisième est la plus récente : une
+    réécriture **jouée** qui a changé quelque chose n'a rien prouvé du tout.
+    """
     assert recensement["prouvees"] == ["repris_ok"]
 
 

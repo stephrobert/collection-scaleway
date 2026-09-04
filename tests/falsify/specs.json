@@ -731,8 +731,8 @@
       "name": "non-mesurees-comptees-comme-prouvees",
       "why": "Sans le retrait des non mesurées, le nombre publié compte toutes les réécritures jouées, y compris celles que la cible n'a pas servies : « 9 idempotences prouvées » se lirait sur une exécution qui en a prouvé 7.",
       "file": "examples/playbooks/modules.yml",
-      "find": "          | reject('in', reecritures_non_mesurees) | list }}",
-      "replace": "          | reject('in', []) | list }}",
+      "find": "          + (reecritures\n          | rejectattr('key', 'in', reecritures_non_mesurees)",
+      "replace": "          + (reecritures\n          | rejectattr('key', 'in', [])",
       "test": "tests/unit/outillage/test_recensement_exemple.py::test_seule_une_reecriture_jouee_compte_comme_prouvee"
     },
     {
@@ -854,6 +854,14 @@
       "find": "                and known.enum_values != parameter.enum_values\n            ):",
       "replace": "                and known.enum_values == parameter.enum_values\n            ):",
       "test": "tests/unit/generator/test_models.py::test_deux_enums_differents_sous_un_meme_nom_sont_refuses"
+    },
+    {
+      "name": "reecriture-changeante-comptee-comme-prouvee",
+      "why": "Le recensement comptait comme prouvée toute réécriture que la cible avait servie, en s'appuyant sur les assertions écrites à côté. Quatre réécritures ajoutées sans assertion ont suffi à rendre ce compte faux : il lit désormais `changed` lui-même, et ne dépend plus de la discipline de qui étend le playbook.",
+      "file": "examples/playbooks/modules.yml",
+      "find": "          | rejectattr('value.changed')\n          | map(attribute='key') | list) | sort }}\"",
+      "replace": "          | selectattr('value.changed', 'defined')\n          | map(attribute='key') | list) | sort }}\"",
+      "test": "tests/unit/outillage/test_recensement_exemple.py::test_seule_une_reecriture_jouee_compte_comme_prouvee"
     }
   ]
 }

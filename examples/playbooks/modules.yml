@@ -953,9 +953,9 @@
         zone: "{{ zone }}"
         image_id: "{{ image_doree }}"
         tags: [exemple, "{{ marque }}"]
-      register: reprise_image
-      failed_when: reprise_image.failed | default(false)
-        and reprise_image.api_type | default('') != 'not_emulated'
+      register: repris_image
+      failed_when: repris_image.failed | default(false)
+        and repris_image.api_type | default('') != 'not_emulated'
       when: image_doree | default('') | length > 0
 
     # ---- La route du frontend --------------------------------------------
@@ -968,9 +968,9 @@
         # `match` est un objet dans le contrat, et le module l'expose tel quel :
         # `match_host_header` est le nom Terraform, pas celui de l'API.
         match: "{{ (routes.routes | first).match }}"
-      register: reprise_route
-      failed_when: reprise_route.failed | default(false)
-        and reprise_route.api_type | default('') != 'not_emulated'
+      register: repris_route
+      failed_when: repris_route.failed | default(false)
+        and repris_route.api_type | default('') != 'not_emulated'
       when: routes.routes | default([]) | length > 0
 
     # ---- Ce que ces réécritures ont prouvé, et ce qu'elles n'ont pas mesuré
@@ -1011,8 +1011,22 @@
 
     - name: Les idempotences réellement prouvées
       ansible.builtin.set_fact:
-        idempotences_prouvees: "{{ noms_repris
-          | reject('in', reecritures_non_mesurees) | list }}"
+        # **Mesurée, et pas seulement jouée.** Le premier recensement comptait
+        # comme prouvée toute réécriture que la cible avait servie, en
+        # s'appuyant sur les assertions écrites à côté pour garantir qu'elle
+        # n'avait rien changé. C'était vrai tant que chaque réécriture portait
+        # son assertion, et ça a cessé de l'être dès qu'on en a ajouté quatre
+        # sans. Le compte lit maintenant `changed` lui-même : il ne dépend plus
+        # de la discipline de qui étend le playbook.
+        idempotences_prouvees: "{{ reecritures
+          | rejectattr('key', 'in', reecritures_non_mesurees)
+          | rejectattr('value.changed', 'defined')
+          | map(attribute='key') | list
+          + (reecritures
+          | rejectattr('key', 'in', reecritures_non_mesurees)
+          | selectattr('value.changed', 'defined')
+          | rejectattr('value.changed')
+          | map(attribute='key') | list) | sort }}"
 
     - name: Combien d'idempotences cette exécution a prouvées
       ansible.builtin.debug:
