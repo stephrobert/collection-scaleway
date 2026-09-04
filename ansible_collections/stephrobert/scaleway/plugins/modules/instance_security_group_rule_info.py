@@ -44,7 +44,7 @@ options:
     type: str
   security_group_id:
     description:
-    - Not documented by the Scaleway API contract.
+    - UUID of the security group.
     type: str
     required: true
 extends_documentation_fragment:

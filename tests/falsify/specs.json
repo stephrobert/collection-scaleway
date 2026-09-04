@@ -838,6 +838,22 @@
       "find": "        else spec.operation.id\n    )",
       "replace": "        else None\n    )",
       "test": "tests/unit/collection/test_runtime.py::test_une_action_implicite_rend_le_nom_de_loperation"
+    },
+    {
+      "name": "description-absente-gagne-sur-celle-qui-existe",
+      "why": "Le premier paramètre vu gagnait. Mesuré sur le contrat réel, le module livré annonçait « Not documented by the Scaleway API contract » sur `security_group_id`, que `ListSecurityGroupRules` documente : le module mentait sur le contrat, dans le sens le plus discret possible.",
+      "file": "generator/ansible/models.py",
+      "find": "    if not (connu.description or \"\").strip():\n        return candidat",
+      "replace": "    if not (connu.description or \"\").strip() and False:\n        return candidat",
+      "test": "tests/unit/generator/test_models.py::test_la_description_absente_ne_gagne_pas_sur_celle_qui_existe"
+    },
+    {
+      "name": "enums-divergents-fusionnes-en-silence",
+      "why": "Deux énumérations différentes sous un même nom produisent un module qui refuse une valeur que l'API accepte, ou en accepte une qu'elle refuse. Aucun contrat versionné ne porte le cas : la garde est écrite avant, parce qu'après il serait trop tard pour s'en apercevoir.",
+      "file": "generator/ansible/models.py",
+      "find": "                and known.enum_values != parameter.enum_values\n            ):",
+      "replace": "                and known.enum_values == parameter.enum_values\n            ):",
+      "test": "tests/unit/generator/test_models.py::test_deux_enums_differents_sous_un_meme_nom_sont_refuses"
     }
   ]
 }

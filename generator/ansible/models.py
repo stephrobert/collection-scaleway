@@ -1011,6 +1011,29 @@ def _selector(
     return candidates[0]
 
 
+def _le_mieux_decrit(connu: ApiParameter | None, candidat: ApiParameter) -> ApiParameter:
+    """De deux déclarations d'un même paramètre, celle qui en dit le plus.
+
+    **Le premier vu gagnait, en silence.** Mesuré sur le contrat réel :
+    `security_group_id` est décrit par `ListSecurityGroupRules` et pas par
+    `GetSecurityGroupRule`, et le module livré annonçait « Not documented by the
+    Scaleway API contract » sur un paramètre que le contrat documente. Le module
+    mentait sur le contrat, dans le sens le plus discret possible.
+
+    Une description absente n'est pas une description : il n'y a donc rien à
+    arbitrer, et ce n'est pas un choix entre deux valeurs. Deux descriptions
+    **différentes et toutes deux présentes** seraient un vrai arbitrage ; le cas
+    n'existe sur aucun contrat versionné, et le jour où il arrive, garder la
+    première reste faux. Il est signalé dans les limites plutôt que tranché en
+    douce.
+    """
+    if connu is None:
+        return candidat
+    if not (connu.description or "").strip():
+        return candidat
+    return connu
+
+
 def _build_options(
     operations: list[ApiOperation],
     priorities: tuple[str, ...] = (),
@@ -1027,6 +1050,7 @@ def _build_options(
     presence: dict[str, int] = {}
     required_in: dict[str, int] = {}
     limits: list[str] = []
+    descriptions_divergentes: set[str] = set()
 
     for operation in operations:
         paginated = set()
@@ -1048,10 +1072,37 @@ def _build_options(
                     f"{parameter.name} : {known.type.value} pour une opération, "
                     f"{parameter.type.value} pour une autre"
                 )
-            seen.setdefault(parameter.name, parameter)
+            # **Deux enums différents sous un même nom sont un refus**, au même
+            # titre qu'un conflit de type. En garder un ferait un module qui
+            # refuse une valeur que l'API accepte, ou en accepte une qu'elle
+            # refuse : dans les deux cas il ment sur ce qu'il accepte, et rien
+            # ne le dirait. Aucun cas sur les contrats versionnés à ce jour ;
+            # la garde est écrite avant, parce qu'après il serait trop tard.
+            if (
+                known is not None
+                and known.enum_values
+                and parameter.enum_values
+                and known.enum_values != parameter.enum_values
+            ):
+                raise ConflictingOption(
+                    f"{parameter.name} : deux énumérations différentes selon "
+                    f"l'opération, {list(known.enum_values)} et "
+                    f"{list(parameter.enum_values)}"
+                )
+            ancienne = (known.description or "").strip() if known else ""
+            nouvelle = (parameter.description or "").strip()
+            if ancienne and nouvelle and ancienne != nouvelle:
+                descriptions_divergentes.add(
+                    f"{parameter.name} : deux descriptions différentes selon l'opération, "
+                    "la première rencontrée est retenue"
+                )
+            seen[parameter.name] = _le_mieux_decrit(known, parameter)
             presence[parameter.name] = presence.get(parameter.name, 0) + 1
             if parameter.required:
                 required_in[parameter.name] = required_in.get(parameter.name, 0) + 1
+
+    if descriptions_divergentes:
+        limits.extend(sorted(descriptions_divergentes))
 
     total = len(operations)
     options: list[AnsibleOption] = []

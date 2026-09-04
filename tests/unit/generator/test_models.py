@@ -11,6 +11,7 @@ from generator.ansible.models import (
     DEPRECATED_NOTICE,
     UNDOCUMENTED,
     AmbiguousModule,
+    ConflictingOption,
     ModuleModelError,
     UnknownChoice,
     UnreachableState,
@@ -651,3 +652,150 @@ def test_deux_enums_de_corps_restent_un_refus() -> None:
     )
     with pytest.raises(AmbiguousModule, match="2 paramètre"):
         _spec(_plan_daction("DoThing", (premier, second)), "demo_thing_action")
+
+
+# --- deux opérations qui décrivent le même paramètre -----------------------
+
+
+def _plan_deux_lectures(description_get: str | None, description_list: str | None) -> ProductPlan:
+    """Une lecture unitaire et une liste, qui décrivent le parent différemment."""
+    zone = ApiParameter(
+        name="zone", type=ApiType.STRING, required=True, location=ParameterLocation.PATH
+    )
+    get = ApiOperation(
+        id="GetThing",
+        service="demo",
+        version="v1",
+        resource="thing",
+        http_method=HTTPMethod.GET,
+        path="/demo/v1/zones/{zone}/parents/{parent_id}/things/{thing_id}",
+        scope=Scope.ZONE,
+        parameters=(
+            zone,
+            ApiParameter(
+                name="parent_id",
+                type=ApiType.STRING,
+                required=True,
+                location=ParameterLocation.PATH,
+                description=description_get,
+            ),
+            ApiParameter(
+                name="thing_id",
+                type=ApiType.STRING,
+                required=True,
+                location=ParameterLocation.PATH,
+            ),
+        ),
+        response=ApiResponse(payload_field="thing"),
+    )
+    liste = ApiOperation(
+        id="ListThings",
+        service="demo",
+        version="v1",
+        resource="thing",
+        http_method=HTTPMethod.GET,
+        path="/demo/v1/zones/{zone}/parents/{parent_id}/things",
+        scope=Scope.ZONE,
+        parameters=(
+            zone,
+            ApiParameter(
+                name="parent_id",
+                type=ApiType.STRING,
+                required=True,
+                location=ParameterLocation.PATH,
+                description=description_list,
+            ),
+        ),
+        response=ApiResponse(payload_field="things", is_list=True),
+    )
+    service = ApiService(name="demo", version="v1", operations=(get, liste))
+    return plan_service(service, OverrideSet(source=None))
+
+
+def test_la_description_absente_ne_gagne_pas_sur_celle_qui_existe() -> None:
+    """Le premier vu gagnait, et le module mentait sur le contrat.
+
+    Mesuré sur le contrat réel : `security_group_id` est décrit par
+    `ListSecurityGroupRules` et pas par `GetSecurityGroupRule`, et le module
+    livré annonçait « Not documented by the Scaleway API contract » sur un
+    paramètre que le contrat documente.
+
+    L'ordre est éprouvé dans les deux sens, parce que le défaut **était** un
+    effet d'ordre.
+    """
+    for avant, apres in ((None, "UUID of the parent."), ("UUID of the parent.", None)):
+        spec = _spec(_plan_deux_lectures(avant, apres), "demo_thing_info")
+        option = next(o for o in spec.options if o.name == "parent_id")
+        assert option.description == ("UUID of the parent.",)
+
+
+def test_deux_descriptions_differentes_sont_signalees_dans_les_limites() -> None:
+    """Un vrai arbitrage, que le modèle ne tranche pas en douce.
+
+    Aucun contrat versionné ne porte ce cas. Le jour où il arrive, garder la
+    première reste faux : le rapport le dit plutôt que de le taire.
+    """
+    spec = _spec(_plan_deux_lectures("Le parent.", "Un autre parent."), "demo_thing_info")
+    assert any("deux descriptions différentes" in limite for limite in spec.limits)
+
+
+def test_deux_enums_differents_sous_un_meme_nom_sont_refuses() -> None:
+    """Un module qui garde un enum tronqué refuse une valeur que l'API accepte."""
+    zone = ApiParameter(
+        name="zone", type=ApiType.STRING, required=True, location=ParameterLocation.PATH
+    )
+
+    def _lecture(
+        identifiant: str,
+        chemin: str,
+        valeurs: tuple[str, ...],
+        *,
+        liste: bool,
+        extra: tuple[ApiParameter, ...] = (),
+    ) -> ApiOperation:
+        return ApiOperation(
+            id=identifiant,
+            service="demo",
+            version="v1",
+            resource="thing",
+            http_method=HTTPMethod.GET,
+            path=chemin,
+            scope=Scope.ZONE,
+            parameters=(
+                zone,
+                *extra,
+                ApiParameter(
+                    name="state",
+                    type=ApiType.ENUM,
+                    required=False,
+                    location=ParameterLocation.QUERY,
+                    enum_values=valeurs,
+                ),
+            ),
+            response=ApiResponse(payload_field="things" if liste else "thing", is_list=liste),
+        )
+
+    cible = ApiParameter(
+        name="thing_id", type=ApiType.STRING, required=True, location=ParameterLocation.PATH
+    )
+    service = ApiService(
+        name="demo",
+        version="v1",
+        operations=(
+            _lecture(
+                "GetThing",
+                "/demo/v1/zones/{zone}/things/{thing_id}",
+                ("running",),
+                liste=False,
+                extra=(cible,),
+            ),
+            _lecture(
+                "ListThings",
+                "/demo/v1/zones/{zone}/things",
+                ("running", "stopped"),
+                liste=True,
+            ),
+        ),
+    )
+    with pytest.raises(ConflictingOption, match="deux énumérations"):
+        _spec(plan_service(service, OverrideSet(source=None)), "demo_thing_info")
