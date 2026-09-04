@@ -886,6 +886,14 @@
       "find": "    if sale:",
       "replace": "    if sale and False:",
       "test": "tests/unit/outillage/test_release.py::test_un_arbre_sale_est_refuse"
+    },
+    {
+      "name": "nom-du-plugin-recopie-dans-le-paquet",
+      "why": "Le contrôle de l'archive interrogeait le plugin d'inventaire sous un nom écrit en dur. Le renommer a fait interroger un plugin qui n'existe plus : le contrôle accusait l'archive, qui était bonne, et le défaut a voyagé jusqu'en CI parce que `package` n'était pas dans `mise run check`.",
+      "file": "scripts/package.py",
+      "find": "    if len(plugins) != 1:",
+      "replace": "    if len(plugins) != 1 and False:",
+      "test": "tests/unit/outillage/test_verdicts.py::test_le_nom_du_plugin_dinventaire_se_lit_sur_le_disque"
     }
   ]
 }

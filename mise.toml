@@ -389,6 +389,12 @@ depends = [
   "falsify",
   "readme:check",
   "coverage:check",
+  # **Le job Archive de la CI en fait partie, donc `check` doit le porter.**
+  # Il n'y était pas, et une pull request est passée localement sur un contrôle
+  # qui interrogeait un plugin d'inventaire renommé la veille. `check` promet
+  # « ce qu'une pull request doit passer » : l'omission le rendait faux, et
+  # coûte trois secondes à réparer.
+  "package",
 ]
 
 [tasks.clean]
