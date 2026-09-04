@@ -65,3 +65,28 @@ resource "scaleway_lb_acl" "web" {
     ip_subnet = ["0.0.0.0/0"]
   }
 }
+
+
+# **Un second backend et une route, pour que `lb_route` ait une cible.**
+#
+# Un backend ne coûte rien : c'est de la configuration dans le load balancer
+# déjà facturé, pas une ressource de plus. Il pointe sur les mêmes serveurs web
+# et sur le même port : ce qu'on veut prouver est qu'un module sait relire et
+# réécrire une route, pas qu'un second service existe.
+#
+# La route se déclenche sur l'en-tête `Host`, ce que le frontend HTTP de cette
+# stack permet. `match_sni` demanderait du TLS, donc un certificat, donc un
+# domaine.
+resource "scaleway_lb_backend" "secondaire" {
+  lb_id            = scaleway_lb.web.id
+  name             = "${local.prefixe}-secondaire"
+  forward_protocol = "http"
+  forward_port     = 80
+  server_ips       = [for ip in scaleway_ipam_ip.web : ip.address]
+}
+
+resource "scaleway_lb_route" "secondaire" {
+  frontend_id       = scaleway_lb_frontend.web.id
+  backend_id        = scaleway_lb_backend.secondaire.id
+  match_host_header = "secondaire.exemple.invalid"
+}

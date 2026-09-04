@@ -336,6 +336,21 @@ run = "python scripts/example.py reel"
 description = "Vérifier qu'aucune ressource de l'exemple ne survit sur le compte réel"
 run = "python scripts/residue.py verify"
 
+[tasks."coverage:check"]
+description = "Refuser un module livré qu'aucun playbook d'exemple n'appelle"
+# Dans `check`, donc à chaque issue traitée : hors ligne, déterministe, il lit
+# les clés de tâches des playbooks et le répertoire des modules, jamais un
+# artefact de run. Un module écrit que rien n'exerce est un module dont on
+# ignore s'il marche.
+depends = ["generate"]
+run = "python scripts/example_coverage.py --check"
+
+[tasks."coverage:diff"]
+description = "Comparer le dernier run réel au dernier run contre l'émulateur"
+# Hors de `check` : il lui faut deux artefacts, donc deux exécutions. C'est le
+# matériau d'une issue de feint, mesuré des deux côtés le même jour.
+run = "python scripts/example_coverage.py --diff"
+
 [tasks."coverage:example"]
 description = "Les trois étages de couverture, et ce que le dernier run a joué"
 # Hors de `check` : les deux derniers étages dépendent d'un artefact de run, et
@@ -365,6 +380,7 @@ depends = [
   "lint:changelog",
   "falsify",
   "readme:check",
+  "coverage:check",
 ]
 
 [tasks.clean]

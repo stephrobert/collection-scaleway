@@ -827,6 +827,141 @@
           frontend={{ repris_frontend.changed | default('non joué') }}
         quiet: true
 
+    # ---- Les règles d'un groupe de sécurité ------------------------------
+    #
+    # Ces deux modules n'avaient aucune cible tant que `instance_security_group_rule_info`
+    # n'existait pas : le modèle le refusait, parce que deux listes visaient la
+    # même ressource. La stack en fournit une depuis le premier jour, puisque
+    # chaque groupe qu'elle déclare porte ses règles.
+
+    - name: Les règles du groupe web
+      stephrobert.scaleway.instance_security_group_rule_info:
+        zone: "{{ zone }}"
+        security_group_id: "{{ groupe_web }}"
+      register: regles
+      failed_when: regles.failed | default(false)
+        and regles.api_type | default('') != 'not_emulated'
+
+    - name: Le groupe web porte les règles que Terraform y a mises
+      ansible.builtin.assert:
+        that:
+          - regles.rules | default([]) | length > 0
+        fail_msg: >-
+          Le groupe web ne porte aucune règle, alors que la stack en déclare.
+          Soit la lecture ne rend pas ce qu'elle annonce, soit la plateforme
+          n'est pas celle que Terraform a décrite.
+        quiet: true
+      when: regles.api_type | default('') != 'not_emulated'
+
+    - name: Réécrire une règle à l'identique
+      stephrobert.scaleway.instance_security_group_rule:
+        zone: "{{ zone }}"
+        security_group_id: "{{ groupe_web }}"
+        security_group_rule_id: "{{ (regles.rules | first).id }}"
+        action: "{{ (regles.rules | first).action }}"
+        protocol: "{{ (regles.rules | first).protocol }}"
+        direction: "{{ (regles.rules | first).direction }}"
+        ip_range: "{{ (regles.rules | first).ip_range }}"
+      register: repris_regle
+      failed_when: repris_regle.failed | default(false)
+        and repris_regle.api_type | default('') != 'not_emulated'
+      when: regles.rules | default([]) | length > 0
+
+    # ---- La migration du load balancer -----------------------------------
+    #
+    # **Vers le type qu'il porte déjà.** `MigrateLb` change le type commercial
+    # d'un load balancer existant, ce qui est exactement une opération Day-2 ;
+    # le faire monter en gamme sur le compte de quelqu'un changerait sa facture
+    # pour la durée de l'exercice. Migrer vers le type courant exerce le module,
+    # l'API et le chemin, sans rien coûter ni rien casser.
+    #
+    # Si l'API refuse une migration vers le même type, la tâche rougit et c'est
+    # une information : personne ne le sait aujourd'hui, et c'est exactement ce
+    # qu'un exercice contre le vrai cloud existe pour découvrir.
+
+    - name: Migrer le load balancer vers le type qu'il porte déjà
+      stephrobert.scaleway.lb_load_balancer_action:
+        zone: "{{ zone }}"
+        lb_id: "{{ notre_lb }}"
+        type: "{{ (balanceurs.lbs | selectattr('name', 'search', prefixe) | first).type }}"
+      register: migration
+      failed_when: migration.failed | default(false)
+        and migration.api_type | default('') != 'not_emulated'
+      when: notre_lb | length > 0
+
+    # ---- Le stockage que l'API Instance voit -----------------------------
+    #
+    # **Tout le stockage de cette stack est du Block Storage**, parce que c'est
+    # ce qu'un serveur moderne utilise, et l'API `instance/v1` ne le voit pas :
+    # `ListVolumes` y rendait une liste vide sur le compte réel. `instance_volume`
+    # n'avait donc aucune cible, et il était livré sans que rien ne l'exerce.
+    #
+    # La stack déclare depuis un volume `l_ssd` de 10 Go, détaché, dont le seul
+    # rôle est d'être vu par cette API-là.
+
+    - name: Le volume que l'API Instance voit
+      ansible.builtin.set_fact:
+        notre_volume: "{{ (volumes.volumes | default([])
+          | selectattr('name', 'search', prefixe) | list | first).id | default('') }}"
+
+    - name: Réécrire le tag de ce volume
+      stephrobert.scaleway.instance_volume:
+        zone: "{{ zone }}"
+        volume_id: "{{ notre_volume }}"
+        tags: [exemple, "{{ marque }}"]
+      register: repris_volume
+      failed_when: repris_volume.failed | default(false)
+        and repris_volume.api_type | default('') != 'not_emulated'
+      when: notre_volume | length > 0
+
+    # **L'instantané et son export n'ont de cible nulle part**, et le dire vaut
+    # mieux que de fabriquer une cible pour décorer un compte :
+    #
+    # * `instance_snapshot` et `instance_snapshot_action` demandent un instantané
+    #   que l'API Instance liste. Celui de la stack passe par l'API Block, seule
+    #   à voir un volume SBS, et l'API Instance ne le liste pas. En tailler un
+    #   dans le volume `l_ssd` ci-dessus échoue : « cannot create a RO disk from
+    #   an empty disk », mesuré, et le remplir demanderait de l'attacher à une
+    #   machine et d'y écrire ;
+    # * `instance_ip_action` rend une adresse à l'IPAM. Toutes les adresses de
+    #   cette stack appartiennent à Terraform : en rendre une laisserait son état
+    #   en désaccord avec le compte, et c'est exactement le résidu que la règle
+    #   du dépôt interdit ;
+    # * `lb_certificate` demande un certificat, donc un domaine ou un PEM, et
+    #   `lb_subscriber` un destinataire d'alertes que le provider Terraform ne
+    #   sait pas déclarer.
+    #
+    # Ces quatre-là sont déclarés dans `scripts/example_coverage.py`, chacun
+    # avec sa raison, et le contrôle échoue si un cinquième s'y ajoute sans
+    # qu'on l'écrive.
+
+    # ---- L'image d'or, qui n'existe que sur le cloud réel -----------------
+
+    - name: Réécrire le tag de l'image d'or
+      stephrobert.scaleway.instance_image:
+        zone: "{{ zone }}"
+        image_id: "{{ image_doree }}"
+        tags: [exemple, "{{ marque }}"]
+      register: reprise_image
+      failed_when: reprise_image.failed | default(false)
+        and reprise_image.api_type | default('') != 'not_emulated'
+      when: image_doree | default('') | length > 0
+
+    # ---- La route du frontend --------------------------------------------
+
+    - name: Réécrire la route à l'identique
+      stephrobert.scaleway.lb_route:
+        zone: "{{ zone }}"
+        route_id: "{{ (routes.routes | first).id }}"
+        backend_id: "{{ (routes.routes | first).backend_id }}"
+        # `match` est un objet dans le contrat, et le module l'expose tel quel :
+        # `match_host_header` est le nom Terraform, pas celui de l'API.
+        match: "{{ (routes.routes | first).match }}"
+      register: reprise_route
+      failed_when: reprise_route.failed | default(false)
+        and reprise_route.api_type | default('') != 'not_emulated'
+      when: routes.routes | default([]) | length > 0
+
     # ---- Ce que ces réécritures ont prouvé, et ce qu'elles n'ont pas mesuré
     #
     # **Une tolérance sans compte se lit comme une preuve.** Chaque assertion

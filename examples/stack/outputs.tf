@@ -41,3 +41,14 @@ output "image_doree" {
   # et une sortie qui casse quand la cible change ne rend service à personne.
   value = try(scaleway_instance_image.reference[0].id, "")
 }
+
+
+output "volume_instance" {
+  description = "Le volume que l'API Instance voit, cible de `instance_volume`."
+  value       = scaleway_instance_volume.vu_par_instance.id
+}
+
+output "route_lb" {
+  description = "La route du frontend, cible de `lb_route`."
+  value       = scaleway_lb_route.secondaire.id
+}
