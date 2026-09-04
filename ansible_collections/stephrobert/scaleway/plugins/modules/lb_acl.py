@@ -19,8 +19,9 @@ version_added: 0.1.0
 description:
 - Update a particular ACL, specified by its ACL ID. You can update details including its name,
   action and match rule.
-- The module reads the resource first and writes only the fields that differ, so a second
-  run reports no change.
+- 'The module reads the resource first and writes the whole body, because this operation replaces
+  the resource: fields you do not set keep the value the API returns. A second run reports
+  no change.'
 author:
 - Stéphane Robert (@stephrobert)
 options:

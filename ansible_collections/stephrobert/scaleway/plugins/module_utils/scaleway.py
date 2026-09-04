@@ -923,11 +923,38 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
         )
         return
 
+    # **Un `PUT` remplace, un `PATCH` modifie.** N'envoyer que la différence à un
+    # `PUT` efface silencieusement tout ce qu'on n'a pas nommé, ce qui est
+    # exactement la raison pour laquelle les `PUT` d'Instance sont écartés par
+    # override. Sept opérations du Load Balancer sont dans ce cas, et le module
+    # généré portait les deux phrases contradictoires dans sa documentation :
+    # « You must set all parameters », du contrat, et « writes only the fields
+    # that differ », de ce runtime.
+    #
+    # Le corps d'un `PUT` reprend donc **tous** les champs gérés : la valeur
+    # demandée quand le playbook en fournit une, la valeur relue sinon. Ce que
+    # la lecture ne rend pas ne peut pas être conservé, et n'est pas envoyé :
+    # le contrat ne dit pas ce qu'un champ absent vaut, et l'inventer serait
+    # pire que l'omettre.
+    #
+    # `changed` continue de se décider sur `ecarts` : le corps grossit, le
+    # verdict ne bouge pas, et l'idempotence tient.
+    corps = ecarts
+    if spec.update_operation.method.upper() == "PUT":
+        corps = {}
+        for nom in spec.managed_params:
+            if nom in demande:
+                corps[nom] = demande[nom]
+                continue
+            relu = _valeur_courante(courant, nom)
+            if relu is not None:
+                corps[nom] = relu
+
     try:
         api.request(
             spec.update_operation,
             params=build_query(spec.update_operation, module.params),
-            body=ecarts,
+            body=corps,
         )
         apres = api.fetch_one(spec.read_operation)
     except ScalewayApiError as error:

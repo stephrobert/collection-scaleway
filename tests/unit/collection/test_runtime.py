@@ -935,3 +935,66 @@ def test_une_reference_qui_change_vraiment_est_ecrite(runtime: Any, monkeypatch:
         runtime.run_manage_module(module, spec)
 
     assert api.ecritures == [{"backend_id": "b2"}]
+
+
+def test_un_put_recoit_tout_ce_quon_veut_garder(runtime: Any, monkeypatch: Any) -> None:
+    """Un PUT remplace : lui envoyer la seule différence efface le reste.
+
+    Sept opérations du Load Balancer sont des PUT, et le contrat le dit dans sa
+    propre description : « You must set all parameters ». Envoyer `{name: ...}`
+    seul remettrait à zéro `timeout_client` et les certificats du frontend, en
+    silence, ce qui est précisément ce que la doctrine refuse.
+    """
+    api = _ApiGestionFactice(
+        [
+            {"id": "f1", "name": "web", "inbound_port": 80, "timeout_client": "10s"},
+            {"id": "f1", "name": "api", "inbound_port": 80, "timeout_client": "10s"},
+        ]
+    )
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
+    spec = runtime.ManageModule(
+        read_operation=runtime.Operation(
+            id="GetFrontend", method="GET", path="/x/{id}", payload_field="frontend"
+        ),
+        update_operation=runtime.Operation(
+            id="UpdateFrontend",
+            method="PUT",
+            path="/x/{id}",
+            body_params=("name", "inbound_port", "timeout_client"),
+        ),
+        managed_params=("name", "inbound_port", "timeout_client"),
+    )
+    module = _ModuleFactice(name="api", inbound_port=None, timeout_client=None)
+
+    with pytest.raises(SystemExit):
+        runtime.run_manage_module(module, spec)
+
+    assert api.ecritures == [{"name": "api", "inbound_port": 80, "timeout_client": "10s"}], (
+        "le PUT doit porter les champs relus, pas seulement celui qui change"
+    )
+
+
+def test_un_patch_ne_recoit_que_la_difference(runtime: Any, monkeypatch: Any) -> None:
+    """Le cas voisin, qui ne doit pas bouger : un PATCH modifie."""
+    api = _ApiGestionFactice(
+        [
+            {"id": "s1", "name": "web", "tags": ["a"]},
+            {"id": "s1", "name": "api", "tags": ["a"]},
+        ]
+    )
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
+    spec = runtime.ManageModule(
+        read_operation=runtime.Operation(
+            id="GetServer", method="GET", path="/x/{id}", payload_field="server"
+        ),
+        update_operation=runtime.Operation(
+            id="UpdateServer", method="PATCH", path="/x/{id}", body_params=("name", "tags")
+        ),
+        managed_params=("name", "tags"),
+    )
+    module = _ModuleFactice(name="api", tags=["a"])
+
+    with pytest.raises(SystemExit):
+        runtime.run_manage_module(module, spec)
+
+    assert api.ecritures == [{"name": "api"}]

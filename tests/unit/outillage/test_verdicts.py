@@ -605,3 +605,51 @@ def test_une_documentation_sans_exemple_est_un_echec(monkeypatch: pytest.MonkeyP
         doc_examples.main()
 
     assert "extraction est cassée" in str(erreur.value)
+
+
+# --- le compteur du README doit compter tout le dépôt ----------------------
+
+
+def test_le_compteur_somme_tous_les_produits(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Le bloc disait 25 modules et en listait 46, et le contrôle passait.
+
+    `_modules_ecrits` ne lisait que le compte rendu d'`instance.v1`, tandis que
+    la liste parcourait le répertoire des modules. Deux sources pour un même
+    bloc, une seule étendue au second produit, et `readme:check` déclarait
+    conforme un compteur faux : le contrôle comparait le bloc à ce que le script
+    produit, et le script produisait le mauvais nombre.
+
+    Le test pose deux comptes rendus plutôt qu'un, ce qui est exactement la
+    situation qui a produit le défaut.
+    """
+    from scripts import readme_counters
+
+    monkeypatch.setattr(readme_counters, "RAPPORTS", tmp_path)
+    (tmp_path / "instance.v1.generation.md").write_text(
+        "# Génération\n\nModules écrits : **25**, écartés : **5**\n", encoding="utf-8"
+    )
+    (tmp_path / "lb.v1.generation.md").write_text(
+        "# Génération\n\nModules écrits : **21**, écartés : **1**\n", encoding="utf-8"
+    )
+
+    ecrits, plan = readme_counters._modules_ecrits()
+    assert ecrits == 46, "les deux produits doivent être sommés, pas seulement le premier"
+    assert plan == 52
+
+
+def test_un_compteur_sans_source_refuse_de_repondre(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Zéro compte rendu doit être une erreur, pas un bloc annonçant zéro module.
+
+    Un dépôt qui n'a rien généré passerait sinon pour un dépôt sans modules, et
+    le bloc se lirait comme une mesure.
+    """
+    from scripts import readme_counters
+
+    monkeypatch.setattr(readme_counters, "RAPPORTS", tmp_path)
+    with pytest.raises(readme_counters.CompteursError) as erreur:
+        readme_counters._modules_ecrits()
+    assert "generate" in str(erreur.value)

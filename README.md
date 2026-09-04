@@ -23,7 +23,7 @@ instance v1 : 74 opérations découvertes
   INFO 27 · ACTION 3 · MANAGE 10 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 14 · UNKNOWN 0
   Day-2 41 · AUTO 40 · MANUAL 1 · classées pour génération automatique 97,6 % (40/41)
 
-collection stephrobert.scaleway : 25 modules produits sur 30 au plan
+collection stephrobert.scaleway : 46 modules produits sur 52 au plan
   instance_dashboard_info                Gather information about Scaleway Instance dashboards
   instance_image                         Manage a Scaleway Instance image
   instance_image_info                    Gather information about Scaleway Instance images
@@ -71,7 +71,7 @@ collection stephrobert.scaleway : 25 modules produits sur 30 au plan
   lb_subscriber                          Manage a Scaleway Lb subscriber
   lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
   scaleway (inventaire)                  instance, elastic_metal, apple_silicon
-  442 tests unitaires · 85 mutations prouvées par /falsify
+  446 tests unitaires · 87 mutations prouvées par /falsify
   CI : cinq jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks et inventaire contre l'émulateur :
   comptes rendus par `mise run sanity` et `mise run integration`

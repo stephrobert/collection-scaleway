@@ -686,6 +686,22 @@
       "find": "    objet = ressource.get(nom[: -len(\"_id\")])",
       "replace": "    objet = None",
       "test": "tests/unit/collection/test_runtime.py::test_une_reference_ecrite_par_id_se_compare_a_lobjet_relu"
+    },
+    {
+      "name": "put-envoie-un-corps-partiel",
+      "why": "Un PUT remplace. N'y envoyer que la différence efface silencieusement tout ce qu'on n'a pas nommé : sept opérations du Load Balancer sont dans ce cas, et le contrat dit lui-même « You must set all parameters ».",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    if spec.update_operation.method.upper() == \"PUT\":",
+      "replace": "    if spec.update_operation.method.upper() == \"PUT\" and False:",
+      "test": "tests/unit/collection/test_runtime.py::test_un_put_recoit_tout_ce_quon_veut_garder"
+    },
+    {
+      "name": "compteur-ne-lit-quun-produit",
+      "why": "Un compteur qui ne lit qu'un produit annonce 25 modules sous une liste de 46, et `readme:check` le déclare conforme : le contrôle compare le bloc à ce que le script produit, et le script produit le mauvais nombre.",
+      "file": "scripts/readme_counters.py",
+      "find": "    comptes = sorted(RAPPORTS.glob(\"*.generation.md\"))",
+      "replace": "    comptes = sorted(RAPPORTS.glob(\"instance.*.generation.md\"))",
+      "test": "tests/unit/outillage/test_verdicts.py::test_le_compteur_somme_tous_les_produits"
     }
   ]
 }

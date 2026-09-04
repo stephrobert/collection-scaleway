@@ -20,8 +20,9 @@ description:
 - Update a given frontend, specified by its frontend ID. You can update configuration parameters
   including its name and the port it listens on. Note that the request type is PUT and not
   PATCH. You must set all parameters.
-- The module reads the resource first and writes only the fields that differ, so a second
-  run reports no change.
+- 'The module reads the resource first and writes the whole body, because this operation replaces
+  the resource: fields you do not set keep the value the API returns. A second run reports
+  no change.'
 author:
 - Stéphane Robert (@stephrobert)
 options:

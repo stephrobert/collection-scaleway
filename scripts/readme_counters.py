@@ -46,11 +46,24 @@ class CompteursError(RuntimeError):
     """Une source manque, et il vaut mieux le dire que publier un nombre faux."""
 
 
+def _affichable(chemin: Path) -> str:
+    """Un chemin lisible, même hors du dépôt.
+
+    `relative_to` lève quand le chemin est ailleurs, et un message d'erreur qui
+    plante en se composant cache l'erreur qu'il devait annoncer. Le cas est
+    arrivé sur un test qui déplace le répertoire des rapports.
+    """
+    try:
+        return str(chemin.relative_to(ROOT))
+    except ValueError:
+        return str(chemin)
+
+
 def _rapport(produit: str, version: str) -> dict[str, Any]:
     chemin = RAPPORTS / f"{produit}.{version}.json"
     if not chemin.is_file():
         raise CompteursError(
-            f"{chemin.relative_to(ROOT)} manque : lancer `mise run report` avant. "
+            f"{_affichable(chemin)} manque : lancer `mise run report` avant. "
             "Un compteur sans sa source n'est pas un compteur."
         )
     donnees: dict[str, Any] = json.loads(chemin.read_text(encoding="utf-8"))
@@ -58,19 +71,42 @@ def _rapport(produit: str, version: str) -> dict[str, Any]:
 
 
 def _modules_ecrits() -> tuple[int, int]:
-    """Modules écrits et modules du plan, lus dans le compte rendu de génération."""
-    chemin = RAPPORTS / "instance.v1.generation.md"
-    if not chemin.is_file():
+    """Modules écrits et modules du plan, sommés sur **tous** les produits.
+
+    **Ce compteur n'a longtemps lu qu'`instance.v1`**, et annonçait donc « 25
+    modules produits sur 30 au plan » sous une liste de 46 lignes. Pire, le
+    contrôle qui existe pour empêcher un compteur périmé le déclarait conforme :
+    il comparait le bloc à ce que ce script produit, et ce script produisait le
+    mauvais nombre.
+
+    C'est le défaut que ce fichier corrige, retourné d'un cran : le nombre ne se
+    recopie plus à la main, mais sa dérivation ne regardait qu'une partie du
+    dépôt. Elle parcourt désormais les comptes rendus présents, comme
+    `report_all.py` parcourt l'index des produits.
+    """
+    comptes = sorted(RAPPORTS.glob("*.generation.md"))
+    if not comptes:
         raise CompteursError(
-            f"{chemin.relative_to(ROOT)} manque : lancer `mise run generate` avant."
+            f"aucun compte rendu de génération dans {_affichable(RAPPORTS)} : "
+            "lancer `mise run generate` avant. Un bloc qui annonce zéro module "
+            "produit passerait pour un dépôt vide."
         )
-    texte = chemin.read_text(encoding="utf-8")
-    for ligne in texte.splitlines():
-        if ligne.startswith("Modules écrits :"):
-            ecrits = int(ligne.split("**")[1])
-            ecartes = int(ligne.split("**")[3])
-            return ecrits, ecrits + ecartes
-    raise CompteursError("le compte rendu de génération ne porte pas sa ligne de modules")
+    ecrits = plan = 0
+    for chemin in comptes:
+        ligne = next(
+            (
+                ligne
+                for ligne in chemin.read_text(encoding="utf-8").splitlines()
+                if ligne.startswith("Modules écrits :")
+            ),
+            None,
+        )
+        if ligne is None:
+            raise CompteursError(f"{_affichable(chemin)} ne porte pas sa ligne de modules")
+        produits = int(ligne.split("**")[1])
+        ecrits += produits
+        plan += produits + int(ligne.split("**")[3])
+    return ecrits, plan
 
 
 def _tests() -> int:
@@ -132,7 +168,7 @@ def _lignes_de_modules() -> list[str]:
         lignes.append(f"  {fichier.stem:<38s} {courte}")
     if not lignes:
         raise CompteursError(
-            f"{dossier.relative_to(ROOT)} ne porte aucun module : lancer "
+            f"{_affichable(dossier)} ne porte aucun module : lancer "
             "`mise run generate`. Un bloc qui annonce zéro module est un bloc faux."
         )
     return lignes

@@ -537,8 +537,14 @@ def _build_manage_module(
         short_description=f"Manage a Scaleway {_libelle(service, item.resource)}",
         description=(
             update_operation.documentation_line or UNDOCUMENTED,
-            "The module reads the resource first and writes only the fields that "
-            "differ, so a second run reports no change.",
+            (
+                "The module reads the resource first and writes the whole body, "
+                "because this operation replaces the resource: fields you do not "
+                "set keep the value the API returns. A second run reports no change."
+                if update_operation.method.upper() == "PUT"
+                else "The module reads the resource first and writes only the "
+                "fields that differ, so a second run reports no change."
+            ),
         ),
         returns=(
             ReturnValue(
