@@ -1,8 +1,8 @@
 ---
 bugfixes:
-  - "Les listes du Load Balancer sont désormais paginées. Scaleway emploie deux
-    orthographes pour la taille de page selon le produit, ``per_page`` sur
-    Instance et ``page_size`` sur le Load Balancer, et la règle n'en connaissait
-    qu'une : onze opérations n'étaient pas déclarées paginées, leurs paramètres
-    de pagination devenaient des options du module, et une liste aurait rendu sa
-    **première page en silence**."
+  - "Load Balancer lists are now paginated. Scaleway uses two spellings for
+    page size depending on the product, ``per_page`` on Instance and
+    ``page_size`` on the Load Balancer, and the rule knew only one: eleven
+    operations were not declared as paginated, their pagination parameters
+    became module options, and a list would have returned its **first page in
+    silence**."

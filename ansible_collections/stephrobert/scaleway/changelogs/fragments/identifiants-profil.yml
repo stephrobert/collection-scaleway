@@ -1,15 +1,15 @@
 ---
 bugfixes:
-  - "``api_url`` et ``api_allow_insecure`` portaient une valeur par défaut dans
-    l'``argument_spec``. Une valeur par défaut n'étant jamais absente, elles
-    écrasaient **toujours** ce que le fichier de configuration Scaleway
-    déclarait : un utilisateur dont le profil pointe vers un émulateur voyait
-    son playbook partir en production, avec de vrais identifiants et de vraies
-    ressources. Le défaut s'applique désormais après la lecture du profil, et
-    l'ordre annoncé, paramètre puis environnement puis fichier, est tenu."
-  - "La clé secrète pouvait sortir en clair dans le message d'échec. La
-    validation du SDK lève ``Invalid secret key format 'SCW...'``, valeur
-    comprise, et Ansible ne censure que les valeurs venues des paramètres du
-    module, pas celles lues dans le fichier de configuration : la clé
-    atterrissait dans le journal du playbook et dans les artefacts de CI. Le
-    message nomme désormais le champ refusé, jamais sa valeur."
+  - "``api_url`` and ``api_allow_insecure`` carried a default value in the
+    ``argument_spec``. Since a default value is never absent, they **always**
+    overrode what the Scaleway configuration file declared: a user whose
+    profile points at an emulator saw their playbook go to production, with
+    real credentials and real resources. The default is now applied after the
+    profile is read, and the announced order, parameter then environment then
+    file, is honoured."
+  - "The secret key could appear in clear text in the failure message. The
+    SDK's validation raises ``Invalid secret key format 'SCW...'``, value
+    included, and Ansible only censors values that came from module parameters,
+    not those read from the configuration file: the key landed in the playbook
+    log and in CI artefacts. The message now names the rejected field, never
+    its value."

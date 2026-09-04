@@ -1,68 +1,67 @@
 # collection-scaleway
 
-Ce dépôt ne contient pas une collection Ansible écrite à la main : il contient
-le **générateur qui l'écrit**, les contrats versionnés qu'il lit, et les
-décisions qui transforment une API technique en interface Ansible cohérente.
+This repository does not contain a hand-written Ansible collection: it contains
+the **generator that writes it**, the versioned contracts it reads, and the
+decisions that turn a technical API into a coherent Ansible interface.
 
 ```{note}
-On ne suit pas l'API à la main, on la mesure. Scaleway a ajouté 453 méthodes
-SDK et en a retiré 26 en douze mois : une collection écrite à la main est
-périmée avant d'être publiée.
+We do not follow the API by hand, we measure it. Scaleway added 453 SDK methods
+and removed 26 in twelve months: a hand-written collection is stale before it
+is published.
 ```
 
-La frontière qui tranche toutes les ambiguïtés de conception :
+The boundary that settles every design ambiguity:
 
-> Terraform provisionne les ressources. Ansible exploite les ressources
-> existantes.
+> Terraform provisions resources. Ansible operates existing resources.
 
-## Par où commencer
+## Where to start
 
-- [Architecture du générateur](architecture/generateur.md) : le pipeline, les
-  décisions structurantes, et ce que le projet ne fait pas.
-- [L'inventaire dynamique](guides/inventaire-dynamique.md) : le guide d'usage
-  du plugin, et le piège d'Ansible sur le mode strict.
-- [Les contrats Scaleway](architecture/contrats-scaleway.md) : la source, ses
-  limites mesurées, sa surveillance.
+- [Generator architecture](architecture/generator.md): the pipeline, the
+  structural decisions, and what this project does not do.
+- [The dynamic inventory](guides/dynamic-inventory.md): the plugin's usage
+  guide, and Ansible's trap around strict mode.
+- [The Scaleway contracts](architecture/scaleway-contracts.md): the source, its
+  measured limits, and how it is watched.
 
 ```{toctree}
-:caption: Comprendre
+:caption: Understand
 :maxdepth: 2
 
-architecture/generateur
-architecture/contrats-scaleway
+architecture/generator
+architecture/scaleway-contracts
 architecture/runtime
 ```
 
 ```{toctree}
-:caption: Utiliser
+:caption: Use
 :maxdepth: 2
 
-guides/inventaire-dynamique
+guides/dynamic-inventory
 ```
 
 ```{toctree}
-:caption: Mesure
+:caption: Measurement
 :maxdepth: 2
 
 mesure/index
 ```
 
 ```{toctree}
-:caption: Référence de la collection
+:caption: Collection reference
 :maxdepth: 2
 
 collections/index
 ```
 
 ```{toctree}
-:caption: Le générateur
+:caption: The generator
 :maxdepth: 2
 
 api/index
 ```
 
 ```{toctree}
-:caption: Le dépôt
+:caption: The repository
 :maxdepth: 1
 
 scorecard

@@ -1,21 +1,20 @@
 ---
 bugfixes:
-  - "L'option ``organizations`` du plugin d'inventaire ne filtrait rien. Elle
-    était lue, portée par le contexte de découverte et comptée dans la clé de
-    cache, mais aucun provider ne la transmettait et aucun filtrage local ne
-    l'appliquait : l'inventaire était silencieusement plus large que demandé.
-    Elle est désormais transmise à l'API quand une seule organisation est
-    demandée, et **toujours** appliquée localement."
-  - "``strict`` n'entrait pas dans la clé de cache. Un inventaire partiel
-    enregistré avec ``strict: false`` était donc resservi tel quel à une
-    exécution qui demandait ``strict: true``, et comme la découverte n'était
-    pas rejouée, les erreurs déjà présentes ne provoquaient plus d'échec."
-  - "Un droit manquant sur IPAM ou VPC faisait échouer tout l'inventaire en
-    mode strict, y compris quand toutes les machines avaient une adresse
-    publique parfaitement joignable. C'est désormais un avertissement : c'est
-    un enrichissement qui n'a pas lieu, pas une découverte qui échoue."
+  - "The inventory plugin's ``organizations`` option filtered nothing. It was
+    read, carried by the discovery context and counted in the cache key, but no
+    provider passed it on and no local filtering applied it: the inventory was
+    silently wider than requested. It is now passed to the API when a single
+    organisation is requested, and **always** applied locally."
+  - "``strict`` did not enter the cache key. A partial inventory recorded with
+    ``strict: false`` was therefore served as is to a run asking for
+    ``strict: true``, and since discovery was not replayed, the errors already
+    present no longer caused a failure."
+  - "A missing permission on IPAM or VPC failed the whole inventory in strict
+    mode, including when every machine had a perfectly reachable public
+    address. It is now a warning: it is an enrichment that does not happen, not
+    a discovery that fails."
 minor_changes:
-  - "L'index IPAM et VPC n'est plus construit quand aucun produit demandé ne
-    porte de carte réseau privée. Un inventaire ``products: [apple_silicon]``
-    émettait douze appels d'API dont il ne faisait rien. La capacité est
-    déclarée par chaque provider, pas devinée par le cœur."
+  - "The IPAM and VPC index is no longer built when no requested product
+    carries private network cards. An inventory with ``products:
+    [apple_silicon]`` used to issue twelve API calls it made nothing of. The
+    capability is declared by each provider, not guessed by the core."

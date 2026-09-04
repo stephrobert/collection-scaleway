@@ -1,6 +1,5 @@
 ---
 minor_changes:
-  - "Le Load Balancer zoné rejoint la collection : treize modules de lecture,
-    de ``lb_load_balancer_info`` à ``lb_backend_stat_info``, produits par le
-    même générateur et depuis le même mécanisme que ceux d'Instance. La
-    collection en compte désormais 29."
+  - "The zoned Load Balancer joins the collection: twenty-one modules, from
+    ``lb_load_balancer_info`` to ``lb_backend_stat_info``, produced by the same
+    generator and through the same mechanism as those of Instance."
