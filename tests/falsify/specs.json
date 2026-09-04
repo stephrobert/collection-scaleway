@@ -766,6 +766,22 @@
       "find": "partial(ipam.list_i_ps_all, region=region, project_id=projet)",
       "replace": "partial(ipam.list_ips_all, region=region, project_id=projet)",
       "test": "tests/unit/inventory/test_derive_ipam_vpc.py::test_le_sdk_installe_porte_les_methodes_que_la_jointure_appelle"
+    },
+    {
+      "name": "artefact-compte-une-route-non-emulee",
+      "why": "Un 501 `not_emulated` n'exerce rien. Le compter comme joué ferait passer une limite déclarée de l'émulateur pour une preuve de couverture, et l'artefact deviendrait un compteur de bonnes intentions.",
+      "file": "scripts/example.py",
+      "find": "        if tache.get(\"verdict\") in (\"ok\", \"changed\") and tache.get(\"api_type\") != \"not_emulated\":",
+      "replace": "        if tache.get(\"verdict\") in (\"ok\", \"changed\") and tache.get(\"api_type\") != \"jamais_rendu_par_un_module\":",
+      "test": "tests/unit/outillage/test_artefact_exemple.py::test_une_route_non_emulee_est_appelee_mais_pas_jouee"
+    },
+    {
+      "name": "artefact-compte-une-tache-sautee",
+      "why": "Une tâche que `when` a écartée n'a parlé à personne. La compter revient à mesurer ce que le playbook nomme plutôt que ce qu'il joue, c'est-à-dire exactement ce que le plugin de rappel existe pour éviter.",
+      "file": "scripts/example.py",
+      "find": "        if tache.get(\"verdict\") in (\"ok\", \"changed\") ",
+      "replace": "        if tache.get(\"verdict\") in (\"ok\", \"changed\", \"skipped\") ",
+      "test": "tests/unit/outillage/test_artefact_exemple.py::test_une_tache_sautee_nest_pas_une_couverture"
     }
   ]
 }

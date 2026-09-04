@@ -32,14 +32,19 @@ import shutil
 import subprocess
 import sys
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 STACK = ROOT / "examples" / "stack"
 PLAYBOOKS = ROOT / "examples" / "playbooks"
+RAPPELS = ROOT / "examples" / "callback_plugins"
 TRAVAIL = ROOT / "build" / "example"
 CLE = TRAVAIL / "cle"
+
+#: Préfixe des modules de la collection, pour les distinguer d'`ansible.builtin`.
+PREFIXE_COLLECTION = "stephrobert.scaleway."
 
 #: L'adresse de l'émulateur de **cet exercice**, et surtout pas 4599.
 #:
@@ -424,6 +429,69 @@ def controler_sortie_internet(bastion_ip: str) -> None:
     )
 
 
+def artefact(journal: dict[str, Any], cible: str, run_id: str, residu: str) -> dict[str, Any]:
+    """Ce que cette exécution a couvert, dérivé de ce qui s'est réellement joué.
+
+    **Joué n'est pas appelé.** Analyser le playbook dirait quels modules il
+    nomme ; une tâche gardée par un `when` non satisfait ne touche pourtant
+    jamais l'API. Le journal vient du plugin de rappel, donc d'Ansible, qui est
+    le seul à connaître la différence.
+
+    Un module joué une fois et sauté ailleurs compte comme joué : ce qui est
+    demandé est « a-t-il tourné contre cette API », pas « toutes ses tâches
+    ont-elles tourné ».
+    """
+    joues: set[str] = set()
+    vus: set[str] = set()
+    for tache in journal.get("taches", []):
+        module = str(tache.get("module", ""))
+        if not module.startswith(PREFIXE_COLLECTION):
+            continue
+        court = module[len(PREFIXE_COLLECTION) :]
+        vus.add(court)
+        # Une route non émulée a bien été appelée, mais l'API n'a rien fait :
+        # la compter comme jouée ferait passer une limite de l'émulateur pour
+        # une preuve de couverture.
+        if tache.get("verdict") in ("ok", "changed") and tache.get("api_type") != "not_emulated":
+            joues.add(court)
+    faits = journal.get("faits", {})
+    return {
+        "cible": cible,
+        "run_id": run_id,
+        "horodatage": datetime.now(UTC).isoformat(timespec="seconds"),
+        "modules_joues": sorted(joues),
+        "modules_appeles_sans_reponse": sorted(vus - joues),
+        "taches_jouees": len(journal.get("taches", [])),
+        "routes_non_emulees": sorted(faits.get("non_emules", [])),
+        "idempotence_prouvee": sorted(faits.get("idempotences_prouvees", [])),
+        "reecritures_non_mesurees": sorted(faits.get("reecritures_non_mesurees", [])),
+        "residu": residu,
+    }
+
+
+def ecrire_artefact(chemin_journal: Path, cible: str, run_id: str, residu: str) -> Path | None:
+    """Écrit l'artefact à côté du journal, et rend son chemin.
+
+    Rend `None` quand rien n'a été journalisé : un artefact vide se lirait
+    comme une exécution qui n'a rien couvert, alors qu'elle n'a pas eu lieu.
+    """
+    if not chemin_journal.is_file():
+        return None
+    journal = json.loads(chemin_journal.read_text(encoding="utf-8"))
+    destination = TRAVAIL / f"{cible}-{run_id}.json"
+    contenu = artefact(journal, cible, run_id, residu)
+    destination.write_text(
+        json.dumps(contenu, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    # Un nom stable par cible, pour que la mesure suivante n'ait pas à deviner
+    # quel `run_id` était le dernier.
+    (TRAVAIL / f"dernier-{cible}.json").write_text(
+        destination.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    return destination
+
+
 def jouer(playbook: str, env: dict[str, str], variables: dict[str, str]) -> int:
     binaire_ansible = str(Path(sys.executable).parent / "ansible-playbook")
     inventaire_fichier = str(PLAYBOOKS / "inventaire.scaleway.yml")
@@ -450,6 +518,11 @@ def main(argv: list[str]) -> int:
         )
 
     run_id = f"{int(time.time()) % 100000}{secrets.token_hex(2)}"
+    # Sur l'émulateur il n'y a rien à vérifier, et le dire vaut mieux que
+    # d'écrire « aucun » sur un contrôle qui n'a pas eu lieu.
+    verdict_residu = (
+        "sans objet (émulateur)" if CIBLES[arguments.cible]["emulateur"] else "non vérifié"
+    )
     variables = {"run_id": run_id, "ssh_public_key": cle_ssh()}
     env = dict(os.environ)
     adopte = False
@@ -489,6 +562,16 @@ def main(argv: list[str]) -> int:
         residu = [sys.executable, str(ROOT / "scripts" / "residue.py"), "capture"]
         if lancer(residu).returncode != 0:
             raise ExempleError("la référence de résidu n'a pas pu être prise")
+
+    # Le journal d'exécution. Il s'accumule sur les trois playbooks, donc il
+    # part d'une page blanche : un journal de la veille ferait passer un module
+    # non joué pour un module éprouvé, et c'est précisément le mensonge que
+    # l'artefact existe pour empêcher.
+    journal = TRAVAIL / f"journal-{run_id}.json"
+    journal.unlink(missing_ok=True)
+    env["ANSIBLE_CALLBACK_PLUGINS"] = str(RAPPELS)
+    env["ANSIBLE_CALLBACKS_ENABLED"] = "journal"
+    env["EXEMPLE_JOURNAL"] = str(journal)
 
     env["ANSIBLE_COLLECTIONS_PATH"] = str(ROOT)
     env["ANSIBLE_HOST_KEY_CHECKING"] = "False"
@@ -556,6 +639,16 @@ def main(argv: list[str]) -> int:
                 verifier = [sys.executable, str(ROOT / "scripts" / "residue.py"), "verify"]
                 if lancer(verifier).returncode != 0:
                     code = 1
+                    verdict_residu = "non vérifié"
+                else:
+                    verdict_residu = "aucun"
+        # Dans le `finally`, et après le contrôle de résidu : une exécution qui
+        # a échoué au milieu a quand même couvert quelque chose, et c'est cette
+        # trace-là qui manquait. Un artefact écrit seulement en cas de succès
+        # aurait exactement le biais d'un test qui se saute quand il échoue.
+        ecrit = ecrire_artefact(journal, arguments.cible, run_id, verdict_residu)
+        if ecrit is not None:
+            print(f"\ncouverture de cette exécution : {ecrit.relative_to(ROOT)}")
         if cible["emulateur"] and not adopte and not arguments.garder:
             lancer([binaire("feint"), "stop", "--addr", ADRESSE], capture=True)
 
