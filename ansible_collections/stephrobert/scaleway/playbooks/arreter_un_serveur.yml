@@ -22,7 +22,11 @@
     server_id: ""
     # `poweroff` libère l'emplacement sur l'hyperviseur, `stop_in_place` le
     # garde. Les deux valeurs viennent du contrat, avec leurs conséquences.
-    action: poweroff
+    #
+    # `extinction` et non `action` : Ansible réserve ce nom, qui est aussi le
+    # mot-clé de tâche désignant le module à exécuter. Une variable qui le porte
+    # peut entrer en collision, et `ansible-lint` le refuse en profil basic.
+    extinction: poweroff
 
   tasks:
     - name: Sans Instance désignée, ne rien faire et le dire
@@ -41,14 +45,14 @@
 
     - name: Ce qui va être arrêté
       ansible.builtin.debug:
-        msg: "{{ avant.server.name }} est {{ avant.server.state }}, action demandée : {{ action }}"
+        msg: "{{ avant.server.name }} est {{ avant.server.state }}, action demandée : {{ extinction }}"
       when: server_id | length > 0
 
     - name: Arrêter l'Instance, et attendre l'état visé
       stephrobert.scaleway.instance_server_action:
         zone: "{{ zone }}"
         server_id: "{{ server_id }}"
-        action: "{{ action }}"
+        action: "{{ extinction }}"
       register: arret
       when: server_id | length > 0
 
@@ -63,6 +67,6 @@
       ansible.builtin.assert:
         that:
           - apres.server.state == 'stopped'
-        fail_msg: "état {{ apres.server.state }} après {{ action }}, 'stopped' attendu"
+        fail_msg: "état {{ apres.server.state }} après {{ extinction }}, 'stopped' attendu"
         success_msg: "{{ apres.server.name }} est {{ apres.server.state }}"
       when: server_id | length > 0

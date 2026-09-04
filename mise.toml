@@ -336,6 +336,15 @@ run = "python scripts/example.py reel"
 description = "Vérifier qu'aucune ressource de l'exemple ne survit sur le compte réel"
 run = "python scripts/residue.py verify"
 
+[tasks."lint:ansible"]
+description = "ansible-lint en profil production sur la collection livrée"
+# **Hors de `check`**, parce qu'`ansible-lint` n'est pas dans le verrou : il
+# emporte une trentaine de paquets et sa propre version d'ansible-core, ce qui
+# ferait entrer dans l'environnement de développement une seconde source de ce
+# que « ansible » veut dire. Il se lance avant une publication, et la CI
+# l'appelle dans le job de la collection.
+run = "python scripts/ansible_lint.py"
+
 [tasks."release:check"]
 description = "Ce qui doit être vrai avant de publier sur Galaxy"
 # **Hors de `check`**, et c'est délibéré : cette garde exige un tag qui désigne
