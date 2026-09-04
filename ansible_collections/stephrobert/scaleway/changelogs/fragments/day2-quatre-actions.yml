@@ -1,7 +1,0 @@
----
-minor_changes:
-  - "The example now exercises **all four** actions of the power module against
-    the real cloud, not two: ``poweroff``, ``poweron``, ``reboot`` and
-    ``stop_in_place``, each confirmed by the state the API returns. ``reboot``
-    and ``stop_in_place`` were exercised nowhere, while two closed defects bore
-    precisely on them."

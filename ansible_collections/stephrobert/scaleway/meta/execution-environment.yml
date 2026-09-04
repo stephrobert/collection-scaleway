@@ -6,6 +6,12 @@
 #
 # La dépendance déclarée ici est la vraie : les modules exécutent leurs appels
 # par le SDK Scaleway, et sans lui ils échouent avec `missing_required_lib`.
+# `version: 3` est **exigé** par le format, et son absence ne se voyait pas :
+# `ansible-builder` n'est lancé nulle part dans ce dépôt, et `ansible-test
+# sanity` ne juge pas ce fichier. C'est `ansible-lint` en profil production qui
+# l'a dit, la première fois qu'on le lance.
+version: 3
+
 dependencies:
   python: meta/ee-requirements.txt
   system: meta/ee-bindep.txt
