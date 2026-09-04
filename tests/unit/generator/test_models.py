@@ -576,3 +576,78 @@ def test_une_reponse_qui_ne_decrit_rien_nest_pas_une_lecture() -> None:
     """
     service = _lecture(payload_field=None, schema=None)
     assert _unitary_read_operation(service, "chose") is None
+
+
+# --- l'action dont l'action est l'opération --------------------------------
+
+
+def _plan_daction(nom_operation: str, corps: tuple[ApiParameter, ...]) -> ProductPlan:
+    """Une opération d'action construite à la main, avec le corps demandé."""
+    zone = ApiParameter(
+        name="zone", type=ApiType.STRING, required=True, location=ParameterLocation.PATH
+    )
+    cible = ApiParameter(
+        name="thing_id", type=ApiType.STRING, required=True, location=ParameterLocation.PATH
+    )
+    operation = ApiOperation(
+        id=nom_operation,
+        service="demo",
+        version="v1",
+        resource="thing",
+        http_method=HTTPMethod.POST,
+        path="/demo/v1/zones/{zone}/things/{thing_id}/migrate",
+        scope=Scope.ZONE,
+        parameters=(zone, cible, *corps),
+        response=ApiResponse(payload_field="task"),
+    )
+    service = ApiService(name="demo", version="v1", operations=(operation,))
+    return plan_service(service, OverrideSet(source=None))
+
+
+def test_une_action_sans_enum_de_corps_nexpose_pas_doption_action() -> None:
+    """`MigrateLb` migre, et n'a pas à le dire une seconde fois.
+
+    Le modèle exigeait un enum de corps, parce qu'il avait été écrit pour
+    `ServerAction`, où un point d'entrée porte quatre actions. Trois opérations
+    des deux contrats font **une** chose que leur chemin nomme, et n'en portent
+    donc aucun.
+    """
+    taille = ApiParameter(
+        name="type", type=ApiType.STRING, required=True, location=ParameterLocation.BODY
+    )
+    spec = _spec(_plan_daction("MigrateThing", (taille,)), "demo_thing_action")
+    assert spec.action_parameter is None
+    noms = {option.name for option in spec.options}
+    assert "action" not in noms
+    assert {"zone", "thing_id", "type"} <= noms
+
+
+def test_une_action_sans_corps_du_tout_reste_constructible() -> None:
+    """`ReleaseIpToIpam` ne prend aucun paramètre : l'identifiant suffit."""
+    spec = _spec(_plan_daction("ReleaseThingToIpam", ()), "demo_thing_action")
+    assert spec.action_parameter is None
+    assert {option.name for option in spec.options} >= {"zone", "thing_id"}
+
+
+def test_deux_enums_de_corps_restent_un_refus() -> None:
+    """Choisir au hasard produirait un module qui déclenche autre chose.
+
+    C'est la moitié de la garde qui ne bouge pas : passer de « exactement un »
+    à « au plus un » ne devait pas ouvrir la porte à l'ambiguïté.
+    """
+    premier = ApiParameter(
+        name="action",
+        type=ApiType.ENUM,
+        required=True,
+        location=ParameterLocation.BODY,
+        enum_values=("a", "b"),
+    )
+    second = ApiParameter(
+        name="mode",
+        type=ApiType.ENUM,
+        required=True,
+        location=ParameterLocation.BODY,
+        enum_values=("x", "y"),
+    )
+    with pytest.raises(AmbiguousModule, match="2 paramètre"):
+        _spec(_plan_daction("DoThing", (premier, second)), "demo_thing_action")

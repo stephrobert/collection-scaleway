@@ -822,6 +822,22 @@
       "find": "    if denominateur == 0:\n        return \"n/a\"",
       "replace": "    if denominateur == 0:\n        return \"0,0 %\"",
       "test": "tests/unit/outillage/test_couverture_exemple.py::test_sans_module_le_ratio_est_indefini_pas_nul"
+    },
+    {
+      "name": "deux-actions-de-corps-acceptees",
+      "why": "Le modèle accepte désormais zéro enum de corps, pour les opérations dont l'action est l'opération. Accepter aussi **deux** enums ferait choisir au hasard lequel porte l'action, et le module déclencherait autre chose que ce que le playbook croit demander.",
+      "file": "generator/ansible/models.py",
+      "find": "    if len(candidats) > 1:",
+      "replace": "    if len(candidats) > 2:",
+      "test": "tests/unit/generator/test_models.py::test_deux_enums_de_corps_restent_un_refus"
+    },
+    {
+      "name": "action-implicite-sans-nom",
+      "why": "Sans le repli sur l'identifiant de l'opération, un module d'action implicite rend `action: None` : le journal d'un playbook ne dit plus ce qui a été déclenché, sur les seules opérations qui ne le disent pas déjà par une option.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        else spec.operation.id\n    )",
+      "replace": "        else None\n    )",
+      "test": "tests/unit/collection/test_runtime.py::test_une_action_implicite_rend_le_nom_de_loperation"
     }
   ]
 }

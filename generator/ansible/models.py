@@ -422,12 +422,20 @@ def _build_action_module(
     identifiants = tuple(
         nom for nom in action_operation.path_params if nom not in ("zone", "region")
     )
-    options, limits = _build_options(
-        [item.operation],
-        ("zone", "region", *identifiants, parametre),
-        override,
-    )
-    choix = next((o.choices for o in options if o.name == parametre), ())
+    priorites = ("zone", "region", *identifiants)
+    if parametre is not None:
+        priorites = (*priorites, parametre)
+    options, limits = _build_options([item.operation], priorites, override)
+
+    # **Ce qu'un override d'attente a le droit de nommer.** Quand l'action est
+    # une valeur, ce sont les valeurs exposées. Quand l'action est l'opération,
+    # c'est l'identifiant de cette opération, et il n'y en a qu'un : le
+    # contrôle qui refuse un état promis pour une action inconnue continue donc
+    # de mordre dans les deux formes.
+    if parametre is None:
+        choix: tuple[str, ...] = (item.operation.id,)
+    else:
+        choix = next((o.choices for o in options if o.name == parametre), ())
 
     wait_states, state_field, read_operation = _wait_contract(
         name, service, item, override, choix, overrides
@@ -598,24 +606,33 @@ def _manage_examples(
     )
 
 
-def _action_parameter(operation: ApiOperation, name: str) -> str:
-    """Le paramètre de corps qui porte l'action, déduit du contrat.
+def _action_parameter(operation: ApiOperation, name: str) -> str | None:
+    """Le paramètre de corps qui porte l'action, ou `None` si l'action est l'opération.
 
-    C'est le seul paramètre de corps qui soit un enum. Plusieurs, ou aucun, et
-    le modèle refuse : choisir au hasard produirait un module qui déclenche
-    autre chose que ce qu'on croit.
+    Deux formes existent, et le contrat dit laquelle :
+
+    * **l'action est une valeur.** `ServerAction` porte un enum de corps,
+      `poweron`, `poweroff`, `reboot`, `stop_in_place` : un seul point d'entrée
+      pour plusieurs actions, et le module expose l'enum en option ;
+    * **l'action est l'opération.** `MigrateLb` migre, `ExportSnapshot` exporte,
+      `ReleaseIpToIpam` rend une adresse à l'IPAM. Chacune fait une chose, et
+      son chemin la nomme. Exiger un paramètre `action` reviendrait à écrire
+      `action: migrate` sur un module qui ne sait faire que migrer.
+
+    **Plusieurs** enums de corps restent un refus : choisir au hasard
+    produirait un module qui déclenche autre chose que ce qu'on croit.
     """
     candidats = [
         parameter.name
         for parameter in operation.parameters
         if parameter.location is ParameterLocation.BODY and parameter.type is ApiType.ENUM
     ]
-    if len(candidats) != 1:
+    if len(candidats) > 1:
         raise AmbiguousModule(
             f"{name} : {len(candidats)} paramètre(s) d'action dans le corps de "
-            f"{operation.id} ({candidats}), le modèle en attend exactement un"
+            f"{operation.id} ({candidats}), le modèle n'en attend qu'un au plus"
         )
-    return candidats[0]
+    return candidats[0] if candidats else None
 
 
 def _wait_contract(
@@ -807,14 +824,22 @@ def _action_short_description(service: ApiService, resource: str) -> str:
 
 def _action_returns(
     operation: OperationBinding,
-    action_parameter: str,
+    action_parameter: str | None,
     state_field: str,
     wait_states: tuple[tuple[str, str], ...],
 ) -> tuple[ReturnValue, ...]:
+    # Le module rend toujours `action`, sous les deux formes. Quand l'action est
+    # l'opération, la valeur rendue est son identifiant : un lecteur de journal
+    # veut savoir ce qui a été déclenché, et « MigrateLb » le dit mieux qu'un
+    # champ absent.
     valeurs = [
         ReturnValue(
-            name=action_parameter,
-            description=("The action that was requested.",),
+            name="action",
+            description=(
+                "The action that was requested."
+                if action_parameter
+                else "The operation that was triggered.",
+            ),
             returned="always",
             type="str",
         )
@@ -844,7 +869,7 @@ def _action_examples(
     name: str,
     collection: Collection,
     options: tuple[AnsibleOption, ...],
-    action_parameter: str,
+    action_parameter: str | None,
     operation: OperationBinding,
 ) -> tuple[ExampleTask, ...]:
     """Un exemple par action exposée : c'est ce qu'un lecteur vient chercher."""
@@ -854,8 +879,20 @@ def _action_examples(
         for option in options
         if option.required and option.name != action_parameter
     }
-    action_option = next(option for option in options if option.name == action_parameter)
 
+    if action_parameter is None:
+        # Une seule action, donc un seul exemple, et il porte les paramètres
+        # obligatoires de l'opération plutôt qu'une valeur d'enum.
+        return (
+            ExampleTask(
+                name=_phrase_daction(operation),
+                module=module,
+                parameters=requis,
+                register="result",
+            ),
+        )
+
+    action_option = next(option for option in options if option.name == action_parameter)
     return tuple(
         ExampleTask(
             name=f"{valeur.replace('_', ' ').capitalize()} an Instance",
@@ -865,6 +902,18 @@ def _action_examples(
         )
         for valeur in action_option.choices
     )
+
+
+def _phrase_daction(operation: OperationBinding) -> str:
+    """Le nom de l'exemple, tiré du chemin plutôt que de l'identifiant.
+
+    Le dernier segment du chemin est le verbe de l'API, `migrate`, `export`,
+    `release-to-ipam`. Il décrit l'action mieux que `MigrateLb`, qui répète le
+    nom de la ressource que le module porte déjà.
+    """
+    segment = operation.path.rstrip("/").rsplit("/", 1)[-1]
+    verbe = segment.replace("-", " ").replace("_", " ")
+    return verbe.capitalize() if verbe and "{" not in segment else "Trigger the operation"
 
 
 def _is_list(operation: ApiOperation) -> bool:
