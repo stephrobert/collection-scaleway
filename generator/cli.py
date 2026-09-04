@@ -22,7 +22,7 @@ from pathlib import Path
 
 from generator.ansible.collection import CollectionError, load_collection
 from generator.ansible.models import ModuleModelError, build_module_specs
-from generator.overrides.loader import OverrideError
+from generator.overrides.loader import DEFAULT_OVERRIDES_ROOT, OverrideError
 from generator.parser.openapi import ParseError, parse_document
 from generator.plan import ProductPlan, build_plan
 from generator.renderer.modules import write_modules
@@ -49,6 +49,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=DEFAULT_SPEC_ROOT,
         help="racine des contrats versionnés (défaut : specs/scaleway)",
+    )
+    parser.add_argument(
+        "--overrides-root",
+        type=Path,
+        default=DEFAULT_OVERRIDES_ROOT,
+        help="racine des décisions humaines (défaut : generator/overrides)",
     )
     subcommands = parser.add_subparsers(dest="command", required=True)
 
@@ -117,7 +123,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if arguments.command == "inspect":
             return _inspect(arguments.product, version, arguments.spec_root)
-        plan = build_plan(arguments.product, version, spec_root=arguments.spec_root)
+        plan = build_plan(
+            arguments.product,
+            version,
+            spec_root=arguments.spec_root,
+            overrides_root=arguments.overrides_root,
+        )
     except SpecNotFoundError as error:
         print(f"erreur : {error}", file=sys.stderr)
         return EXIT_ERROR
@@ -143,6 +154,24 @@ def main(argv: list[str] | None = None) -> int:
     (output_dir / f"{slug}.md").write_text(render.to_markdown(plan), encoding="utf-8")
     print(render.to_text(plan), end="")
     print(f"\nrapports écrits dans {output_dir}/{slug}.{{json,md}}")
+
+    if arguments.strict and not plan.operations:
+        # **Un rapport qui n'a rien découvert n'est pas un rapport vert.** Sans
+        # cette garde, un contrat vide, mal lu ou pointant vers le mauvais
+        # fichier sort en 0 : zéro opération non classée, zéro override
+        # orphelin, donc tout va bien. C'est indiscernable d'un produit
+        # parfaitement classé, et c'est le vert le plus gratuit qu'un dépôt
+        # puisse produire.
+        #
+        # Code 1 et non 2 : la règle 9 réserve le 2 à une opération non triée ou
+        # à un override orphelin. Ici il n'y a pas de décision en suspens, il y
+        # a une entrée cassée.
+        print(
+            f"erreur : {plan.service.slug} ne déclare aucune opération. "
+            "Un rapport qui ne mesure rien passerait pour un rapport vert.",
+            file=sys.stderr,
+        )
+        return EXIT_ERROR
 
     if arguments.strict and (plan.unknown or plan.orphan_overrides):
         print(

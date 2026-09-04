@@ -320,23 +320,26 @@
     # `GetBackend` l'ignore, et c'est la même mécanique qui rend `server_id`
     # optionnel sur `instance_server_info`. L'identifiant vient donc du module
     # appelé juste au-dessus, comme partout ailleurs dans ce playbook.
+    - name: L'identifiant du load balancer de la stack, calculé une fois
+      ansible.builtin.set_fact:
+        notre_lb: "{{ (balanceurs.lbs | default([])
+          | selectattr('name', 'search', prefixe) | list | first).id | default('') }}"
+
     - name: Les backends de ce load balancer
       stephrobert.scaleway.lb_backend_info:
         zone: "{{ zone }}"
-        lb_id: "{{ (balanceurs.lbs | default([])
-          | selectattr('name', 'search', prefixe) | first).id }}"
+        lb_id: "{{ notre_lb }}"
       register: backends
-      when: balanceurs.lbs | default([]) | selectattr('name', 'search', prefixe) | list | length == 1
+      when: notre_lb | length > 0
       failed_when: backends.failed | default(false)
         and backends.api_type | default('') != 'not_emulated'
 
     - name: Les frontends de ce load balancer
       stephrobert.scaleway.lb_frontend_info:
         zone: "{{ zone }}"
-        lb_id: "{{ (balanceurs.lbs | default([])
-          | selectattr('name', 'search', prefixe) | first).id }}"
+        lb_id: "{{ notre_lb }}"
       register: frontends
-      when: balanceurs.lbs | default([]) | selectattr('name', 'search', prefixe) | list | length == 1
+      when: notre_lb | length > 0
       failed_when: frontends.failed | default(false)
         and frontends.api_type | default('') != 'not_emulated'
 
@@ -354,9 +357,86 @@
       failed_when: adresses_lb.failed | default(false)
         and adresses_lb.api_type | default('') != 'not_emulated'
 
+    # ---- Les lectures du Load Balancer qui dépendent d'une ressource -----
+    #
+    # Chacune exige un identifiant qu'un module appelé plus haut a rendu. C'est
+    # la même chaîne que partout ailleurs dans ce playbook : aucun UUID n'est
+    # écrit à la main.
+
+    - name: Les statistiques du load balancer
+      stephrobert.scaleway.lb_load_balancer_stat_info:
+        zone: "{{ zone }}"
+        lb_id: "{{ notre_lb }}"
+      register: stats_lb
+      when: notre_lb | length > 0
+      failed_when: stats_lb.failed | default(false)
+        and stats_lb.api_type | default('') != 'not_emulated'
+
+    - name: Les statistiques par backend
+      stephrobert.scaleway.lb_backend_stat_info:
+        zone: "{{ zone }}"
+        lb_id: "{{ notre_lb }}"
+      register: stats_backend
+      when: notre_lb | length > 0
+      failed_when: stats_backend.failed | default(false)
+        and stats_backend.api_type | default('') != 'not_emulated'
+
+    - name: Les réseaux privés auxquels le load balancer est rattaché
+      stephrobert.scaleway.lb_load_balancer_private_network_info:
+        zone: "{{ zone }}"
+        lb_id: "{{ notre_lb }}"
+      register: reseaux_lb
+      when: notre_lb | length > 0
+      failed_when: reseaux_lb.failed | default(false)
+        and reseaux_lb.api_type | default('') != 'not_emulated'
+
+    - name: Les ACL du frontend
+      stephrobert.scaleway.lb_frontend_acl_info:
+        zone: "{{ zone }}"
+        frontend_id: "{{ (frontends.frontends | default([])
+          | selectattr('name', 'search', prefixe) | first).id }}"
+      register: acls
+      when: frontends.frontends | default([]) | selectattr('name', 'search', prefixe)
+        | list | length == 1
+      failed_when: acls.failed | default(false)
+        and acls.api_type | default('') != 'not_emulated'
+
+    # Les trois catalogues du Load Balancer que la stack ne peuple pas. Ils
+    # rendent une liste vide, et c'est une réponse : un module qui répond `[]`
+    # sur un parc sans certificat dit la vérité. Les appeler prouve qu'ils
+    # répondent, ce qu'aucun test unitaire ne dit.
+
+    # `lb_certificate_info` liste **par load balancer**, pas par zone : son
+    # chemin est `/lbs/{lb_id}/certificates`. Les deux suivants listent bien par
+    # zone. Le module ne pouvait pas le deviner à ma place, et il a refusé avec
+    # le bon message plutôt que d'envoyer un chemin troué.
+    - name: Les certificats de ce load balancer
+      stephrobert.scaleway.lb_certificate_info:
+        zone: "{{ zone }}"
+        lb_id: "{{ notre_lb }}"
+      register: certificats
+      when: notre_lb | length > 0
+      failed_when: certificats.failed | default(false)
+        and certificats.api_type | default('') != 'not_emulated'
+
+    - name: Les routes
+      stephrobert.scaleway.lb_route_info:
+        zone: "{{ zone }}"
+      register: routes
+      failed_when: routes.failed | default(false)
+        and routes.api_type | default('') != 'not_emulated'
+
+    - name: Les abonnés aux alertes
+      stephrobert.scaleway.lb_subscriber_info:
+        zone: "{{ zone }}"
+      register: abonnes
+      failed_when: abonnes.failed | default(false)
+        and abonnes.api_type | default('') != 'not_emulated'
+
     - name: Ce que l'émulateur ne sert pas du Load Balancer
       ansible.builtin.set_fact:
-        non_emules_lb: "{{ [balanceurs, backends, frontends, types_lb, adresses_lb]
+        non_emules_lb: "{{ [balanceurs, backends, frontends, types_lb, adresses_lb,
+          stats_lb, stats_backend, reseaux_lb, acls, certificats, routes, abonnes]
           | selectattr('api_type', 'defined')
           | selectattr('api_type', 'equalto', 'not_emulated')
           | map(attribute='operation') | list }}"
@@ -456,6 +536,376 @@
           Idempotence prouvée : première écriture `changed`, seconde inchangée,
           check mode sans effet.
         quiet: true
+
+    # ---- Les écritures, et leur idempotence -----------------------------
+    #
+    # **C'est ici que la collection se prouve.** Un module de gestion lit,
+    # compare, et n'écrit que la différence. Ce qui peut casser est que l'API
+    # **normalise** ce qu'on lui envoie et rende autre chose : la comparaison
+    # voit alors une différence à chaque exécution, et un playbook qui devrait
+    # être stable ne l'est jamais. Aucun test unitaire ne peut le dire.
+    #
+    # Chaque module est joué **deux fois**. La première écriture peut changer ou
+    # non, selon l'état de départ, et ça ne se contrôle pas : ce qui se contrôle
+    # est que la **seconde** ne change rien.
+    #
+    # **Sur des listes, pas seulement des chaînes.** `tags` est le champ où la
+    # normalisation frappe, parce que rien ne dit qu'une API rend une liste dans
+    # l'ordre reçu. Cinq des six écritures portent donc sur des tags.
+    #
+    # Écrit à plat plutôt qu'en boucle : quand une assertion rougit, on veut
+    # savoir **lequel** des modules a échoué sans lire un index.
+    #
+    # Les ressources touchées appartiennent toutes à la stack, et la destruction
+    # les emporte.
+
+    - name: Une marque propre à cette exécution
+      ansible.builtin.set_fact:
+        marque: "exemple-{{ 999999 | random }}"
+
+    - name: Écrire le tag d'un worker
+      stephrobert.scaleway.instance_server:
+        zone: "{{ zone }}"
+        server_id: "{{ worker_id }}"
+        tags: [exemple, "{{ marque }}"]
+      register: ecrit_serveur
+      failed_when: ecrit_serveur.failed | default(false)
+        and ecrit_serveur.api_type | default('') != 'not_emulated'
+
+    - name: Réécrire le tag d'un worker, à l'identique
+      stephrobert.scaleway.instance_server:
+        zone: "{{ zone }}"
+        server_id: "{{ worker_id }}"
+        tags: [exemple, "{{ marque }}"]
+      register: repris_serveur
+      failed_when: repris_serveur.failed | default(false)
+        and repris_serveur.api_type | default('') != 'not_emulated'
+
+    - name: instance_server est idempotent
+      ansible.builtin.assert:
+        that:
+          - repris_serveur.api_type | default('') == 'not_emulated'
+            or not repris_serveur.changed
+        fail_msg: >-
+          `instance_server` a rendu `changed` sur une écriture identique. L'API a
+          normalisé un champ, ou la comparaison porte sur autre chose que ce
+          qu'elle croit.
+        quiet: true
+
+    - name: Écrire le tag de l'adresse publique du bastion
+      stephrobert.scaleway.instance_ip:
+        zone: "{{ zone }}"
+        ip: "{{ (adresses.ips | selectattr('tags', 'contains', 'exemple')
+          | list | first).address }}"
+        tags: [exemple, "{{ marque }}"]
+      register: ecrit_adresse
+      failed_when: ecrit_adresse.failed | default(false)
+        and ecrit_adresse.api_type | default('') != 'not_emulated'
+
+    - name: Réécrire le tag de l'adresse publique du bastion, à l'identique
+      stephrobert.scaleway.instance_ip:
+        zone: "{{ zone }}"
+        ip: "{{ (adresses.ips | selectattr('tags', 'contains', 'exemple')
+          | list | first).address }}"
+        tags: [exemple, "{{ marque }}"]
+      register: repris_adresse
+      failed_when: repris_adresse.failed | default(false)
+        and repris_adresse.api_type | default('') != 'not_emulated'
+
+    - name: instance_ip est idempotent
+      ansible.builtin.assert:
+        that:
+          - repris_adresse.api_type | default('') == 'not_emulated'
+            or not repris_adresse.changed
+        fail_msg: >-
+          `instance_ip` a rendu `changed` sur une écriture identique. L'API a
+          normalisé un champ, ou la comparaison porte sur autre chose que ce
+          qu'elle croit.
+        quiet: true
+
+    - name: Écrire le tag du groupe de placement
+      stephrobert.scaleway.instance_placement_group:
+        zone: "{{ zone }}"
+        placement_group_id: "{{ (placement.placement_groups
+          | selectattr('name', 'search', prefixe) | first).id }}"
+        tags: [exemple, "{{ marque }}"]
+      register: ecrit_placement
+      failed_when: ecrit_placement.failed | default(false)
+        and ecrit_placement.api_type | default('') != 'not_emulated'
+
+    - name: Réécrire le tag du groupe de placement, à l'identique
+      stephrobert.scaleway.instance_placement_group:
+        zone: "{{ zone }}"
+        placement_group_id: "{{ (placement.placement_groups
+          | selectattr('name', 'search', prefixe) | first).id }}"
+        tags: [exemple, "{{ marque }}"]
+      register: repris_placement
+      failed_when: repris_placement.failed | default(false)
+        and repris_placement.api_type | default('') != 'not_emulated'
+
+    - name: instance_placement_group est idempotent
+      ansible.builtin.assert:
+        that:
+          - repris_placement.api_type | default('') == 'not_emulated'
+            or not repris_placement.changed
+        fail_msg: >-
+          `instance_placement_group` a rendu `changed` sur une écriture identique. L'API a
+          normalisé un champ, ou la comparaison porte sur autre chose que ce
+          qu'elle croit.
+        quiet: true
+
+    - name: Écrire le tag d'une carte réseau privée
+      stephrobert.scaleway.instance_server_private_nic:
+        zone: "{{ zone }}"
+        server_id: "{{ worker_id }}"
+        private_nic_id: "{{ (cartes.private_nics | first).id }}"
+        tags: [exemple, "{{ marque }}"]
+      register: ecrit_carte
+      failed_when: ecrit_carte.failed | default(false)
+        and ecrit_carte.api_type | default('') != 'not_emulated'
+      when: cartes.private_nics | default([]) | length == 1
+
+    - name: Réécrire le tag d'une carte réseau privée, à l'identique
+      stephrobert.scaleway.instance_server_private_nic:
+        zone: "{{ zone }}"
+        server_id: "{{ worker_id }}"
+        private_nic_id: "{{ (cartes.private_nics | first).id }}"
+        tags: [exemple, "{{ marque }}"]
+      register: repris_carte
+      failed_when: repris_carte.failed | default(false)
+        and repris_carte.api_type | default('') != 'not_emulated'
+      when: cartes.private_nics | default([]) | length == 1
+
+    - name: instance_server_private_nic est idempotent
+      ansible.builtin.assert:
+        that:
+          - repris_carte.api_type | default('') == 'not_emulated'
+            or not repris_carte.changed
+        fail_msg: >-
+          `instance_server_private_nic` a rendu `changed` sur une écriture identique. L'API a
+          normalisé un champ, ou la comparaison porte sur autre chose que ce
+          qu'elle croit.
+        quiet: true
+      when: cartes.private_nics | default([]) | length == 1
+
+    - name: Écrire le tag et la description du load balancer
+      stephrobert.scaleway.lb_load_balancer:
+        zone: "{{ zone }}"
+        lb_id: "{{ notre_lb }}"
+        name: "{{ (balanceurs.lbs | selectattr('name', 'search', prefixe)
+          | first).name }}"
+        description: "Décrit par l'exemple"
+        tags: [exemple, "{{ marque }}"]
+      register: ecrit_lb
+      failed_when: ecrit_lb.failed | default(false)
+        and ecrit_lb.api_type | default('') != 'not_emulated'
+      when: notre_lb | length > 0
+
+    - name: Réécrire le tag et la description du load balancer, à l'identique
+      stephrobert.scaleway.lb_load_balancer:
+        zone: "{{ zone }}"
+        lb_id: "{{ notre_lb }}"
+        name: "{{ (balanceurs.lbs | selectattr('name', 'search', prefixe)
+          | first).name }}"
+        description: "Décrit par l'exemple"
+        tags: [exemple, "{{ marque }}"]
+      register: repris_lb
+      failed_when: repris_lb.failed | default(false)
+        and repris_lb.api_type | default('') != 'not_emulated'
+      when: notre_lb | length > 0
+
+    - name: lb_load_balancer est idempotent
+      ansible.builtin.assert:
+        that:
+          - repris_lb.api_type | default('') == 'not_emulated'
+            or not repris_lb.changed
+        fail_msg: >-
+          `lb_load_balancer` a rendu `changed` sur une écriture identique. L'API a
+          normalisé un champ, ou la comparaison porte sur autre chose que ce
+          qu'elle croit.
+        quiet: true
+      when: notre_lb | length > 0
+
+    - name: Écrire le tag de l'adresse du load balancer
+      stephrobert.scaleway.lb_ip:
+        zone: "{{ zone }}"
+        ip_id: "{{ (adresses_lb.ips | default([]) | first).id }}"
+        tags: [exemple, "{{ marque }}"]
+      register: ecrit_adresse_lb
+      failed_when: ecrit_adresse_lb.failed | default(false)
+        and ecrit_adresse_lb.api_type | default('') != 'not_emulated'
+      when: adresses_lb.ips | default([]) | length > 0
+
+    - name: Réécrire le tag de l'adresse du load balancer, à l'identique
+      stephrobert.scaleway.lb_ip:
+        zone: "{{ zone }}"
+        ip_id: "{{ (adresses_lb.ips | default([]) | first).id }}"
+        tags: [exemple, "{{ marque }}"]
+      register: repris_adresse_lb
+      failed_when: repris_adresse_lb.failed | default(false)
+        and repris_adresse_lb.api_type | default('') != 'not_emulated'
+      when: adresses_lb.ips | default([]) | length > 0
+
+    - name: lb_ip est idempotent
+      ansible.builtin.assert:
+        that:
+          - repris_adresse_lb.api_type | default('') == 'not_emulated'
+            or not repris_adresse_lb.changed
+        fail_msg: >-
+          `lb_ip` a rendu `changed` sur une écriture identique. L'API a
+          normalisé un champ, ou la comparaison porte sur autre chose que ce
+          qu'elle croit.
+        quiet: true
+      when: adresses_lb.ips | default([]) | length > 0
+
+    # Les trois derniers ont une cible, et leurs champs obligatoires viennent
+    # de ce que la lecture a rendu. C'est le cas le plus exigeant du lot :
+    # `lb_backend` déclare sept paramètres requis, et les réécrire à
+    # l'identique est exactement ce qu'un opérateur fait quand il ne change
+    # qu'une valeur.
+
+    - name: L'ACL du frontend, lue par son identifiant
+      stephrobert.scaleway.lb_acl_info:
+        zone: "{{ zone }}"
+        acl_id: "{{ (acls.acls | first).id }}"
+      register: une_acl
+      failed_when: une_acl.failed | default(false)
+        and une_acl.api_type | default('') != 'not_emulated'
+      when: acls.acls | default([]) | length > 0
+
+    - name: Réécrire cette ACL à l'identique
+      stephrobert.scaleway.lb_acl:
+        zone: "{{ zone }}"
+        acl_id: "{{ (acls.acls | first).id }}"
+        name: "{{ (acls.acls | first).name }}"
+        index: "{{ (acls.acls | first).index }}"
+        action: "{{ (acls.acls | first).action }}"
+      register: repris_acl
+      failed_when: repris_acl.failed | default(false)
+        and repris_acl.api_type | default('') != 'not_emulated'
+      when: acls.acls | default([]) | length > 0
+
+    - name: Réécrire le backend à l'identique
+      stephrobert.scaleway.lb_backend:
+        zone: "{{ zone }}"
+        backend_id: "{{ (backends.backends | first).id }}"
+        name: "{{ (backends.backends | first).name }}"
+        forward_protocol: "{{ (backends.backends | first).forward_protocol }}"
+        forward_port: "{{ (backends.backends | first).forward_port }}"
+        forward_port_algorithm: "{{ (backends.backends | first).forward_port_algorithm }}"
+        sticky_sessions: "{{ (backends.backends | first).sticky_sessions }}"
+      register: repris_backend
+      failed_when: repris_backend.failed | default(false)
+        and repris_backend.api_type | default('') != 'not_emulated'
+      when: backends.backends | default([]) | length > 0
+
+    - name: Réécrire le frontend à l'identique
+      stephrobert.scaleway.lb_frontend:
+        zone: "{{ zone }}"
+        frontend_id: "{{ (frontends.frontends | first).id }}"
+        name: "{{ (frontends.frontends | first).name }}"
+        inbound_port: "{{ (frontends.frontends | first).inbound_port }}"
+        backend_id: "{{ (frontends.frontends | first).backend.id }}"
+      register: repris_frontend
+      failed_when: repris_frontend.failed | default(false)
+        and repris_frontend.api_type | default('') != 'not_emulated'
+      when: frontends.frontends | default([]) | length > 0
+
+    - name: Les trois sous-ressources du load balancer sont idempotentes
+      ansible.builtin.assert:
+        that:
+          - repris_acl.api_type | default('') == 'not_emulated'
+            or not (repris_acl.changed | default(false))
+          - repris_backend.api_type | default('') == 'not_emulated'
+            or not (repris_backend.changed | default(false))
+          - repris_frontend.api_type | default('') == 'not_emulated'
+            or not (repris_frontend.changed | default(false))
+        fail_msg: >-
+          Une réécriture identique a rendu `changed` :
+          acl={{ repris_acl.changed | default('non joué') }}
+          backend={{ repris_backend.changed | default('non joué') }}
+          frontend={{ repris_frontend.changed | default('non joué') }}
+        quiet: true
+
+    # ---- Ce que ces réécritures ont prouvé, et ce qu'elles n'ont pas mesuré
+    #
+    # **Une tolérance sans compte se lit comme une preuve.** Chaque assertion
+    # d'idempotence ci-dessus tolère une route non émulée par une disjonction, et
+    # c'est voulu : contre l'émulateur, une route absente n'est pas un défaut de
+    # la collection. Mais une assertion satisfaite par sa branche de tolérance ne
+    # vérifie rien, et rien ne distinguait ensuite « prouvé » de « non mesuré ».
+    # Le compte rendu annonçait « les modules de gestion sont idempotents » sans
+    # dire sur combien.
+    #
+    # Le recensement se construit **depuis les noms de variables**, pas depuis
+    # une liste tenue à la main. Une liste écrite à la main dériverait le jour où
+    # quelqu'un ajoute une écriture sans l'y inscrire, et ce serait le même
+    # défaut remonté d'un cran : un compte qui se lit comme une mesure.
+
+    - name: Les réécritures identiques, recensées par leur registre
+      ansible.builtin.set_fact:
+        noms_repris: "{{ query('varnames', '^repris_') | sort }}"
+
+    - name: Chaque réécriture, avec ce que son module a rendu
+      ansible.builtin.set_fact:
+        reecritures: "{{ dict(noms_repris
+          | zip(noms_repris | map('extract', vars))) | dict2items }}"
+
+    - name: Ce que la cible n'a pas mesuré, faute de cible ou faute de route
+      ansible.builtin.set_fact:
+        # Sautée : la stack n'a pas fourni la ressource, donc rien n'a été
+        # écrit. Non émulée : feint ne sert pas la route. Dans les deux cas
+        # l'assertion est passée sans rien vérifier.
+        reecritures_non_mesurees: "{{ ((reecritures
+          | selectattr('value.skipped', 'defined')
+          | map(attribute='key') | list) + (reecritures
+          | selectattr('value.api_type', 'defined')
+          | selectattr('value.api_type', 'equalto', 'not_emulated')
+          | map(attribute='key') | list)) | unique | sort }}"
+
+    - name: Les idempotences réellement prouvées
+      ansible.builtin.set_fact:
+        idempotences_prouvees: "{{ noms_repris
+          | reject('in', reecritures_non_mesurees) | list }}"
+
+    - name: Combien d'idempotences cette exécution a prouvées
+      ansible.builtin.debug:
+        msg: >-
+          {{ idempotences_prouvees | length }} idempotence(s) prouvée(s)
+          sur {{ noms_repris | length }} réécriture(s) jouée(s){{
+          '' if reecritures_non_mesurees | length == 0
+          else ' · non mesurée(s) : ' ~ reecritures_non_mesurees | join(', ') }}
+
+    - name: Contre le cloud réel, chaque réécriture doit être mesurée
+      ansible.builtin.assert:
+        that:
+          - reecritures_non_mesurees | length == 0
+        fail_msg: >-
+          Réécritures non mesurées sur le compte réel :
+          {{ reecritures_non_mesurees | join(', ') }}.
+          Une route absente ou une cible manquante y est un défaut, pas une
+          limite déclarée : les neuf ressources visées sont toutes créées par
+          la stack Terraform.
+        quiet: true
+      when: cible == 'reel'
+
+    # **Six modules de gestion n'ont aucune cible dans cette stack**, et le
+    # dire vaut mieux que de laisser croire qu'ils sont couverts :
+    #
+    # * `instance_snapshot` et `instance_volume` lisent l'API Instance, qui ne
+    #   voit pas un volume ni un instantané SBS. La stack n'en crée pas d'autres,
+    #   et en créer un seulement pour ce test serait payer une ressource pour
+    #   décorer une couverture ;
+    # * `instance_image` n'existe que sur la cible réelle, et son écriture
+    #   demanderait de toucher l'image d'or dont dépend le reste ;
+    # * `lb_certificate`, `lb_route` et `lb_subscriber` demandent un domaine, un
+    #   second backend et une adresse de destinataire. Les trois lectures
+    #   correspondantes sont appelées et répondent `[]`, ce qui est déjà une
+    #   réponse, et créer ces ressources pour écrire dessus reviendrait à
+    #   étendre la plateforme pour décorer une couverture ;
+    # * `instance_security_group_rule` exige l'identifiant d'une règle, que seul
+    #   `instance_security_group_rule_info` saurait donner, et ce module est
+    #   écarté par le modèle (deux listes pour une ressource).
 
     - name: Ce que les modules ont trouvé
       ansible.builtin.debug:

@@ -16,6 +16,14 @@
       "test": "tests/unit/generator/test_mapping.py::test_un_champ_sensible_recoit_no_log"
     },
     {
+      "name": "identifiant-masque-comme-un-secret",
+      "why": "Sans la règle, `admin_password_encryption_ssh_key_id` est masqué parce que son nom contient `password`. L'identifiant d'une clé n'est pas le secret qu'elle protège : le masquer prive l'opérateur d'une information utile sans rien protéger.",
+      "file": "generator/ansible/mapping.py",
+      "find": "    if name.endswith(\"_id\"):\n        return False",
+      "replace": "    if name.endswith(\"_id\") and False:\n        return False",
+      "test": "tests/unit/generator/test_mapping.py::test_un_identifiant_nest_jamais_le_secret_quil_designe"
+    },
+    {
       "name": "override-sans-raison",
       "why": "Un override qui change une classification sans raison est indéfendable à la relecture.",
       "file": "generator/overrides/loader.py",
@@ -643,7 +651,7 @@
       "name": "gestion-ecrit-tout-le-corps",
       "why": "Un module de gestion qui envoie tous ses paramètres au lieu de la seule différence rend `changed` à chaque exécution et écrase les champs qu'un autre playbook gère.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "    ecarts = {nom: valeur for nom, valeur in demande.items() if courant.get(nom) != valeur}",
+      "find": "    ecarts = {\n        nom: valeur for nom, valeur in demande.items() if _valeur_courante(courant, nom) != valeur\n    }",
       "replace": "    ecarts = dict(demande)",
       "test": "tests/unit/collection/test_runtime.py::test_une_ressource_deja_conforme_ne_declenche_aucune_ecriture"
     },
@@ -659,8 +667,8 @@
       "name": "gestion-gere-un-parametre-absent",
       "why": "Un paramètre absent n'est pas « à vider », il n'est pas géré. Sans cette règle, un playbook qui règle les tags effacerait le nom.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "        if module.params.get(nom) is not None\n    }",
-      "replace": "        if nom in module.params\n    }",
+      "find": "        nom: module.params[nom] for nom in spec.managed_params if module.params.get(nom) is not None",
+      "replace": "        nom: module.params.get(nom) for nom in spec.managed_params if nom in module.params",
       "test": "tests/unit/collection/test_runtime.py::test_un_parametre_non_fourni_nest_pas_gere"
     },
     {
@@ -678,6 +686,142 @@
       "find": "        if len(utiles) == 1:\n            return _resolve_type(",
       "replace": "        if len(utiles) == 1 and False:\n            return _resolve_type(",
       "test": "tests/unit/generator/test_parser.py::test_un_oneof_avec_null_est_un_champ_optionnel"
+    },
+    {
+      "name": "reference-par-id-non-resolue",
+      "why": "Une écriture prend `backend_id`, la lecture rend `backend`. Sans la résolution, la comparaison ne trouve rien et le module rend `changed` à chaque exécution : l'idempotence est perdue sur cinq champs des deux produits.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    objet = ressource.get(nom[: -len(\"_id\")])",
+      "replace": "    objet = None",
+      "test": "tests/unit/collection/test_runtime.py::test_une_reference_ecrite_par_id_se_compare_a_lobjet_relu"
+    },
+    {
+      "name": "put-envoie-un-corps-partiel",
+      "why": "Un PUT remplace. N'y envoyer que la différence efface silencieusement tout ce qu'on n'a pas nommé : sept opérations du Load Balancer sont dans ce cas, et le contrat dit lui-même « You must set all parameters ».",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    if spec.update_operation.method.upper() == \"PUT\":",
+      "replace": "    if spec.update_operation.method.upper() == \"PUT\" and False:",
+      "test": "tests/unit/collection/test_runtime.py::test_un_put_recoit_tout_ce_quon_veut_garder"
+    },
+    {
+      "name": "compteur-ne-lit-quun-produit",
+      "why": "Un compteur qui ne lit qu'un produit annonce 25 modules sous une liste de 46, et `readme:check` le déclare conforme : le contrôle compare le bloc à ce que le script produit, et le script produit le mauvais nombre.",
+      "file": "scripts/readme_counters.py",
+      "find": "    comptes = sorted(RAPPORTS.glob(\"*.generation.md\"))",
+      "replace": "    comptes = sorted(RAPPORTS.glob(\"instance.*.generation.md\"))",
+      "test": "tests/unit/outillage/test_verdicts.py::test_le_compteur_somme_tous_les_produits"
+    },
+    {
+      "name": "recensement-ramasse-aussi-les-ecritures",
+      "why": "Le recensement se construit sur le préfixe `repris_`. En y faisant entrer les `ecrit_`, le dénominateur double et le taux d'idempotence se maquille avec des écritures qui n'ont jamais été rejouées.",
+      "file": "examples/playbooks/modules.yml",
+      "find": "noms_repris: \"{{ query('varnames', '^repris_') | sort }}\"",
+      "replace": "noms_repris: \"{{ query('varnames', '^(repris|ecrit)_') | sort }}\"",
+      "test": "tests/unit/outillage/test_recensement_exemple.py::test_le_recensement_ne_ramasse_que_les_reecritures"
+    },
+    {
+      "name": "reecriture-sautee-comptee-comme-mesuree",
+      "why": "Une tâche sautée n'a rien écrit, et son assertion d'idempotence est passée sans rien vérifier. La compter comme mesurée publie une preuve qui n'existe pas, ce qui est précisément le défaut que ce recensement corrige.",
+      "file": "examples/playbooks/modules.yml",
+      "find": "          | selectattr('value.skipped', 'defined')",
+      "replace": "          | selectattr('value.skipped_jamais_rendu_par_ansible', 'defined')",
+      "test": "tests/unit/outillage/test_recensement_exemple.py::test_une_reecriture_sautee_ou_non_emulee_nest_pas_une_preuve"
+    },
+    {
+      "name": "non-mesurees-comptees-comme-prouvees",
+      "why": "Sans le retrait des non mesurées, le nombre publié compte toutes les réécritures jouées, y compris celles que la cible n'a pas servies : « 9 idempotences prouvées » se lirait sur une exécution qui en a prouvé 7.",
+      "file": "examples/playbooks/modules.yml",
+      "find": "          | reject('in', reecritures_non_mesurees) | list }}",
+      "replace": "          | reject('in', []) | list }}",
+      "test": "tests/unit/outillage/test_recensement_exemple.py::test_seule_une_reecriture_jouee_compte_comme_prouvee"
+    },
+    {
+      "name": "reel-tolere-une-reecriture-non-mesuree",
+      "why": "Sur le compte réel, une route absente est un défaut, pas une limite déclarée. Sans cette assertion, la tolérance écrite pour l'émulateur suit jusque sur le vrai cloud et un module non exercé s'y lit comme prouvé.",
+      "file": "examples/playbooks/modules.yml",
+      "find": "        that:\n          - reecritures_non_mesurees | length == 0",
+      "replace": "        that:\n          - reecritures_non_mesurees | length >= 0",
+      "test": "tests/unit/outillage/test_recensement_exemple.py::test_sur_le_cloud_reel_une_reecriture_non_mesuree_fait_rougir"
+    },
+    {
+      "name": "ipam-renomme-le-champ-de-la-jointure",
+      "why": "Simule la dérive amont que ce contrôle existe pour voir : IPAM renomme `private_network_id`. La jointure le lit par `getattr(..., None)`, donc elle ne lèverait pas : elle rendrait des machines avec un réseau, une adresse MAC et aucune adresse, et l'inventaire un parc muet.",
+      "file": "specs/scaleway/suivis/ipam.v1.yml",
+      "find": "        private_network_id:\n          type:\n          - string\n          - \"null\"\n          description: |-\n            Private Network the IP lives in if the IP is a private IP.",
+      "replace": "        private_network_uuid:\n          type:\n          - string\n          - \"null\"\n          description: |-\n            Private Network the IP lives in if the IP is a private IP.",
+      "test": "tests/unit/inventory/test_derive_ipam_vpc.py::test_chaque_champ_lu_par_la_jointure_existe_dans_le_contrat"
+    },
+    {
+      "name": "jointure-lit-un-champ-non-declare",
+      "why": "La garde de la garde. Sans elle, une lecture ajoutée à la jointure échappe aux deux contrôles de dérive : ils restent verts, et le fichier affirme couvrir une jointure qu'il ne mesure plus.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/discovery.py",
+      "find": "getattr(source, \"vpc_id\", None) if source else None",
+      "replace": "getattr(source, \"vpc_uuid\", None) if source else None",
+      "test": "tests/unit/inventory/test_derive_ipam_vpc.py::test_la_declaration_couvre_tout_ce_que_le_code_lit"
+    },
+    {
+      "name": "methode-sdk-renommee-dans-la-jointure",
+      "why": "Le verrou est `scaleway>=2.9.0`, et `list_i_ps_all` sort d'une dépluralisation automatique : c'est le genre de nom qu'un générateur amont corrige un jour. Les méthodes attendues sont lues dans le code, donc un appel renommé se confronte au SDK installé.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/discovery.py",
+      "find": "partial(ipam.list_i_ps_all, region=region, project_id=projet)",
+      "replace": "partial(ipam.list_ips_all, region=region, project_id=projet)",
+      "test": "tests/unit/inventory/test_derive_ipam_vpc.py::test_le_sdk_installe_porte_les_methodes_que_la_jointure_appelle"
+    },
+    {
+      "name": "artefact-compte-une-route-non-emulee",
+      "why": "Un 501 `not_emulated` n'exerce rien. Le compter comme joué ferait passer une limite déclarée de l'émulateur pour une preuve de couverture, et l'artefact deviendrait un compteur de bonnes intentions.",
+      "file": "scripts/example.py",
+      "find": "        if tache.get(\"verdict\") in (\"ok\", \"changed\") and tache.get(\"api_type\") != \"not_emulated\":",
+      "replace": "        if tache.get(\"verdict\") in (\"ok\", \"changed\") and tache.get(\"api_type\") != \"jamais_rendu_par_un_module\":",
+      "test": "tests/unit/outillage/test_artefact_exemple.py::test_une_route_non_emulee_est_appelee_mais_pas_jouee"
+    },
+    {
+      "name": "artefact-compte-une-tache-sautee",
+      "why": "Une tâche que `when` a écartée n'a parlé à personne. La compter revient à mesurer ce que le playbook nomme plutôt que ce qu'il joue, c'est-à-dire exactement ce que le plugin de rappel existe pour éviter.",
+      "file": "scripts/example.py",
+      "find": "        if tache.get(\"verdict\") in (\"ok\", \"changed\") ",
+      "replace": "        if tache.get(\"verdict\") in (\"ok\", \"changed\", \"skipped\") ",
+      "test": "tests/unit/outillage/test_artefact_exemple.py::test_une_tache_sautee_nest_pas_une_couverture"
+    },
+    {
+      "name": "strict-tolere-une-operation-non-classee",
+      "why": "Le mode strict est le troisième des trois mécanismes qui rendent la dérive visible, et le seul dont la sortie est un code que la CI lit. Neutralisé, il sort en 0 sur un dépôt sain comme sur un dépôt qui a perdu une opération : les deux sont alors indiscernables.",
+      "file": "generator/cli.py",
+      "find": "    if arguments.strict and (plan.unknown or plan.orphan_overrides):",
+      "replace": "    if arguments.strict and (plan.unknown or plan.orphan_overrides) and False:",
+      "test": "tests/unit/generator/test_cli_strict.py::test_une_operation_quaucune_regle_ne_tranche_sort_en_deux"
+    },
+    {
+      "name": "strict-accepte-un-rapport-sans-operation",
+      "why": "Un contrat vide, mal lu ou pointant vers le mauvais fichier sort en 0 : zéro opération non classée, zéro override orphelin, donc tout va bien. C'est indiscernable d'un produit parfaitement classé, et c'est le vert le plus gratuit qu'un dépôt puisse produire.",
+      "file": "generator/cli.py",
+      "find": "    if arguments.strict and not plan.operations:",
+      "replace": "    if arguments.strict and not plan.operations and False:",
+      "test": "tests/unit/generator/test_cli_strict.py::test_un_contrat_sans_operation_est_rouge"
+    },
+    {
+      "name": "perimetre-vide-ecarte-tout",
+      "why": "`only and` est ce qui fait qu'un périmètre vide veut dire « tout ». Sans lui, une génération sans restriction écarte tous les modules sous une étiquette de périmètre, et le compte rendu déguise chaque refus du modèle en décision humaine, ce qui est exactement le défaut corrigé.",
+      "file": "generator/ansible/models.py",
+      "find": "        if only and name not in only:",
+      "replace": "        if name not in only:",
+      "test": "tests/unit/generator/test_perimetre.py::test_sans_perimetre_tout_ecart_porte_une_raison_du_modele"
+    },
+    {
+      "name": "nom-inconnu-avale-par-la-couverture",
+      "why": "Sans ce refus, `instance_serveur` sort du compte comme le plugin d'inventaire : le ratio se lit comme une mesure alors que le playbook produit une tâche qui n'existe pas. Une faute de frappe ne doit pas se ranger toute seule du bon côté.",
+      "file": "scripts/example_coverage.py",
+      "find": "    if inconnus:",
+      "replace": "    if inconnus and False:",
+      "test": "tests/unit/outillage/test_couverture_exemple.py::test_un_nom_qui_ne_designe_aucun_module_est_refuse"
+    },
+    {
+      "name": "troisieme-ratio-sans-denominateur",
+      "why": "Un ratio sans dénominateur est indéfini, pas nul. Écrire « 0,0 % » sur zéro module écrit se lirait comme une couverture nulle, alors que rien n'a été mesuré. C'est la règle du dépôt, appliquée au troisième étage.",
+      "file": "scripts/example_coverage.py",
+      "find": "    if denominateur == 0:\n        return \"n/a\"",
+      "replace": "    if denominateur == 0:\n        return \"0,0 %\"",
+      "test": "tests/unit/outillage/test_couverture_exemple.py::test_sans_module_le_ratio_est_indefini_pas_nul"
     }
   ]
 }

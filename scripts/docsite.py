@@ -94,8 +94,15 @@ def _pourcent(valeur: float | None) -> str:
 
 
 def expected_products() -> tuple[tuple[str, str], ...]:
-    """Les produits qui doivent avoir une page de mesure, lus dans l'index."""
-    return tuple((produit, version) for _slug, produit, version in read_products())
+    """Les produits qui doivent avoir une page de mesure, lus dans l'index.
+
+    Un produit marqué `suivi` n'en a pas : son contrat est versionné pour que
+    sa dérive se voie, mais rien n'est généré à partir de lui, donc il n'y a ni
+    rapport ni classification à publier.
+    """
+    return tuple(
+        (entry.product, entry.version) for entry in read_products() if not entry.tracked_only
+    )
 
 
 def copy_tree(source: Path, destination: Path) -> None:

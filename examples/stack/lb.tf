@@ -41,3 +41,27 @@ resource "scaleway_lb_frontend" "web" {
   name         = "${local.prefixe}-web"
   inbound_port = 80
 }
+
+# Une liste de contrôle sur le frontend, et deux raisons de l'écrire.
+#
+# **Elle rend la plateforme réaliste.** Un load balancer public sans aucune
+# règle est une porte ouverte ; un vrai projet en pose une, ne serait-ce que
+# pour dire ce qui a le droit d'entrer.
+#
+# **Elle donne une cible aux modules `lb_acl` et `lb_acl_info`.** Sans elle, ces
+# deux-là ne pouvaient être exercés par aucun playbook, et un module que rien
+# n'appelle est un module dont on ignore s'il marche. La règle du dépôt le dit :
+# une issue close sans que l'exemple ait bougé ne prouve rien.
+resource "scaleway_lb_acl" "web" {
+  frontend_id = scaleway_lb_frontend.web.id
+  name        = "${local.prefixe}-web"
+  index       = 0
+
+  action {
+    type = "allow"
+  }
+
+  match {
+    ip_subnet = ["0.0.0.0/0"]
+  }
+}

@@ -19,6 +19,7 @@ from __future__ import annotations
 import sys
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,14 +30,44 @@ BASE_URL = "https://www.scaleway.com/en/developers/api"
 TIMEOUT_SECONDS = 30
 
 
-def read_products() -> list[tuple[str, str, str]]:
-    """Lit l'index : `<slug-portail> <produit> <version>`, commentaires ignorés."""
-    entries: list[tuple[str, str, str]] = []
+#: Sous-répertoire des contrats suivis mais non générés.
+TRACKED_ONLY_DIR = "suivis"
+
+
+@dataclass(frozen=True)
+class Product:
+    """Une ligne de l'index, telle que le portail la nomme."""
+
+    slug: str
+    product: str
+    version: str
+    #: Suivi pour la dérive, sans module, sans rapport, sans golden.
+    tracked_only: bool = False
+
+    @property
+    def target(self) -> Path:
+        """Où le contrat se range. Le générateur ne voit pas `suivis/`."""
+        parent = SPEC_ROOT / TRACKED_ONLY_DIR if self.tracked_only else SPEC_ROOT
+        return parent / f"{self.product}.{self.version}.yml"
+
+
+def read_products() -> list[Product]:
+    """Lit l'index : `<slug-portail> [<produit>] <version> [suivi]`.
+
+    Le marqueur `suivi` se retire **avant** de compter les champs : sans ça,
+    `ipam v1 suivi` se lirait comme `<slug> <produit> <version>` et le contrat
+    s'appellerait `v1.suivi.yml`. Un index qui se trompe silencieusement de
+    fichier est pire qu'un index qui refuse la ligne.
+    """
+    entries: list[Product] = []
     for line in PRODUCTS_FILE.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
         fields = line.split()
+        tracked_only = fields[-1] == "suivi"
+        if tracked_only:
+            fields = fields[:-1]
         if len(fields) == 2:
             slug, version = fields
             product = slug
@@ -44,7 +75,7 @@ def read_products() -> list[tuple[str, str, str]]:
             slug, product, version = fields
         else:
             raise SystemExit(f"{PRODUCTS_FILE} : ligne mal formée : {line!r}")
-        entries.append((slug, product, version))
+        entries.append(Product(slug, product, version, tracked_only))
     return entries
 
 
@@ -61,10 +92,12 @@ def download(slug: str, version: str) -> bytes:
 def main(argv: list[str]) -> int:
     wanted = set(argv[1:])
     failures = 0
-    for slug, product, version in read_products():
+    for entry in read_products():
+        slug, product, version = entry.slug, entry.product, entry.version
         if wanted and product not in wanted and slug not in wanted:
             continue
-        target = SPEC_ROOT / f"{product}.{version}.yml"
+        target = entry.target
+        target.parent.mkdir(parents=True, exist_ok=True)
         try:
             payload = download(slug, version)
         except (urllib.error.URLError, urllib.error.HTTPError) as error:

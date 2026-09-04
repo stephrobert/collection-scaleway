@@ -168,7 +168,7 @@ def test_un_default_hors_enum_est_conserve() -> None:
 
 @pytest.mark.parametrize(
     "nom",
-    ["secret_key", "api_token", "password", "ssh_private_key", "passphrase", "credential_id"],
+    ["secret_key", "api_token", "password", "ssh_private_key", "passphrase"],
 )
 def test_un_champ_sensible_recoit_no_log(nom: str) -> None:
     assert is_sensitive(_parameter(nom)) is True
@@ -179,6 +179,23 @@ def test_un_champ_sensible_recoit_no_log(nom: str) -> None:
 def test_un_champ_ordinaire_ne_recoit_pas_no_log(nom: str) -> None:
     assert is_sensitive(_parameter(nom)) is False
     assert "no_log" not in argument_spec_entry(_parameter(nom))
+
+
+@pytest.mark.parametrize(
+    "nom",
+    ["admin_password_encryption_ssh_key_id", "credential_id", "secret_key_id"],
+)
+def test_un_identifiant_nest_jamais_le_secret_quil_designe(nom: str) -> None:
+    """Le cas mesuré sur le contrat, et deux voisins construits pour le border.
+
+    `admin_password_encryption_ssh_key_id` contient `password`, et la règle le
+    masquait donc. Il désigne la clé SSH qui sert au chiffrement, pas le mot de
+    passe : le masquer privait l'utilisateur d'une information utile sans rien
+    protéger. C'est le **seul** paramètre que la règle juge sensible sur les
+    deux contrats, et c'était un faux positif.
+    """
+    assert is_sensitive(_parameter(nom)) is False
+    assert argument_spec_entry(_parameter(nom)).get("no_log") is not True
 
 
 def test_les_parametres_communs_sont_declares_une_seule_fois() -> None:

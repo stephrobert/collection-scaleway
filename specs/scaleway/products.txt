@@ -17,3 +17,23 @@
 
 instance v1
 load-balancer/zoned lb v1
+
+# Suivis sans être générés. `suivi` en fin de ligne range le contrat sous
+# `suivis/`, où le générateur ne le voit pas : il n'y a ni module, ni rapport,
+# ni golden pour ces produits.
+#
+# **Pourquoi les versionner quand même.** L'inventaire dynamique appelle six
+# APIs, et deux seulement avaient un contrat. `ipam.list_i_ps_all`,
+# `vpc.list_private_networks_all` et `vpc.list_vp_cs_all` portent la jointure
+# qui donne son adresse privée à chaque machine, et cette jointure lit ses
+# champs par `getattr(..., None)` : un champ renommé en amont rend `None` en
+# silence, et l'inventaire un parc muet. C'était la dérive la moins mesurée du
+# dépôt, sur la fonction la plus mise en avant.
+#
+# **Pourquoi ne pas les générer.** Élargir la génération à un produit que la
+# collection ne sert pas ajouterait des UNKNOWN permanents, et le mode strict
+# sortirait en 2 pour du travail que personne n'a demandé.
+ipam v1 suivi
+vpc v2 suivi
+elastic-metal baremetal v1 suivi
+apple-silicon applesilicon v1alpha1 suivi

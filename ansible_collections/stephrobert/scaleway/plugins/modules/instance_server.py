@@ -176,7 +176,7 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "server_id": {"type": "str", "required": True},
-    "admin_password_encryption_ssh_key_id": {"type": "str", "no_log": True},
+    "admin_password_encryption_ssh_key_id": {"type": "str", "no_log": False},
     "boot_type": {
         "type": "str",
         "choices": ["local", "bootscript", "rescue"],
@@ -250,7 +250,6 @@ MODULE = ManageModule(
         "commercial_type",
         "admin_password_encryption_ssh_key_id",
     ),
-    secret_params=("admin_password_encryption_ssh_key_id",),
 )
 
 

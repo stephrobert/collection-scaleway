@@ -1,0 +1,1893 @@
+openapi: 3.1.0
+info:
+  title: Apple silicon API
+  description: |-
+    Step into the future of computing with Apple Silicon, our Mac mini M1, M2, and M2-Pro dedicated machines. Enjoy unparalleled speed and performance to handle all your computing needs with the latest generations of Mac mini hardware.
+
+    A dedicated Mac mini thus allows you to enjoy dazzling performance and speed, enabling you to explore, learn, and build like never before.
+
+    ## Concepts
+
+    Refer to our [dedicated concepts page](https://www.scaleway.com/en/docs/apple-silicon/concepts/) to find definitions of the different terms referring to Apple silicon.
+
+    ## Quickstart
+
+    1. Configure your environment variables.
+
+       <Message type="note">
+       This is an optional step that seeks to simplify your usage of the APIs. There are two Availability Zones for Apple silicon, the possible values for zone are `fr-par-1` and `fr-par-3`.
+       </Message>
+
+        ```bash
+        export SCW_SECRET_KEY="<API secret key>"
+        export SCW_DEFAULT_ZONE="<Scaleway Availability Zone>"
+        ```
+
+    2. Edit the POST request payload that we will use in the next step to create an Apple silicon server.
+
+       Modify the values in the example according to your needs, using the information in the table to help.
+
+        ```json
+        {
+          "name": "My_AS_Server",
+          "project_id": "7281793f-8474-727d-7688-72893f747g7e",
+          "type": "M1-M"
+        }
+        ```
+
+       | Parameter        | Description                                                                                              |
+       | :--------------- | :------------------------------------------------------------------------------------------------------- |
+       | `project_id`     | ID of the Project you want to create your server in. Your project name can only contain alphanumeric characters, spaces, dots and dashes. To find your Project ID, you can consult the **[Scaleway console](https://console.scaleway.com/project/settings)**                                                                                                       |
+       | `name`           | Create a server with this given name.                                                                    |
+       | `type`           | Create a server of the given type. The possible values are `M2-L`, `M2-M` and `M1-M`.                                                                                                     |
+
+    3. Run the following command to create a server. Make sure you include the payload you edited in the previous step.
+
+        ```bash
+        curl -X POST \
+          -H "X-Auth-Token: $SECRET_KEY" \
+          -H "Content-Type: application/json" \
+          "https://api.scaleway.com/apple-silicon/v1alpha1/zones/$ZONE/servers" \
+          -d '{
+            "name": "My_Mac_Mini_M1",
+            "project_id": "7281793f-8474-727d-7688-72893f747g7e",
+            "type": "M1-M"
+          }'
+        ```
+
+       You should get an output similar to the following one, providing details about your Apple silicon server.
+
+       <Message type="note">
+       This is a response example, the UUIDs and IP address displayed are not real.
+       </Message>
+
+        ```bash
+        {
+          "id": "d6877c16-77af-40a2-8b13-514cee3e73f5",
+          "type": "M1-M",
+          "name": "My_Mac_Mini_M1",
+          "project_id": "7281793f-8474-727d-7688-72893f747g7e",
+          "organization_id": "b12d5c3g-c612-5674-c1e9-92627f36c5b9",
+          "ip": "1.2.3.4",
+          "vnc_url": "vnc://m1:password@192.168.1.93:5900",
+          "ssh_username": "m1",
+          "sudo_password": "password",
+          "status": "unknown_status",
+          "created_at": "2022-03-22T12:34:56.123456Z",
+          "updated_at": "2022-03-22T12:34:56.123456Z",
+          "deletable_at": "2022-03-22T12:34:56.123456Z",
+          "zone": "fr-par-3"
+        }
+        ```
+
+    4. Retrieve your Mac mini IP from the response.
+
+    5. Connect to your Mac mini using SSH:
+
+        ```bash
+        ssh m1@<your_mac_mini_ip>
+        ```
+
+       <Message type="requirement">
+       - You have a [Scaleway account](https://console.scaleway.com/)
+       - You have created an [API key](https://www.scaleway.com/en/docs/iam/how-to/create-api-keys/) and that the API key has sufficient [IAM permissions](https://www.scaleway.com/en/docs/iam/reference-content/permission-sets/) to perform the actions described on this page
+       - You have [installed `curl`](https://curl.se/download.html)
+       </Message>
+
+    ## Technical information
+
+    Mac mini and macOS are trademarks of Apple Inc., registered in the U.S. and other countries and regions. IOS is a trademark or registered trademark of Cisco in the U.S. and other countries and is used by Apple under license. Scaleway is not affiliated with Apple Inc.
+
+    ### Availability Zones
+
+    Mac mini can be deployed in the following Availability Zones:
+
+    - Paris `fr-par-1`
+    - Paris `fr-par-3`
+
+    ## Technical limitations
+
+    The following technical limitations apply when using Apple silicon:
+
+    - Apple silicon-as-a-Service comes with a minimum allocation period of 24 hours.
+    - The maximum number of Mac mini allowed per Organization depends on the offer selected. Learn more about account quotas with our dedicated [documentation](https://www.scaleway.com/en/docs/organizations-and-projects/additional-content/organization-quotas/#apple-silicon).
+
+    ## Going further
+
+    For more help using Scaleway Apple silicon, check out the following resources:
+
+    - Our [main documentation](https://www.scaleway.com/en/docs/bare-metal/apple-silicon/)
+    - Our [Slack Community](https://slack.scaleway.com)
+    - Our [support ticketing system](https://www.scaleway.com/en/docs/account/how-to/open-a-support-ticket/).
+  version: v1alpha1
+servers:
+- url: https://api.scaleway.com
+tags:
+- name: Servers
+  description: A server is a dedicated Apple Mac mini server
+- name: Server Types
+  description: A server type represents the technical specification of an available
+    Mac mini server, such as its memory and disk size.
+- name: OS
+  description: Operating systems (OS) available for a given Mac mini server type.
+    The macOS versions available for our Mac mini are macOS 13 Ventura, macOS 14 Sonoma,
+    and macOS 15 Sequoia. Other OSes, e.g. Linux OS or Windows OS are not supported.
+- name: Runners
+  description: A runner represents the configuration for a CI/CD runner that can be
+    installed an a server.
+components:
+  schemas:
+    scaleway.apple_silicon.v1alpha1.AppliedRunnerConfigurations:
+      type: object
+      properties:
+        runner_configuration_ids:
+          type: array
+          description: (UUID format)
+          example:
+          - 6170692e-7363-616c-6577-61792e636f6d
+          items:
+            type: string
+      x-properties-order:
+      - runner_configuration_ids
+    scaleway.apple_silicon.v1alpha1.BatchCreateServersRequest.BatchInnerCreateServerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+      x-properties-order:
+      - name
+    scaleway.apple_silicon.v1alpha1.BatchCreateServersResponse:
+      type: object
+      properties:
+        servers:
+          type: array
+          description: List of created servers.
+          items:
+            $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Server'
+      x-properties-order:
+      - servers
+    scaleway.apple_silicon.v1alpha1.Commitment:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Commitment.Type'
+        cancelled:
+          type: boolean
+      x-properties-order:
+      - type
+      - cancelled
+    scaleway.apple_silicon.v1alpha1.Commitment.Type:
+      type: string
+      enum:
+      - duration_24h
+      - renewed_monthly
+      - none
+      default: duration_24h
+    scaleway.apple_silicon.v1alpha1.CommitmentTypeValue:
+      type: object
+      properties:
+        commitment_type:
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Commitment.Type'
+      x-properties-order:
+      - commitment_type
+    scaleway.apple_silicon.v1alpha1.ConnectivityDiagnostic:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ConnectivityDiagnostic.DiagnosticStatus'
+        is_healthy:
+          type: boolean
+        health_details:
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ConnectivityDiagnostic.ServerHealth'
+        supported_actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ConnectivityDiagnostic.ActionType'
+        error_message:
+          type: string
+      x-properties-order:
+      - id
+      - status
+      - is_healthy
+      - health_details
+      - supported_actions
+      - error_message
+    scaleway.apple_silicon.v1alpha1.ConnectivityDiagnostic.ActionType:
+      type: string
+      enum:
+      - reboot_server
+      - reinstall_server
+      default: reboot_server
+    scaleway.apple_silicon.v1alpha1.ConnectivityDiagnostic.DiagnosticStatus:
+      type: string
+      enum:
+      - unknown_status
+      - processing
+      - error
+      - completed
+      default: unknown_status
+    scaleway.apple_silicon.v1alpha1.ConnectivityDiagnostic.ServerHealth:
+      type: object
+      properties:
+        last_checkin_date:
+          type:
+          - string
+          - "null"
+          description: (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        is_server_alive:
+          type: boolean
+        is_agent_alive:
+          type: boolean
+        is_mdm_alive:
+          type: boolean
+        is_ssh_port_up:
+          type: boolean
+        is_vnc_port_up:
+          type: boolean
+      x-properties-order:
+      - last_checkin_date
+      - is_server_alive
+      - is_agent_alive
+      - is_mdm_alive
+      - is_ssh_port_up
+      - is_vnc_port_up
+    scaleway.apple_silicon.v1alpha1.GithubRunnerConfiguration:
+      type: object
+      properties:
+        url:
+          type: string
+        token:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+      x-properties-order:
+      - url
+      - token
+      - labels
+    scaleway.apple_silicon.v1alpha1.GitlabRunnerConfiguration:
+      type: object
+      properties:
+        url:
+          type: string
+        token:
+          type: string
+      x-properties-order:
+      - url
+      - token
+    scaleway.apple_silicon.v1alpha1.ListOSResponse:
+      type: object
+      properties:
+        total_count:
+          type: integer
+          description: Total number of OS.
+          format: uint32
+        os:
+          type: array
+          description: List of OS.
+          items:
+            $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.OS'
+      x-properties-order:
+      - total_count
+      - os
+    scaleway.apple_silicon.v1alpha1.ListRunnersResponse:
+      type: object
+      properties:
+        total_count:
+          type: integer
+          format: uint64
+        runners:
+          type: array
+          items:
+            $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Runner'
+      x-properties-order:
+      - total_count
+      - runners
+    scaleway.apple_silicon.v1alpha1.ListServerTypesResponse:
+      type: object
+      properties:
+        server_types:
+          type: array
+          description: Available server types.
+          items:
+            $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ServerType'
+      x-properties-order:
+      - server_types
+    scaleway.apple_silicon.v1alpha1.ListServersRequest.OrderBy:
+      type: string
+      enum:
+      - created_at_asc
+      - created_at_desc
+      default: created_at_asc
+    scaleway.apple_silicon.v1alpha1.ListServersResponse:
+      type: object
+      properties:
+        total_count:
+          type: integer
+          description: Total number of servers.
+          format: uint32
+        servers:
+          type: array
+          description: Paginated returned servers.
+          items:
+            $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Server'
+      x-properties-order:
+      - total_count
+      - servers
+    scaleway.apple_silicon.v1alpha1.OS:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique ID of the OS.
+        name:
+          type: string
+          description: OS name.
+        label:
+          type: string
+          description: OS name as it should be displayed.
+        image_url:
+          type: string
+          description: URL of the image.
+        family:
+          type: string
+          description: The OS family to which this OS belongs, eg. 13 or 14.
+        is_beta:
+          type: boolean
+          description: Describes if the OS is in beta.
+        version:
+          type: string
+          description: The OS version number, eg. Sonoma has version number 14.3.
+        xcode_version:
+          type: string
+          description: The current xcode version for this OS.
+        compatible_server_types:
+          type: array
+          description: List of compatible server types. Deprecated.
+          deprecated: true
+          items:
+            type: string
+        release_notes_url:
+          type: string
+          description: Url of the release notes for the OS image or software pre-installed.
+        description:
+          type: string
+          description: A summary of the OS image content and configuration.
+        tags:
+          type: array
+          description: List of tags for the OS configuration.
+          items:
+            type: string
+        supported_server_types:
+          type: array
+          description: List of server types which supports the OS configuration. Also
+            gives information about immediate stock availability.
+          items:
+            $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.OS.SupportedServerType'
+      x-properties-order:
+      - id
+      - name
+      - label
+      - image_url
+      - family
+      - is_beta
+      - version
+      - xcode_version
+      - compatible_server_types
+      - release_notes_url
+      - description
+      - tags
+      - supported_server_types
+    scaleway.apple_silicon.v1alpha1.OS.SupportedServerType:
+      type: object
+      properties:
+        server_type:
+          type: string
+        fast_delivery_available:
+          type: boolean
+      x-properties-order:
+      - server_type
+      - fast_delivery_available
+    scaleway.apple_silicon.v1alpha1.Runner:
+      type: object
+      properties:
+        id:
+          type: string
+        configuration:
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.RunnerConfigurationV2'
+        status:
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Runner.Status'
+        error_message:
+          type: string
+      x-properties-order:
+      - id
+      - configuration
+      - status
+      - error_message
+    scaleway.apple_silicon.v1alpha1.Runner.Status:
+      type: string
+      enum:
+      - unknown_status
+      - waiting
+      - enabled
+      - disabled
+      - error
+      default: unknown_status
+    scaleway.apple_silicon.v1alpha1.RunnerConfiguration:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+        token:
+          type: string
+        provider:
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.RunnerConfiguration.Provider'
+      x-properties-order:
+      - name
+      - url
+      - token
+      - provider
+    scaleway.apple_silicon.v1alpha1.RunnerConfiguration.Provider:
+      type: string
+      enum:
+      - unknown_provider
+      - github
+      - gitlab
+      default: unknown_provider
+    scaleway.apple_silicon.v1alpha1.RunnerConfigurationV2:
+      type: object
+      properties:
+        name:
+          type: string
+        provider:
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.RunnerConfigurationV2.Provider'
+        github_configuration:
+          x-one-of: configuration
+          oneOf:
+          - $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.GithubRunnerConfiguration'
+          - type: "null"
+        gitlab_configuration:
+          x-one-of: configuration
+          oneOf:
+          - $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.GitlabRunnerConfiguration'
+          - type: "null"
+      x-properties-order:
+      - name
+      - provider
+      - github_configuration
+      - gitlab_configuration
+    scaleway.apple_silicon.v1alpha1.RunnerConfigurationV2.Provider:
+      type: string
+      enum:
+      - unknown_provider
+      - github
+      - gitlab
+      default: unknown_provider
+    scaleway.apple_silicon.v1alpha1.Server:
+      type: object
+      properties:
+        id:
+          type: string
+          description: UUID of the server.
+        type:
+          type: string
+          description: Type of the server.
+        name:
+          type: string
+          description: Name of the server.
+        project_id:
+          type: string
+          description: Project this server is associated with.
+        organization_id:
+          type: string
+          description: Organization this server is associated with.
+        ip:
+          type: string
+          description: IPv4 address of the server. (IPv4 address)
+          example: 1.2.3.4
+        vnc_url:
+          type: string
+          description: Vnc:// URL to access Apple Remote Desktop.
+        ssh_username:
+          type: string
+          description: SSH Username for remote shell.
+        sudo_password:
+          type: string
+          description: Admin password required to execute commands.
+        vnc_port:
+          type: integer
+          description: VNC port to use for remote desktop connection.
+          format: uint32
+        os:
+          description: |-
+            Initially installed OS.
+            Initially installed OS, this does not necessarily reflect the current OS version.
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.OS'
+        status:
+          description: Current status of the server.
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Server.Status'
+        created_at:
+          type:
+          - string
+          - "null"
+          description: Date on which the server was created. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        updated_at:
+          type:
+          - string
+          - "null"
+          description: Date on which the server was last updated. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        deletable_at:
+          type:
+          - string
+          - "null"
+          description: Date from which the server can be deleted. (RFC 3339 format)
+          format: date-time
+          example: "2022-03-22T12:34:56.123456Z"
+        deletion_scheduled:
+          type: boolean
+          description: |-
+            If true, server will be automatically once deletable_at is reached.
+            Set to true to mark the server for automatic deletion depending on `deletable_at` date. Set to false to cancel an existing deletion schedule. Leave unset otherwise.
+        zone:
+          type: string
+          description: Zone of the server.
+        delivered:
+          type: boolean
+          description: |-
+            Indicate if the newly ordered server is ready to use.
+            Set to true once the server has completed its provisioning steps and is ready to use. Some OS configurations might require a reinstallation of the server before delivery depending on the available stock. A reinstallation after the initial delivery will not change this flag and can be tracked using the server status.
+        vpc_status:
+          description: Activation status of optional Private Network feature support
+            for this server.
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Server.PrivateNetworkStatus'
+        commitment:
+          description: Commitment scheme applied to this server.
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Commitment'
+        public_bandwidth_bps:
+          type: integer
+          description: Public bandwidth configured for this server. Expressed in bits
+            per second.
+          format: uint64
+        runner_configuration:
+          description: Current runner configuration, empty if none is installed.
+          deprecated: true
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.RunnerConfiguration'
+        tags:
+          type: array
+          description: A list of tags attached to the server.
+          items:
+            type: string
+        applied_runner_configuration_ids:
+          type: array
+          description: Runner configurations applied on the server, optional.
+          items:
+            type: string
+        kext_enabled:
+          type: boolean
+          description: Status of kernel extensions for the server.
+      x-properties-order:
+      - id
+      - type
+      - name
+      - project_id
+      - organization_id
+      - ip
+      - vnc_url
+      - ssh_username
+      - sudo_password
+      - vnc_port
+      - os
+      - status
+      - created_at
+      - updated_at
+      - deletable_at
+      - deletion_scheduled
+      - zone
+      - delivered
+      - vpc_status
+      - commitment
+      - public_bandwidth_bps
+      - runner_configuration
+      - tags
+      - applied_runner_configuration_ids
+      - kext_enabled
+    scaleway.apple_silicon.v1alpha1.Server.PrivateNetworkStatus:
+      type: string
+      enum:
+      - vpc_unknown_status
+      - vpc_enabled
+      - vpc_updating
+      - vpc_disabled
+      default: vpc_unknown_status
+    scaleway.apple_silicon.v1alpha1.Server.Status:
+      type: string
+      enum:
+      - unknown_status
+      - starting
+      - ready
+      - error
+      - rebooting
+      - updating
+      - locking
+      - locked
+      - unlocking
+      - reinstalling
+      - busy
+      default: unknown_status
+    scaleway.apple_silicon.v1alpha1.ServerType:
+      type: object
+      properties:
+        cpu:
+          description: CPU description.
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ServerType.CPU'
+        disk:
+          description: Size of the local disk of the server.
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ServerType.Disk'
+        name:
+          type: string
+          description: Name of the type.
+        memory:
+          description: Size of memory available.
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ServerType.Memory'
+        stock:
+          description: Current stock.
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ServerType.Stock'
+        minimum_lease_duration:
+          type:
+          - string
+          - "null"
+          description: |-
+            Minimum duration of the lease in seconds.
+            Minimum duration of the lease in seconds (example. 3.4s). (in seconds)
+          example: 2.5s
+        gpu:
+          description: GPU description.
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ServerType.GPU'
+        network:
+          description: Network description.
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ServerType.Network'
+        default_os:
+          description: The default OS for this server type.
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.OS'
+        npu:
+          description: NPU description.
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ServerType.NPU'
+      x-properties-order:
+      - cpu
+      - disk
+      - name
+      - memory
+      - stock
+      - minimum_lease_duration
+      - gpu
+      - network
+      - default_os
+      - npu
+    scaleway.apple_silicon.v1alpha1.ServerType.CPU:
+      type: object
+      properties:
+        name:
+          type: string
+        core_count:
+          type: integer
+          format: uint32
+        frequency:
+          type: integer
+          format: uint64
+        sockets:
+          type: integer
+          format: uint32
+        threads_per_core:
+          type: integer
+          format: uint32
+      x-properties-order:
+      - name
+      - core_count
+      - frequency
+      - sockets
+      - threads_per_core
+    scaleway.apple_silicon.v1alpha1.ServerType.Disk:
+      type: object
+      properties:
+        capacity:
+          type: integer
+          description: (in bytes)
+          format: uint64
+        type:
+          type: string
+      x-properties-order:
+      - capacity
+      - type
+    scaleway.apple_silicon.v1alpha1.ServerType.GPU:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: uint64
+      x-properties-order:
+      - count
+    scaleway.apple_silicon.v1alpha1.ServerType.Memory:
+      type: object
+      properties:
+        capacity:
+          type: integer
+          description: (in bytes)
+          format: uint64
+        type:
+          type: string
+      x-properties-order:
+      - capacity
+      - type
+    scaleway.apple_silicon.v1alpha1.ServerType.NPU:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: uint64
+      x-properties-order:
+      - count
+    scaleway.apple_silicon.v1alpha1.ServerType.Network:
+      type: object
+      properties:
+        public_bandwidth_bps:
+          type: integer
+          format: uint64
+        supported_bandwidth:
+          type: array
+          items:
+            type: integer
+            format: uint64
+        default_public_bandwidth:
+          type: integer
+          format: uint64
+      x-properties-order:
+      - public_bandwidth_bps
+      - supported_bandwidth
+      - default_public_bandwidth
+    scaleway.apple_silicon.v1alpha1.ServerType.Stock:
+      type: string
+      enum:
+      - unknown_stock
+      - no_stock
+      - low_stock
+      - high_stock
+      default: unknown_stock
+    scaleway.apple_silicon.v1alpha1.StartConnectivityDiagnosticResponse:
+      type: object
+      properties:
+        diagnostic_id:
+          type: string
+      x-properties-order:
+      - diagnostic_id
+  securitySchemes:
+    scaleway:
+      in: header
+      name: X-Auth-Token
+      type: apiKey
+paths:
+  /apple-silicon/v1alpha1/zones/{zone}/batch-create-servers:
+    post:
+      tags:
+      - Servers
+      operationId: BatchCreateServers
+      summary: Create multiple servers atomically
+      description: Create multiple servers in the targeted zone specifying their configurations.
+        If the request cannot entirely be fulfilled, no servers are created.
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.BatchCreateServersResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_id:
+                  type: string
+                  description: Create servers in the given project ID.
+                type:
+                  type: string
+                  description: Create servers of the given type.
+                os_id:
+                  type:
+                  - string
+                  - "null"
+                  description: |-
+                    Create servers with the given os_id.
+                    Create servers & install the given os_id, when no os_id provided the default OS for this server type is chosen. Requesting a non-default OS will induce an extended delivery time.
+                enable_vpc:
+                  type: boolean
+                  description: |-
+                    Activate the Private Network feature for these servers.
+                    Activate the Private Network feature for these servers. This feature is configured through the Apple Silicon - Private Networks API.
+                commitment_type:
+                  description: |-
+                    Activate commitments for these servers.
+                    Activate commitment for these servers. If not specified, there is a 24h commitment due to Apple licensing (commitment_type `duration_24h`). It can be updated with the Update Server request. Available commitment depends on server type.
+                  $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Commitment.Type'
+                public_bandwidth_bps:
+                  type: integer
+                  description: |-
+                    Public bandwidth to configure for these servers. Expressed in bits per second.
+                    Public bandwidth to configure for these servers. This defaults to the minimum bandwidth for the corresponding server type. For compatible server types, the bandwidth can be increased which incurs additional costs.
+                  format: uint64
+                requests:
+                  type: array
+                  description: List of servers to create.
+                  items:
+                    $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.BatchCreateServersRequest.BatchInnerCreateServerRequest'
+                enable_kext:
+                  type: boolean
+                  description: |-
+                    Enable kernel extensions.
+                    Enable kernel extensions in this install of mac OS.
+              x-properties-order:
+              - project_id
+              - type
+              - os_id
+              - enable_vpc
+              - commitment_type
+              - public_bandwidth_bps
+              - requests
+              - enable_kext
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "enable_kext": false,
+              "enable_vpc": false,
+              "project_id": "string",
+              "public_bandwidth_bps": 42,
+              "type": "string"
+            }' \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/batch-create-servers"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/batch-create-servers" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            enable_kext:=false \
+            enable_vpc:=false \
+            project_id="string" \
+            public_bandwidth_bps:=42 \
+            type="string"
+  /apple-silicon/v1alpha1/zones/{zone}/connectivity-diagnostics:
+    post:
+      operationId: StartConnectivityDiagnostic
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.StartConnectivityDiagnosticResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                server_id:
+                  type: string
+              x-properties-order:
+              - server_id
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"server_id":"string"}' \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/connectivity-diagnostics"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/connectivity-diagnostics" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            server_id="string"
+  /apple-silicon/v1alpha1/zones/{zone}/connectivity-diagnostics/{diagnostic_id}:
+    get:
+      operationId: GetConnectivityDiagnostic
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      - in: path
+        name: diagnostic_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ConnectivityDiagnostic'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/connectivity-diagnostics/{diagnostic_id}"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/connectivity-diagnostics/{diagnostic_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /apple-silicon/v1alpha1/zones/{zone}/os:
+    get:
+      tags:
+      - OS
+      operationId: ListOS
+      summary: List all Operating Systems (OS)
+      description: List all Operating Systems (OS). The response will include the
+        total number of OS as well as their associated IDs, names and labels.
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      - in: query
+        name: page
+        description: Positive integer to choose the page to return.
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: page_size
+        description: Positive integer lower or equal to 100 to select the number of
+          items to return.
+        schema:
+          type: integer
+          format: uint32
+      - in: query
+        name: server_type
+        description: List of compatible server types.
+        schema:
+          type: string
+      - in: query
+        name: name
+        description: Filter OS by name (note that "11.1" will return "11.1.2" and
+          "11.1" but not "12")).
+        schema:
+          type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ListOSResponse'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/os"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/os" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /apple-silicon/v1alpha1/zones/{zone}/os/{os_id}:
+    get:
+      tags:
+      - OS
+      operationId: GetOS
+      summary: Get an Operating System (OS)
+      description: Get an Operating System (OS). The response will include the OS's
+        unique ID as well as its name and label.
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      - in: path
+        name: os_id
+        description: UUID of the OS you want to get.
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.OS'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/os/{os_id}"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/os/{os_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /apple-silicon/v1alpha1/zones/{zone}/runners:
+    get:
+      tags:
+      - Runners
+      operationId: ListRunners
+      summary: List runner configurations associated with a server
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      - in: query
+        name: server_id
+        description: ID of the server for which to list applied runner configurations.
+          (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: project_id
+        description: Only list servers of this project ID. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: organization_id
+        description: Only list servers of this Organization ID. (UUID format)
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      - in: query
+        name: page
+        description: Positive integer to choose the page to return.
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: page_size
+        description: Positive integer lower or equal to 100 to select the number of
+          items to return.
+        schema:
+          type: integer
+          format: uint32
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ListRunnersResponse'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/runners?server_id=6170692e-7363-616c-6577-61792e636f6d"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/runners" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            server_id==6170692e-7363-616c-6577-61792e636f6d
+    post:
+      tags:
+      - Runners
+      operationId: CreateRunner
+      summary: Create a new runner configuration
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Runner'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_id:
+                  type: string
+                  description: Creates a runner in the given project_id. (UUID format)
+                  example: 6170692e-7363-616c-6577-61792e636f6d
+                runner_configuration:
+                  description: Configuration details for the runner.
+                  $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.RunnerConfigurationV2'
+              required:
+              - project_id
+              - runner_configuration
+              x-properties-order:
+              - project_id
+              - runner_configuration
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"project_id":"6170692e-7363-616c-6577-61792e636f6d","runner_configuration":""}' \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/runners"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/runners" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            project_id="6170692e-7363-616c-6577-61792e636f6d" \
+            runner_configuration=""
+  /apple-silicon/v1alpha1/zones/{zone}/runners/{runner_id}:
+    get:
+      tags:
+      - Runners
+      operationId: GetRunner
+      summary: Retrieve a runner configuration
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      - in: path
+        name: runner_id
+        description: ID of the runner configuration to get. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Runner'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/runners/{runner_id}"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/runners/{runner_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    patch:
+      tags:
+      - Runners
+      operationId: UpdateRunner
+      summary: Create a new runner configuration
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      - in: path
+        name: runner_id
+        description: ID of the runner configuration to update. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Runner'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                runner_configuration:
+                  description: Configuration details for the runner.
+                  $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.RunnerConfigurationV2'
+              required:
+              - runner_configuration
+              x-properties-order:
+              - runner_configuration
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X PATCH \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"runner_configuration":""}' \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/runners/{runner_id}"
+      - lang: HTTPie
+        source: |-
+          http PATCH "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/runners/{runner_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            runner_configuration=""
+    delete:
+      tags:
+      - Runners
+      operationId: DeleteRunner
+      summary: Create a new runner configuration
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      - in: path
+        name: runner_id
+        description: ID of the runner configuration to delete. (UUID format)
+        required: true
+        schema:
+          type: string
+          example: 6170692e-7363-616c-6577-61792e636f6d
+      responses:
+        "204":
+          description: ""
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X DELETE \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/runners/{runner_id}"
+      - lang: HTTPie
+        source: |-
+          http DELETE "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/runners/{runner_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /apple-silicon/v1alpha1/zones/{zone}/server-type/{server_type}:
+    get:
+      tags:
+      - Server Types
+      operationId: GetServerType
+      summary: Get a server type
+      description: Get technical details (CPU, disk size etc.) of a server type.
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      - in: path
+        name: server_type
+        description: Server type identifier.
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ServerType'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/server-type/{server_type}"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/server-type/{server_type}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /apple-silicon/v1alpha1/zones/{zone}/server-types:
+    get:
+      tags:
+      - Server Types
+      operationId: ListServerTypes
+      summary: List server types
+      description: List all technical details about Apple silicon server types available
+        in the specified zone. Since there is only one Availability Zone for Apple
+        silicon servers, the targeted value is `fr-par-3`.
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ListServerTypesResponse'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/server-types"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/server-types" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /apple-silicon/v1alpha1/zones/{zone}/servers:
+    get:
+      tags:
+      - Servers
+      operationId: ListServers
+      summary: List all servers
+      description: List all servers in the specified zone. By default, returned servers
+        in the list are ordered by creation date in ascending order, though this can
+        be modified via the `order_by` field.
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      - in: query
+        name: order_by
+        description: Sort order of the returned servers.
+        schema:
+          $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ListServersRequest.OrderBy'
+      - in: query
+        name: project_id
+        description: Only list servers of this project ID.
+        schema:
+          type: string
+      - in: query
+        name: organization_id
+        description: Only list servers of this Organization ID.
+        schema:
+          type: string
+      - in: query
+        name: page
+        description: Positive integer to choose the page to return.
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: page_size
+        description: Positive integer lower or equal to 100 to select the number of
+          items to return.
+        schema:
+          type: integer
+          format: uint32
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.ListServersResponse'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    post:
+      tags:
+      - Servers
+      operationId: CreateServer
+      summary: Create a server
+      description: Create a new server in the targeted zone, specifying its configuration
+        including name and type.
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Server'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Create a server with this given name.
+                project_id:
+                  type: string
+                  description: Create a server in the given project ID.
+                type:
+                  type: string
+                  description: Create a server of the given type.
+                os_id:
+                  type:
+                  - string
+                  - "null"
+                  description: |-
+                    Create a server with the given os_id.
+                    Create a server & install the given os_id, when no os_id provided the default OS for this server type is chosen. Requesting a non-default OS will induce an extended delivery time.
+                enable_vpc:
+                  type: boolean
+                  description: |-
+                    Activate the Private Network feature for this server.
+                    Activate the Private Network feature for this server. This feature is configured through the Apple Silicon - Private Networks API.
+                commitment_type:
+                  description: |-
+                    Activate commitment for this server.
+                    Activate commitment for this server. If not specified, there is a 24h commitment due to Apple licensing (commitment_type `duration_24h`). It can be updated with the Update Server request. Available commitment depends on server type.
+                  $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Commitment.Type'
+                public_bandwidth_bps:
+                  type: integer
+                  description: |-
+                    Public bandwidth to configure for this server. Expressed in bits per second.
+                    Public bandwidth to configure for this server. This defaults to the minimum bandwidth for this server type. For compatible server types, the bandwidth can be increased which incurs additional costs.
+                  format: uint64
+                runner_configuration:
+                  description: |-
+                    Configuration for Optional CICD runner installation.
+                    Specify the configuration to install an optional CICD runner on the server during installation.
+                  deprecated: true
+                  $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.RunnerConfiguration'
+                applied_runner_configurations:
+                  description: |-
+                    Runner configurations to apply on the server, optional.
+                    Runner configurations to apply on the server, existing ones missing from the specified configuration will be removed from the server.
+                  $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.AppliedRunnerConfigurations'
+                enable_kext:
+                  type: boolean
+                  description: |-
+                    Enable kernel extensions.
+                    Enable kernel extensions in this install of mac OS.
+              x-properties-order:
+              - name
+              - project_id
+              - type
+              - os_id
+              - enable_vpc
+              - commitment_type
+              - public_bandwidth_bps
+              - runner_configuration
+              - applied_runner_configurations
+              - enable_kext
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "enable_kext": false,
+              "enable_vpc": false,
+              "name": "string",
+              "project_id": "string",
+              "public_bandwidth_bps": 42,
+              "type": "string"
+            }' \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            enable_kext:=false \
+            enable_vpc:=false \
+            name="string" \
+            project_id="string" \
+            public_bandwidth_bps:=42 \
+            type="string"
+  /apple-silicon/v1alpha1/zones/{zone}/servers/{server_id}:
+    get:
+      tags:
+      - Servers
+      operationId: GetServer
+      summary: Get a server
+      description: Retrieve information about an existing Apple silicon server, specified
+        by its server ID. Its full details, including name, status and IP address,
+        are returned in the response object.
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      - in: path
+        name: server_id
+        description: UUID of the server you want to get.
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Server'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers/{server_id}"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers/{server_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    patch:
+      tags:
+      - Servers
+      operationId: UpdateServer
+      summary: Update a server
+      description: Update the parameters of an existing Apple silicon server, specified
+        by its server ID.
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      - in: path
+        name: server_id
+        description: UUID of the server you want to update.
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Server'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type:
+                  - string
+                  - "null"
+                  description: Updated name for your server.
+                schedule_deletion:
+                  type:
+                  - boolean
+                  - "null"
+                  description: Specify whether the server should be flagged for automatic
+                    deletion.
+                enable_vpc:
+                  type:
+                  - boolean
+                  - "null"
+                  description: Activate or deactivate Private Network support for
+                    this server.
+                commitment_type:
+                  description: Change commitment. Use 'none' to automatically cancel
+                    a renewing commitment.
+                  $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.CommitmentTypeValue'
+                public_bandwidth_bps:
+                  type:
+                  - integer
+                  - "null"
+                  description: |-
+                    Public bandwidth configured for this server.
+                    Public bandwidth to configure for this server. Setting an higher bandwidth incurs additional costs. Supported bandwidth levels depends on server type and can be queried using the `/server-types` endpoint.
+                  format: uint64
+                applied_runner_configurations:
+                  description: |-
+                    Runner configurations to apply on the server, optional.
+                    Runner configurations to apply on the server, existing ones missing from the specified configuration will be removed from the server.
+                  $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.AppliedRunnerConfigurations'
+              x-properties-order:
+              - name
+              - schedule_deletion
+              - enable_vpc
+              - commitment_type
+              - public_bandwidth_bps
+              - applied_runner_configurations
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X PATCH \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers/{server_id}"
+      - lang: HTTPie
+        source: |-
+          http PATCH "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers/{server_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+    delete:
+      tags:
+      - Servers
+      operationId: DeleteServer
+      summary: Delete a server
+      description: Delete an existing Apple silicon server, specified by its server
+        ID. Deleting a server is permanent, and cannot be undone. Note that the minimum
+        allocation period for Apple silicon-as-a-service is 24 hours, meaning you
+        cannot delete your server prior to that.
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      - in: path
+        name: server_id
+        description: UUID of the server you want to delete.
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: ""
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X DELETE \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers/{server_id}"
+      - lang: HTTPie
+        source: |-
+          http DELETE "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers/{server_id}" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /apple-silicon/v1alpha1/zones/{zone}/servers/{server_id}/reboot:
+    post:
+      tags:
+      - Servers
+      operationId: RebootServer
+      summary: Reboot a server
+      description: Reboot an existing Apple silicon server, specified by its server
+        ID.
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      - in: path
+        name: server_id
+        description: UUID of the server you want to reboot.
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Server'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers/{server_id}/reboot"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers/{server_id}/reboot" \
+            X-Auth-Token:$SCW_SECRET_KEY
+  /apple-silicon/v1alpha1/zones/{zone}/servers/{server_id}/reinstall:
+    post:
+      tags:
+      - Servers
+      operationId: ReinstallServer
+      summary: Reinstall a server
+      description: Reinstall an existing Apple silicon server (specified by its server
+        ID) from a new image (OS). All the data on the disk is deleted and all configuration
+        is reset to the default configuration values of the image (OS).
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      - in: path
+        name: server_id
+        description: UUID of the server you want to reinstall.
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.Server'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                os_id:
+                  type:
+                  - string
+                  - "null"
+                  description: |-
+                    Reinstall the server with the OS corresponding to the os_id.
+                    Reinstall the server with the target OS, when no os_id provided the default OS for the server type is used.
+                enable_kext:
+                  type: boolean
+                  description: |-
+                    Enable kernel extensions.
+                    Enable kernel extensions in this install of mac OS.
+              x-properties-order:
+              - os_id
+              - enable_kext
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X POST \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"enable_kext":false}' \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers/{server_id}/reinstall"
+      - lang: HTTPie
+        source: |-
+          http POST "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers/{server_id}/reinstall" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            enable_kext:=false

@@ -809,6 +809,45 @@ def run_info_module(module: AnsibleModule, spec: InfoModule) -> None:
     module.exit_json(changed=False, **{field_name: result})
 
 
+def _valeur_courante(ressource: dict[str, Any], nom: str) -> Any:
+    """La valeur à comparer, quand l'écriture et la lecture ne nomment pas pareil.
+
+    **Une écriture prend `backend_id`, la lecture rend `backend`.** Scaleway
+    écrit la référence par son identifiant et la relit par l'objet entier :
+    `UpdateFrontend` accepte `backend_id`, et `GetFrontend` répond
+    `backend: {"id": ..., "name": ...}`. Chercher `backend_id` dans cette
+    réponse ne trouve rien, la comparaison conclut « différent », et le module
+    rend `changed` **à chaque exécution**.
+
+    Le défaut a été trouvé en exerçant `lb_frontend` sur une plateforme réelle,
+    pas en relisant : c'est exactement pourquoi l'exemple joue chaque écriture
+    deux fois.
+
+    **Deux** champs sur 95 sont dans ce cas, et les deux appartiennent à
+    `Frontend` : `backend_id` et `certificate_id`. Un premier compte en annonçait
+    cinq, tiré des seuls paramètres de corps sans vérifier contre le schéma de
+    lecture : `Ip.lb_id`, `Route.backend_id` et
+    `Server.admin_password_encryption_ssh_key_id` y figurent bien sous leur
+    propre nom, et la comparaison directe les traitait déjà correctement.
+
+    Un nombre publié dans un commentaire se vérifie comme un nombre publié
+    ailleurs.
+
+    La règle ne devine pas : elle ne s'applique **que** si le champ est absent
+    de la réponse, que son nom finit par `_id`, et que la réponse porte un objet
+    du nom restant avec une clé `id`. Les trois conditions ensemble ne
+    décrivent qu'une chose.
+    """
+    if nom in ressource:
+        return ressource[nom]
+    if not nom.endswith("_id"):
+        return None
+    objet = ressource.get(nom[: -len("_id")])
+    if isinstance(objet, dict) and "id" in objet:
+        return objet["id"]
+    return None
+
+
 def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
     """Amène une ressource existante à l'état que le playbook décrit.
 
@@ -845,17 +884,12 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
 
     if not isinstance(courant, dict):
         module.fail_json(
-            msg=(
-                f"{spec.read_operation.id} n'a pas rendu un objet, "
-                "donc rien ne peut être comparé"
-            )
+            msg=(f"{spec.read_operation.id} n'a pas rendu un objet, donc rien ne peut être comparé")
         )
         return
 
     demande = {
-        nom: module.params[nom]
-        for nom in spec.managed_params
-        if module.params.get(nom) is not None
+        nom: module.params[nom] for nom in spec.managed_params if module.params.get(nom) is not None
     }
 
     # **Un secret ne se compare pas, et il ne s'affiche pas non plus.** L'API ne
@@ -868,16 +902,18 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
     # puis retirée : elle ne changeait le résultat dans aucun cas atteignable,
     # et une garde qu'aucune mutation ne fait mordre est un commentaire. Ce qui
     # reste, et qui compte, est que la valeur ne fuit pas dans le `diff`.
-    ecarts = {nom: valeur for nom, valeur in demande.items() if courant.get(nom) != valeur}
+    ecarts = {
+        nom: valeur for nom, valeur in demande.items() if _valeur_courante(courant, nom) != valeur
+    }
 
     champ = spec.read_operation.payload_field or "resource"
     masque = "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
     avant = {
-        nom: (masque if nom in spec.secret_params else courant.get(nom)) for nom in ecarts
+        nom: (masque if nom in spec.secret_params else _valeur_courante(courant, nom))
+        for nom in ecarts
     }
     apres_demande = {
-        nom: (masque if nom in spec.secret_params else valeur)
-        for nom, valeur in ecarts.items()
+        nom: (masque if nom in spec.secret_params else valeur) for nom, valeur in ecarts.items()
     }
 
     if not ecarts:
@@ -892,11 +928,38 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
         )
         return
 
+    # **Un `PUT` remplace, un `PATCH` modifie.** N'envoyer que la différence à un
+    # `PUT` efface silencieusement tout ce qu'on n'a pas nommé, ce qui est
+    # exactement la raison pour laquelle les `PUT` d'Instance sont écartés par
+    # override. Sept opérations du Load Balancer sont dans ce cas, et le module
+    # généré portait les deux phrases contradictoires dans sa documentation :
+    # « You must set all parameters », du contrat, et « writes only the fields
+    # that differ », de ce runtime.
+    #
+    # Le corps d'un `PUT` reprend donc **tous** les champs gérés : la valeur
+    # demandée quand le playbook en fournit une, la valeur relue sinon. Ce que
+    # la lecture ne rend pas ne peut pas être conservé, et n'est pas envoyé :
+    # le contrat ne dit pas ce qu'un champ absent vaut, et l'inventer serait
+    # pire que l'omettre.
+    #
+    # `changed` continue de se décider sur `ecarts` : le corps grossit, le
+    # verdict ne bouge pas, et l'idempotence tient.
+    corps = ecarts
+    if spec.update_operation.method.upper() == "PUT":
+        corps = {}
+        for nom in spec.managed_params:
+            if nom in demande:
+                corps[nom] = demande[nom]
+                continue
+            relu = _valeur_courante(courant, nom)
+            if relu is not None:
+                corps[nom] = relu
+
     try:
         api.request(
             spec.update_operation,
             params=build_query(spec.update_operation, module.params),
-            body=ecarts,
+            body=corps,
         )
         apres = api.fetch_one(spec.read_operation)
     except ScalewayApiError as error:
@@ -908,8 +971,7 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
         diff={
             "before": avant,
             "after": {
-                nom: (masque if nom in spec.secret_params else apres.get(nom))
-                for nom in ecarts
+                nom: (masque if nom in spec.secret_params else apres.get(nom)) for nom in ecarts
             },
         },
         **{champ: apres},

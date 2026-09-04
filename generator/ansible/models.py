@@ -298,7 +298,11 @@ def build_module_specs(
 
     for name, plans in plan.modules().items():
         if only and name not in only:
-            skipped.append((name, "hors du périmètre demandé"))
+            # Nommer le mécanisme plutôt que la conclusion : « hors du
+            # périmètre » était circulaire, et un lecteur ne pouvait pas
+            # distinguer un module qu'on a choisi de ne pas produire d'un
+            # module que le modèle ne sait pas produire.
+            skipped.append((name, "non demandé : `--module` restreint cette production"))
             continue
         try:
             specs.append(build_module_spec(name, plans, plan.service, collection, plan.overrides))
@@ -537,8 +541,14 @@ def _build_manage_module(
         short_description=f"Manage a Scaleway {_libelle(service, item.resource)}",
         description=(
             update_operation.documentation_line or UNDOCUMENTED,
-            "The module reads the resource first and writes only the fields that "
-            "differ, so a second run reports no change.",
+            (
+                "The module reads the resource first and writes the whole body, "
+                "because this operation replaces the resource: fields you do not "
+                "set keep the value the API returns. A second run reports no change."
+                if update_operation.method.upper() == "PUT"
+                else "The module reads the resource first and writes only the "
+                "fields that differ, so a second run reports no change."
+            ),
         ),
         returns=(
             ReturnValue(
