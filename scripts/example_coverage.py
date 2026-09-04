@@ -67,6 +67,14 @@ SANS_CIBLE: dict[str, str] = {
         "Terraform : en rendre une laisserait son état en désaccord avec le compte, "
         "et c'est exactement le résidu que la règle du dépôt interdit."
     ),
+    "lb_load_balancer_action": (
+        "migre un load balancer vers un autre type commercial, et **refuse le "
+        "non-changement** : migrer vers le type courant rend 400 `invalid_arguments`, "
+        "mesuré sur le compte réel. Le seul appel que l'API accepte change donc la "
+        "facture du compte pour la durée de l'exercice, et ce n'est pas une décision "
+        "que l'exemple prend à la place de qui le lance. feint ne sert pas cette "
+        "route non plus (501), donc aucune des deux cibles ne l'exerce."
+    ),
     "lb_certificate": (
         "demande un certificat, donc un domaine pour Let's Encrypt ou un PEM à "
         "fournir. La stack n'a pas de domaine, et embarquer un certificat auto-signé "

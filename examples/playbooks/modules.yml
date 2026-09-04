@@ -900,28 +900,6 @@
         quiet: true
       when: cible == 'reel'
 
-    # ---- La migration du load balancer -----------------------------------
-    #
-    # **Vers le type qu'il porte déjà.** `MigrateLb` change le type commercial
-    # d'un load balancer existant, ce qui est exactement une opération Day-2 ;
-    # le faire monter en gamme sur le compte de quelqu'un changerait sa facture
-    # pour la durée de l'exercice. Migrer vers le type courant exerce le module,
-    # l'API et le chemin, sans rien coûter ni rien casser.
-    #
-    # Si l'API refuse une migration vers le même type, la tâche rougit et c'est
-    # une information : personne ne le sait aujourd'hui, et c'est exactement ce
-    # qu'un exercice contre le vrai cloud existe pour découvrir.
-
-    - name: Migrer le load balancer vers le type qu'il porte déjà
-      stephrobert.scaleway.lb_load_balancer_action:
-        zone: "{{ zone }}"
-        lb_id: "{{ notre_lb }}"
-        type: "{{ (balanceurs.lbs | selectattr('name', 'search', prefixe) | first).type }}"
-      register: migration
-      failed_when: migration.failed | default(false)
-        and migration.api_type | default('') != 'not_emulated'
-      when: notre_lb | length > 0
-
     # ---- Le stockage que l'API Instance voit -----------------------------
     #
     # **Tout le stockage de cette stack est du Block Storage**, parce que c'est
