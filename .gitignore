@@ -46,3 +46,4 @@ terraform.tfstate.backup
 .terraform.tfstate.lock.info
 terraform.tfvars
 *.tfplan
+.mise.local.toml

@@ -1,0 +1,124 @@
+# Publication sur Ansible Galaxy, déclenchée par un tag et rien d'autre.
+#
+# **Le déclencheur est le tag, jamais `push` sur `main`.** Une version publiée
+# sur Galaxy est immuable : republier la même rend `conflict.collection_exists`,
+# et il n'y a pas de correction, seulement une version de plus. Une publication
+# irréversible ne doit pas partir d'une fusion.
+#
+# Ce pipeline n'a été écrit qu'**après** une première publication faite à la
+# main, et c'est délibéré : un pipeline de publication qui n'a jamais publié est
+# une hypothèse, et son premier essai porterait sur un numéro qu'on ne peut pas
+# reprendre. Deux choses apprises ce jour-là sont écrites ici plutôt que
+# redécouvertes :
+#
+# * l'URL du serveur doit être `https://galaxy.ansible.com/api/`. Sur l'hôte nu,
+#   `ansible-galaxy` rend **401 dès la découverte des versions**, et le message
+#   parle d'autorisation là où le problème est un chemin ;
+# * `--token` seul ne suffit pas. C'est la configuration de serveur qui porte à
+#   la fois l'URL et le jeton, et les variables `ANSIBLE_GALAXY_SERVER_*`
+#   l'expriment sans écrire de fichier.
+#
+# Les trois règles des autres workflows valent ici : aucun droit par défaut,
+# aucune action par tag, aucun jeton laissé derrière.
+name: release
+
+on:
+  push:
+    tags:
+      # Les deux conventions, parce que `scripts/release.py` accepte les deux :
+      # un workflow qui ne se déclenche que sur l'une ferait taguer sans rien
+      # publier, et le silence est la pire des réponses à un tag de release.
+      #
+      # Le motif doit couvrir **tout** le nom : `0.2.0-rc1` ne déclenche donc
+      # pas, et c'est voulu. Une préversion demande une décision, pas un
+      # automatisme.
+      - "[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions: {}
+
+# Deux tags poussés coup sur coup ne se marchent pas dessus, et rien n'est
+# annulé : une publication commencée doit s'achever ou échouer visiblement.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    name: Publier sur Galaxy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: galaxy
+    permissions:
+      contents: write
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # La garde compare le tag à `galaxy.yml` : sans l'historique des tags,
+          # `git describe` ne trouve rien et la garde refuserait pour la
+          # mauvaise raison.
+          fetch-depth: 0
+
+      - name: Installer mise
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
+        with:
+          version: 2026.2.23
+          # **Pas de cache dans un workflow qui publie.** L'action en active un
+          # par défaut, et un cache est écrit par n'importe quelle branche du
+          # dépôt : ce qui part sur Galaxy ne doit dépendre que du tag. C'est
+          # l'unique constat de zizmor sur ce fichier, et il est classé haut
+          # pour cette raison.
+          cache: false
+
+      - name: Installer
+        run: mise run setup
+
+      # **La garde d'abord.** Tag qui concorde avec `galaxy.yml`, arbre propre,
+      # changelog composé, version sémantique. Ce qu'elle refuse coûterait un
+      # numéro.
+      - name: Ce qui doit être vrai avant de publier
+        run: mise run release:check
+
+      - name: Ce qu'une pull request doit passer
+        run: mise run check
+
+      - name: Ce qu'Ansible dit du fichier produit
+        run: mise run sanity
+
+      # `package` construit l'archive, contrôle son contenu, l'installe dans un
+      # répertoire jetable et demande sa documentation à `ansible-doc`. Un
+      # fichier présent dans une archive n'est pas un module qu'Ansible sait
+      # charger.
+      - name: Construire l'archive, l'installer et l'interroger
+        run: mise run package
+
+      - name: Publier
+        env:
+          # Le jeton passe par l'environnement, jamais par la ligne de commande :
+          # une commande finit dans un journal, et un journal se partage.
+          ANSIBLE_GALAXY_SERVER_LIST: published
+          ANSIBLE_GALAXY_SERVER_PUBLISHED_URL: https://galaxy.ansible.com/api/
+          ANSIBLE_GALAXY_SERVER_PUBLISHED_TOKEN: ${{ secrets.GALAXY_API_TOKEN }}
+        run: |
+          archive=$(ls build/dist/*.tar.gz)
+          ansible-galaxy collection publish "$archive"
+
+      # La release GitHub vient **après** la publication réussie : elle
+      # enregistre ce qui est parti, elle ne l'annonce pas d'avance.
+      - name: Enregistrer la release GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          archive=$(ls build/dist/*.tar.gz)
+          gh release create "$TAG" "$archive" \
+            --title "$TAG" \
+            --notes "Publiée sur Ansible Galaxy : https://galaxy.ansible.com/ui/repo/published/stephrobert/scaleway/" \
+            --verify-tag
