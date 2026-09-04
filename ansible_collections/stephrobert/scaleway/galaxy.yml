@@ -55,4 +55,8 @@ dependencies: {}
 # répertoire. `build_ignore` n'a donc plus à les écarter, et ce qui reste est
 # ce qu'`ansible-galaxy` produirait de toute façon.
 build_ignore:
-  - tests/output
+  # `tests` et non `tests/output` : écarter le contenu laissait le répertoire
+  # lui-même dans l'archive, vide, et le contrôle des fuites ne le voyait pas
+  # parce qu'il ne regardait que les fichiers. Rien sous `tests/` n'a sa place
+  # chez un utilisateur.
+  - tests

@@ -68,9 +68,22 @@ def archive_name(collection: Collection) -> str:
 
 
 def members(archive: Path) -> tuple[str, ...]:
-    """Les chemins que l'archive porte, triés."""
+    """Les fichiers que l'archive porte, triés. Les répertoires n'en sont pas."""
     with tarfile.open(archive, "r:gz") as tar:
         return tuple(sorted(member.name for member in tar.getmembers() if member.isfile()))
+
+
+def entrees(archive: Path) -> tuple[str, ...]:
+    """**Tout** ce que l'archive porte, répertoires compris.
+
+    La distinction n'est pas théorique : l'archive emportait un répertoire
+    `tests/` vide, et le contrôle des fuites ne le voyait pas parce qu'il ne
+    regardait que les fichiers. Un lecteur du tarball y lit pourtant que la
+    collection livre ses tests, et le jour où un fichier s'y glisse, c'est le
+    `build_ignore` qui décide seul.
+    """
+    with tarfile.open(archive, "r:gz") as tar:
+        return tuple(sorted(member.name for member in tar.getmembers()))
 
 
 def check_contents(archive: Path) -> tuple[str, ...]:
@@ -81,8 +94,15 @@ def check_contents(archive: Path) -> tuple[str, ...]:
     """
     contenu = members(archive)
 
+    # Sur **toutes** les entrées, et pas seulement les fichiers : un répertoire
+    # interdit, même vide, annonce au lecteur du tarball quelque chose qui n'a
+    # pas sa place chez lui.
     fuites = sorted(
-        {chemin.split("/", 1)[0] for chemin in contenu if chemin.split("/", 1)[0] in FORBIDDEN}
+        {
+            chemin.split("/", 1)[0]
+            for chemin in entrees(archive)
+            if chemin.split("/", 1)[0] in FORBIDDEN
+        }
     )
     if fuites:
         raise PackageError(f"l'archive emporte ce qui doit rester au dépôt : {fuites}")

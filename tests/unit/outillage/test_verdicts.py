@@ -681,3 +681,24 @@ def test_un_compteur_sans_source_refuse_de_repondre(
     with pytest.raises(readme_counters.CompteursError) as erreur:
         readme_counters._modules_ecrits()
     assert "generate" in str(erreur.value)
+
+
+def test_un_repertoire_interdit_meme_vide_est_une_fuite(tmp_path: Path) -> None:
+    """La garde ne voyait que les fichiers, et l'archive emportait `tests/` vide.
+
+    Un répertoire seul ne porte rien, mais il annonce au lecteur du tarball
+    quelque chose qui n'a pas sa place chez lui, et le jour où un fichier s'y
+    glisse, c'est le `build_ignore` qui décide seul.
+    """
+    archive = tmp_path / "collection.tar.gz"
+    with tarfile.open(archive, "w:gz") as tar:
+        for chemin in package.REQUIRED:
+            fichier = tmp_path / Path(chemin).name
+            fichier.write_text("", encoding="utf-8")
+            tar.add(fichier, arcname=chemin)
+        vide = tarfile.TarInfo("tests")
+        vide.type = tarfile.DIRTYPE
+        tar.addfile(vide)
+
+    with pytest.raises(package.PackageError, match="tests"):
+        package.check_contents(archive)
