@@ -16,6 +16,14 @@
       "test": "tests/unit/generator/test_mapping.py::test_un_champ_sensible_recoit_no_log"
     },
     {
+      "name": "identifiant-masque-comme-un-secret",
+      "why": "Sans la règle, `admin_password_encryption_ssh_key_id` est masqué parce que son nom contient `password`. L'identifiant d'une clé n'est pas le secret qu'elle protège : le masquer prive l'opérateur d'une information utile sans rien protéger.",
+      "file": "generator/ansible/mapping.py",
+      "find": "    if name.endswith(\"_id\"):\n        return False",
+      "replace": "    if name.endswith(\"_id\") and False:\n        return False",
+      "test": "tests/unit/generator/test_mapping.py::test_un_identifiant_nest_jamais_le_secret_quil_designe"
+    },
+    {
       "name": "override-sans-raison",
       "why": "Un override qui change une classification sans raison est indéfendable à la relecture.",
       "file": "generator/overrides/loader.py",

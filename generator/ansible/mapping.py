@@ -97,8 +97,22 @@ def module_name(product: str, resource: str, kind: OperationKind) -> str | None:
 
 
 def is_sensitive(parameter: ApiParameter) -> bool:
-    """Vrai quand le paramètre doit recevoir `no_log=True`."""
+    """Vrai quand le paramètre doit recevoir `no_log=True`.
+
+    **Un identifiant n'est jamais le secret lui-même.** La règle cherche des
+    fragments dans le nom, et `admin_password_encryption_ssh_key_id` en contient
+    un : il était donc masqué, alors qu'il désigne la clé SSH qui sert au
+    chiffrement, pas le mot de passe. Le masquer privait l'utilisateur d'une
+    information utile sans rien protéger, et le compte rendu affirmait par
+    ailleurs que « l'API ne le rend pas », ce que le schéma `Server` contredit.
+
+    Mesuré sur les deux contrats : ce paramètre est le **seul** que la règle
+    juge sensible, et c'est un faux positif. La règle garde donc son intérêt
+    pour ce qui viendra, et cesse de se laisser piéger par un nom composé.
+    """
     name = parameter.name.lower()
+    if name.endswith("_id"):
+        return False
     return any(fragment in name for fragment in _SENSITIVE_FRAGMENTS)
 
 

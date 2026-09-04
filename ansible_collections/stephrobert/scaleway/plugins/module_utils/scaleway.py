@@ -823,10 +823,15 @@ def _valeur_courante(ressource: dict[str, Any], nom: str) -> Any:
     pas en relisant : c'est exactement pourquoi l'exemple joue chaque écriture
     deux fois.
 
-    Cinq champs sur 95 sont dans ce cas, mesurés sur les deux produits :
-    `lb_frontend.backend_id`, `lb_frontend.certificate_id`, `lb_ip.lb_id`,
-    `lb_route.backend_id` et
-    `instance_server.admin_password_encryption_ssh_key_id`.
+    **Deux** champs sur 95 sont dans ce cas, et les deux appartiennent à
+    `Frontend` : `backend_id` et `certificate_id`. Un premier compte en annonçait
+    cinq, tiré des seuls paramètres de corps sans vérifier contre le schéma de
+    lecture : `Ip.lb_id`, `Route.backend_id` et
+    `Server.admin_password_encryption_ssh_key_id` y figurent bien sous leur
+    propre nom, et la comparaison directe les traitait déjà correctement.
+
+    Un nombre publié dans un commentaire se vérifie comme un nombre publié
+    ailleurs.
 
     La règle ne devine pas : elle ne s'applique **que** si le champ est absent
     de la réponse, que son nom finit par `_id`, et que la réponse porte un objet
