@@ -1,32 +1,32 @@
----
 ancestor: null
 releases:
   0.1.0:
     changes:
       major_changes:
-        - "Fragment de documentation ``scaleway`` pour les param\xE8tres communs,\
-          \ qui ne sont donc jamais red\xE9clar\xE9s par un module."
-        - "Nouveau module ``instance_server_info``, qui sert ``GetServer`` et ``ListServers``\
-          \ derri\xE8re une seule interface. L'identifiant fourni lit une Instance,\
-          \ absent liste la zone enti\xE8re, toutes pages parcourues."
-        - "Runtime commun dans ``plugins/module_utils/scaleway.py`` : une seule construction\
-          \ de client, gestion d'erreur centralis\xE9e sans jamais recopier de secret,\
-          \ pagination compl\xE8te et check mode."
+      - '``scaleway`` documentation fragment for the common parameters, which a module therefore
+        never redeclares.'
+      - New module ``instance_server_info``, which serves ``GetServer`` and ``ListServers``
+        behind a single interface. A supplied identifier reads one Instance, an absent one
+        lists the whole zone, every page walked.
+      - 'Shared runtime in ``plugins/module_utils/scaleway.py``: one way to build the client,
+        centralised error handling that never copies a secret, complete pagination and check
+        mode.'
       minor_changes:
-        - "Deux playbooks d'exemple dans ``playbooks/``, jou\xE9s \xE0 chaque ex\xE9\
-          cution de la cible d'int\xE9gration plut\xF4t qu'\xE9crits une fois."
-        - "``SCW_API_URL`` est honor\xE9 de bout en bout, ce qui permet d'exercer\
-          \ un playbook contre un \xE9mulateur local, sans identifiants et sans d\xE9\
-          pense."
-      release_summary: "Premi\xE8re version de la collection, produite par le g\xE9\
-        n\xE9rateur du d\xE9p\xF4t \xE0\npartir des documents OpenAPI publi\xE9s par\
-        \ Scaleway.\n\nUn seul module est livr\xE9, et c'est d\xE9lib\xE9r\xE9 : la\
-        \ cha\xEEne compl\xE8te, du contrat\nau playbook, est prouv\xE9e sur lui avant\
-        \ d'\xEAtre \xE9largie.\n"
+      - Two example playbooks in ``playbooks/``, played on every run of the integration target
+        rather than written once.
+      - '``SCW_API_URL`` is honoured end to end, which makes it possible to exercise a playbook
+        against a local emulator, with no credentials and no spend.'
+      release_summary: 'First version of the collection, produced by this repository''s generator
+        from the OpenAPI documents Scaleway publishes.
+
+
+        The complete chain, from contract to playbook, is proven before being widened: the
+        generator, the shared runtime and the drift mechanisms come first, and the modules
+        follow from them.'
     fragments:
-      - 0.1.0-premiere-version.yml
+    - 0.1.0-premiere-version.yml
     modules:
-      - description: Gather information about Scaleway Instance servers.
-        name: instance_server_info
-        namespace: ''
+    - description: Gather information about Scaleway Instance servers.
+      name: instance_server_info
+      namespace: ''
     release_date: '2026-09-01'

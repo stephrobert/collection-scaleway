@@ -1,50 +1,52 @@
-# Playbooks de la collection
+# Collection playbooks
 
-Des playbooks qui se lancent, pas des extraits qui illustrent.
+Playbooks that run, not snippets that illustrate.
 
-Ils vivent dans `playbooks/`, l'emplacement qu'Ansible reconnaît : une fois la
-collection installée, ils s'appellent par leur nom complet, sans chemin.
+They live in `playbooks/`, the location Ansible recognises: once the collection
+is installed, they are called by their fully qualified name, with no path.
 
-Chacun est joué par `mise run integration` contre un émulateur local, à chaque
-exécution de la cible. Un exemple que personne n'exécute pourrit, et un exemple
-faux dans une documentation coûte plus cher qu'une documentation absente.
+Each one is played by `mise run integration` against a local emulator, on every
+run of that target. An example nobody executes rots, and a wrong example in
+documentation costs more than no documentation at all.
 
-| playbook | ce qu'il montre |
+| playbook | what it shows |
 |---|---|
-| [inventaire_serveurs.yml](inventaire_serveurs.yml) | lister une zone entière, répartir par état et par type |
-| [detail_dun_serveur.yml](detail_dun_serveur.yml) | le même module en lecture unitaire, et le `changed=false` d'un module d'information |
-| [arreter_un_serveur.yml](arreter_un_serveur.yml) | arrêter une Instance désignée, attendre l'état visé, puis le relire |
+| [inventaire_serveurs.yml](inventaire_serveurs.yml) | listing a whole zone, split by state and by type |
+| [detail_dun_serveur.yml](detail_dun_serveur.yml) | the same module in unit read, and the `changed=false` of an information module |
+| [arreter_un_serveur.yml](arreter_un_serveur.yml) | stopping a named Instance, waiting for the target state, then reading it back |
 
-## Les lancer
+## Running them
 
-Contre un vrai compte Scaleway, avec les identifiants dans l'environnement ou
-dans le fichier de configuration :
+Against a real Scaleway account, with credentials in the environment or in the
+configuration file:
 
 ```bash
 export SCW_ACCESS_KEY=... SCW_SECRET_KEY=...
 
-# depuis le dépôt
+# from the repository
 ansible-playbook playbooks/inventaire_serveurs.yml -e zone=fr-par-1
 
-# depuis la collection installée, par son nom complet
+# from the installed collection, by its fully qualified name
 ansible-playbook stephrobert.scaleway.inventaire_serveurs -e zone=fr-par-1
 ```
 
-Sans compte et sans dépense, contre un émulateur local :
+With no account and no spend, against a local emulator:
 
 ```bash
-mise run integration          # démarre feint, amorce, joue tout
+mise run integration          # starts feint, seeds it, plays everything
 ```
 
-## Ce qu'ils n'illustrent pas encore
+## What they do not show yet
 
-Deux modules existent : la lecture et l'action. La gestion d'état durable
-(étape 4) manque encore, et c'est elle qui rendra un rôle utile — il y aura
-alors une séquence à tenir plutôt qu'un appel à faire.
+These three cover reading and acting. The collection now also ships state
+management modules, which read, compare and write only the difference: no
+shipped playbook demonstrates one yet, because a useful demonstration needs a
+sequence to hold rather than a single call to make.
 
-`arreter_un_serveur.yml` ne choisit jamais tout seul quelle machine arrêter :
-sans `-e server_id=<uuid>` il ne fait rien et le dit. Un playbook d'exemple qui
-décide à votre place est un piège, pas une documentation.
+The full set is exercised elsewhere: `examples/playbooks/modules.yml` in the
+repository plays 39 of the 46 modules against the same platform, on an emulator
+and on a real account, and publishes what each run actually played.
 
-La collection s'installe par chemin ou par archive : son namespace est `local`,
-qui n'est pas publié sur Galaxy.
+`arreter_un_serveur.yml` never chooses on its own which machine to stop:
+without `-e server_id=<uuid>` it does nothing and says so. An example playbook
+that decides for you is a trap, not documentation.

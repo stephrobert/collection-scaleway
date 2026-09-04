@@ -35,6 +35,8 @@ from generator.ansible.collection import load_collection
 
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
+#: Le README que `galaxy.yml` désigne, donc celui que Galaxy publiera.
+README_COLLECTION = ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "README.md"
 RAPPORTS = ROOT / "build" / "reports"
 MUTATIONS = ROOT / "tests" / "falsify" / "specs.json"
 WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
@@ -175,14 +177,87 @@ def _lignes_de_modules() -> list[str]:
     return lignes
 
 
+def _table_des_modules() -> list[str]:
+    """La table des modules du README de la collection, par produit.
+
+    **Même source que la liste du README racine, et c'est le point.** Ce README
+    documentait deux modules quand la collection en produisait 46, et c'est le
+    fichier que `galaxy.yml` désigne, donc celui que Galaxy publie. Une seconde
+    source recopiée à la main aurait exactement le défaut mesuré en #55 : deux
+    dérivations pour une même chose, une seule tenue à jour.
+
+    Les produits se déduisent du préfixe du nom de module, qui est le nom du
+    produit dans le contrat. Un troisième produit apparaîtra donc tout seul,
+    sans qu'un titre de section soit à écrire.
+    """
+    dossier = load_collection().path / "plugins" / "modules"
+    par_produit: dict[str, list[tuple[str, str]]] = {}
+    for fichier in sorted(dossier.glob("*.py")):
+        if fichier.name.startswith("_"):
+            continue
+        courte = ""
+        for ligne in fichier.read_text(encoding="utf-8").splitlines():
+            if ligne.startswith("short_description:"):
+                courte = ligne.split(":", 1)[1].strip().strip("\"'")
+                break
+        produit = fichier.stem.split("_", 1)[0]
+        par_produit.setdefault(produit, []).append((fichier.stem, courte))
+
+    if not par_produit:
+        raise CompteursError(
+            f"{_affichable(dossier)} ne porte aucun module : lancer "
+            "`mise run generate`. Une table qui annonce zéro module est une table fausse."
+        )
+
+    titres = {"instance": "Instance", "lb": "Load Balancer"}
+    lignes: list[str] = []
+    for produit, modules in sorted(par_produit.items()):
+        lignes += [
+            "",
+            f"### {titres.get(produit, produit.title())} ({len(modules)} modules)",
+            "",
+            "| module | what it does |",
+            "|---|---|",
+            *(f"| `{nom}` | {courte} |" for nom, courte in modules),
+        ]
+    inventaire = load_collection().path / "plugins" / "inventory"
+    plugins = sorted(p.stem for p in inventaire.glob("*.py") if not p.stem.startswith("_"))
+    if plugins:
+        lignes += [
+            "",
+            "### Inventory plugins",
+            "",
+            "| plugin | what it discovers |",
+            "|---|---|",
+            *(
+                f"| `{nom}` | Instances, Elastic Metal and Apple Silicon, "
+                "with their private-network addresses |"
+                for nom in plugins
+            ),
+        ]
+    return lignes[1:]
+
+
 def _pourcent(valeur: float) -> str:
-    """Avec la virgule décimale, le dépôt écrivant en français."""
-    return f"{valeur * 100:.1f} %".replace(".", ",", 1)
+    """Le point décimal et l'espace insécable de l'anglais.
+
+    Ce nombre atterrit dans un README publié, et la frontière de langue du
+    projet passe là : ce qui est publié est en anglais, le code qui le produit
+    reste en français.
+    """
+    return f"{valeur * 100:.1f}%"
 
 
-def _en_lettres(nombre: int) -> str:
-    lettres = {1: "un", 2: "deux", 3: "trois", 4: "quatre", 5: "cinq", 6: "six", 7: "sept"}
-    return lettres.get(nombre, str(nombre))
+def _pourcent_anglais(numerateur: int, denominateur: int) -> str:
+    """Le ratio des modules appelés, recalculé plutôt que reformaté.
+
+    `example_coverage` rend une chaîne à la virgule décimale, parce que sa
+    sortie terminal reste en français. La reformater à coups de `replace`
+    marcherait aujourd'hui et casserait le jour où l'un des deux change.
+    """
+    if denominateur == 0:
+        return "n/a"
+    return _pourcent(numerateur / denominateur)
 
 
 def bloc() -> str:
@@ -195,23 +270,24 @@ def bloc() -> str:
     ecrits, plan = _modules_ecrits()
     nb_jobs, noms_jobs = _jobs()
     exemple = mesurer_exemple()
+    appeles = len(exemple["appeles_par_lexemple"])
 
     return "\n".join(
         [
             "```text",
-            f"instance v1 : {totaux['operations']} opérations découvertes",
+            f"instance v1: {totaux['operations']} operations discovered",
             f"  INFO {genres['info']} · ACTION {genres['action']} · "
             f"MANAGE {genres['manage']} · WORKFLOW {genres['workflow']} · "
             f"LIFECYCLE {genres['lifecycle']} · IGNORE {genres['ignore']} · "
             f"UNKNOWN {genres['unknown']}",
             f"  Day-2 {totaux['day2_candidates']} · AUTO {modes['auto']} · "
-            f"MANUAL {modes['manual']} · classées pour génération automatique "
+            f"MANUAL {modes['manual']} · classified for automatic generation "
             f"{_pourcent(couverture)} ({modes['auto'] + modes['override']}"
             f"/{totaux['day2_candidates']})",
             "",
-            f"collection stephrobert.scaleway : {ecrits} modules produits sur {plan} au plan",
+            f"collection stephrobert.scaleway: {ecrits} modules written out of {plan} planned",
             *_lignes_de_modules(),
-            f"  {'scaleway (inventaire)':<38s} instance, elastic_metal, apple_silicon",
+            f"  {'scaleway (inventory)':<38s} instance, elastic_metal, apple_silicon",
             # **Le troisième étage, et il ne dit pas la même chose que les deux
             # autres.** « Classées » dit ce que le générateur autorise,
             # « produites » ce qu'il écrit, et celui-ci ce que l'exemple appelle.
@@ -222,27 +298,42 @@ def bloc() -> str:
             # nombre existe, il vient de l'artefact qu'un run laisse derrière
             # lui, et il ne peut pas entrer ici puisqu'il dépend d'une
             # exécution. `mise run coverage:example` le publie.
-            f"  {len(exemple['appeles_par_lexemple'])} modules appelés par le playbook "
-            f"d'exemple sur {ecrits} ({exemple['ratio_appeles']}), "
-            "ce qui n'est pas la même chose que joués",
-            f"  {_tests()} tests unitaires · {_mutations()} mutations prouvées par /falsify",
-            f"  CI : {_en_lettres(nb_jobs)} jobs, {' · '.join(noms_jobs)}",
-            "  ansible-test sanity, playbooks et inventaire contre l'émulateur :",
-            "  comptes rendus par `mise run sanity` et `mise run integration`",
+            f"  {appeles} modules called by the example playbook out of {ecrits} "
+            f"({_pourcent_anglais(appeles, ecrits)}), which is not the same as played",
+            f"  {_tests()} unit tests · {_mutations()} mutations proven by /falsify",
+            f"  CI: {nb_jobs} jobs, {' · '.join(noms_jobs)}",
+            "  ansible-test sanity, playbooks and inventory against the emulator:",
+            "  reported by `mise run sanity` and `mise run integration`",
             "```",
         ]
     )
 
 
-def _remplace(texte: str, nouveau: str) -> str:
+def _remplace(fichier: Path, texte: str, nouveau: str) -> str:
     if DEBUT not in texte or FIN not in texte:
         raise CompteursError(
-            f"les marqueurs manquent dans {README.name}. Encadrer le bloc par :\n"
+            f"les marqueurs manquent dans {_affichable(fichier)}. Encadrer le bloc par :\n"
             f"{DEBUT}\n...\n{FIN}"
         )
     avant = texte[: texte.index(DEBUT) + len(DEBUT)]
     apres = texte[texte.index(FIN) :]
     return f"{avant}\n{nouveau}\n{apres}"
+
+
+def blocs() -> dict[Path, str]:
+    """Les blocs dérivés, et le fichier de chacun.
+
+    **Deux publics, deux fichiers, un seul mécanisme.** Le README racine
+    s'adresse à qui veut comprendre le générateur, celui de la collection à qui
+    veut l'installer, et `galaxy.yml` désigne le second, donc c'est lui que
+    Galaxy publie. Les deux dérivent des mêmes modules : les tenir par deux
+    scripts ferait revenir le défaut de #55, où deux sources d'un même bloc
+    n'avaient pas suivi le même élargissement.
+    """
+    return {
+        README: bloc(),
+        README_COLLECTION: "\n".join(_table_des_modules()),
+    }
 
 
 def main(argv: list[str]) -> int:
@@ -252,26 +343,31 @@ def main(argv: list[str]) -> int:
     groupe.add_argument("--check", action="store_true", help="échouer s'il a vieilli")
     arguments = parseur.parse_args(argv[1:])
 
-    texte = README.read_text(encoding="utf-8")
-    attendu = _remplace(texte, bloc())
+    perimes: list[str] = []
+    for fichier, contenu in blocs().items():
+        texte = fichier.read_text(encoding="utf-8")
+        attendu = _remplace(fichier, texte, contenu)
+        nom = _affichable(fichier)
+        if arguments.write:
+            if attendu == texte:
+                print(f"{nom} : déjà à jour")
+                continue
+            fichier.write_text(attendu, encoding="utf-8")
+            print(f"{nom} : réécrit")
+            continue
+        if attendu != texte:
+            perimes.append(nom)
+        else:
+            print(f"{nom} : conforme à la mesure")
 
-    if arguments.write:
-        if attendu == texte:
-            print("compteurs du README : déjà à jour")
-            return 0
-        README.write_text(attendu, encoding="utf-8")
-        print("compteurs du README : réécrits")
-        return 0
-
-    if attendu != texte:
+    if perimes:
         print(
-            "les compteurs du README ne correspondent plus à ce qui est mesuré.\n"
+            f"ces blocs ne correspondent plus à ce qui est mesuré : {', '.join(perimes)}.\n"
             "Lancer `mise run readme` puis relire le diff : un nombre recopié à la\n"
             "main vieillit en silence, et se lit exactement comme une mesure.",
             file=sys.stderr,
         )
         return 1
-    print("compteurs du README : conformes à la mesure")
     return 0
 
 

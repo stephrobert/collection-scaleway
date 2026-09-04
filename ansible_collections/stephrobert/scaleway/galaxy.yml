@@ -24,15 +24,30 @@ readme: README.md
 authors:
   - Stéphane Robert (@stephrobert)
 description: >-
-  Modules Ansible Day-2 pour les APIs Scaleway, produits par le générateur de
-  ce dépôt. Terraform provisionne les ressources, cette collection exploite
-  les ressources existantes.
+  Day-2 Ansible modules for the Scaleway APIs, produced by this repository's
+  generator. Terraform provisions resources, this collection operates existing
+  ones.
 license:
   - GPL-3.0-or-later
 tags:
   - scaleway
   - cloud
   - infrastructure
+# **Où ça vient, et où le signaler.** Cette collection est générée : un
+# utilisateur qui trouve un défaut dans un module ne doit surtout pas le
+# corriger dans le module, qui sera réécrit à la prochaine génération. Le
+# correctif appartient au contrat, à une règle de classification ou à un
+# override, et ces deux liens sont les seuls chemins de retour depuis la page
+# Galaxy vers l'endroit où la réparation est possible.
+repository: https://github.com/stephrobert/collection-scaleway
+issues: https://github.com/stephrobert/collection-scaleway/issues
+homepage: https://github.com/stephrobert/collection-scaleway
+
+# Le dépôt produit un site avec `mise run docs:site`, et il n'est pas encore
+# publié. Un lien vrai vers le dépôt vaut mieux qu'un lien mort vers un site
+# qui n'existe pas : ce champ suivra le jour où le site aura une adresse.
+documentation: https://github.com/stephrobert/collection-scaleway/tree/main/docs
+
 dependencies: {}
 
 # La collection ne contient que ce qui se livre : le générateur, les contrats

@@ -1,16 +1,17 @@
 ---
 minor_changes:
-  - "Nouveau module ``instance_server_action``, qui déclenche une action sur
-    une Instance : ``poweron``, ``poweroff``, ``reboot`` et ``stop_in_place``.
-    En check mode il annonce le changement sans rien déclencher, et il attend
-    que l'Instance ait réellement atteint l'état visé avant de rendre la main."
-  - "Le module d'action n'expose **pas** ``terminate``, ``backup`` ni
-    ``enable_routed_ip``, que le contrat range pourtant dans le même enum.
-    La première supprime l'Instance et ses volumes locaux, la deuxième crée
-    une image, la troisième migre la pile réseau sans retour : aucune n'est
-    une exploitation de l'existant. Chaque exclusion est écrite avec sa raison
-    dans les overrides du générateur."
-  - "Nouveau fragment de documentation ``waitable`` pour ``wait`` et
-    ``wait_timeout``, avec les valeurs de la collection officielle."
-  - "Nouveau playbook livré ``arreter_un_serveur``, qui arrête une Instance
-    désignée et relit son état plutôt que de croire le module sur parole."
+  - "New module ``instance_server_action``, which triggers an action on an
+    Instance: ``poweron``, ``poweroff``, ``reboot`` and ``stop_in_place``. In
+    check mode it announces the change without triggering anything, and it
+    waits until the Instance has actually reached the target state before
+    returning."
+  - "The action module does **not** expose ``terminate``, ``backup`` or
+    ``enable_routed_ip``, which the contract nevertheless puts in the same
+    enum. The first deletes the Instance and its local volumes, the second
+    creates an image, the third migrates the network stack with no way back:
+    none of them operates an existing resource. Every exclusion is written with
+    its reason in the generator's overrides."
+  - "New ``waitable`` documentation fragment for ``wait`` and ``wait_timeout``,
+    with the values used by the official collection."
+  - "New shipped playbook ``arreter_un_serveur``, which stops a named Instance
+    and reads its state back rather than taking the module's word for it."

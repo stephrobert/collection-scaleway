@@ -1,16 +1,16 @@
 ---
 bugfixes:
-  - "Les appels d'API sont désormais bornés dans le temps. Le SDK Scaleway
-    émet ses requêtes **sans aucun timeout** : une connexion muette figeait un
-    playbook indéfiniment. Un paramètre ``api_timeout`` borne chaque appel, à
-    60 secondes par défaut."
-  - "Une panne réseau produit maintenant une erreur nommée au lieu d'une trace
-    Python. Les exceptions de ``requests`` étaient laissées telles quelles, et
-    Ansible affichait ``MODULE FAILURE`` : l'utilisateur ne pouvait pas savoir
-    si son playbook était fautif ou si le réseau l'était."
+  - "API calls are now bounded in time. The Scaleway SDK issues its requests
+    **with no timeout at all**: a silent connection froze a playbook
+    indefinitely. An ``api_timeout`` parameter bounds every call, at 60 seconds
+    by default."
+  - "A network failure now produces a named error instead of a Python
+    traceback. Exceptions from ``requests`` were left as they were, and Ansible
+    displayed ``MODULE FAILURE``: the user could not tell whether their
+    playbook was at fault or the network was."
 minor_changes:
-  - "La collection compose elle-même ses requêtes HTTP et n'appelle plus
-    ``API._request``, une méthode privée du SDK. Le report de l'en-tête
-    ``x-total-count`` vers le champ ``total_count`` du corps, dont dépend le
-    garde-fou de pagination, était le comportement le plus discret de cette
-    méthode : il est désormais explicite et testé."
+  - "The collection composes its own HTTP requests and no longer calls
+    ``API._request``, a private method of the SDK. Carrying the
+    ``x-total-count`` header into the body's ``total_count`` field, on which
+    the pagination guard depends, was that method's quietest behaviour: it is
+    now explicit and tested."

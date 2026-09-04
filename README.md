@@ -1,29 +1,75 @@
 # collection-scaleway
 
-Générateur de modules Ansible **Day-2** pour les APIs Scaleway, et la
-collection qu'il produit.
+A generator of **Day-2** Ansible modules for the Scaleway APIs, and the
+collection it produces.
 
-La responsabilité est partagée, et cette frontière décide de tout le reste :
+Responsibility is split, and that boundary decides everything else:
 
-> Terraform provisionne les ressources. Ansible exploite les ressources
-> existantes.
+> Terraform provisions resources. Ansible operates existing resources.
 
-Le générateur ne produit donc ni `create` ni `delete` : il produit des modules
-d'information, d'action ponctuelle et de gestion d'état Day-2.
+So the generator produces neither `create` nor `delete`: it produces
+information modules, one-shot action modules, and Day-2 state management
+modules.
 
-## État
+## Using the collection
 
-Étape 3 terminée côté modules, étape 5 terminée côté inventaire. La chaîne va
-du contrat au module, le module tourne, et la collection emporte un plugin
-d'inventaire dynamique qui découvre trois produits derrière un même modèle.
+This is the deliverable, and it installs without knowing anything about what
+follows.
+
+```bash
+ansible-galaxy collection install stephrobert.scaleway
+pip install 'scaleway>=2.9.0'
+export SCW_ACCESS_KEY=... SCW_SECRET_KEY=...
+```
+
+An inventory discovers the fleet, a playbook acts on it:
+
+```yaml
+# production.scaleway.yml
+plugin: stephrobert.scaleway.scaleway
+products: [instance]
+states: [running]
+group_by: [product, zone, tags]
+```
+
+```yaml
+- name: Reboot production servers
+  hosts: scw_tag_production
+  gather_facts: false
+
+  tasks:
+    - name: Reboot, and wait for the target state
+      stephrobert.scaleway.instance_server_action:
+        server_id: "{{ scaleway_id }}"
+        zone: "{{ scaleway_zone }}"
+        action: reboot
+      delegate_to: localhost
+```
+
+The inventory sets `scaleway_id` and `scaleway_zone`, which is all any of the
+46 modules needs behind `delegate_to: localhost`.
+
+The rest, requirements, module tables, compatibility and versioning, lives in
+the collection's own README:
+[ansible_collections/stephrobert/scaleway/](ansible_collections/stephrobert/scaleway/README.md).
+
+## State and coverage
+
+The numbers in this block are **derived**, not copied: `mise run readme`
+rewrites them from the sources of record, and CI fails when they have aged. A
+number copied by hand ages silently, and reads exactly like a measurement.
+
+Step 3 complete on the module side, step 5 complete on the inventory side. The
+chain runs from contract to module, the module runs, and the collection ships a
+dynamic inventory plugin that discovers three products behind one model.
 
 <!-- compteurs:début, produits par scripts/readme_counters.py -->
 ```text
-instance v1 : 74 opérations découvertes
+instance v1: 74 operations discovered
   INFO 27 · ACTION 3 · MANAGE 10 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 14 · UNKNOWN 0
-  Day-2 41 · AUTO 40 · MANUAL 1 · classées pour génération automatique 97,6 % (40/41)
+  Day-2 41 · AUTO 40 · MANUAL 1 · classified for automatic generation 97.6% (40/41)
 
-collection stephrobert.scaleway : 46 modules produits sur 52 au plan
+collection stephrobert.scaleway: 46 modules written out of 52 planned
   instance_dashboard_info                Gather information about Scaleway Instance dashboards
   instance_image                         Manage a Scaleway Instance image
   instance_image_info                    Gather information about Scaleway Instance images
@@ -70,140 +116,133 @@ collection stephrobert.scaleway : 46 modules produits sur 52 au plan
   lb_route_info                          Gather information about Scaleway Load Balancer routes
   lb_subscriber                          Manage a Scaleway Lb subscriber
   lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
-  scaleway (inventaire)                  instance, elastic_metal, apple_silicon
-  39 modules appelés par le playbook d'exemple sur 46 (84,8 %), ce qui n'est pas la même chose que joués
-  483 tests unitaires · 102 mutations prouvées par /falsify
-  CI : cinq jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
-  ansible-test sanity, playbooks et inventaire contre l'émulateur :
-  comptes rendus par `mise run sanity` et `mise run integration`
+  scaleway (inventory)                   instance, elastic_metal, apple_silicon
+  39 modules called by the example playbook out of 46 (84.8%), which is not the same as played
+  483 unit tests · 102 mutations proven by /falsify
+  CI: 5 jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
+  ansible-test sanity, playbooks and inventory against the emulator:
+  reported by `mise run sanity` and `mise run integration`
 ```
 <!-- compteurs:fin -->
 
-**Ce que l'inventaire a coûté au cœur.** Ajouter Elastic Metal et Apple Silicon
-après Instance a demandé douze lignes dans le registre de `discovery.py`, et
-aucune dans le modèle normalisé, la sélection d'adresse, les groupes, le nom
-d'hôte, la jointure réseau ni le plugin. C'est la mesure de l'étape 5, et un
-test la tient : aucune couche du cœur ne nomme un produit dans son code.
+**What the inventory cost the core.** Adding Elastic Metal and Apple Silicon
+after Instance took twelve lines in the `discovery.py` registry, and none in
+the normalised model, the address selection, the groups, the host name, the
+network join or the plugin. That is the measurement of step 5, and a test holds
+it: no layer of the core names a product in its code.
 
-Elastic Metal et Apple Silicon sont prouvés par des réponses simulées :
-l'émulateur ne sert ni l'un ni l'autre, et ne le fera pas à court terme
-(feint#631, feint#632). Instance est prouvé de bout en bout.
+Elastic Metal and Apple Silicon are proven against simulated responses: the
+emulator serves neither, and will not soon (feint#631, feint#632). Instance is
+proven end to end.
 
-Deux modules sont produits, et c'est délibéré : le périmètre est déclaré dans
-`mise.toml` (`MODULES`), pas deviné. Les 29 autres modules du plan sont écartés
-**avec leur raison**, que `mise run generate` affiche.
+## Developing the generator
 
-Le module d'action n'expose que quatre des sept valeurs du contrat. Les trois
-autres sont nommées dans le rapport de génération : `terminate` supprime
-l'Instance et ses volumes, `backup` crée une image, `enable_routed_ip` migre la
-pile réseau sans retour. Le contrat les range dans le même enum ; les recopier
-aurait fait entrer le cycle de vie par la porte d'une action.
-
-## Démarrer
+Everything below is for whoever wants to **change what produces** the
+collection. A user never needs any of it.
 
 ```bash
-mise run setup                 # environnement de développement
-mise run report                # rapport de couverture d'Instance
-mise run generate              # écrire les modules dans plugins/modules
-mise run check                 # ce qu'une pull request doit passer
-mise run sanity                # ce qu'Ansible dit du fichier produit
-mise run docs                  # juge la doc avec antsibull-docs, puis produit les pages
-mise run package               # construit l'archive, l'installe et l'interroge
-mise run integration           # les playbooks, dont les exemples, contre un émulateur
-mise run security              # actionlint, zizmor et poutine sur les workflows
-mise run security:trust        # plumber, la politique de confiance du pipeline
-mise run lock                  # recalculer le verrou des dépendances
+mise run setup                 # development environment
+mise run report                # coverage report for Instance
+mise run generate              # write the modules into plugins/modules
+mise run check                 # what a pull request has to pass
+mise run sanity                # what Ansible says about the produced file
+mise run docs                  # judge the docs with antsibull-docs, then build the pages
+mise run package               # build the archive, install it, and question it
+mise run integration           # the playbooks, examples included, against an emulator
+mise run security              # actionlint, zizmor and poutine on the workflows
+mise run security:trust        # plumber, the pipeline's trust policy
+mise run lock                  # recompute the dependency lock
 ```
 
 ```bash
-python -m generator inspect instance     # ce que le contrat déclare
-python -m generator classify instance    # la décision, opération par opération
+python -m generator inspect instance     # what the contract declares
+python -m generator classify instance    # the decision, operation by operation
 python -m generator report instance --strict
 python -m generator generate instance --module instance_server_info
 ```
 
-## Deux produits, deux emplacements
+## Two products, two locations
 
 ```text
-.                                     le producteur
-├── generator/                        lit le contrat, décide, écrit le module
-├── scripts/                          les lanceurs de contrôles
-├── specs/scaleway/                   les contrats versionnés
-└── ansible_collections/stephrobert/scaleway/    le livrable, et rien d'autre
+.                                     the producer
+├── generator/                        reads the contract, decides, writes the module
+├── scripts/                          the check runners
+├── specs/scaleway/                   the versioned contracts
+└── ansible_collections/stephrobert/scaleway/    the deliverable, and nothing else
 ```
 
-La collection est rangée à l'emplacement qu'Ansible exige. Ce n'est pas du
-rangement : `ansible-test`, `antsibull-docs` et `ansible-playbook` travaillent
-**en place**, sans copie assemblée ailleurs. Le premier découpage mettait la
-collection à la racine, et la copie qu'il fallait alors fabriquer a produit un
-`ansible-test sanity` vert sur **zéro fichier examiné**.
+The collection sits where Ansible requires it. This is not tidiness:
+`ansible-test`, `antsibull-docs` and `ansible-playbook` work **in place**, with
+no copy assembled elsewhere. The first layout put the collection at the root,
+and the copy it then had to build produced an `ansible-test sanity` that was
+green over **zero files examined**.
 
-## Comment ça marche
+## How it works
 
-| étape | code | ce qu'elle produit |
+| stage | code | what it produces |
 |---|---|---|
-| source | `generator/source/` | le contrat OpenAPI versionné dans `specs/` |
-| parser | `generator/parser/` | l'IR canonique, sans Ansible ni SDK |
-| classifieur | `generator/classifier/` | INFO, ACTION, MANAGE, WORKFLOW, LIFECYCLE, IGNORE, UNKNOWN |
-| overrides | `generator/overrides/` | les décisions humaines, avec leur raison |
-| rapport | `generator/report/` | texte, JSON et Markdown |
-| modèle | `generator/ansible/models.py` | la source unique de l'`argument_spec` et de la doc |
-| renderer | `generator/renderer/`, `generator/templates/` | les fichiers de `plugins/modules/` |
-| runtime | `ansible_collections/stephrobert/scaleway/plugins/module_utils/` | client, erreurs, pagination, check mode |
+| source | `generator/source/` | the versioned OpenAPI contract in `specs/` |
+| parser | `generator/parser/` | the canonical IR, with no Ansible and no SDK |
+| classifier | `generator/classifier/` | INFO, ACTION, MANAGE, WORKFLOW, LIFECYCLE, IGNORE, UNKNOWN |
+| overrides | `generator/overrides/` | the human decisions, each with its reason |
+| report | `generator/report/` | text, JSON and Markdown |
+| model | `generator/ansible/models.py` | the single source of the `argument_spec` and the docs |
+| renderer | `generator/renderer/`, `generator/templates/` | the files under `plugins/modules/` |
+| runtime | `ansible_collections/stephrobert/scaleway/plugins/module_utils/` | client, errors, pagination, check mode |
 
-La source de vérité est le document OpenAPI 3.1 publié par produit sur le
-portail developers de Scaleway. Ce qu'il porte, ce qu'il ne porte pas et
-comment le dépôt s'aperçoit qu'il a bougé sont documentés dans
-[docs/architecture/contrats-scaleway.md](docs/architecture/contrats-scaleway.md).
+The source of truth is the OpenAPI 3.1 document Scaleway publishes per product
+on its developers portal. What it carries, what it does not, and how this
+repository notices that it moved are documented in
+[docs/architecture/scaleway-contracts.md](docs/architecture/scaleway-contracts.md).
 
-## Quatre règles qui priment sur le reste
+## Four rules that outrank the rest
 
-1. **Aucune opération ne disparaît.** Ce qu'aucune règle ne tranche est
-   `UNKNOWN`, et `report --strict` sort en code 2.
-2. **La métrique ne se maquille pas.** La couverture rapporte `AUTO + OVERRIDE`
-   aux seules opérations Day-2 ; LIFECYCLE et IGNORE sont comptés à part, pas
-   effacés.
-3. **La génération est déterministe.** Même contrat, même sortie, octet pour
-   octet. Deux golden le tiennent : `tests/fixtures/instance/expected_ir.json`
-   pour ce que le parser lit, `tests/fixtures/widget/expected_modules/` pour ce
-   que le renderer écrit.
-4. **Un vert qui n'a rien mesuré est refusé.** `ansible-test` saute toutes ses
-   cibles et sort en 0 quand git ne lui liste rien ; `mise run sanity` refuse cette
-   sortie-là. 17 gardes du dépôt sont prouvées en les neutralisant
-   (`mise run falsify`).
+1. **No operation disappears.** What no rule settles is `UNKNOWN`, and
+   `report --strict` exits with code 2.
+2. **The metric does not dress itself up.** Coverage relates `AUTO + OVERRIDE`
+   to Day-2 operations only; LIFECYCLE and IGNORE are counted apart, not erased.
+3. **Generation is deterministic.** Same contract, same output, byte for byte.
+   Two golden files hold it: `tests/fixtures/instance/expected_ir.json` for what
+   the parser reads, `tests/fixtures/widget/expected_modules/` for what the
+   renderer writes.
+4. **A green that measured nothing is refused.** `ansible-test` skips all its
+   targets and exits 0 when git lists nothing for it; `mise run sanity` refuses
+   that particular exit. Every guard in this repository is proven by
+   neutralising it, and the count is in the block above, not written here by
+   hand: `mise run falsify`.
 
-## La qualité du livrable
+## The quality of the deliverable
 
-La collection suit la [liste de contrôle d'inclusion](https://github.com/ansible-collections/ansible-inclusion/blob/main/collection_checklist.md)
-de la communauté Ansible, et chaque point est tenu par une commande plutôt que
-par une intention :
+The collection follows the Ansible community
+[inclusion checklist](https://github.com/ansible-collections/ansible-inclusion/blob/main/collection_checklist.md),
+and every item is held by a command rather than an intention:
 
-| exigence | ce qui la tient |
+| requirement | what holds it |
 |---|---|
-| licence livrée avec la collection | `LICENSE`, et `mise run package` refuse une archive qui l'oublie |
-| version minimale d'ansible-core **mesurée** | matrice de CI sur 2.17 à 2.20 ; 2.16 échoue, la borne le dit |
-| changelog, de préférence `changelogs/changelog.yaml` | fragments et `antsibull-changelog`, jugés par `mise run check` |
-| documentation aux standards | `ansible-test sanity` **et** `antsibull-docs`, qui voit ce que le premier laisse passer |
-| CI sur chaque pull request et régulièrement | quatre jobs, plus un déclenchement hebdomadaire |
-| pas de fichier inutile dans le dépôt | `mise run check:worktree` échoue si un build laisse un fichier non ignoré |
-| dépendances déclarées pour un environnement d'exécution | `meta/execution-environment.yml` et `meta/ee-requirements.txt` |
-| chaîne d'approvisionnement tenue | actions épinglées par SHA, dépendances verrouillées avec empreintes, quatre scanners de workflow en porte |
+| license shipped with the collection | `LICENSE`, and `mise run package` refuses an archive that forgets it |
+| **measured** minimum ansible-core version | CI matrix over 2.17 to 2.20; 2.16 fails, and the bound says so |
+| changelog, preferably `changelogs/changelog.yaml` | fragments and `antsibull-changelog`, judged by `mise run check` |
+| documentation to standard | `ansible-test sanity` **and** `antsibull-docs`, which sees what the first lets through |
+| CI on every pull request and on a schedule | four jobs, plus a weekly trigger |
+| no stray files in the repository | `mise run check:worktree` fails if a build leaves an untracked file |
+| dependencies declared for an execution environment | `meta/execution-environment.yml` and `meta/ee-requirements.txt` |
+| supply chain held | actions pinned by SHA, dependencies locked with hashes, four workflow scanners at the gate |
 
-L'archive n'est pas seulement construite : `mise run package` contrôle son contenu,
-l'installe dans un répertoire jetable, puis demande sa documentation à
-`ansible-doc` et fait résoudre chaque playbook par `ansible-playbook`. Un
-fichier présent dans une archive n'est pas un module qu'Ansible sait charger.
+The archive is not merely built: `mise run package` inspects its contents,
+installs it into a throwaway directory, then asks `ansible-doc` for its
+documentation and has `ansible-playbook` resolve every playbook. A file present
+in an archive is not a module Ansible can load.
 
 ## Documentation
 
-* [Architecture du générateur](docs/architecture/generateur.md)
-* [Les contrats Scaleway](docs/architecture/contrats-scaleway.md) : la source, ses limites, sa surveillance
-* [Le runtime de la collection](docs/architecture/runtime.md)
-* [L'inventaire dynamique](docs/guides/inventaire-dynamique.md), et le piège d'Ansible sur le mode strict
-* [Ce que dit OpenSSF Scorecard, et ce qu'il ne dit pas](docs/scorecard.md)
-* [SECURITY.md](SECURITY.md) : comment signaler une faille, et ce que le dépôt tient déjà
-* [Les playbooks livrés](ansible_collections/stephrobert/scaleway/playbooks/README.md), joués à chaque `mise run integration`
+* [Generator architecture](docs/architecture/generator.md)
+* [The Scaleway contracts](docs/architecture/scaleway-contracts.md): the source, its limits, how it is watched
+* [The collection runtime](docs/architecture/runtime.md)
+* [The dynamic inventory](docs/guides/dynamic-inventory.md), and Ansible's trap around strict mode
+* [What OpenSSF Scorecard says, and what it does not](docs/scorecard.md)
+* [SECURITY.md](SECURITY.md): how to report a vulnerability, and what the repository already holds
+* [The shipped playbooks](ansible_collections/stephrobert/scaleway/playbooks/README.md), played on every `mise run integration`
 
-## Licence
+## License
 
-GPL-3.0-or-later, comme la collection Scaleway officielle.
+GPL-3.0-or-later. See [LICENSE](LICENSE).

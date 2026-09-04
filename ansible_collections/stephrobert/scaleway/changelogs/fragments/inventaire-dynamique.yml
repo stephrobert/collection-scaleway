@@ -1,31 +1,31 @@
 ---
 minor_changes:
-  - "Nouveau plugin d'inventaire ``stephrobert.scaleway.scaleway``. Il découvre les
-    machines produit par produit, puis les relie à leurs réseaux privés et à
-    leurs VPC en listant IPAM **une fois par région** au lieu d'une fois par
-    carte réseau, et il conserve la relation réseau plutôt qu'une seule adresse
-    privée sans son réseau."
-  - "L'inventaire découvre ``instance``, ``elastic_metal`` et ``apple_silicon``
-    derrière un même modèle normalisé. Un produit inconnu dans ``products`` est
-    refusé, pas ignoré."
-  - "Les collisions de noms d'hôtes ne perdent plus de machine : un nom déjà
-    pris reçoit la zone en suffixe, puis l'identifiant, de façon déterministe,
-    et chaque désambiguïsation est signalée."
-  - "``ansible_host`` se choisit par ordre de familles d'adresses, ou par un
-    réseau privé nommé quand une machine en a plusieurs. La raison du choix est
-    exposée dans ``scaleway_address_source``."
-  - "Les noms de groupes sont assainis pour de bon : ``production/web`` devient
-    ``production_web`` et ``2024`` devient ``_2024``, là où Ansible en ferait
+  - "New inventory plugin ``stephrobert.scaleway.scaleway``. It discovers
+    machines product by product, then links them to their private networks and
+    their VPCs by listing IPAM **once per region** instead of once per network
+    card, and it keeps the network relation rather than a single private
+    address with no network attached."
+  - "The inventory discovers ``instance``, ``elastic_metal`` and
+    ``apple_silicon`` behind one normalised model. An unknown product in
+    ``products`` is refused, not ignored."
+  - "Hostname collisions no longer lose a machine: a name already taken
+    receives the zone as a suffix, then the identifier, deterministically, and
+    every disambiguation is reported."
+  - "``ansible_host`` is chosen by order of address families, or by a named
+    private network when a machine has several. The reason for the choice is
+    exposed in ``scaleway_address_source``."
+  - "Group names are sanitised properly: ``production/web`` becomes
+    ``production_web`` and ``2024`` becomes ``_2024``, where Ansible would make
     ``_024``."
-  - "``compose``, ``groups`` et ``keyed_groups`` sont réellement appliqués, et
-    pas seulement hérités du fragment de documentation ``constructed``."
-  - "Les échecs de découverte sont classés : identifiants refusés (fatal),
-    droit manquant sur un produit (erreur nommée), produit absent d'une zone
-    (avertissement). ``strict: true`` transforme toute erreur en refus."
-  - "La clé de cache couvre tout ce qui change le résultat, y compris le profil,
-    l'URL de l'API, les filtres et la politique d'adresse. Deux configurations
-    différentes ne partagent plus un inventaire."
-  - "Nouveau guide ``docs/guides/inventaire-dynamique.md``, qui documente au
-    passage un piège mesuré : ``ansible-inventory`` déclasse l'échec d'un
-    plugin d'inventaire en avertissement et sort en 0, sauf si
-    ``ANSIBLE_INVENTORY_ANY_UNPARSED_IS_FAILED`` est demandé."
+  - "``compose``, ``groups`` and ``keyed_groups`` are actually applied, and not
+    merely inherited from the ``constructed`` documentation fragment."
+  - "Discovery failures are classified: credentials refused (fatal), missing
+    permission on a product (named error), product absent from a zone
+    (warning). ``strict: true`` turns any error into a refusal."
+  - "The cache key covers everything that changes the result, including the
+    profile, the API URL, the filters and the address policy. Two different
+    configurations no longer share an inventory."
+  - "New guide ``docs/guides/dynamic-inventory.md``, which documents a measured
+    trap along the way: ``ansible-inventory`` downgrades an inventory plugin's
+    failure to a warning and exits 0, unless
+    ``ANSIBLE_INVENTORY_ANY_UNPARSED_IS_FAILED`` is asked for."

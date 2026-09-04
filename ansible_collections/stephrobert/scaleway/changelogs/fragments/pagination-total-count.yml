@@ -1,14 +1,14 @@
 ---
 bugfixes:
-  - "La pagination ne tronque plus une liste quand l'API plafonne la taille de
-    page. La condition « la page est plus courte que demandée » était testée
-    **avant** ``total_count``, alors que l'information pour continuer était
-    dans la même réponse : face à une API qui plafonne ``per_page`` à 50 pour
-    100 demandés en annonçant 120 éléments, la fonction rendait 50 éléments,
-    ne demandait qu'une page, et ne signalait rien. C'est le défaut que sa
-    propre documentation nommait comme le pire des trois, une liste incomplète
-    qui se présente comme complète. Instance plafonne à 100, donc le cas était
-    latent ; ce runtime est commun à tous les produits à venir."
-  - "Une API qui annonce un ``total_count`` qu'elle ne tient pas produit
-    désormais une erreur nommée. Rendre la liste partielle en silence serait
-    exactement ce que cette fonction existe pour empêcher."
+  - "Pagination no longer truncates a list when the API caps the page size. The
+    condition \"the page is shorter than requested\" was tested **before**
+    ``total_count``, while the information needed to continue was in the same
+    response: facing an API that caps ``per_page`` at 50 for 100 requested
+    while announcing 120 items, the function returned 50 items, requested only
+    one page, and reported nothing. That is the defect its own documentation
+    named as the worst of the three, an incomplete list presenting itself as
+    complete. Instance caps at 100, so the case was latent; this runtime is
+    shared by every product to come."
+  - "An API announcing a ``total_count`` it does not honour now produces a
+    named error. Returning the partial list in silence would be exactly what
+    this function exists to prevent."

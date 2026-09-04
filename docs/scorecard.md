@@ -1,109 +1,106 @@
-# Ce que dit OpenSSF Scorecard, et ce qu'il ne dit pas
+# What OpenSSF Scorecard says, and what it does not
 
-Scorecard audit un dépôt de l'extérieur : protection de branche, épinglage des
-actions, motifs de workflow dangereux, politique de sécurité, outil de mise à
-jour des dépendances. C'est un bon détecteur, et un mauvais objectif.
+Scorecard audits a repository from the outside: branch protection, action
+pinning, dangerous workflow patterns, security policy, dependency update tool.
+It is a good detector, and a bad objective.
 
-Cette page est écrite sous une règle : **un contrôle ne se relève pas en
-satisfaisant son détecteur.** Chacun de ceux qui suivent a une forme qui note
-bien et ne veut rien dire, exiger des approbations qu'un contournement saute
-ensuite, afficher un badge décrivant des pratiques que personne ne suit. C'est
-la même faute qu'un commentaire décrivant un contrôle que personne n'applique,
-et c'est précisément ce que ce dépôt passe son temps à traquer ailleurs.
+This page is written under one rule: **a control is not raised by satisfying
+its detector.** Each of the ones below has a form that scores well and means
+nothing: requiring approvals that a bypass then skips, displaying a badge
+describing practices nobody follows. That is the same fault as a comment
+describing a control nobody applies, and it is precisely what this repository
+spends its time hunting elsewhere.
 
-## L'état mesuré, et son honnêteté
+## The measured state, and its honesty
 
-**Au 2 septembre 2026, il n'y a pas encore de score.** Le dépôt vient d'être
-créé et publié, et Scorecard n'a rien audité tant que le premier `git push`
-n'a pas eu lieu. Tout ce qui suit est donc une **estimation lue dans les
-fichiers**, pas un relevé. Elle sera remplacée par le score réel dès la
-première exécution du workflow `Scorecard`, et cette phrase avec.
+**As of 2 September 2026, there is no score yet.** The repository had just been
+created and published, and Scorecard audited nothing until the first `git push`
+happened. Everything below is therefore an **estimate read from the files**,
+not a reading. It will be replaced by the real score on the first run of the
+`Scorecard` workflow, and this sentence with it.
 
-La référence est le dépôt jumeau, `stephrobert/feint`, mesuré à **7,9** le
-25 août 2026. Sa configuration est reprise ici presque telle quelle, et ses
-cinq contrôles sous 10 sont exactement ceux qu'aucune configuration ne règle.
+The reference is the sibling repository, `stephrobert/feint`, measured at
+**7.9** on 25 August 2026. Its configuration is reused here almost as is, and
+its five checks below 10 are exactly the ones no configuration fixes.
 
-## Ce que la configuration devrait donner
+## What the configuration should give
 
-| contrôle | attendu | ce qui le tient |
+| check | expected | what holds it |
 |---|---|---|
-| Token-Permissions | 10 | `permissions: {}` sur chaque workflow, puis le minimum par job |
-| Pinned-Dependencies | 10 | toute action épinglée par SHA, dépendances Python verrouillées avec empreintes |
-| Dangerous-Workflow | 10 | aucun `pull_request_target`, aucun `workflow_run`, aucune interpolation dans un `run:` |
-| Security-Policy | 10 | `SECURITY.md`, avec des délais tenables plutôt que copiés |
-| Dependency-Update-Tool | 10 | `.github/dependabot.yml`, pip et github-actions, quarantaine de 14 jours |
-| SAST | 10 | CodeQL sur Python, plus quatre scanners de workflow qui font porte |
-| License | 10 | `LICENSE` à la racine, GPL-3.0-or-later |
-| CI-Tests | 10 | quatre jobs sur chaque pull request |
-| Binary-Artifacts | 10 | aucun binaire versionné |
-| Vulnerabilities | 10 | OSV-Scanner sur les pull requests et chaque semaine |
-| Branch-Protection | 4 à 8 | ruleset versionné dans `.github/rulesets/main.json`, comparé au vivant par une porte |
+| Token-Permissions | 10 | `permissions: {}` on every workflow, then the minimum per job |
+| Pinned-Dependencies | 10 | every action pinned by SHA, Python dependencies locked with hashes |
+| Dangerous-Workflow | 10 | no `pull_request_target`, no `workflow_run`, no interpolation inside a `run:` |
+| Security-Policy | 10 | `SECURITY.md`, with deadlines that can be held rather than copied |
+| Dependency-Update-Tool | 10 | `.github/dependabot.yml`, pip and github-actions, 14-day quarantine |
+| SAST | 10 | CodeQL on Python, plus four workflow scanners acting as a gate |
+| License | 10 | `LICENSE` at the root, GPL-3.0-or-later |
+| CI-Tests | 10 | four jobs on every pull request |
+| Binary-Artifacts | 10 | no binary under version control |
+| Vulnerabilities | 10 | OSV-Scanner on pull requests and every week |
+| Branch-Protection | 4 to 8 | ruleset versioned in `.github/rulesets/main.json`, compared to the live one by a gate |
 
-## Les contrôles qui ne se règlent pas par une configuration
+## The checks no configuration fixes
 
-### Branch-Protection : le contournement, et ce qu'il permet vraiment
+### Branch-Protection: the bypass, and what it really allows
 
-Le ruleset garde un contournement pour le rôle administrateur :
+The ruleset keeps a bypass for the administrator role:
 
 ```json
 "bypass_actors": [{ "actor_id": 5, "actor_type": "RepositoryRole",
                     "bypass_mode": "pull_request" }]
 ```
 
-`bypass_mode` porte toute la décision. `"pull_request"` et non `"always"` :
-l'administrateur peut fusionner une pull request que les règles retiendraient,
-et **ne peut pas pousser sur `main` directement**. La suppression et le
-non-fast-forward restent fermés à tout le monde.
+`bypass_mode` carries the whole decision. `"pull_request"` and not `"always"`:
+the administrator can merge a pull request the rules would hold back, and
+**cannot push to `main` directly**. Deletion and non-fast-forward stay closed
+to everyone.
 
-Ce que ce contournement achète est une seule chose : fusionner quand une porte
-est rouge pour une raison qui n'est pas le code, typiquement un scanner qui
-n'arrive pas à télécharger son propre binaire.
+What this bypass buys is one thing: merging when a gate is red for a reason
+that is not the code, typically a scanner that cannot download its own binary.
 
-Le coût est écrit, parce qu'une décision dont on ne liste que les bénéfices est
-une justification : **une porte que le propriétaire peut lever mesure la
-discipline du propriétaire, pas le code.** Rien ne garantit que la trappe
-serve aux pannes de réseau plutôt qu'à un test rouge un vendredi. Ce qui la
-rend visible plutôt qu'invisible, c'est que chaque usage est une fusion sur une
-pull request dont les vérifications sont au dossier : une trace, pas une
-prévention.
+The cost is written down, because a decision whose benefits alone are listed is
+a justification: **a gate the owner can lift measures the owner's discipline,
+not the code.** Nothing guarantees the hatch serves network outages rather than
+a red test on a Friday. What makes it visible rather than invisible is that
+every use is a merge on a pull request whose checks are on file: a trace, not a
+prevention.
 
-### Code-Review : il mesure le nombre de relecteurs
+### Code-Review: it measures the number of reviewers
 
-Chaque changement passe par une pull request dont toutes les vérifications
-tournent, et aucune ne porte d'approbation humaine, parce qu'il y a un humain.
-Le score est exact ; ce qu'il mesure est le nombre de relecteurs, pas si les
-changements sont jugés contre quelque chose.
+Every change goes through a pull request whose checks all run, and none carries
+a human approval, because there is one human. The score is accurate; what it
+measures is the number of reviewers, not whether changes are judged against
+anything.
 
-Ce que ce dépôt substitue à un second lecteur est de la machinerie, et cette
-substitution **est** le projet : un changement est jugé sur le fait qu'un
-playbook réel passe (`mise run integration`), que la surface de l'API n'a pas
-bougé (le golden de l'IR et le rapport strict), qu'`ansible-test sanity` accepte
-le fichier produit, et que la garde ajoutée mord vraiment (`mise run falsify`,
-46 mutations). Scorecard ne sait pas lire ça, et ça ne remplace pas un
-relecteur. Les deux phrases sont vraies en même temps.
+What this repository substitutes for a second reader is machinery, and that
+substitution **is** the project: a change is judged on whether a real playbook
+passes (`mise run integration`), whether the API surface moved (the IR golden
+and the strict report), whether `ansible-test sanity` accepts the produced
+file, and whether the guard that was added really bites (`mise run falsify`).
+Scorecard cannot read that, and it does not replace a reviewer. Both sentences
+are true at once.
 
-### Maintained et Contributors : le temps et le nombre
+### Maintained and Contributors: time and headcount
 
-Le premier est à 0 pour tout dépôt de moins de 90 jours, quoi qu'il contienne.
-Le second compte les organisations distinctes parmi les contributeurs. Ni l'un
-ni l'autre ne se corrige, et essayer serait du bruit dans l'historique.
+The first is 0 for any repository younger than 90 days, whatever it contains.
+The second counts distinct organisations among the contributors. Neither can be
+fixed, and trying would be noise in the history.
 
-### CII-Best-Practices : un badge, pas une pratique
+### CII-Best-Practices: a badge, not a practice
 
-Le badge s'obtient en répondant à un questionnaire sur soi-même. Il vaut ce que
-vaut la personne qui le remplit. Il sera demandé quand les réponses seront
-vraies, pas pour le score.
+The badge is obtained by answering a questionnaire about oneself. It is worth
+exactly what the person filling it in is worth. It will be requested when the
+answers are true, not for the score.
 
-## Ce qui manque encore, et qui n'est pas un contrôle Scorecard
+## What is still missing, and is not a Scorecard check
 
-* **Aucune release, donc aucune signature ni provenance.** La collection n'est
-  pas publiée sur Galaxy : son namespace est `local`. Le jour où elle sera
-  publiée, la signature et l'attestation seront la condition de cette
-  publication, pas un ajout d'après-coup.
-* **`egress-policy: audit` et non `block`.** Une allowlist écrite sans avoir
-  observé le trafic réel casse la CI sans rien prouver. Le passage à `block`
-  se fera sur les relevés d'`audit`, quand il y en aura.
-* **Fuzzing.** Le générateur lit des contrats OpenAPI, ce qui est une entrée
-  structurée et un sujet de fuzzing raisonnable. Rien n'est fait, et le dire
-  vaut mieux que de compter sur les 74 opérations du contrat versionné comme
-  s'il s'agissait d'un corpus.
+* **No release yet, so no signature and no provenance.** The collection is not
+  published on Galaxy. The day it is, signature and attestation will be a
+  condition of that publication, not an afterthought.
+* **`egress-policy: audit` and not `block`.** An allowlist written without
+  having observed the real traffic breaks CI without proving anything. The move
+  to `block` will be based on the `audit` readings, once there are some.
+* **Fuzzing.** The generator reads OpenAPI contracts, which is structured input
+  and a reasonable fuzzing subject. Nothing is done, and saying so is better
+  than counting on the 74 operations of the versioned contract as if it were a
+  corpus.
