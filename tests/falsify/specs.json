@@ -862,6 +862,30 @@
       "find": "          | rejectattr('value.changed')\n          | map(attribute='key') | list) | sort }}\"",
       "replace": "          | selectattr('value.changed', 'defined')\n          | map(attribute='key') | list) | sort }}\"",
       "test": "tests/unit/outillage/test_recensement_exemple.py::test_seule_une_reecriture_jouee_compte_comme_prouvee"
+    },
+    {
+      "name": "tag-et-galaxy-peuvent-diverger",
+      "why": "L'archive est nommée d'après `galaxy.yml`, pas d'après le tag. Sans ce refus, on publie une version que l'historique ne porte pas, et une version publiée sur Galaxy est immuable : il n'y a pas de correction, seulement une version de plus.",
+      "file": "scripts/release.py",
+      "find": "    elif normaliser(tag) != collection.version:",
+      "replace": "    elif normaliser(tag) != collection.version and False:",
+      "test": "tests/unit/outillage/test_release.py::test_un_tag_qui_ne_dit_pas_la_version_de_galaxy_est_refuse"
+    },
+    {
+      "name": "fragments-en-attente-publies-dehors",
+      "why": "Les fragments décrivent ce que la version apporte. Douze s'étaient accumulés sous une 0.1.0 composée quand la collection portait un module, dont le correctif de pagination qui rendait une première page en silence : la publier livrait un changelog décrivant la collection de juillet.",
+      "file": "scripts/release.py",
+      "find": "    if fragments:",
+      "replace": "    if fragments and False:",
+      "test": "tests/unit/outillage/test_release.py::test_des_fragments_en_attente_sont_refuses"
+    },
+    {
+      "name": "arbre-sale-publiable",
+      "why": "Une archive construite sur des modifications non versionnées ne se reproduit pas : personne ne peut retrouver ce qui a été publié.",
+      "file": "scripts/release.py",
+      "find": "    if sale:",
+      "replace": "    if sale and False:",
+      "test": "tests/unit/outillage/test_release.py::test_un_arbre_sale_est_refuse"
     }
   ]
 }

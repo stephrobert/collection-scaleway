@@ -336,6 +336,14 @@ run = "python scripts/example.py reel"
 description = "Vérifier qu'aucune ressource de l'exemple ne survit sur le compte réel"
 run = "python scripts/residue.py verify"
 
+[tasks."release:check"]
+description = "Ce qui doit être vrai avant de publier sur Galaxy"
+# **Hors de `check`**, et c'est délibéré : cette garde exige un tag qui désigne
+# HEAD et un arbre propre, donc elle refuserait toute pull request. Elle se
+# lance avant une publication, et c'est le workflow de release qui l'appellera
+# une fois la première publication faite à la main.
+run = "python scripts/release.py --check"
+
 [tasks."coverage:check"]
 description = "Refuser un module livré qu'aucun playbook d'exemple n'appelle"
 # Dans `check`, donc à chaque issue traitée : hors ligne, déterministe, il lit
