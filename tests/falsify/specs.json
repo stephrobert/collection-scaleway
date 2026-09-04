@@ -782,6 +782,22 @@
       "find": "        if tache.get(\"verdict\") in (\"ok\", \"changed\") ",
       "replace": "        if tache.get(\"verdict\") in (\"ok\", \"changed\", \"skipped\") ",
       "test": "tests/unit/outillage/test_artefact_exemple.py::test_une_tache_sautee_nest_pas_une_couverture"
+    },
+    {
+      "name": "strict-tolere-une-operation-non-classee",
+      "why": "Le mode strict est le troisième des trois mécanismes qui rendent la dérive visible, et le seul dont la sortie est un code que la CI lit. Neutralisé, il sort en 0 sur un dépôt sain comme sur un dépôt qui a perdu une opération : les deux sont alors indiscernables.",
+      "file": "generator/cli.py",
+      "find": "    if arguments.strict and (plan.unknown or plan.orphan_overrides):",
+      "replace": "    if arguments.strict and (plan.unknown or plan.orphan_overrides) and False:",
+      "test": "tests/unit/generator/test_cli_strict.py::test_une_operation_quaucune_regle_ne_tranche_sort_en_deux"
+    },
+    {
+      "name": "strict-accepte-un-rapport-sans-operation",
+      "why": "Un contrat vide, mal lu ou pointant vers le mauvais fichier sort en 0 : zéro opération non classée, zéro override orphelin, donc tout va bien. C'est indiscernable d'un produit parfaitement classé, et c'est le vert le plus gratuit qu'un dépôt puisse produire.",
+      "file": "generator/cli.py",
+      "find": "    if arguments.strict and not plan.operations:",
+      "replace": "    if arguments.strict and not plan.operations and False:",
+      "test": "tests/unit/generator/test_cli_strict.py::test_un_contrat_sans_operation_est_rouge"
     }
   ]
 }
