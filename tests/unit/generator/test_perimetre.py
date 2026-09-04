@@ -24,7 +24,9 @@ from generator.plan import build_plan
 REFUS_ATTENDUS = {
     "instance": {
         "instance_ip_action",
-        "instance_security_group_rule_info",
+        # `instance_security_group_rule_info` a quitté cette liste : la seconde
+        # liste est écartée par override depuis, parce qu'elle est le même
+        # appel avec `security_group_id: default`. Un refus de moins.
         "instance_security_group_rules",
         "instance_server_user_data",
         "instance_snapshot_action",

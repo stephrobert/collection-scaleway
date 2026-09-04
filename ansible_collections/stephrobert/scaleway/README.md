@@ -119,7 +119,7 @@ second run reports no change.
 ## Included content
 
 <!-- compteurs:début, produits par scripts/readme_counters.py -->
-### Instance (25 modules)
+### Instance (26 modules)
 
 | module | what it does |
 |---|---|
@@ -134,6 +134,7 @@ second run reports no change.
 | `instance_security_group` | Manage a Scaleway Instance security group |
 | `instance_security_group_info` | Gather information about Scaleway Instance security groups |
 | `instance_security_group_rule` | Manage a Scaleway Instance security group rule |
+| `instance_security_group_rule_info` | Gather information about Scaleway Instance security group rules |
 | `instance_server` | Manage a Scaleway Instance server |
 | `instance_server_action` | Perform an action on a Scaleway Instance server |
 | `instance_server_compatible_type_info` | Gather information about Scaleway Instance server compatible types |

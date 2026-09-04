@@ -66,10 +66,10 @@ dynamic inventory plugin that discovers three products behind one model.
 <!-- compteurs:début, produits par scripts/readme_counters.py -->
 ```text
 instance v1: 74 operations discovered
-  INFO 27 · ACTION 3 · MANAGE 10 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 14 · UNKNOWN 0
-  Day-2 41 · AUTO 40 · MANUAL 1 · classified for automatic generation 97.6% (40/41)
+  INFO 26 · ACTION 3 · MANAGE 10 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 15 · UNKNOWN 0
+  Day-2 40 · AUTO 39 · MANUAL 1 · classified for automatic generation 97.5% (39/40)
 
-collection stephrobert.scaleway: 46 modules written out of 52 planned
+collection stephrobert.scaleway: 47 modules written out of 52 planned
   instance_dashboard_info                Gather information about Scaleway Instance dashboards
   instance_image                         Manage a Scaleway Instance image
   instance_image_info                    Gather information about Scaleway Instance images
@@ -81,6 +81,7 @@ collection stephrobert.scaleway: 46 modules written out of 52 planned
   instance_security_group                Manage a Scaleway Instance security group
   instance_security_group_info           Gather information about Scaleway Instance security groups
   instance_security_group_rule           Manage a Scaleway Instance security group rule
+  instance_security_group_rule_info      Gather information about Scaleway Instance security group rules
   instance_server                        Manage a Scaleway Instance server
   instance_server_action                 Perform an action on a Scaleway Instance server
   instance_server_compatible_type_info   Gather information about Scaleway Instance server compatible types
@@ -117,7 +118,7 @@ collection stephrobert.scaleway: 46 modules written out of 52 planned
   lb_subscriber                          Manage a Scaleway Lb subscriber
   lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
   scaleway (inventory)                   instance, elastic_metal, apple_silicon
-  39 modules called by the example playbook out of 46 (84.8%), which is not the same as played
+  39 modules called by the example playbook out of 47 (83.0%), which is not the same as played
   483 unit tests · 102 mutations proven by /falsify
   CI: 5 jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks and inventory against the emulator:

@@ -285,25 +285,64 @@ def test_une_classe_non_rendable_leve_quand_on_la_demande(instance_plan: Product
         _spec(instance_plan, "instance_security_group_rules")
 
 
-def test_un_module_de_forme_inconnue_est_ecarte_avec_son_message(
-    instance_plan: ProductPlan,
-) -> None:
+def _plan_a_deux_listes() -> ProductPlan:
+    """Une ressource lue par deux listes distinctes, construite à la main.
+
+    **Le cas réel a disparu, et la garde doit survivre.** Ces deux tests
+    portaient sur `instance_security_group_rule_info`, qui réunissait
+    `ListSecurityGroupRules` et `ListDefaultSecurityGroupRules` ; la seconde est
+    depuis écartée par override, parce qu'elle est le même appel avec
+    `security_group_id: default`.
+
+    Les rebâtir sur un contrat construit ici plutôt que de les supprimer est la
+    même règle que pour le parser : un test qui dépend d'une bizarrerie du
+    contrat réel meurt le jour où la bizarrerie est corrigée, et la garde meurt
+    avec lui sans que personne ne le décide.
+    """
+    zone = ApiParameter(
+        name="zone", type=ApiType.STRING, required=True, location=ParameterLocation.PATH
+    )
+    premiere = ApiOperation(
+        id="ListThings",
+        service="demo",
+        version="v1",
+        resource="thing",
+        http_method=HTTPMethod.GET,
+        path="/demo/v1/zones/{zone}/parents/{parent_id}/things",
+        scope=Scope.ZONE,
+        parameters=(zone,),
+        response=ApiResponse(payload_field="things", is_list=True),
+    )
+    seconde = ApiOperation(
+        id="ListDefaultThings",
+        service="demo",
+        version="v1",
+        resource="thing",
+        http_method=HTTPMethod.GET,
+        path="/demo/v1/zones/{zone}/parents/default/things",
+        scope=Scope.ZONE,
+        parameters=(zone,),
+        response=ApiResponse(payload_field="things", is_list=True),
+    )
+    service = ApiService(name="demo", version="v1", operations=(premiere, seconde))
+    return plan_service(service, OverrideSet(source=None))
+
+
+def test_un_module_de_forme_inconnue_est_ecarte_avec_son_message() -> None:
     """Deux listes pour une ressource : le modèle refuse, et le rapport le dit.
 
-    `instance_security_group_rule_info` réunit `ListSecurityGroupRules` et
-    `ListDefaultSecurityGroupRules`. Ce n'est pas une erreur du générateur,
-    c'est un arbitrage qui n'a pas encore été rendu ; il se lit dans la sortie
-    de `generate` plutôt que de faire tomber toute la génération.
+    Ce n'est pas une erreur du générateur, c'est un arbitrage qui n'a pas été
+    rendu ; il se lit dans la sortie de `generate` plutôt que de faire tomber
+    toute la génération du produit.
     """
-    _, ecartes = build_module_specs(instance_plan, COLLECTION)
-    raison = dict(ecartes)["instance_security_group_rule_info"]
-    assert "2 liste(s)" in raison
+    _, ecartes = build_module_specs(_plan_a_deux_listes(), COLLECTION)
+    assert "2 liste(s)" in dict(ecartes)["demo_thing_info"]
 
 
-def test_un_module_demande_et_impossible_fait_echouer(instance_plan: ProductPlan) -> None:
+def test_un_module_demande_et_impossible_fait_echouer() -> None:
     """Ce qu'on a demandé sort, ou la commande échoue. Jamais un silence."""
     with pytest.raises(AmbiguousModule):
-        build_module_specs(instance_plan, COLLECTION, only=("instance_security_group_rule_info",))
+        build_module_specs(_plan_a_deux_listes(), COLLECTION, only=("demo_thing_info",))
 
 
 # --- ce qu'un module d'action expose, et ce qu'il refuse -------------------

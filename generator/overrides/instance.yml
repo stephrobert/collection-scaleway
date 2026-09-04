@@ -32,6 +32,36 @@ operations:
     generation: ignore
     reason: PUT de remplacement complet ; le module utilise le PATCH UpdateSecurityGroup.
 
+  # **Deux listes pour une ressource, et l'une est un cas particulier de
+  # l'autre.** Le modèle d'un module d'information réunit au plus une lecture
+  # unitaire et une liste ; celui-ci en avait deux, donc aucun module ne
+  # sortait, et les règles d'un groupe de sécurité n'étaient lisibles nulle
+  # part.
+  #
+  # Mesuré avant de trancher, et c'est la mesure qui décide :
+  #
+  #     ListSecurityGroupRules         /security_groups/{security_group_id}/rules
+  #     ListDefaultSecurityGroupRules  /security_groups/default/rules
+  #
+  # Le second chemin est **exactement** ce que le premier rend quand on lui
+  # passe `default` comme identifiant : même méthode, même URL après
+  # substitution, et même schéma de réponse, `ListSecurityGroupRulesResponse`
+  # sous le champ `rules`. Ce n'est donc pas une seconde API, c'est la même
+  # atteinte par une valeur particulière.
+  #
+  # L'écarter ne crée aucun écart, et le module restant est **meilleur** :
+  # `ListSecurityGroupRules` déclare `page` et `per_page`, que celle-ci
+  # n'expose pas. Un module dédié aurait rendu la première page en silence.
+  #
+  # Ce n'est pas le défaut « une ressource sous deux noms » déjà rencontré :
+  # la dérivation range bien les trois opérations ensemble, et c'est vérifié.
+  instance.v1.SecurityGroupRule.ListDefaultSecurityGroupRules:
+    generation: ignore
+    reason: >-
+      Cas particulier de ListSecurityGroupRules, joignable par
+      `security_group_id: default` sur la même URL et avec la même réponse,
+      et celle-là est paginée.
+
   instance.v1.SecurityGroupRule.SetSecurityGroupRule:
     generation: ignore
     reason: PUT de remplacement complet ; le module utilise le PATCH UpdateSecurityGroupRule.
