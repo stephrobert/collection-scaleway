@@ -26,14 +26,19 @@ def faux_depot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     modules = tmp_path / "modules"
     playbooks = tmp_path / "playbooks"
     artefacts = tmp_path / "artefacts"
-    for dossier in (modules, playbooks, artefacts):
+    inventaire = tmp_path / "inventory"
+    for dossier in (modules, playbooks, artefacts, inventaire):
         dossier.mkdir(parents=True)
+    # Le plugin d'inventaire se lit sur le disque : le nommer dans le test
+    # referait le défaut que ce test vient d'attraper sur un renommage.
+    (inventaire / "compute.py").write_text("", encoding="utf-8")
     for nom in ("instance_server", "instance_server_info", "lb_ip"):
         (modules / f"{nom}.py").write_text("", encoding="utf-8")
     (modules / "__init__.py").write_text("", encoding="utf-8")
     monkeypatch.setattr(example_coverage, "MODULES", modules)
     monkeypatch.setattr(example_coverage, "PLAYBOOKS", playbooks)
     monkeypatch.setattr(example_coverage, "ARTEFACTS", artefacts)
+    monkeypatch.setattr(example_coverage, "INVENTAIRE", inventaire)
     return tmp_path
 
 
@@ -53,8 +58,13 @@ def test_le_ratio_compte_les_modules_que_lexemple_nomme(faux_depot: Path) -> Non
 
 
 def test_le_plugin_dinventaire_nest_pas_un_module(faux_depot: Path) -> None:
-    """Il porte le même préfixe sans en être un : le compter fausserait les deux bouts."""
-    _playbook(faux_depot, "plugin: stephrobert.scaleway.scaleway\n")
+    """Il porte le même préfixe sans en être un : le compter fausserait les deux bouts.
+
+    Son nom vient du répertoire des plugins, pas d'une liste écrite ici. Cette
+    liste a existé, elle valait ``{"scaleway"}``, et le renommage du plugin en
+    ``compute`` a fait refuser un playbook parfaitement correct.
+    """
+    _playbook(faux_depot, "plugin: stephrobert.scaleway.compute\n")
     assert example_coverage.mesurer()["appeles_par_lexemple"] == []
 
 
@@ -79,6 +89,7 @@ def test_sans_module_le_ratio_est_indefini_pas_nul(
     monkeypatch.setattr(example_coverage, "MODULES", vide)
     monkeypatch.setattr(example_coverage, "PLAYBOOKS", vide)
     monkeypatch.setattr(example_coverage, "ARTEFACTS", vide)
+    monkeypatch.setattr(example_coverage, "INVENTAIRE", vide)
     assert example_coverage.mesurer()["ratio_appeles"] == "n/a"
 
 

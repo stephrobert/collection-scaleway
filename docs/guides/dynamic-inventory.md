@@ -1,6 +1,6 @@
 # The Scaleway dynamic inventory
 
-`stephrobert.scaleway.scaleway` builds an Ansible inventory from a Scaleway
+`stephrobert.scaleway.compute` builds an Ansible inventory from a Scaleway
 account. It discovers machines product by product, then links them to their
 private networks and their VPCs.
 
@@ -21,7 +21,7 @@ ansible-inventory -i production.scaleway.yml --graph
 The minimum fits on one line, and the usual Scaleway profile decides the rest:
 
 ```yaml
-plugin: stephrobert.scaleway.scaleway
+plugin: stephrobert.scaleway.compute
 ```
 
 ## Credentials
@@ -51,7 +51,7 @@ unknown name is refused rather than ignored: a misspelled product would produce
 a silently partial inventory.
 
 ```yaml
-plugin: stephrobert.scaleway.scaleway
+plugin: stephrobert.scaleway.compute
 products:
   - instance
   - elastic_metal

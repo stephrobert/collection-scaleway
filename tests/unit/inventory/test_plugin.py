@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from ansible_collections.stephrobert.scaleway.plugins.inventory.scaleway import (
+from ansible_collections.stephrobert.scaleway.plugins.inventory.compute import (
     InventoryModule,
     _plain,
 )

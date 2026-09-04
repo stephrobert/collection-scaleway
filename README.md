@@ -26,7 +26,7 @@ An inventory discovers the fleet, a playbook acts on it:
 
 ```yaml
 # production.scaleway.yml
-plugin: stephrobert.scaleway.scaleway
+plugin: stephrobert.scaleway.compute
 products: [instance]
 states: [running]
 group_by: [product, zone, tags]
@@ -117,7 +117,7 @@ collection stephrobert.scaleway: 47 modules written out of 52 planned
   lb_route_info                          Gather information about Scaleway Load Balancer routes
   lb_subscriber                          Manage a Scaleway Lb subscriber
   lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
-  scaleway (inventory)                   instance, elastic_metal, apple_silicon
+  compute (inventory)                    instance, elastic_metal, apple_silicon
   39 modules called by the example playbook out of 47 (83.0%), which is not the same as played
   483 unit tests · 102 mutations proven by /falsify
   CI: 5 jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple

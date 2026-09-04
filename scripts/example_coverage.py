@@ -35,11 +35,25 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAYBOOKS = ROOT / "examples" / "playbooks"
-MODULES = ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "plugins" / "modules"
+COLLECTION = ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "plugins"
+MODULES = COLLECTION / "modules"
+INVENTAIRE = COLLECTION / "inventory"
 ARTEFACTS = ROOT / "build" / "example"
 
-#: Le plugin d'inventaire porte le même préfixe que les modules sans en être un.
-NON_MODULES = frozenset({"scaleway"})
+
+def non_modules() -> set[str]:
+    """Ce qui porte le préfixe de la collection sans être un module.
+
+    Les plugins d'inventaire se lisent sur le disque plutôt que d'être nommés
+    ici. La liste écrite à la main valait `{"scaleway"}`, et le jour où le
+    plugin a été renommé en `compute`, ce contrôle a refusé le playbook en
+    disant que `compute` n'était pas un module. Il avait raison sur la forme et
+    tort sur le fond, ce qui est la pire façon d'avoir raison.
+    """
+    if not INVENTAIRE.is_dir():
+        return set()
+    return {chemin.stem for chemin in INVENTAIRE.glob("*.py") if not chemin.stem.startswith("_")}
+
 
 #: Les cibles de l'exercice, dans l'ordre où leur preuve coûte cher.
 CIBLES = ("emulateur", "machines", "reel")
@@ -69,7 +83,7 @@ def modules_appeles() -> set[str]:
     for chemin in sorted(PLAYBOOKS.glob("*.yml")):
         texte = chemin.read_text(encoding="utf-8")
         trouves |= set(re.findall(r"stephrobert\.scaleway\.([a-z0-9_]+)", texte))
-    inconnus = sorted(trouves - ecrits - NON_MODULES)
+    inconnus = sorted(trouves - ecrits - non_modules())
     if inconnus:
         # Une faute de frappe dans un playbook ne doit pas se ranger en silence
         # du côté « pas un module » : elle produirait une tâche qui n'existe pas.

@@ -61,7 +61,7 @@ An inventory, then a playbook that reboots what it found:
 
 ```yaml
 # production.scaleway.yml
-plugin: stephrobert.scaleway.scaleway
+plugin: stephrobert.scaleway.compute
 products:
   - instance
 states:
@@ -180,7 +180,7 @@ second run reports no change.
 
 | plugin | what it discovers |
 |---|---|
-| `scaleway` | Instances, Elastic Metal and Apple Silicon, with their private-network addresses |
+| `compute` | Instances, Elastic Metal and Apple Silicon, with their private-network addresses |
 <!-- compteurs:fin -->
 
 ### What the action module refuses

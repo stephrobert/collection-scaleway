@@ -562,7 +562,7 @@
     {
       "name": "reponse-brute-perdue",
       "why": "L'option include_raw était documentée, mise en cache et sans le moindre effet observable.",
-      "file": "ansible_collections/stephrobert/scaleway/plugins/inventory/scaleway.py",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/inventory/compute.py",
       "find": "            \"raw\": _plain(host.raw),",
       "replace": "            \"raw\": None,",
       "test": "tests/unit/inventory/test_plugin.py::test_la_reponse_brute_survit_a_laller_retour"

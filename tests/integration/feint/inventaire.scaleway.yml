@@ -9,7 +9,7 @@
 # silence, et ce scénario partirait vers la vraie API avec de vrais
 # identifiants. C'est arrivé une fois, avant que le plugin déclare ses
 # propres options.
-plugin: stephrobert.scaleway.scaleway
+plugin: stephrobert.scaleway.compute
 
 products:
   - instance

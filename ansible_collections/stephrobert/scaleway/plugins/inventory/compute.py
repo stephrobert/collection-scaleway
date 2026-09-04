@@ -3,8 +3,8 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 DOCUMENTATION = r"""
-name: scaleway
-short_description: Scaleway dynamic inventory
+name: compute
+short_description: Scaleway compute dynamic inventory
 version_added: 0.1.0
 author:
   - Stéphane Robert (@stephrobert)
@@ -30,7 +30,7 @@ options:
   plugin:
     description: The name of this plugin.
     required: true
-    choices: ['stephrobert.scaleway.scaleway']
+    choices: ['stephrobert.scaleway.compute']
     type: str
   profile:
     description: Name of the profile to read in the Scaleway configuration file.
@@ -185,10 +185,10 @@ options:
 
 EXAMPLES = r"""
 # Le cas minimal : le profil Scaleway habituel décide du reste.
-plugin: stephrobert.scaleway.scaleway
+plugin: stephrobert.scaleway.compute
 
 # Production : un projet, une région, les machines qui tournent.
-# plugin: stephrobert.scaleway.scaleway
+# plugin: stephrobert.scaleway.compute
 # projects:
 #   - 11111111-1111-1111-1111-111111111111
 # products:
@@ -210,13 +210,13 @@ plugin: stephrobert.scaleway.scaleway
 # cache: true
 
 # Joindre les machines par un réseau privé précis.
-# plugin: stephrobert.scaleway.scaleway
+# plugin: stephrobert.scaleway.compute
 # address:
 #   private_network: production
 # require_address: true
 
 # Groupes et variables construits par Ansible lui-même.
-# plugin: stephrobert.scaleway.scaleway
+# plugin: stephrobert.scaleway.compute
 # compose:
 #   ansible_user: "'ubuntu'"
 # keyed_groups:
@@ -315,7 +315,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
     le résultat dans l'inventaire.
     """
 
-    NAME = "stephrobert.scaleway.scaleway"
+    NAME = "stephrobert.scaleway.compute"
 
     def verify_file(self, path):
         if not super(InventoryModule, self).verify_file(path):
