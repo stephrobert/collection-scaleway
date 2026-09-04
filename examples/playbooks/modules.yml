@@ -915,7 +915,21 @@
         notre_volume: "{{ (volumes.volumes | default([])
           | selectattr('name', 'search', prefixe) | list | first).id | default('') }}"
 
-    - name: Réécrire le tag de ce volume
+    # **Écrire, puis réécrire.** Une écriture unique ne prouve rien : le tag
+    # posé pour la première fois change forcément quelque chose, et le
+    # recensement l'a dit en refusant de compter cette réécriture comme
+    # prouvée. C'est exactement ce qu'on lui demande.
+    - name: Écrire le tag de ce volume
+      stephrobert.scaleway.instance_volume:
+        zone: "{{ zone }}"
+        volume_id: "{{ notre_volume }}"
+        tags: [exemple, "{{ marque }}"]
+      register: ecrit_volume
+      failed_when: ecrit_volume.failed | default(false)
+        and ecrit_volume.api_type | default('') != 'not_emulated'
+      when: notre_volume | length > 0
+
+    - name: Réécrire le tag de ce volume, à l'identique
       stephrobert.scaleway.instance_volume:
         zone: "{{ zone }}"
         volume_id: "{{ notre_volume }}"
@@ -948,7 +962,17 @@
 
     # ---- L'image d'or, qui n'existe que sur le cloud réel -----------------
 
-    - name: Réécrire le tag de l'image d'or
+    - name: Écrire le tag de l'image d'or
+      stephrobert.scaleway.instance_image:
+        zone: "{{ zone }}"
+        image_id: "{{ image_doree }}"
+        tags: [exemple, "{{ marque }}"]
+      register: ecrit_image
+      failed_when: ecrit_image.failed | default(false)
+        and ecrit_image.api_type | default('') != 'not_emulated'
+      when: image_doree | default('') | length > 0
+
+    - name: Réécrire le tag de l'image d'or, à l'identique
       stephrobert.scaleway.instance_image:
         zone: "{{ zone }}"
         image_id: "{{ image_doree }}"
@@ -994,8 +1018,13 @@
 
     - name: Chaque réécriture, avec ce que son module a rendu
       ansible.builtin.set_fact:
-        reecritures: "{{ dict(noms_repris
-          | zip(noms_repris | map('extract', vars))) | dict2items }}"
+        # `hostvars[inventory_hostname]` et non `vars` : le dictionnaire interne
+        # `vars` est déprécié et disparaît en ansible-core 2.24, que la matrice
+        # de CI atteindra. L'avertissement est sorti à chaque exécution sans que
+        # personne ne le lise, ce qui est la façon habituelle dont une
+        # dépréciation devient une panne.
+        reecritures: "{{ dict(noms_repris | zip(noms_repris
+          | map('extract', hostvars[inventory_hostname]))) | dict2items }}"
 
     - name: Ce que la cible n'a pas mesuré, faute de cible ou faute de route
       ansible.builtin.set_fact:
