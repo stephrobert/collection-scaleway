@@ -134,7 +134,7 @@ collection stephrobert.scaleway: 50 modules written out of 52 planned
   51 published pages: 297/297 options and 62/62 returned keys documented
   108/108 examples copyable as is · 53/57 returned keys list their fields
   576 unit tests · 150 mutations proven by /falsify
-  CI: 5 jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
+  CI: 6 jobs, Générateur · collection · Image · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks and inventory against the emulator:
   reported by `mise run sanity` and `mise run integration`
 ```

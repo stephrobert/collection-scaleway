@@ -40,6 +40,8 @@ github:
         - stephrobert/setup-feint # l'émulateur du scénario d'intégration
         - sigstore/cosign-installer # la signature sans clé de l'archive publiée
         - actions/attest-build-provenance # l'attestation de provenance de cette archive
+        - docker/login-action # l'authentification sur le registre du dépôt
+        - docker/build-push-action # la construction de l'environnement d'exécution
 
     # Ce dépôt ne construit aucune image, mais la règle reste active : elle
     # coûte zéro tant qu'aucune image n'apparaît, et le jour où une apparaît

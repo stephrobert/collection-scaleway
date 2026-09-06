@@ -66,6 +66,8 @@ jobs:
     environment: galaxy
     permissions:
       contents: write
+      # Publier l'environnement d'exécution sur le registre du dépôt.
+      packages: write
       # **Signer sans clé, et attester la provenance.** Les deux demandent un
       # jeton d'identité émis par la CI : c'est ce qui lie l'archive au workflow
       # qui l'a produite plutôt qu'à un secret qu'il faudrait garder, et ce qui
@@ -179,6 +181,45 @@ jobs:
         run: |
           archive=$(ls build/dist/*.tar.gz)
           ansible-galaxy collection publish "$archive"
+
+      # **L'image d'environnement d'exécution, publiée après la collection.**
+      # L'ordre compte : l'image porte l'archive, donc publier l'image avant
+      # laisserait circuler un environnement qui contient une version que
+      # Galaxy ne sert pas encore.
+      - name: S'authentifier sur le registre
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Deux étiquettes et pas de `latest` : `.plumber.yaml` refuse une image
+      # étiquetée par une référence mobile, et pour la même raison qu'ailleurs
+      # dans ce dépôt. Un lecteur qui veut la dernière lit la page des versions.
+      - name: Construire et publier l'image
+        id: image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: Containerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/ee:${{ github.ref_name }}
+
+      # Par condensat, jamais par étiquette : une signature posée sur une
+      # étiquette bénit ce que l'étiquette désignera plus tard.
+      - name: Signer l'image, sans clé
+        env:
+          DIGEST: ${{ steps.image.outputs.digest }}
+          DEPOT: ${{ github.repository }}
+        run: cosign sign --yes "ghcr.io/${DEPOT}/ee@${DIGEST}"
+
+      - name: Attester la provenance de l'image
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}/ee
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
 
       # La release GitHub vient **après** la publication réussie : elle
       # enregistre ce qui est parti, elle ne l'annonce pas d'avance.
