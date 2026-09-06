@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: widget_widget_info
-short_description: Gather information about Scaleway Widget widgets
+short_description: Gather information about Scaleway Widgets
 version_added: 9.9.9
 description:
 - Get a widget

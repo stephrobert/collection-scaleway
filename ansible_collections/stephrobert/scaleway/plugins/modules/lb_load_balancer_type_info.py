@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_load_balancer_type_info
-short_description: Gather information about Scaleway Load Balancer load balancer types
+short_description: Gather information about Scaleway Load Balancer types
 version_added: 0.1.0
 description:
 - List all the different commercial Load Balancer types. The response includes an array of

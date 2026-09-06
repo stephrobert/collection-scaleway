@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_route
-short_description: Manage a Scaleway Lb route
+short_description: Manage a Scaleway Load Balancer route
 version_added: 0.1.0
 description:
 - Update the configuration of an existing route, specified by its route ID.

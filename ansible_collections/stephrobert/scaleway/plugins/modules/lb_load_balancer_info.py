@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_load_balancer_info
-short_description: Gather information about Scaleway Load Balancer load balancers
+short_description: Gather information about Scaleway Load Balancers
 version_added: 0.1.0
 description:
 - Retrieve information about an existing Load Balancer, specified by its Load Balancer ID.

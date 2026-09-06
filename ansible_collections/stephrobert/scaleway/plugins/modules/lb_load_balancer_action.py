@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_load_balancer_action
-short_description: Perform an action on a Scaleway Load Balancer load balancer
+short_description: Perform an action on a Scaleway Load Balancer
 version_added: 0.1.0
 description:
 - Migrate an existing Load Balancer from one commercial type to another. Allows you to scale

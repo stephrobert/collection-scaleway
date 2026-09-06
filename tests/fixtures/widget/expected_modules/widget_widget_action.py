@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: widget_widget_action
-short_description: Perform an action on a Scaleway Widget widget
+short_description: Perform an action on a Scaleway Widget
 version_added: 9.9.9
 description:
 - Perform an action on a widget

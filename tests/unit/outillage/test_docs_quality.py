@@ -146,6 +146,81 @@ options:
     assert "terminate" in fautes[0].detail
 
 
+def test_le_vocabulaire_du_contrat_est_bloquant(tmp_path: Path) -> None:
+    """`Scaleway Lb` est le slug d'index, pas le nom du produit.
+
+    Scaleway écrit « Load Balancer » dans sa console, sa facturation et sa
+    documentation. Un lecteur qui cherche ses modules de Load Balancer ne tape
+    pas « Lb ».
+    """
+    chemin = _module(
+        tmp_path,
+        "demo_thing",
+        """
+module: demo_thing
+short_description: Manage a Scaleway Lb thing
+description:
+  - Update a thing.
+options: {}
+""",
+        BON_EXEMPLE,
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {})
+    assert any(d.genre == "vocabulaire-du-contrat" and d.bloquant for d in defauts)
+
+
+def test_une_fuite_de_la_couche_http_est_bloquante(tmp_path: Path) -> None:
+    """« You must set all parameters » est vrai de l'API et faux du module.
+
+    Le module lit la ressource avant d'écrire et remplit lui-même les champs
+    qu'on ne lui donne pas. Recopier la phrase du contrat publie une
+    contradiction avec la phrase suivante, que le générateur écrit.
+    """
+    chemin = _module(
+        tmp_path,
+        "demo_thing",
+        """
+module: demo_thing
+short_description: Manage a thing
+description:
+  - Update a thing. You must set all parameters.
+options: {}
+""",
+        BON_EXEMPLE,
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {})
+    assert any(d.genre == "fuite-de-la-couche-http" and d.bloquant for d in defauts)
+
+
+def test_un_exemple_nomme_par_le_contrat_est_bloquant(tmp_path: Path) -> None:
+    """`Run GetDashboard` nomme l'appel HTTP, pas ce que la tâche fait.
+
+    Le nom reste dans la sortie d'Ansible de qui copie la tâche.
+    """
+    chemin = _module(
+        tmp_path,
+        "demo_thing_info",
+        """
+module: demo_thing_info
+short_description: Read a thing
+description:
+  - Read a thing.
+options: {}
+""",
+        """
+- name: Run GetDashboard
+  demo.demo.demo_thing_info:
+    zone: fr-par-1
+  register: result
+""",
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {})
+    assert any(d.genre == "exemple-nomme-par-le-contrat" and d.bloquant for d in defauts)
+
+
 def test_un_module_sans_defaut_ne_bloque_rien(tmp_path: Path) -> None:
     """Une porte qui refuse tout ne mesure plus rien : elle mesure sa panne."""
     chemin = _module(

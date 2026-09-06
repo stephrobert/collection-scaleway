@@ -14,12 +14,11 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_frontend
-short_description: Manage a Scaleway Lb frontend
+short_description: Manage a Scaleway Load Balancer frontend
 version_added: 0.1.0
 description:
 - Update a given frontend, specified by its frontend ID. You can update configuration parameters
-  including its name and the port it listens on. Note that the request type is PUT and not
-  PATCH. You must set all parameters.
+  including its name and the port it listens on.
 - 'The module reads the resource first and writes the whole body, because this operation replaces
   the resource: fields you do not set keep the value the API returns. A second run reports
   no change.'

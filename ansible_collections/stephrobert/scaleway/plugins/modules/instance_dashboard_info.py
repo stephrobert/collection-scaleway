@@ -55,7 +55,7 @@ EXAMPLES = r"""
 # This module only reads: it never changes anything, and check mode
 # is native.
 
-- name: Run GetDashboard
+- name: Read a Scaleway Instance dashboard
   stephrobert.scaleway.instance_dashboard_info:
     zone: fr-par-1
   register: result

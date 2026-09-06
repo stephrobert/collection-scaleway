@@ -46,6 +46,13 @@ REPLI = "Not documented by the Scaleway API contract."
 #: forme et cache ce qu'on doit y mettre.
 PLACEHOLDER = re.compile(r"<[a-z_]+>")
 
+# **Les trois derniers défauts sont devenus bloquants le jour où ils sont passés
+# à zéro.** Tant qu'un défaut existe, le déclarer bloquant ferme la publication
+# sans rien réparer ; une fois corrigé, le laisser passant garantit qu'il
+# reviendra sans qu'on s'en aperçoive. Le coût d'un faux positif est un refus
+# lisible qui nomme le module et la phrase ; le coût d'un faux négatif est une
+# page publiée pour toujours.
+
 #: Un nom d'exemple qui reprend l'identifiant du contrat. `GetDashboard` est un
 #: nom interne : personne ne le tape, et personne ne devrait avoir à le lire.
 NOM_DOPERATION = re.compile(r"\bRun [A-Z][A-Za-z]+\b")
@@ -187,7 +194,7 @@ def examiner(chemin: Path, choix_exposes: dict[str, set[str]]) -> tuple[Mesure, 
             mesure.exemples_copiables += 1
         if NOM_DOPERATION.search(str(tache.get("name", ""))):
             defauts.append(
-                Defaut(nom, "exemple-nomme-par-le-contrat", str(tache.get("name")), False)
+                Defaut(nom, "exemple-nomme-par-le-contrat", str(tache.get("name")), True)
             )
 
     # --- une valeur d'enum que le module refuse, citée ailleurs -------------
@@ -206,12 +213,12 @@ def examiner(chemin: Path, choix_exposes: dict[str, set[str]]) -> tuple[Mesure, 
     # --- le vocabulaire du contrat -----------------------------------------
     for motif, attendu in JARGON:
         if motif.search(texte_publie):
-            defauts.append(Defaut(nom, "vocabulaire-du-contrat", f"attendu : {attendu}", False))
+            defauts.append(Defaut(nom, "vocabulaire-du-contrat", f"attendu : {attendu}", True))
 
     # --- ce que la couche HTTP dit et que le module rend faux ---------------
     for phrase in FUITES_HTTP:
         if phrase.lower() in texte_publie.lower():
-            defauts.append(Defaut(nom, "fuite-de-la-couche-http", f"« {phrase} »", False))
+            defauts.append(Defaut(nom, "fuite-de-la-couche-http", f"« {phrase} »", True))
 
     return mesure, defauts
 

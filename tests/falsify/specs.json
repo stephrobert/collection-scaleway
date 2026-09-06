@@ -974,6 +974,70 @@
       "find": "    if total.modules == 0:",
       "replace": "    if total.modules == 0 and False:",
       "test": "tests/unit/outillage/test_docs_quality.py::test_une_mesure_sur_zero_module_est_une_erreur"
+    },
+    {
+      "name": "produit-nomme-par-son-slug",
+      "why": "« Manage a Scaleway Lb backend » nomme le produit par son slug d'index, que Scaleway n'emploie ni dans sa console ni dans sa facturation.",
+      "file": "generator/ansible/models.py",
+      "find": "    return (service.title or service.name).removesuffix(\" API\")",
+      "replace": "    return (service.name or service.title).capitalize().removesuffix(\" API\")",
+      "test": "tests/unit/generator/test_vocabulaire.py::test_le_produit_se_nomme_comme_le_contrat_le_publie"
+    },
+    {
+      "name": "produit-repete-dans-la-ressource",
+      "why": "« Manage a Scaleway Load Balancer load balancer » : la ressource déduite du chemin porte déjà le nom du produit.",
+      "file": "generator/ansible/models.py",
+      "find": "    if resource.casefold().startswith(f\"{tete}_\"):",
+      "replace": "    if resource.casefold().startswith(f\"{tete}_\") and False:",
+      "test": "tests/unit/generator/test_vocabulaire.py::test_le_produit_ne_se_repete_pas_dans_la_ressource"
+    },
+    {
+      "name": "couche-http-publiee",
+      "why": "« You must set all parameters » est vrai de l'API et faux du module, qui lit la ressource avant d'écrire ; publier les deux publie une contradiction.",
+      "file": "generator/ansible/models.py",
+      "find": "    return re.sub(r\"\\s{2,}\", \" \", FUITES_HTTP.sub(\"\", texte)).strip()",
+      "replace": "    return re.sub(r\"\\s{2,}\", \" \", texte).strip()",
+      "test": "tests/unit/generator/test_vocabulaire.py::test_la_couche_http_ne_sort_pas_dans_la_documentation"
+    },
+    {
+      "name": "nettoyage-http-qui-efface-le-contrat",
+      "why": "Retirer la fuite est un nettoyage : effacer toute la description passerait le test de la fuite en perdant ce que le contrat dit.",
+      "file": "generator/ansible/models.py",
+      "find": "    return re.sub(r\"\\s{2,}\", \" \", FUITES_HTTP.sub(\"\", texte)).strip()",
+      "replace": "    return \"\" if FUITES_HTTP.search(texte) else texte.strip()",
+      "test": "tests/unit/generator/test_vocabulaire.py::test_le_reste_de_la_phrase_du_contrat_sort_mot_pour_mot"
+    },
+    {
+      "name": "exemple-nomme-par-loperation",
+      "why": "`Run GetDashboard` nomme l'appel HTTP dans un playbook, et ce nom reste dans la sortie d'Ansible de qui copie la tâche.",
+      "file": "generator/ansible/models.py",
+      "find": "    lecture = f\"Read a Scaleway {libelle}\" if libelle else f\"Run {name}\"",
+      "replace": "    lecture = f\"Run {name}\" if libelle else f\"Run {name}\"",
+      "test": "tests/unit/generator/test_vocabulaire.py::test_un_exemple_ne_porte_pas_didentifiant_doperation"
+    },
+    {
+      "name": "vocabulaire-du-contrat-accepte",
+      "why": "La porte documentaire doit refuser « Scaleway Lb » : sans ce détecteur, le vocabulaire du slug revient sans qu'on s'en aperçoive.",
+      "file": "scripts/docs_quality.py",
+      "find": "    (re.compile(r\"\\bScaleway Lb\\b\"), \"Scaleway Load Balancer\"),",
+      "replace": "    (re.compile(r\"\\bScaleway \\x00Lb\\x00\\b\"), \"Scaleway Load Balancer\"),",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_le_vocabulaire_du_contrat_est_bloquant"
+    },
+    {
+      "name": "fuite-http-acceptee-par-la-porte",
+      "why": "Sans ce détecteur, une description qui contredit le module repasse dans une release sans que rien ne le dise.",
+      "file": "scripts/docs_quality.py",
+      "find": "    \"You must set all parameters\",",
+      "replace": "    \"\\x00 phrase que rien ne porte \\x00\",",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_une_fuite_de_la_couche_http_est_bloquante"
+    },
+    {
+      "name": "nom-doperation-accepte-par-la-porte",
+      "why": "Sans ce détecteur, un exemple nommé par l'identifiant du SDK repart sur Galaxy.",
+      "file": "scripts/docs_quality.py",
+      "find": "NOM_DOPERATION = re.compile(r\"\\bRun [A-Z][A-Za-z]+\\b\")",
+      "replace": "NOM_DOPERATION = re.compile(r\"\\bRun \\x00[A-Z][A-Za-z]+\\x00\\b\")",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_un_exemple_nomme_par_le_contrat_est_bloquant"
     }
   ]
 }

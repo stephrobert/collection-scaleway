@@ -14,11 +14,10 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_load_balancer
-short_description: Manage a Scaleway Lb load balancer
+short_description: Manage a Scaleway Load Balancer
 version_added: 0.1.0
 description:
-- Update the parameters of an existing Load Balancer, specified by its Load Balancer ID. Note
-  that the request type is PUT and not PATCH. You must set all parameters.
+- Update the parameters of an existing Load Balancer, specified by its Load Balancer ID.
 - 'The module reads the resource first and writes the whole body, because this operation replaces
   the resource: fields you do not set keep the value the API returns. A second run reports
   no change.'

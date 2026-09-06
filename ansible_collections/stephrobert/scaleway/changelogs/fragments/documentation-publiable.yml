@@ -6,6 +6,10 @@ minor_changes:
     contract leaves, an ``example`` supplies a value the contract cannot give,
     and both require a ``reason``. The contract always wins over an override,
     and an override that no longer fills anything is reported as orphaned.
+  - Modules now name the product the way Scaleway publishes it. ``Manage a
+    Scaleway Lb backend`` used the index slug; the short descriptions read
+    ``Manage a Scaleway Load Balancer backend``, and the product is no longer
+    repeated when the resource already carries its name.
 bugfixes:
   - "``instance_server_action``: the ``RETURN`` block described the seven
     actions of the contract on a module whose ``argument_spec`` accepts four.
@@ -19,3 +23,9 @@ bugfixes:
   - Loading an override file now refuses a key declared twice. YAML silently
     keeps the last one, which had erased a ``resource`` decision and renamed a
     published module without any check turning red.
+  - "The description of four Load Balancer management modules carried the
+    contract sentence ``Note that the request type is PUT and not PATCH. You
+    must set all parameters.`` That is true of the API and false of the module,
+    which reads the resource before writing and fills in what you leave out."
+  - An example with no summary in the contract was named after the SDK
+    operation, ``Run GetDashboard``. It now says what the task does.

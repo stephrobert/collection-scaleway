@@ -43,7 +43,7 @@ from generator.overrides.loader import (
     OverrideSet,
     ParameterOverride,
 )
-from generator.parser.naming import pluralize_phrase
+from generator.parser.naming import pluralize, pluralize_phrase
 from generator.plan import OperationPlan, ProductPlan
 
 #: Classes que le renderer sait produire aujourd'hui. Une classe absente n'est
@@ -443,7 +443,15 @@ def build_module_spec(
         description=_description(get_operation, list_operation),
         options=options,
         returns=_returns(get_operation, list_operation, selector),
-        examples=_examples(name, collection, options, selector, get_operation, list_operation),
+        examples=_examples(
+            name,
+            collection,
+            options,
+            selector,
+            get_operation,
+            list_operation,
+            _libelle(service, resource),
+        ),
         get_operation=get_operation,
         list_operation=list_operation,
         selector=selector,
@@ -608,7 +616,7 @@ def _build_manage_module(
         collection=collection,
         short_description=f"Manage a Scaleway {_libelle(service, item.resource)}",
         description=(
-            update_operation.documentation_line or UNDOCUMENTED,
+            _sans_la_couche_http(update_operation.documentation_line or "") or UNDOCUMENTED,
             (
                 "The module reads the resource first and writes the whole body, "
                 "because this operation replaces the resource: fields you do not "
@@ -639,10 +647,56 @@ def _build_manage_module(
     )
 
 
+def _produit(service: ApiService) -> str:
+    """Le nom que Scaleway publie, pas le slug qui indexe le contrat.
+
+    `service.name` vaut `lb`, et « Manage a Scaleway Lb backend » en sortait.
+    Le contrat porte son propre titre, « Load Balancer API », qui est le nom de
+    la console, de la facturation et de la documentation Scaleway.
+    """
+    return (service.title or service.name).removesuffix(" API")
+
+
+def _reste_de_ressource(service: ApiService, resource: str) -> str:
+    """La ressource, moins le nom du produit qu'elle répète déjà.
+
+    Les ressources du Load Balancer sont déduites de chemins qui commencent par
+    `/lbs`, donc `load_balancer`, `load_balancer_stat`,
+    `load_balancer_private_network`. Collées au produit, elles donnaient « Load
+    Balancer load balancer private networks ». Le préfixe se retire ici, sur la
+    forme snake_case et avant toute pluralisation : après, `load balancers` ne
+    ressemble plus assez à `load balancer` pour se reconnaître.
+
+    Rend la chaîne vide quand la ressource **est** le produit : l'appelant
+    décide alors de la phrase, qui n'a plus de complément.
+    """
+    tete = _produit(service).casefold().replace(" ", "_")
+    if resource.casefold() == tete:
+        return ""
+    if resource.casefold().startswith(f"{tete}_"):
+        return resource[len(tete) + 1 :]
+    return resource
+
+
+def _pluriel(phrase: str) -> str:
+    """`Load Balancer` -> `Load Balancers`, la casse conservée.
+
+    `pluralize` rend une forme minuscule : elle est faite pour une ressource
+    déduite d'un chemin, pas pour un nom de produit que Scaleway écrit avec ses
+    majuscules dans sa console et sa facturation.
+    """
+    mots = phrase.replace("_", " ").split(" ")
+    dernier = pluralize(mots[-1])
+    if mots[-1][:1].isupper():
+        dernier = dernier[:1].upper() + dernier[1:]
+    return " ".join([*mots[:-1], dernier])
+
+
 def _libelle(service: ApiService, resource: str) -> str:
-    """`security_group` -> `Instance security group`, pour une phrase lisible."""
-    produit = service.name.capitalize()
-    return f"{produit} {resource.replace('_', ' ')}"
+    """`security_group` -> `Instance security group`, et sans redite."""
+    produit = _produit(service)
+    reste = _reste_de_ressource(service, resource)
+    return f"{produit} {reste.replace('_', ' ')}" if reste else produit
 
 
 def _manage_examples(
@@ -899,8 +953,7 @@ def _action_description(
 
 
 def _action_short_description(service: ApiService, resource: str) -> str:
-    product = (service.title or service.name).removesuffix(" API")
-    return f"Perform an action on a Scaleway {product} {resource.replace('_', ' ')}"
+    return f"Perform an action on a Scaleway {_libelle(service, resource)}"
 
 
 def _action_returns(
@@ -1326,8 +1379,10 @@ def _short_description(service: ApiService, resource: str) -> str:
     un module qui sert le GET et le LIST n'est décrit correctement par aucune
     des deux.
     """
-    product = (service.title or service.name).removesuffix(" API")
-    return f"Gather information about Scaleway {product} {pluralize_phrase(resource)}"
+    produit = _produit(service)
+    reste = _reste_de_ressource(service, resource)
+    sujet = f"{produit} {pluralize_phrase(reste)}" if reste else _pluriel(produit)
+    return f"Gather information about Scaleway {sujet}"
 
 
 def _description(
@@ -1411,9 +1466,19 @@ def _examples(
     selector: str | None,
     get_operation: OperationBinding | None,
     list_operation: OperationBinding | None,
+    libelle: str = "",
 ) -> tuple[ExampleTask, ...]:
-    """Un exemple par mode du module : lire une ressource, lister les autres."""
+    """Un exemple par mode du module : lire une ressource, lister les autres.
+
+    `libelle` sert au repli du nom de tâche. Le résumé du contrat est meilleur
+    quand il existe (« List all SSL/TLS certificates on a given Load Balancer »),
+    mais quand il manque le repli écrivait `Run GetDashboard` : l'identifiant du
+    SDK, recopié tel quel dans un playbook, où il nomme l'appel HTTP plutôt que
+    ce que la tâche fait.
+    """
     module = collection.module_fqcn(name)
+    lecture = f"Read a Scaleway {libelle}" if libelle else f"Run {name}"
+    liste = f"List Scaleway {_pluriel(libelle)}" if libelle else f"Run {name}"
     required = {option.name: _example_value(option, name) for option in options if option.required}
     examples: list[ExampleTask] = []
 
@@ -1422,7 +1487,7 @@ def _examples(
         parameters[selector] = EXAMPLE_ID
         examples.append(
             ExampleTask(
-                name=get_operation.summary or f"Run {get_operation.id}",
+                name=get_operation.summary or lecture,
                 module=module,
                 parameters=parameters,
                 register="result",
@@ -1431,7 +1496,7 @@ def _examples(
     if list_operation is not None:
         examples.append(
             ExampleTask(
-                name=list_operation.summary or f"Run {list_operation.id}",
+                name=list_operation.summary or liste,
                 module=module,
                 parameters=dict(required),
                 register="result",
@@ -1440,13 +1505,35 @@ def _examples(
     if not examples and get_operation is not None:
         examples.append(
             ExampleTask(
-                name=get_operation.summary or f"Run {get_operation.id}",
+                name=get_operation.summary or lecture,
                 module=module,
                 parameters=dict(required),
                 register="result",
             )
         )
     return tuple(examples)
+
+
+#: Phrases du contrat qui décrivent la requête HTTP, et que le module dément.
+#:
+#: Quatre opérations d'écriture du Load Balancer portent « Note that the request
+#: type is PUT and not PATCH. You must set all parameters. » C'est vrai de l'API
+#: et faux du module : il lit la ressource avant d'écrire et remplit lui-même
+#: les champs qu'on ne lui donne pas. La phrase que le générateur ajoute juste
+#: après le dit déjà, donc publier les deux publie une contradiction.
+#:
+#: C'est un nettoyage, au sens où la documentation du module peut normaliser une
+#: description du contrat ; ce n'en est pas une réécriture : rien n'est ajouté à
+#: la place, et le reste de la phrase du contrat sort mot pour mot.
+FUITES_HTTP = re.compile(
+    r"\s*(?:Note that )?[Tt]he request type is PUT and not PATCH\.?"
+    r"|\s*You must set all parameters\.?"
+)
+
+
+def _sans_la_couche_http(texte: str) -> str:
+    """Le texte du contrat, privé de ce qu'il dit du protocole."""
+    return re.sub(r"\s{2,}", " ", FUITES_HTTP.sub("", texte)).strip()
 
 
 #: Valeur d'enum que le contrat déclare et qu'aucun exemple ne doit montrer.
