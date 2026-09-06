@@ -159,6 +159,7 @@ backends:
     send_proxy_v2:
       description:
       - Deprecated in favor of proxy_protocol field.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: bool
     timeout_server:

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_ip_info
-short_description: Gather information about Scaleway Load Balancer ips
+short_description: Gather information about Scaleway Load Balancer IPs
 version_added: 0.2.0
 description:
 - Retrieve the full details of a Load Balancer flexible IP address.
@@ -79,7 +79,7 @@ EXAMPLES = r"""
   stephrobert.scaleway.lb_ip_info:
     zone: fr-par-1
   register: result
-- name: Filter Scaleway Load Balancer ips by tags
+- name: Filter Scaleway Load Balancer Ips by tags
   stephrobert.scaleway.lb_ip_info:
     zone: fr-par-1
     tags:
@@ -135,6 +135,7 @@ ips:
     region:
       description:
       - The region the IP address is in.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: str
     zone:

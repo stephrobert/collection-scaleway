@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: instance_ip
-short_description: Manage a Scaleway Instance ip
+short_description: Manage a Scaleway Instance IP
 version_added: 0.2.0
 description:
 - Update a flexible IP in the specified zone with the specified ID.
@@ -77,13 +77,13 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway Instance ip
+- name: Update a Scaleway Instance IP
   stephrobert.scaleway.instance_ip:
     zone: fr-par-1
     ip: 11111111-2222-3333-4444-555555555555
     reverse: server-1.example.com
   register: result
-- name: Preview the change on a Scaleway Instance ip without writing
+- name: Preview the change on a Scaleway Instance IP without writing
   stephrobert.scaleway.instance_ip:
     zone: fr-par-1
     ip: 11111111-2222-3333-4444-555555555555
@@ -102,7 +102,7 @@ ip:
   contains:
     id:
       description:
-      - Not documented by the Scaleway API contract.
+      - Unique ID of the IP.
       returned: when the API returns it
       type: str
     address:
@@ -112,38 +112,38 @@ ip:
       type: str
     reverse:
       description:
-      - Not documented by the Scaleway API contract.
+      - Reverse domain name.
       returned: when the API returns it
       type: str
     server:
       description:
-      - Not documented by the Scaleway API contract.
+      - Instance attached to the volume.
       returned: when the API returns it
       type: dict
     organization:
       description:
-      - Not documented by the Scaleway API contract.
+      - Organization ID of the IP.
       returned: when the API returns it
       type: str
     tags:
       description:
-      - Not documented by the Scaleway API contract.
+      - Tags of the IP.
       returned: when the API returns it
       type: list
       elements: str
     project:
       description:
-      - Not documented by the Scaleway API contract.
+      - Project ID of the IP.
       returned: when the API returns it
       type: str
     type:
       description:
-      - Not documented by the Scaleway API contract.
+      - Type of the IP address.
       returned: when the API returns it
       type: str
     state:
       description:
-      - Not documented by the Scaleway API contract.
+      - State of the IP.
       returned: when the API returns it
       type: str
     prefix:

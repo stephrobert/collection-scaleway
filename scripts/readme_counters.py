@@ -50,6 +50,19 @@ DEBUT = "<!-- compteurs:début, produits par scripts/readme_counters.py -->"
 FIN = "<!-- compteurs:fin -->"
 
 
+#: Un bloc nommé, pour les fichiers qui en portent plusieurs.
+#:
+#: Le mécanisme n'en acceptait qu'un par fichier, et c'est cette limite qui a
+#: fait écrire à la main la table de compatibilité, les exemples de
+#: versionnement et un compte de modules — trois nombres qu'un audit de la
+#: 0.2.0 publiée a trouvés faux.
+def _marqueurs(nom: str) -> tuple[str, str]:
+    return (
+        f"<!-- compteurs:{nom}:début, produits par scripts/readme_counters.py -->",
+        f"<!-- compteurs:{nom}:fin -->",
+    )
+
+
 class CompteursError(RuntimeError):
     """Une source manque, et il vaut mieux le dire que publier un nombre faux."""
 
@@ -362,15 +375,110 @@ def _versionner_les_liens(texte: str, version: str) -> str:
     return LIEN_DU_DEPOT.sub(rf"\g<1>{version}\g<3>", texte)
 
 
-def _remplace(fichier: Path, texte: str, nouveau: str) -> str:
-    if DEBUT not in texte or FIN not in texte:
+def _remplace(
+    fichier: Path,
+    texte: str,
+    nouveau: str,
+    bornes: tuple[str, str] = (DEBUT, FIN),
+) -> str:
+    debut, fin = bornes
+    if debut not in texte or fin not in texte:
         raise CompteursError(
             f"les marqueurs manquent dans {_affichable(fichier)}. Encadrer le bloc par :\n"
-            f"{DEBUT}\n...\n{FIN}"
+            f"{debut}\n...\n{fin}"
         )
-    avant = texte[: texte.index(DEBUT) + len(DEBUT)]
-    apres = texte[texte.index(FIN) :]
+    avant = texte[: texte.index(debut) + len(debut)]
+    apres = texte[texte.index(fin) :]
     return f"{avant}\n{nouveau}\n{apres}"
+
+
+def _serie(version: str) -> str:
+    """`0.2.0` -> `0.2.x` : la série que la compatibilité décrit."""
+    majeure, mineure, _ = version.split(".", 2)
+    return f"{majeure}.{mineure}.x"
+
+
+def _versions_dansible() -> list[str]:
+    """Les versions d'`ansible-core` que la CI éprouve vraiment.
+
+    Elles se lisent dans la matrice du workflow, pas dans une liste recopiée :
+    une version déclarée et jamais jouée est une promesse sans preuve, et une
+    version jouée et jamais déclarée ne se voit nulle part.
+    """
+    document = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    for job in (document.get("jobs") or {}).values():
+        matrice = (job.get("strategy") or {}).get("matrix") or {}
+        for valeurs in matrice.values():
+            if not isinstance(valeurs, list):
+                continue
+            trouve = [
+                re.sub(r"[^0-9.]", "", str(v).split(",")[0])
+                for v in valeurs
+                if isinstance(v, str) and v.startswith(">=")
+            ]
+            if trouve:
+                return trouve
+    raise CompteursError(
+        f"aucune matrice d'`ansible-core` dans {_affichable(WORKFLOW)} : "
+        "la table de compatibilité annoncerait des versions que rien n'éprouve."
+    )
+
+
+def bloc_compatibilite() -> str:
+    """La table de compatibilité, dont la série suit `galaxy.yml`."""
+    collection = load_collection()
+    versions = ", ".join(_versions_dansible())
+    return "\n".join(
+        [
+            "| collection | `ansible-core` | Python | Scaleway SDK |",
+            "|---|---|---|---|",
+            f"| {_serie(collection.version)} | {versions} | >= 3.12 | >= 2.9.0 |",
+        ]
+    )
+
+
+def bloc_versionnement() -> str:
+    """Les exemples de versionnement, comptés depuis la version publiée.
+
+    Illustrer un correctif par `0.1.1` sur une page qui affiche 0.2.0 se lit
+    comme un texte hérité, et c'est bien ce que c'était.
+    """
+    majeure, mineure, correctif = (int(x) for x in load_collection().version.split(".", 2))
+    return "\n".join(
+        [
+            f"* **patch** (`{majeure}.{mineure}.{correctif + 1}`): bug fixes only;",
+            f"* **minor** (`{majeure}.{mineure + 1}.0`): backward-compatible features "
+            "and new modules;",
+            f"* **major** (`{majeure + 1}.0.0`): may contain breaking changes.",
+        ]
+    )
+
+
+def bloc_nombre_de_modules() -> str:
+    """La phrase du README racine qui compte les modules.
+
+    Elle disait 46 à vingt lignes d'un bloc dérivé qui en annonçait 50.
+    """
+    ecrits, _ = _modules_ecrits()
+    return (
+        "The inventory sets `scaleway_id` and `scaleway_zone`, which is all any of\n"
+        f"the {ecrits} modules needs behind `delegate_to: localhost`."
+    )
+
+
+#: Ce que chaque bloc nommé produit.
+NOMMES = {
+    "compatibilite": lambda: bloc_compatibilite(),
+    "versionnement": lambda: bloc_versionnement(),
+    "modules": lambda: bloc_nombre_de_modules(),
+}
+
+#: Les blocs nommés, et le fichier de chacun.
+BLOCS_NOMMES: tuple[tuple[str, str], ...] = (
+    ("compatibilite", "collection"),
+    ("versionnement", "collection"),
+    ("modules", "racine"),
+)
 
 
 def blocs() -> dict[Path, str]:
@@ -405,6 +513,10 @@ def main(argv: list[str]) -> int:
         contenu = blocs().get(fichier)
         texte = fichier.read_text(encoding="utf-8")
         attendu = _remplace(fichier, texte, contenu) if contenu is not None else texte
+        for nom, cible in BLOCS_NOMMES:
+            if (cible == "collection") != (fichier == README_COLLECTION):
+                continue
+            attendu = _remplace(fichier, attendu, NOMMES[nom](), _marqueurs(nom))
         attendu = _versionner_les_liens(attendu, version)
         nom = _affichable(fichier)
         if arguments.write:

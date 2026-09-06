@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_ip
-short_description: Manage a Scaleway Load Balancer ip
+short_description: Manage a Scaleway Load Balancer IP
 version_added: 0.2.0
 description:
 - Update the reverse DNS of a Load Balancer flexible IP address.
@@ -67,13 +67,13 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway Load Balancer ip
+- name: Update a Scaleway Load Balancer IP
   stephrobert.scaleway.lb_ip:
     zone: fr-par-1
     ip_id: 11111111-2222-3333-4444-555555555555
     reverse: server-1.example.com
   register: result
-- name: Preview the change on a Scaleway Load Balancer ip without writing
+- name: Preview the change on a Scaleway Load Balancer IP without writing
   stephrobert.scaleway.lb_ip:
     zone: fr-par-1
     ip_id: 11111111-2222-3333-4444-555555555555
@@ -129,6 +129,7 @@ resource:
     region:
       description:
       - The region the IP address is in.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: str
     zone:

@@ -90,6 +90,10 @@ class ApiField:
     description: str | None = None
     #: Type des éléments quand le champ est un tableau, quand le contrat le dit.
     item_type: ApiType | None = None
+    #: Le contrat le déclare déprécié. L'information existait pour les options
+    #: et se perdait pour les champs rendus : un lecteur bâtissait dessus sans
+    #: savoir qu'il bâtissait sur du sable.
+    deprecated: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return _compact(
@@ -97,6 +101,7 @@ class ApiField:
                 "name": self.name,
                 "type": self.type.value,
                 "item_type": self.item_type.value if self.item_type else None,
+                "deprecated": self.deprecated or None,
                 "description": self.description,
             }
         )
@@ -247,12 +252,25 @@ class ApiService:
     #: qu'une réponse désigne réellement y sont : recopier les deux cents
     #: schémas du contrat ferait un IR que personne ne relit en diff.
     objects: tuple[ApiObject, ...] = ()
+    #: Champs que le contrat décrit **une seule fois** dans tout le document,
+    #: avec cette description. Un fait du contrat, pas une décision : ce qui en
+    #: est fait se décide dans la couche Ansible. Un champ décrit deux fois
+    #: différemment n'y est pas, parce qu'aucune des deux phrases ne vaut pour
+    #: l'autre ressource.
+    glossary: tuple[tuple[str, str], ...] = ()
     #: Anomalies rencontrées au parsing, remontées telles quelles dans le rapport.
     warnings: tuple[str, ...] = field(default=(), compare=False)
 
     @property
     def slug(self) -> str:
         return f"{self.name}.{self.version}"
+
+    def described(self, field: str) -> str | None:
+        """La description que le contrat donne à ce nom de champ, s'il n'en donne qu'une."""
+        for nom, texte in self.glossary:
+            if nom == field:
+                return texte
+        return None
 
     def object(self, name: str | None) -> ApiObject | None:
         """La ressource d'un nom de schéma, ou `None` si le contrat ne la porte pas."""
@@ -279,6 +297,7 @@ class ApiService:
                 "source": self.source,
                 "enums": [e.to_dict() for e in self.enums] or None,
                 "objects": [o.to_dict() for o in self.objects] or None,
+                "glossary": {nom: texte for nom, texte in self.glossary} or None,
                 "operations": [o.to_dict() for o in self.operations] or None,
                 "warnings": list(self.warnings) or None,
             }

@@ -149,6 +149,7 @@ security_group:
     organization_default:
       description:
       - True if it is your default security group for this Organization ID.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: bool
     project_default:
@@ -248,6 +249,7 @@ security_groups:
     organization_default:
       description:
       - True if it is your default security group for this Organization ID.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: bool
     project_default:

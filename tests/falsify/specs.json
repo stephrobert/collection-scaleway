@@ -1067,7 +1067,7 @@
       "name": "repli-result-sans-ses-champs",
       "why": "Quatre modules dont la réponse est la ressource elle-même publiaient une clé sans contenu, alors que le contrat déclarait le schéma.",
       "file": "generator/ansible/models.py",
-      "find": "                    contains=_contains(service, source.payload_schema),",
+      "find": "                    contains=_contains(service, source.payload_schema, overrides),",
       "replace": "                    contains=(),",
       "test": "tests/unit/generator/test_retours_detailles.py::test_le_repli_result_porte_aussi_ses_champs"
     },
@@ -1150,6 +1150,46 @@
       "find": "    def ignore_aliases(self, data: Any) -> bool:\n        return True",
       "replace": "    def ignore_aliases(self, data: Any) -> bool:\n        return super().ignore_aliases(data)",
       "test": "tests/unit/generator/test_exemples_semantiques.py::test_le_rendu_nemet_jamais_dancre_yaml"
+    },
+    {
+      "name": "champ-de-retour-hors-mesure",
+      "why": "La 0.2.0 est partie sur Galaxy avec cent replis dans ses RETURN : la surface publiée s'était élargie, la porte documentaire non.",
+      "file": "scripts/docs_quality.py",
+      "find": "        for champ, detail in ((corps or {}).get(\"contains\") or {}).items():",
+      "replace": "        for champ, detail in dict((corps or {}).get(\"contains\") or {}, **{}).items() if False else []:",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_un_champ_de_retour_sans_description_est_bloquant"
+    },
+    {
+      "name": "glossaire-sans-unicite",
+      "why": "`name` est décrit treize fois différemment dans instance.v1 : reprendre l'une de ces phrases ferait dire « Instance name » d'un volume.",
+      "file": "generator/parser/openapi.py",
+      "find": "        (champ, next(iter(phrases))) for champ, phrases in sorted(vues.items()) if len(phrases) == 1",
+      "replace": "        (champ, sorted(phrases)[0]) for champ, phrases in sorted(vues.items()) if phrases",
+      "test": "tests/unit/generator/test_champs_decrits.py::test_ce_que_le_contrat_dit_ailleurs_sert_quand_il_ne_le_dit_quune_fois"
+    },
+    {
+      "name": "champ-publie-sans-description",
+      "why": "« Not documented by the Scaleway API contract. » n'apprend rien au lecteur et il ne peut aller le compléter nulle part : la page est immuable.",
+      "file": "generator/ansible/models.py",
+      "find": "                    or _reformulation(objet.name, champ.name)",
+      "replace": "                    or None",
+      "test": "tests/unit/generator/test_champs_decrits.py::test_aucun_champ_publie_ne_porte_le_repli"
+    },
+    {
+      "name": "override-de-retour-sans-raison",
+      "why": "Le texte sortira sur Galaxy sous le nom de la collection, indiscernable d'une phrase de Scaleway.",
+      "file": "generator/overrides/loader.py",
+      "find": "            if not declaration.get(\"reason\"):\n                raise OverrideError(\n                    f\"{path} : returns.{schema}.{champ} publie une description sans `reason`. \"",
+      "replace": "            if not declaration.get(\"reason\") and False:\n                raise OverrideError(\n                    f\"{path} : returns.{schema}.{champ} publie une description sans `reason`. \"",
+      "test": "tests/unit/generator/test_champs_decrits.py::test_une_description_de_retour_sans_raison_est_refusee"
+    },
+    {
+      "name": "depreciation-dun-champ-rendu-perdue",
+      "why": "Un lecteur bâtit sur un champ que le contrat déclare déprécié sans que rien ne le lui dise.",
+      "file": "generator/ansible/models.py",
+      "find": "                *((DEPRECATED_NOTICE,) if champ.deprecated else ()),",
+      "replace": "                *((DEPRECATED_NOTICE,) if champ.deprecated and False else ()),",
+      "test": "tests/unit/generator/test_champs_decrits.py::test_un_champ_deprecie_le_dit"
     }
   ]
 }

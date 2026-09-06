@@ -72,52 +72,52 @@ dashboard:
   contains:
     volumes_count:
       description:
-      - Not documented by the Scaleway API contract.
+      - Count of volumes.
       returned: when the API returns it
       type: int
     running_servers_count:
       description:
-      - Not documented by the Scaleway API contract.
+      - Count of running servers.
       returned: when the API returns it
       type: int
     servers_by_types:
       description:
-      - Not documented by the Scaleway API contract.
+      - Count of servers per type.
       returned: when the API returns it
       type: dict
     images_count:
       description:
-      - Not documented by the Scaleway API contract.
+      - Count of images.
       returned: when the API returns it
       type: int
     snapshots_count:
       description:
-      - Not documented by the Scaleway API contract.
+      - Count of snapshots.
       returned: when the API returns it
       type: int
     servers_count:
       description:
-      - Not documented by the Scaleway API contract.
+      - Count of servers.
       returned: when the API returns it
       type: int
     ips_count:
       description:
-      - Not documented by the Scaleway API contract.
+      - Count of ips.
       returned: when the API returns it
       type: int
     security_groups_count:
       description:
-      - Not documented by the Scaleway API contract.
+      - Count of security groups.
       returned: when the API returns it
       type: int
     ips_unused:
       description:
-      - Not documented by the Scaleway API contract.
+      - Count of unused IP addresses.
       returned: when the API returns it
       type: int
     volumes_l_ssd_count:
       description:
-      - Not documented by the Scaleway API contract.
+      - Count of volumes l ssd.
       returned: when the API returns it
       type: int
     volumes_l_ssd_total_size:
@@ -127,27 +127,29 @@ dashboard:
       type: int
     private_nics_count:
       description:
-      - Not documented by the Scaleway API contract.
+      - Count of private nics.
       returned: when the API returns it
       type: int
     placement_groups_count:
       description:
-      - Not documented by the Scaleway API contract.
+      - Count of placement groups.
       returned: when the API returns it
       type: int
     volumes_scratch_count:
       description:
-      - Not documented by the Scaleway API contract.
+      - Count of volumes scratch.
       returned: when the API returns it
       type: int
     volumes_b_ssd_count:
       description:
-      - Not documented by the Scaleway API contract.
+      - Count of volumes b ssd.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: int
     volumes_b_ssd_total_size:
       description:
       - (in bytes)
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: int
 """

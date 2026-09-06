@@ -92,17 +92,17 @@ widget:
   contains:
     id:
       description:
-      - Not documented by the Scaleway API contract.
+      - Unique ID of the widget.
       returned: when the API returns it
       type: str
     name:
       description:
-      - Not documented by the Scaleway API contract.
+      - Name of the widget.
       returned: when the API returns it
       type: str
     tags:
       description:
-      - Not documented by the Scaleway API contract.
+      - Tags of the widget.
       returned: when the API returns it
       type: list
       elements: str

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: instance_ip_action
-short_description: Perform an action on a Scaleway Instance ip
+short_description: Perform an action on a Scaleway Instance IP
 version_added: 0.2.0
 description:
 - '**The IP remains available in IPAM**, which means that it is still reserved by the Organization,

@@ -132,22 +132,22 @@ rule:
   contains:
     id:
       description:
-      - Not documented by the Scaleway API contract.
+      - Unique ID of the security group rule.
       returned: when the API returns it
       type: str
     protocol:
       description:
-      - Not documented by the Scaleway API contract.
+      - Protocol family this rule applies to.
       returned: when the API returns it
       type: str
     direction:
       description:
-      - Not documented by the Scaleway API contract.
+      - Direction the rule applies to.
       returned: when the API returns it
       type: str
     action:
       description:
-      - Not documented by the Scaleway API contract.
+      - Action to apply when the rule matches a packet.
       returned: when the API returns it
       type: str
     ip_range:
@@ -157,22 +157,25 @@ rule:
       type: str
     dest_port_from:
       description:
-      - Not documented by the Scaleway API contract.
+      - Beginning of the range of ports this rule applies to (inclusive). This value will
+        be set to null if protocol is ICMP or ANY.
       returned: when the API returns it
       type: int
     dest_port_to:
       description:
-      - Not documented by the Scaleway API contract.
+      - End of the range of ports this rule applies to (inclusive). This value will be set
+        to null if protocol is ICMP or ANY, or if it is equal to dest_port_from.
       returned: when the API returns it
       type: int
     position:
       description:
-      - Not documented by the Scaleway API contract.
+      - Position of this rule in the security group rules list. If several rules are passed
+        with the same position, the resulting order is undefined.
       returned: when the API returns it
       type: int
     editable:
       description:
-      - Not documented by the Scaleway API contract.
+      - Indicates if this rule is editable. Rules with the value false will be ignored.
       returned: when the API returns it
       type: bool
     zone:

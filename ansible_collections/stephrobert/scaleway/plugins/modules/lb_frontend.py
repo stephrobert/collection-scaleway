@@ -160,6 +160,7 @@ resource:
     certificate:
       description:
       - Certificate, deprecated in favor of certificate_ids array.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: dict
     certificate_ids:

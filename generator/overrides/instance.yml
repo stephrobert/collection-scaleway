@@ -361,3 +361,75 @@ operations:
       volumes:
         description: Instance volumes.
         reason: Recopié de `scaleway.instance.v1.Server.volumes`.
+
+# --- Ce que le contrat ne décrit nulle part, et qui est publié quand même ---
+#
+# Un champ rendu traverse quatre étages : sa propre description au contrat, ce
+# que le contrat en dit ailleurs quand il ne le dit qu'une fois, une
+# reformulation qui ne redit que le nom, et enfin ceci. Neuf champs arrivent
+# jusqu'ici, et `docs_quality` refuserait la publication sans eux.
+#
+# **Ces phrases ne disent rien de plus que le nom et le type du champ.** Écrire
+# « Number of reserved IP addresses not attached to an Instance » pour
+# `ips_unused` serait plus utile et serait une invention : le contrat ne définit
+# nulle part ce que « unused » veut dire, et un lecteur bâtirait dessus.
+returns:
+
+  scaleway.instance.v1.Dashboard:
+    ips_unused:
+      description: Count of unused IP addresses.
+      reason: >-
+        Reformulation du nom, et rien d'autre. Le contrat ne dit pas ce qu'il
+        entend par « unused » ; en déduire « non rattachée à une Instance »
+        serait plausible et invérifiable.
+    servers_by_types:
+      description: Count of servers per type.
+      reason: >-
+        Reformulation du nom et de la forme déclarée, un objet dont les valeurs
+        sont des entiers et dont la clé est nommée `<servers_by_typeKey>` par le
+        contrat. Le mot « commercial » serait une invention.
+
+  scaleway.instance.v1.Image:
+    arch:
+      description: CPU architecture of the image.
+      reason: >-
+        « CPU architecture. » est ce que le contrat écrit pour `arch` sur
+        `scaleway.instance.v1.ServerType`, et « Instance architecture. » sur
+        `Server`. Deux phrases pour un même nom, donc le glossaire ne peut pas
+        trancher ; ici la ressource est connue, et la transposition est exacte.
+    default_bootscript:
+      description: Default bootscript of the image.
+      reason: >-
+        Reformulation du nom. Le contrat déclare ce champ `deprecated`, et cette
+        mention-là vient de lui : le rendu l'ajoute désormais tout seul.
+    extra_volumes:
+      description: Extra volumes of the image.
+      reason: >-
+        Reformulation du nom. Le contrat déclare un objet dont les valeurs sont
+        des `Volume` ; ce que la clé désigne n'est pas dit, donc rien n'en est
+        dit ici.
+    from_server:
+      description: Server the image comes from.
+      reason: >-
+        Reformulation du nom. « Créée à partir de » serait une affirmation sur
+        la façon dont l'image est produite, que le contrat ne fait pas.
+    public:
+      description: Whether the image is public.
+      reason: >-
+        Reformulation du nom et du type, un booléen. Ce qu'être publique
+        implique n'est défini nulle part dans le contrat.
+
+  scaleway.instance.v1.Ip:
+    type:
+      description: Type of the IP address.
+      reason: >-
+        Reformulation du nom. Les valeurs de l'enum `IpType` sortent déjà dans
+        le module ; le contrat ne les commente pas.
+
+  scaleway.instance.v1.Task:
+    href_from:
+      description: Source reference of the task, as the API returns it.
+      reason: >-
+        Reformulation du nom. `href` désigne conventionnellement une référence,
+        mais le contrat ne dit ni sa forme ni ce qu'elle pointe, et l'appeler
+        une URL serait déjà en dire plus que lui.

@@ -87,6 +87,7 @@ lb_types:
     region:
       description:
       - The region the Load Balancer stock is in.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: str
     zone:

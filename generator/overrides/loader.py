@@ -147,12 +147,34 @@ class OperationOverride:
     extra: dict[str, Any] = field(default_factory=dict)
 
 
+#: Champs qu'un override de champ rendu peut porter.
+_RETURN_FIELDS: frozenset[str] = frozenset({"description", "reason"})
+
+
+@dataclass(frozen=True)
+class ReturnOverride:
+    """Ce qu'on publie d'un champ rendu que le contrat ne décrit nulle part.
+
+    Le dernier recours, après la description du champ, ce que le contrat en dit
+    ailleurs quand il ne le dit qu'une fois, et la reformulation du nom. Ce qui
+    s'écrit ici est une décision : la `reason` dit d'où elle vient, et le texte
+    sortira sur Galaxy sous le nom de la collection.
+    """
+
+    schema: str
+    field: str
+    description: str
+    reason: str
+
+
 @dataclass(frozen=True)
 class OverrideSet:
     """Ensemble des overrides d'un produit."""
 
     source: Path | None
     operations: dict[str, OperationOverride] = field(default_factory=dict)
+    #: Champs rendus, par nom de schéma puis nom de champ.
+    returns: dict[str, dict[str, ReturnOverride]] = field(default_factory=dict)
 
     def get(self, key: str) -> OperationOverride | None:
         return self.operations.get(key)
@@ -196,6 +218,25 @@ class OverrideSet:
                         f"{cle}.parameters.{nom} : description d'override devenue "
                         "inutile, le contrat en porte une"
                     )
+        # **Un champ rendu que le contrat décrit désormais lui-même.** La
+        # description écrite ici ne sort plus, et personne ne la relit : elle
+        # devient un texte mort qu'une relecture croirait publié.
+        par_schema = {objet.name: objet for objet in service.objects}
+        for schema, champs in self.returns.items():
+            objet = par_schema.get(schema)
+            if objet is None:
+                inertes.append(f"returns.{schema} : aucune ressource de ce nom n'est rendue")
+                continue
+            decrits = {c.name for c in objet.fields if c.description}
+            connus = {c.name for c in objet.fields}
+            for champ in champs:
+                if champ not in connus:
+                    inertes.append(f"returns.{schema}.{champ} : la ressource ne porte pas ce champ")
+                elif champ in decrits:
+                    inertes.append(
+                        f"returns.{schema}.{champ} : description d'override devenue "
+                        "inutile, le contrat en porte une"
+                    )
         return tuple(sorted(inertes))
 
 
@@ -236,14 +277,55 @@ def load_overrides(product: str, root: Path = DEFAULT_OVERRIDES_ROOT) -> Overrid
     if not isinstance(document, dict):
         raise OverrideError(f"{path} : le document doit être un mapping")
 
-    unknown_sections = set(document) - {"operations"}
+    unknown_sections = set(document) - {"operations", "returns"}
     if unknown_sections:
         raise OverrideError(f"{path} : sections inconnues {sorted(unknown_sections)}")
 
     operations: dict[str, OperationOverride] = {}
     for key, raw in (document.get("operations") or {}).items():
         operations[key] = _parse_override(key, raw, path)
-    return OverrideSet(source=path, operations=operations)
+    return OverrideSet(
+        source=path,
+        operations=operations,
+        returns=_parse_returns(document.get("returns"), path),
+    )
+
+
+def _parse_returns(raw: Any, path: Path) -> dict[str, dict[str, ReturnOverride]]:
+    """Lit et valide les descriptions posées sur des champs rendus."""
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise OverrideError(f"{path} : `returns` doit être un mapping de schémas")
+
+    par_schema: dict[str, dict[str, ReturnOverride]] = {}
+    for schema, champs in raw.items():
+        if not isinstance(champs, dict):
+            raise OverrideError(f"{path} : returns.{schema} doit être un mapping de champs")
+        for champ, declaration in champs.items():
+            if not isinstance(declaration, dict):
+                raise OverrideError(f"{path} : returns.{schema}.{champ} doit être un mapping")
+            inconnus = set(declaration) - _RETURN_FIELDS
+            if inconnus:
+                raise OverrideError(
+                    f"{path} : returns.{schema}.{champ} porte des champs inconnus "
+                    f"{sorted(inconnus)}. Champs acceptés : {sorted(_RETURN_FIELDS)}"
+                )
+            if not declaration.get("description"):
+                raise OverrideError(f"{path} : returns.{schema}.{champ} n'écrit aucune description")
+            if not declaration.get("reason"):
+                raise OverrideError(
+                    f"{path} : returns.{schema}.{champ} publie une description sans `reason`. "
+                    "Elle sortira sur Galaxy sous le nom de la collection : la raison "
+                    "doit dire d'où elle vient."
+                )
+            par_schema.setdefault(schema, {})[champ] = ReturnOverride(
+                schema=schema,
+                field=champ,
+                description=str(declaration["description"]).strip(),
+                reason=str(declaration["reason"]),
+            )
+    return par_schema
 
 
 def _parse_override(key: str, raw: Any, path: Path) -> OperationOverride:

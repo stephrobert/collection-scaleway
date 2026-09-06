@@ -131,36 +131,42 @@ task:
     id:
       description:
       - Unique ID of the task.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: str
     description:
       description:
       - Description of the task.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: str
     progress:
       description:
       - Progress of the task in percent.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: int
     started_at:
       description:
       - Task start date. (RFC 3339 format)
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: str
     terminated_at:
       description:
       - Task end date. (RFC 3339 format)
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: str
     status:
       description:
       - Task status.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: str
     href_from:
       description:
-      - Not documented by the Scaleway API contract.
+      - Source reference of the task, as the API returns it.
       returned: when the API returns it
       type: str
     href_result:
@@ -171,6 +177,7 @@ task:
     zone:
       description:
       - Zone in which the task is executed.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: str
 """

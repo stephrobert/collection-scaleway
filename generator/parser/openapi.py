@@ -110,6 +110,17 @@ def parse_document(spec: SpecDocument) -> ApiService:
     # après les opérations parce qu'ils se déduisent d'elles : seuls les
     # schémas qu'une réponse désigne sont retenus.
     objects = _parse_objects(operations, schemas, enums, warnings)
+    glossary = _parse_glossary(
+        schemas,
+        tuple(
+            tuple(
+                (parametre.name, parametre.description)
+                for parametre in operation.parameters
+                if parametre.description
+            )
+            for operation in operations
+        ),
+    )
 
     info = document.get("info", {})
     return ApiService(
@@ -121,7 +132,59 @@ def parse_document(spec: SpecDocument) -> ApiService:
         operations=tuple(sorted(operations, key=lambda op: op.id)),
         enums=tuple(sorted(enums.values(), key=lambda enum: enum.name)),
         objects=objects,
+        glossary=glossary,
         warnings=tuple(sorted(set(warnings))),
+    )
+
+
+def _parse_glossary(
+    schemas: dict[str, Any],
+    _parametres_documentes: tuple[tuple[tuple[str, str], ...], ...] = (),
+) -> tuple[tuple[str, str], ...]:
+    """Les champs que le contrat ne décrit qu'une seule fois, avec cette phrase.
+
+    **Un constat, pas une décision.** Ce que la couche Ansible en fera est son
+    affaire ; ici on relève seulement que le document est sans ambiguïté sur ce
+    nom de champ.
+
+    L'unicité est la condition, et elle est stricte. `name` apparaît treize fois
+    dans instance.v1 avec treize phrases différentes, « Instance name. »,
+    « Volume name. », « Snapshot name. » : aucune ne vaut pour les autres, et le
+    glossaire n'en retient aucune. `protocol` n'apparaît qu'une fois, « Protocol
+    family this rule applies to. », et il n'y a rien à trancher.
+    """
+    vues: dict[str, set[str]] = {}
+    for schema in schemas.values():
+        if not isinstance(schema, dict):
+            continue
+        for champ, declaration in (schema.get("properties") or {}).items():
+            if not isinstance(declaration, dict):
+                continue
+            phrase = _first_paragraph(declaration.get("description"))
+            if phrase:
+                vues.setdefault(champ, set()).add(phrase)
+    # **Les paramètres décrivent aussi des champs, mais ils passent après.**
+    # Ne lire que `components.schemas` laissait dehors « Reverse domain name. »,
+    # que le contrat écrit sur le paramètre `reverse` d'`UpdateIp` et nulle part
+    # ailleurs.
+    #
+    # Ils ne se mélangent pas aux schémas pour autant, et la première tentative
+    # a montré pourquoi : un paramètre décrit souvent un **filtre**, « List
+    # images with these exact tags », là où le champ rendu porte les tags. Versés
+    # dans le même sac, ces deux phrases faisaient perdre l'unicité de douze
+    # champs que les schémas décrivaient pourtant sans ambiguïté, et le compte
+    # des champs muets est passé de 28 à 40.
+    #
+    # Ils ne servent donc que là où **aucun schéma** ne décrit le nom.
+    de_parametres: dict[str, set[str]] = {}
+    for parametres in _parametres_documentes:
+        for champ, phrase in parametres:
+            if champ not in vues:
+                de_parametres.setdefault(champ, set()).add(phrase)
+    for champ, phrases in de_parametres.items():
+        vues[champ] = phrases
+    return tuple(
+        (champ, next(iter(phrases))) for champ, phrases in sorted(vues.items()) if len(phrases) == 1
     )
 
 
@@ -171,6 +234,7 @@ def _parse_objects(
                     name=champ,
                     type=resolu.type,
                     item_type=resolu.item_type,
+                    deprecated=bool(declaration.get("deprecated")),
                     description=_first_paragraph(declaration.get("description")),
                 )
             )

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_frontend_acl_info
-short_description: Gather information about Scaleway Load Balancer frontend acls
+short_description: Gather information about Scaleway Load Balancer frontend ACLs
 version_added: 0.2.0
 description:
 - List the ACLs for a given frontend, specified by its frontend ID. The response is an array
@@ -68,7 +68,7 @@ EXAMPLES = r"""
     zone: fr-par-1
     frontend_id: 11111111-2222-3333-4444-555555555555
   register: result
-- name: Filter Scaleway Load Balancer frontend acls by name
+- name: Filter Scaleway Load Balancer frontend Acls by name
   stephrobert.scaleway.lb_frontend_acl_info:
     zone: fr-par-1
     frontend_id: 11111111-2222-3333-4444-555555555555

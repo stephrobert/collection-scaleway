@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: instance_server_private_nic_info
-short_description: Gather information about Scaleway Instance server private nics
+short_description: Gather information about Scaleway Instance server private NICs
 version_added: 0.2.0
 description:
 - Get private NIC properties.
@@ -78,7 +78,7 @@ EXAMPLES = r"""
     zone: fr-par-1
     server_id: 11111111-2222-3333-4444-555555555555
   register: result
-- name: Filter Scaleway Instance server private nics by tags
+- name: Filter Scaleway Instance server private Nics by tags
   stephrobert.scaleway.instance_server_private_nic_info:
     zone: fr-par-1
     server_id: 11111111-2222-3333-4444-555555555555

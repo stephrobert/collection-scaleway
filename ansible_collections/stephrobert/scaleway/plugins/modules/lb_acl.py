@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_acl
-short_description: Manage a Scaleway Load Balancer acl
+short_description: Manage a Scaleway Load Balancer ACL
 version_added: 0.2.0
 description:
 - Update a particular ACL, specified by its ACL ID. You can update details including its name,
@@ -80,7 +80,7 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway Load Balancer acl
+- name: Update a Scaleway Load Balancer ACL
   stephrobert.scaleway.lb_acl:
     zone: fr-par-1
     acl_id: 11111111-2222-3333-4444-555555555555
@@ -89,7 +89,7 @@ EXAMPLES = r"""
     index: 0
     name: my-acl
   register: result
-- name: Preview the change on a Scaleway Load Balancer acl without writing
+- name: Preview the change on a Scaleway Load Balancer ACL without writing
   stephrobert.scaleway.lb_acl:
     zone: fr-par-1
     acl_id: 11111111-2222-3333-4444-555555555555

@@ -131,9 +131,9 @@ second run reports no change.
 | `instance_dashboard_info` | Gather information about Scaleway Instance dashboards |
 | `instance_image` | Manage a Scaleway Instance image |
 | `instance_image_info` | Gather information about Scaleway Instance images |
-| `instance_ip` | Manage a Scaleway Instance ip |
-| `instance_ip_action` | Perform an action on a Scaleway Instance ip |
-| `instance_ip_info` | Gather information about Scaleway Instance ips |
+| `instance_ip` | Manage a Scaleway Instance IP |
+| `instance_ip_action` | Perform an action on a Scaleway Instance IP |
+| `instance_ip_info` | Gather information about Scaleway Instance IPs |
 | `instance_placement_group` | Manage a Scaleway Instance placement group |
 | `instance_placement_group_info` | Gather information about Scaleway Instance placement groups |
 | `instance_placement_group_server_info` | Gather information about Scaleway Instance placement group servers |
@@ -145,8 +145,8 @@ second run reports no change.
 | `instance_server_action` | Perform an action on a Scaleway Instance server |
 | `instance_server_compatible_type_info` | Gather information about Scaleway Instance server compatible types |
 | `instance_server_info` | Gather information about Scaleway Instance servers |
-| `instance_server_private_nic` | Manage a Scaleway Instance server private nic |
-| `instance_server_private_nic_info` | Gather information about Scaleway Instance server private nics |
+| `instance_server_private_nic` | Manage a Scaleway Instance server private NIC |
+| `instance_server_private_nic_info` | Gather information about Scaleway Instance server private NICs |
 | `instance_server_type_availability_info` | Gather information about Scaleway Instance server type availabilities |
 | `instance_server_type_info` | Gather information about Scaleway Instance server types |
 | `instance_server_user_data_info` | Gather information about Scaleway Instance server user data |
@@ -161,18 +161,18 @@ second run reports no change.
 
 | module | what it does |
 |---|---|
-| `lb_acl` | Manage a Scaleway Load Balancer acl |
-| `lb_acl_info` | Gather information about Scaleway Load Balancer acls |
+| `lb_acl` | Manage a Scaleway Load Balancer ACL |
+| `lb_acl_info` | Gather information about Scaleway Load Balancer ACLs |
 | `lb_backend` | Manage a Scaleway Load Balancer backend |
 | `lb_backend_info` | Gather information about Scaleway Load Balancer backends |
 | `lb_backend_stat_info` | Gather information about Scaleway Load Balancer backend stats |
 | `lb_certificate` | Manage a Scaleway Load Balancer certificate |
 | `lb_certificate_info` | Gather information about Scaleway Load Balancer certificates |
 | `lb_frontend` | Manage a Scaleway Load Balancer frontend |
-| `lb_frontend_acl_info` | Gather information about Scaleway Load Balancer frontend acls |
+| `lb_frontend_acl_info` | Gather information about Scaleway Load Balancer frontend ACLs |
 | `lb_frontend_info` | Gather information about Scaleway Load Balancer frontends |
-| `lb_ip` | Manage a Scaleway Load Balancer ip |
-| `lb_ip_info` | Gather information about Scaleway Load Balancer ips |
+| `lb_ip` | Manage a Scaleway Load Balancer IP |
+| `lb_ip_info` | Gather information about Scaleway Load Balancer IPs |
 | `lb_load_balancer` | Manage a Scaleway Load Balancer |
 | `lb_load_balancer_action` | Perform an action on a Scaleway Load Balancer |
 | `lb_load_balancer_info` | Gather information about Scaleway Load Balancers |
@@ -227,9 +227,11 @@ See [playbooks/README.md](playbooks/README.md).
 
 ## Compatibility
 
+<!-- compteurs:compatibilite:début, produits par scripts/readme_counters.py -->
 | collection | `ansible-core` | Python | Scaleway SDK |
 |---|---|---|---|
-| 0.1.x | 2.17, 2.18, 2.19, 2.20 | >= 3.12 | >= 2.9.0 |
+| 0.2.x | 2.17, 2.18, 2.19, 2.20 | >= 3.12 | >= 2.9.0 |
+<!-- compteurs:compatibilite:fin -->
 
 All four `ansible-core` versions are tested by CI on every change. A version
 declared and never tested is a promise with no proof.
@@ -239,9 +241,11 @@ declared and never tested is a promise with no proof.
 This collection follows **semantic versioning**, which Ansible requires of
 collections:
 
-* **patch** (`0.1.1`): bug fixes only;
-* **minor** (`0.2.0`): backward-compatible features and new modules;
+<!-- compteurs:versionnement:début, produits par scripts/readme_counters.py -->
+* **patch** (`0.2.1`): bug fixes only;
+* **minor** (`0.3.0`): backward-compatible features and new modules;
 * **major** (`1.0.0`): may contain breaking changes.
+<!-- compteurs:versionnement:fin -->
 
 **Before `1.0.0`, treat the interfaces as evolving.** The split between action
 operations and management operations is still maturing, and the collection is

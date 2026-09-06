@@ -89,11 +89,13 @@ private_network:
       description:
       - Object containing an array of a local IP address for the Load Balancer on this Private
         Network.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: dict
     dhcp_config:
       description:
       - Object containing DHCP-assigned IP addresses.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: dict
     private_network_id:
