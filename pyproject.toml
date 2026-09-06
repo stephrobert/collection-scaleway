@@ -96,6 +96,21 @@ warn_unused_ignores = true
 # prouver. C'est `ansible-test sanity` qui contrôle `ansible_collections/`, avec les
 # contrôles qu'Ansible applique à ses propres modules.
 files = ["generator", "scripts"]
+# Le harnais de fuzzing vit sous `tests/fuzz/` parce qu'il n'est pas un outil du
+# dépôt mais une **cible de construction** pour ClusterFuzzLite, qui compile
+# chaque `fuzz_*.py` comme un programme autonome. `scripts/fuzz_smoke.py`
+# l'importe pour le rejouer hors ligne ; `mypy_path` lui dit où le trouver, sans
+# l'ajouter à `files` — il y serait alors vu sous deux noms de module, celui du
+# chemin et celui de l'import, et mypy refuse.
+mypy_path = "tests/fuzz"
+
+[[tool.mypy.overrides]]
+# `atheris` n'existe que dans le conteneur d'OSS-Fuzz : il n'est pas dans le
+# verrou, et il n'a pas à y être. Le harnais l'importe **dans** sa fonction
+# `main`, précisément pour que son absence n'empêche pas de le relire ni de le
+# rejouer hors ligne.
+module = "atheris"
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "yaml"
