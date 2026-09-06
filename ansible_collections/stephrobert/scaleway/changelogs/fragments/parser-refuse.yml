@@ -1,0 +1,11 @@
+bugfixes:
+  - "The parser now refuses a malformed contract instead of crashing on it.
+    A fuzzer found twelve real defects on its first pass, all of the same
+    family: a shape assumed without being checked. What made them expensive was
+    where they surfaced - a non-textual ``operationId`` travelled through the
+    whole parse and came out at the final sort, on a ``TypeError`` naming
+    neither the operation nor the file."
+minor_changes:
+  - The parser is fuzzed by ClusterFuzzLite on every pull request and for ten
+    minutes every Tuesday, and a smoke harness replays it offline in
+    ``mise run check``. One proves the harness finds; the other proves it works.

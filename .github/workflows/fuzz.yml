@@ -1,0 +1,64 @@
+# ClusterFuzzLite : le parser lit un document que personne ici ne contrôle.
+#
+# **Pourquoi ce dépôt fuzze, et pourquoi ça n'est pas décoratif.** Le harnais de
+# `tests/fuzz/` a trouvé douze défauts réels du parser à son premier passage,
+# tous de la même famille : une clé YAML déclarée sans valeur, un `$ref` qui
+# n'est pas une chaîne, un `type` qui est un objet, un `operationId` qui traverse
+# tout le parsing et sort au tri final sur un message ne nommant ni l'opération
+# ni le fichier. Aucun n'était théorique, et le portail Scaleway a ajouté 453
+# méthodes en douze mois.
+#
+# `mise run fuzz:smoke` rejoue ce harnais en quelques secondes dans
+# `mise run check` : il prouve que le harnais **marche**. Ce workflow prouve
+# qu'il **trouve**, ce qui n'est pas la même chose et demande du temps machine.
+name: fuzz
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "35 4 * * 2"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fuzzing:
+    name: ClusterFuzzLite
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      # Le corpus et les plantages sont rangés dans une branche dédiée, ce qui
+      # est le mode « stockage dans le dépôt » de ClusterFuzzLite : sans lui,
+      # chaque exécution repart d'un corpus vide et ne cumule rien.
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - name: Construire les fuzzers
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+        with:
+          language: python
+          sanitizer: address
+
+      # **Une durée courte sur une pull request, et c'est délibéré.** Un fuzzer
+      # qui immobilise la CI dix minutes à chaque poussée finit désactivé, et un
+      # contrôle désactivé ne mesure plus rien. La passe longue est celle du
+      # mardi.
+      - name: Fuzzer
+        uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: ${{ github.event_name == 'schedule' && 600 || 120 }}
+          mode: ${{ github.event_name == 'schedule' && 'batch' || 'code-change' }}
+          sanitizer: address
+          output-sarif: true

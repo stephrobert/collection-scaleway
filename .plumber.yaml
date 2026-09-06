@@ -42,6 +42,7 @@ github:
         - actions/attest-build-provenance # l'attestation de provenance de cette archive
         - docker/login-action # l'authentification sur le registre du dépôt
         - docker/build-push-action # la construction de l'environnement d'exécution
+        - google/clusterfuzzlite # le fuzzing du parser, sur pull request et le mardi
 
     # Ce dépôt ne construit aucune image, mais la règle reste active : elle
     # coûte zéro tant qu'aucune image n'apparaît, et le jour où une apparaît

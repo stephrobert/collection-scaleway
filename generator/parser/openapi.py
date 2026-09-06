@@ -84,15 +84,26 @@ def parse_document(spec: SpecDocument) -> ApiService:
     if "paths" not in document:
         raise ParseError(f"{spec.path} ne déclare aucun chemin")
 
-    schemas: dict[str, Any] = document.get("components", {}).get("schemas", {})
+    schemas: dict[str, Any] = _mapping(_mapping(document).get("components")).get("schemas", {})
     warnings: list[str] = []
     enums: dict[str, ApiEnum] = {}
     operations: list[ApiOperation] = []
 
-    for path, path_item in document["paths"].items():
+    chemins = _mapping(document.get("paths"))
+    for path, path_item in chemins.items():
+        # Un chemin dont l'entrée n'est pas un mapping ne porte aucune opération.
+        # Le signaler plutôt que de le laisser planter deux lignes plus bas :
+        # l'opération n'y est pas, et c'est tout ce qu'il y a à en dire.
+        if not isinstance(path_item, dict):
+            warnings.append(f"{path} : entrée de chemin qui n'est pas un mapping, ignorée")
+            continue
         for method_name, method in _METHODS.items():
             operation = path_item.get(method_name)
-            if operation is None:
+            if not isinstance(operation, dict):
+                if operation is not None:
+                    warnings.append(
+                        f"{method.value} {path} : opération qui n'est pas un mapping, ignorée"
+                    )
                 continue
             operations.append(
                 _parse_operation(
@@ -122,7 +133,7 @@ def parse_document(spec: SpecDocument) -> ApiService:
         ),
     )
 
-    info = document.get("info", {})
+    info = _mapping(document.get("info"))
     return ApiService(
         name=spec.product,
         version=spec.version,
@@ -157,7 +168,7 @@ def _parse_glossary(
     for schema in schemas.values():
         if not isinstance(schema, dict):
             continue
-        for champ, declaration in (schema.get("properties") or {}).items():
+        for champ, declaration in _mapping(schema.get("properties")).items():
             if not isinstance(declaration, dict):
                 continue
             phrase = _first_paragraph(declaration.get("description"))
@@ -219,7 +230,7 @@ def _parse_objects(
             warnings.append(f"{nom} : schéma de réponse absent des composants du contrat")
             continue
         champs: list[ApiField] = []
-        for champ, declaration in (schema.get("properties") or {}).items():
+        for champ, declaration in _mapping(schema.get("properties")).items():
             if not isinstance(declaration, dict):
                 continue
             resolu = _resolve_type(
@@ -252,13 +263,22 @@ def _parse_operation(
     enums: dict[str, ApiEnum],
     warnings: list[str],
 ) -> ApiOperation:
+    # **L'identifiant sert de clé de tri sur toutes les opérations du produit.**
+    # Un `operationId` qui n'est pas une chaîne traversait le parsing entier et
+    # sortait en `TypeError: '<' not supported` au moment du `sorted`, à la
+    # toute fin, sur un message qui ne nomme ni l'opération ni le fichier.
     operation_id = operation.get("operationId")
-    if not operation_id:
-        raise ParseError(f"{method.value} {path} n'a pas d'operationId")
+    if not isinstance(operation_id, str) or not operation_id:
+        raise ParseError(
+            f"{method.value} {path} : `operationId` absent ou invalide ({operation_id!r})"
+        )
 
     scope = _scope_of(path)
     parameters: list[ApiParameter] = []
-    for declared in operation.get("parameters", []):
+    for declared in operation.get("parameters") or []:
+        if not isinstance(declared, dict):
+            warnings.append(f"{operation_id} : un paramètre qui n'est pas un mapping, ignoré")
+            continue
         parameters.append(
             _parse_parameter(
                 declared=_deref(declared, schemas),
@@ -307,9 +327,27 @@ def _parse_parameter(
     warnings: list[str],
     operation_id: str,
 ) -> ApiParameter:
-    name = declared["name"]
-    location = ParameterLocation(declared.get("in", "query"))
-    schema = declared.get("schema", {})
+    # Le nom sert de clé partout en aval, jusqu'à un `set` construit trois
+    # fonctions plus loin dans la pagination : un nom qui n'est pas une chaîne
+    # y sortait en `TypeError: unhashable type`, loin de l'endroit où il a été
+    # lu. Le refus est ici.
+    name = declared.get("name")
+    if not isinstance(name, str) or not name:
+        raise ParseError(f"{operation_id} : un paramètre déclare un `name` invalide ({name!r})")
+    # **Un emplacement que l'enum ne connaît pas est un refus, pas un plantage.**
+    # `ParameterLocation(...)` lève un `ValueError` nu, dont le message parle de
+    # l'enum et pas du contrat. Le fuzzer l'a produit avec un `in:` portant un
+    # objet ; l'amont le produirait avec un emplacement qu'OpenAPI ajoute et que
+    # ce parser ne connaît pas encore, ce qui est le cas qui compte.
+    brut = declared.get("in", "query")
+    try:
+        location = ParameterLocation(brut)
+    except ValueError as erreur:
+        raise ParseError(
+            f"{operation_id}.{name} : emplacement de paramètre non reconnu ({brut!r}). "
+            f"Attendus : {[membre.value for membre in ParameterLocation]}"
+        ) from erreur
+    schema = _mapping(declared.get("schema"))
     resolved = _resolve_type(
         schema=schema,
         schemas=schemas,
@@ -344,16 +382,25 @@ def _parse_body(
     body = operation.get("requestBody")
     if not body:
         return []
-    schema = body.get("content", {}).get("application/json", {}).get("schema")
+    schema = _mapping(_mapping(_mapping(body).get("content")).get("application/json")).get("schema")
     if not schema:
         warnings.append(f"{operation_id} : corps de requête sans schéma JSON")
         return []
     schema = _deref(schema, schemas)
-    properties: dict[str, Any] = schema.get("properties", {})
-    required = set(schema.get("required", ()))
+    properties: dict[str, Any] = _mapping(schema.get("properties"))
+    # `required` est une liste de noms. Un élément qui n'est pas une chaîne
+    # rend l'ensemble inconstructible ; ceux qui le sont suffisent à dire ce
+    # qui est obligatoire, et le reste ne désignait aucun paramètre.
+    required = {nom for nom in (schema.get("required") or ()) if isinstance(nom, str)}
 
     parameters: list[ApiParameter] = []
     for name, property_schema in properties.items():
+        # Une propriété déclarée sans valeur n'est pas un schéma : elle vaut
+        # `None`, et rien n'en sortira. Le rapport le dira par l'absence du
+        # paramètre plutôt que par un plantage.
+        if not isinstance(property_schema, dict):
+            warnings.append(f"{operation_id}.{name} : propriété sans schéma, paramètre ignoré")
+            continue
         resolved = _resolve_type(
             schema=property_schema,
             schemas=schemas,
@@ -411,7 +458,7 @@ def _resolve_type(
     context: str,
 ) -> _ResolvedType:
     """Traduit un schéma OpenAPI en type de l'IR, en enregistrant les enums."""
-    if not schema:
+    if not isinstance(schema, dict) or not schema:
         warnings.append(f"{context} : paramètre sans schéma, type inconnu")
         return _ResolvedType(ApiType.UNKNOWN)
 
@@ -446,6 +493,9 @@ def _resolve_type(
         return _ResolvedType(ApiType.UNKNOWN)
 
     ref = schema.get("$ref")
+    if ref is not None and not isinstance(ref, str):
+        warnings.append(f"{context} : `$ref` qui n'est pas une chaîne ({ref!r})")
+        return _ResolvedType(ApiType.UNKNOWN)
     if ref:
         target_name = ref.rsplit("/", 1)[-1]
         target = _deref(schema, schemas)
@@ -476,11 +526,26 @@ def _resolve_type(
         # OpenAPI 3.1 écrit un champ optionnel `["string", "null"]`.
         candidates = [entry for entry in raw_type if entry != "null"]
         raw_type = candidates[0] if candidates else None
+    if raw_type is not None and not isinstance(raw_type, str):
+        # **Un `type` qui n'est ni une chaîne ni une liste de chaînes.** Le
+        # code le passait directement à `in _SCALAR_TYPES`, et un objet y
+        # sortait en `TypeError: unhashable type`. Le signaler est la réponse :
+        # c'est un type que le contrat déclare et que le parser ne sait pas
+        # lire, ce qui est exactement ce que les limites du rapport portent.
+        warnings.append(f"{context} : `type` n'est ni une chaîne ni une liste ({raw_type!r})")
+        return _ResolvedType(ApiType.UNKNOWN)
 
     if "enum" in schema:
+        valeurs = schema["enum"]
+        if not isinstance(valeurs, (list, tuple)):
+            # Un `enum` déclaré vide vaut `None`, et il n'énumère rien. Le
+            # signaler plutôt que de le parcourir : un enum sans valeur ne
+            # produirait de toute façon aucun `choices`.
+            warnings.append(f"{context} : `enum` qui n'est pas une liste ({valeurs!r})")
+            return _ResolvedType(ApiType.UNKNOWN)
         return _ResolvedType(
             ApiType.ENUM,
-            enum_values=tuple(str(value) for value in schema["enum"]),
+            enum_values=tuple(str(value) for value in valeurs),
             default=schema.get("default"),
         )
 
@@ -547,17 +612,31 @@ def _parse_response(
     ressource. L'IR est le produit de ce dépôt : un module rendu depuis cette
     description lirait `tags` en croyant lire la ressource.
     """
-    responses = operation.get("responses", {})
+    responses = _mapping(operation.get("responses"))
     success = responses.get("200") or responses.get(200)
     if not success:
         return None
-    schema = success.get("content", {}).get("application/json", {}).get("schema")
-    if not schema:
+    # **Une clé présente et vide vaut `None`, pas `{}`.** Le défaut d'un `.get`
+    # ne s'applique qu'à une clé **absente** : un `content:` sans rien dessous
+    # rend `None`, et la chaîne d'appels sortait en `AttributeError` au lieu de
+    # conclure que la réponse n'a pas de schéma. Trouvé par le fuzzer du parser,
+    # sur une mutation qui met un champ à `null` — ce qu'un document YAML écrit
+    # à la main produit sans effort.
+    schema = _mapping(_mapping(_mapping(success).get("content")).get("application/json")).get(
+        "schema"
+    )
+    if not isinstance(schema, dict) or not schema:
         return ApiResponse()
 
-    schema_name = schema.get("$ref", "").rsplit("/", 1)[-1] or None
+    # **Un `$ref` qui n'est pas une chaîne n'est pas une référence.** Le nom
+    # extrait ici sert plus loin de **clé de dictionnaire** : une liste y sortait
+    # en `TypeError: unhashable type`, à trois fonctions de distance de l'endroit
+    # où la forme était supposée. Le fuzzer l'a montré ; la garde est ici, à la
+    # lecture, et pas là où le symptôme apparaissait.
+    reference = schema.get("$ref")
+    schema_name = reference.rsplit("/", 1)[-1] or None if isinstance(reference, str) else None
     resolved = _deref(schema, schemas)
-    properties: dict[str, Any] = resolved.get("properties", {})
+    properties: dict[str, Any] = _mapping(resolved.get("properties"))
 
     if not _est_une_enveloppe(schema_name):
         if schema_name is None:
@@ -575,16 +654,20 @@ def _parse_response(
     payload_schema: str | None = None
     is_list = False
     for name, property_schema in properties.items():
+        if not isinstance(property_schema, dict):
+            continue
         property_type = property_schema.get("type")
         if isinstance(property_type, list):
             property_type = next((entry for entry in property_type if entry != "null"), None)
         if property_type == "array":
             payload_field = name
-            items_ref = property_schema.get("items", {}).get("$ref", "")
-            payload_schema = items_ref.rsplit("/", 1)[-1] or None
+            items_ref = _mapping(property_schema.get("items")).get("$ref")
+            payload_schema = (
+                items_ref.rsplit("/", 1)[-1] or None if isinstance(items_ref, str) else None
+            )
             is_list = True
             break
-        if "$ref" in property_schema and payload_field is None:
+        if isinstance(property_schema.get("$ref"), str) and payload_field is None:
             payload_field = name
             payload_schema = property_schema["$ref"].rsplit("/", 1)[-1]
 
@@ -635,7 +718,7 @@ def _parse_pagination(
 
     total_count_field = None
     if response and response.schema:
-        properties = schemas.get(response.schema, {}).get("properties", {})
+        properties = _mapping(_mapping(schemas).get(response.schema)).get("properties", {}) or {}
         if "total_count" in properties:
             total_count_field = "total_count"
     return Pagination(per_page_param=taille, total_count_field=total_count_field)
@@ -689,30 +772,63 @@ def _derive_resource(path: str, scope: Scope) -> str:
     return singularize_phrase(snake_case("_".join(parts)))
 
 
-def _deref(node: dict[str, Any], schemas: dict[str, Any]) -> dict[str, Any]:
-    """Résout une référence locale `#/components/schemas/<nom>`."""
-    ref = node.get("$ref")
+def _deref(node: Any, schemas: dict[str, Any]) -> dict[Any, Any]:
+    """Résout une référence locale `#/components/schemas/<nom>`.
+
+    Accepte n'importe quel nœud et rend un mapping : un contrat peut déclarer à
+    cette place une chaîne, une liste ou rien, et ce sont les appelants qui
+    lisaient un mapping sans l'avoir vérifié. Le refus se prend ici, une fois,
+    plutôt qu'à chacun des dix endroits qui appellent.
+    """
+    noeud: dict[Any, Any] = _mapping(node)
+    ref = noeud.get("$ref")
     if not ref:
-        return node
+        return noeud
+    if not isinstance(ref, str):
+        raise ParseError(f"`$ref` qui n'est pas une chaîne : {ref!r}")
     name = ref.rsplit("/", 1)[-1]
     target = schemas.get(name)
     if target is None:
         raise ParseError(f"référence inconnue : {ref}")
+    if not isinstance(target, dict):
+        # Une référence qui pointe sur autre chose qu'un schéma. `dict(target)`
+        # y sortait en `ValueError` en parlant de « dictionary update
+        # sequence », un message qui ne nomme ni la référence ni le contrat.
+        raise ParseError(f"référence vers un schéma qui n'est pas un mapping : {ref}")
     merged = dict(target)
-    for key, value in node.items():
+    for key, value in noeud.items():
         if key != "$ref":
             merged.setdefault(key, value)
     return merged
 
 
-def _first_paragraph(text: str | None) -> str | None:
+def _mapping(noeud: Any) -> dict[Any, Any]:
+    """Le nœud s'il est un mapping, un mapping vide sinon.
+
+    En YAML, une clé déclarée sans valeur vaut `None`. `noeud.get("x", {})` ne
+    protège que de la clé **absente**, jamais de la clé vide, et la différence
+    ne se voit pas tant que le document est bien formé.
+    """
+    return noeud if isinstance(noeud, dict) else {}
+
+
+def _first_paragraph(text: Any) -> str | None:
     """Garde la première phrase utile d'une description Scaleway.
 
     Les descriptions du portail contiennent des blocs MDX et des tableaux
     entiers destinés au site. Le générateur ne réécrit pas ces textes, il en
     prend le premier paragraphe.
+
+    **Une description qui n'est pas une chaîne est traitée comme absente**, et
+    non comme une erreur fatale. Le type était annoté `str | None` et supposé
+    tel : un fuzzer du parser a produit un document où ce champ portait un
+    objet, et le parser sortait en `AttributeError` au lieu de refuser
+    proprement. Une description n'est pas porteuse — le rapport compte déjà les
+    paramètres qui n'en ont pas, et c'est là que le trou se voit — donc faire
+    tomber le parsing d'un produit entier pour elle coûterait plus que ce que
+    ça protège.
     """
-    if not text:
+    if not isinstance(text, str) or not text:
         return None
     paragraph = text.strip().split("\n\n", 1)[0].strip()
     return paragraph or None

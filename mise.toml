@@ -354,6 +354,15 @@ description = "Ce que la documentation publiée vaut, et ce qui la rend impublia
 depends = ["generate"]
 run = "python scripts/docs_quality.py --check"
 
+[tasks."fuzz:smoke"]
+description = "Rejouer le harnais de fuzzing sur des mutations du contrat réel"
+# **Il prouve que le harnais marche, pas qu'il trouve.** Trouver demande du
+# temps machine, et c'est ClusterFuzzLite qui le passe, sur pull request et le
+# mardi. Ceci tient en quelques secondes et garde le harnais vivant : un
+# harnais qui ne tourne que dans le conteneur d'OSS-Fuzz est un harnais que
+# personne ne relit, et qui pourrit sans que rien ne le dise.
+run = "python scripts/fuzz_smoke.py 2000"
+
 [tasks."version"]
 description = "Ce que les fragments de changelog impliquent comme prochain numéro"
 # **Le numéro se déduit, il ne se saisit pas.** Ce qu'une version promet est
@@ -436,6 +445,7 @@ depends = [
   # `release:check`, donc au moment où refuser coûte un numéro plutôt qu'un
   # aller-retour. Une pull request doit la passer comme le reste.
   "docs:quality",
+  "fuzz:smoke",
 ]
 
 [tasks.clean]

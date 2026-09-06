@@ -1206,6 +1206,70 @@
       "find": "            return phrase.format(quoi=_lisible(quoi.replace(\"_\", \" \")), ressource=lisible)",
       "replace": "            return phrase.format(quoi=quoi.replace(\"_\", \" \"), ressource=lisible)",
       "test": "tests/unit/generator/test_champs_decrits.py::test_une_reformulation_met_les_abreviations_en_capitales"
+    },
+    {
+      "name": "identifiant-doperation-non-textuel",
+      "why": "Il sert de clé de tri : le défaut traversait tout le parsing et sortait au `sorted` final, sur un message qui ne nomme ni l'opération ni le fichier.",
+      "file": "generator/parser/openapi.py",
+      "find": "    if not isinstance(operation_id, str) or not operation_id:",
+      "replace": "    if not operation_id:",
+      "test": "tests/unit/generator/test_parser_refuse.py::test_un_identifiant_doperation_invalide_est_refuse"
+    },
+    {
+      "name": "nom-de-parametre-non-textuel",
+      "why": "Il cassait la construction d'un `set` trois fonctions plus loin, dans la pagination, loin de l'endroit où il avait été lu.",
+      "file": "generator/parser/openapi.py",
+      "find": "    if not isinstance(name, str) or not name:",
+      "replace": "    if name is None:",
+      "test": "tests/unit/generator/test_parser_refuse.py::test_un_nom_de_parametre_invalide_est_refuse"
+    },
+    {
+      "name": "emplacement-de-parametre-sans-refus-nomme",
+      "why": "`ParameterLocation(...)` lève un ValueError qui parle de l'enum et pas du contrat : ni le fichier, ni l'opération, ni le paramètre.",
+      "file": "generator/parser/openapi.py",
+      "find": "    except ValueError as erreur:\n        raise ParseError(",
+      "replace": "    except ValueError as erreur:\n        raise erreur from ParseError(",
+      "test": "tests/unit/generator/test_parser_refuse.py::test_un_emplacement_de_parametre_inconnu_est_refuse"
+    },
+    {
+      "name": "reference-vers-un-non-schema",
+      "why": "`dict(target)` sortait en « dictionary update sequence element #0 has length 1 », un message qui ne nomme pas la référence.",
+      "file": "generator/parser/openapi.py",
+      "find": "    if not isinstance(target, dict):",
+      "replace": "    if not isinstance(target, dict) and False:",
+      "test": "tests/unit/generator/test_parser_refuse.py::test_une_reference_vers_un_non_schema_est_refusee"
+    },
+    {
+      "name": "cle-yaml-vide-prise-pour-un-mapping",
+      "why": "En YAML une clé déclarée sans valeur vaut `None`, et le défaut d'un `.get` ne protège que de la clé absente : c'est la moitié des douze défauts trouvés par le fuzzer.",
+      "file": "generator/parser/openapi.py",
+      "find": "    return noeud if isinstance(noeud, dict) else {}",
+      "replace": "    return noeud if noeud is not None else {}",
+      "test": "tests/unit/generator/test_parser_refuse.py::test_une_cle_declaree_sans_valeur_ne_fait_pas_planter"
+    },
+    {
+      "name": "type-illisible-devine-au-lieu-detre-signale",
+      "why": "Un type que le parser ne sait pas lire doit sortir dans les limites du rapport, jamais en silence ni en TypeError.",
+      "file": "generator/parser/openapi.py",
+      "find": "        warnings.append(f\"{context} : `type` n'est ni une chaîne ni une liste ({raw_type!r})\")",
+      "replace": "        pass",
+      "test": "tests/unit/generator/test_parser_refuse.py::test_un_type_que_le_parser_ne_sait_pas_lire_est_signale"
+    },
+    {
+      "name": "operation-non-mapping-avalee-en-silence",
+      "why": "Une entrée de chemin qui n'est pas une opération doit laisser une trace : sans elle, une opération disparaît du plan sans que rien ne le dise.",
+      "file": "generator/parser/openapi.py",
+      "find": "                    warnings.append(\n                        f\"{method.value} {path} : opération qui n'est pas un mapping, ignorée\"\n                    )",
+      "replace": "                    pass",
+      "test": "tests/unit/generator/test_parser_refuse.py::test_une_operation_qui_nest_pas_un_mapping_est_ignoree_avec_sa_trace"
+    },
+    {
+      "name": "description-non-textuelle-fait-tomber-le-produit",
+      "why": "Une description n'est pas porteuse : la laisser lever un AttributeError ferait tomber le parsing d'un produit entier pour un champ que le rapport compte déjà comme absent.",
+      "file": "generator/parser/openapi.py",
+      "find": "    if not isinstance(text, str) or not text:",
+      "replace": "    if not text:",
+      "test": "tests/unit/generator/test_parser_refuse.py::test_une_description_qui_nest_pas_une_chaine_vaut_une_absence"
     }
   ]
 }

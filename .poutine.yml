@@ -6,12 +6,11 @@
 # attrape une action typosquattée ou fraîchement réenregistrée qui se
 # glisserait dans le pipeline.
 #
-# Les deux entrées ci-dessous sont acquittées une par une, jamais en
+# Les entrées ci-dessous sont acquittées une par une, jamais en
 # désactivant la règle. Chacune nomme le workflow qui l'exécute, pour qu'un
 # lecteur puisse vérifier l'affirmation au lieu de la croire.
 #
-# Mesuré : ce sont les deux seules actions que poutine 1.1.4 signale sur ce
-# dépôt, sur cinq occurrences. Une exemption qui survivrait à l'action qu'elle
+# Mesuré : ce sont les seules actions que poutine signale sur ce dépôt. Une exemption qui survivrait à l'action qu'elle
 # exempte accorderait une confiance que plus personne n'utilise ni ne relit,
 # donc elles se relisent quand un workflow change.
 skip:
@@ -29,3 +28,18 @@ skip:
       # sa source. Elle télécharge le binaire et contrôle sa somme SHA-256
       # contre le `checksums.txt` publié avant de le lancer.
       - pkg:githubactions/stephrobert/setup-feint
+      # Les deux actions de ClusterFuzzLite, exécutées par
+      # .github/workflows/fuzz.yml. Elles vivent dans `google/clusterfuzzlite`,
+      # dépôt de Google, qui n'est pas « verified creator » sur la Marketplace :
+      # l'organisation n'y a jamais publié d'action, ce que la règle ne
+      # distingue pas d'un compte inconnu.
+      #
+      # Ce que l'acquittement repose sur : les deux sont épinglées par SHA du
+      # tag `v1`, vérifié contre l'API de GitHub plutôt que recopié, et le job
+      # qui les exécute ne porte que `contents: read`. Un `GITHUB_TOKEN` lui est
+      # passé pour déposer un rapport SARIF, et rien d'autre.
+      #
+      # Le purl est au niveau du dépôt et non de chaque action : poutine
+      # identifie l'auteur, et les deux actions ont le même. Mesuré, un
+      # purl par sous-chemin ne correspond à rien et laisse la règle rouge.
+      - pkg:githubactions/google/clusterfuzzlite
