@@ -2,8 +2,12 @@
 
 ## Signaler une faille
 
-Ouvrez un **avis de sécurité privé** sur GitHub, par
-`Security` puis `Report a vulnerability`, plutôt qu'une issue publique.
+Ouvrez un **avis de sécurité privé** sur GitHub plutôt qu'une issue publique :
+
+<https://github.com/stephrobert/collection-scaleway/security/advisories/new>
+
+Si ce formulaire vous est inaccessible, les coordonnées du mainteneur sont
+publiées sur <https://blog.stephane-robert.info>.
 
 Délais engagés :
 
@@ -57,13 +61,27 @@ exactement comme le contrôle.
 | la protection de branche appliquée est celle qui est déclarée | le job `La protection de branche est celle qui est déclarée` compare le ruleset vivant à `.github/rulesets/main.json` |
 | aucun identifiant Scaleway nécessaire pour la CI | les contrats sont versionnés, et le scénario d'intégration refuse de jouer si `SCW_API_URL` ne pointe pas sur l'émulateur |
 
+## Ce que la publication garantit
+
+La collection est publiée sur Ansible Galaxy sous
+<https://galaxy.ansible.com/ui/repo/published/stephrobert/scaleway/>, et chaque
+version part d'un tag signé, depuis `main`, par un workflow qui refuse de
+publier autrement.
+
+| ce qui est signé | comment le vérifier |
+|---|---|
+| le tag de version | `git verify-tag 0.3.0` |
+| l'archive publiée | `cosign verify-blob` avec la signature et le certificat joints à la release |
+| la provenance de la construction | `gh attestation verify <archive> --repo stephrobert/collection-scaleway` |
+
+La signature est **sans clé** : elle lie l'archive à l'identité du workflow qui
+l'a produite, pas à un secret qu'il faudrait garder. Une exécution locale ne
+peut donc pas produire une signature valide.
+
 ## Ce que le dépôt ne fait pas
 
-* **Aucune release signée, aucune provenance.** La collection n'est pas publiée
-  sur Ansible Galaxy : son namespace est `local`, et l'archive ne circule que
-  par artefact de CI ou construction locale. Le jour où elle sera publiée, la
-  signature et l'attestation de provenance seront la condition de cette
-  publication, pas un ajout ultérieur.
+* **Aucune revue par un second relecteur du code publié.** Voir plus bas ; c'est
+  la limite que ce dépôt ne peut pas fermer par de la machinerie.
 * **Aucune revue par un second relecteur.** Il y a un mainteneur. Ce que ce
   dépôt substitue à un second lecteur est de la machinerie, décrite dans
   `docs/scorecard.md` : elle ne remplace pas un relecteur, et les deux phrases

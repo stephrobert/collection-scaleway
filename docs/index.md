@@ -65,4 +65,5 @@ api/index
 :maxdepth: 1
 
 scorecard
+best-practices
 ```

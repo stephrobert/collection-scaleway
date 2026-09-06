@@ -46,6 +46,13 @@ dev = [
     # écrits à la main tiennent dans un seul site plutôt que dans deux.
     "sphinx-ansible-theme>=0.10",
     "myst-parser>=4.0",
+    # **Des tests par propriété, sur les fonctions qui traduisent.** Un contrat
+    # OpenAPI est une entrée structurée, et le générateur en tire des noms, des
+    # types et des phrases : les cas que quelqu'un pense à écrire sont un
+    # sous-ensemble de ceux que l'amont peut produire. Hypothesis engendre les
+    # autres, et il sait réduire un contre-exemple à sa plus petite forme, ce
+    # qui est la moitié du travail de diagnostic.
+    "hypothesis>=6.100",
 ]
 
 [tool.setuptools.packages.find]

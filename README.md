@@ -133,7 +133,7 @@ collection stephrobert.scaleway: 50 modules written out of 52 planned
   44 modules called by the example playbook out of 50 (88.0%), which is not the same as played
   51 published pages: 297/297 options and 62/62 returned keys documented
   108/108 examples copyable as is · 53/57 returned keys list their fields
-  568 unit tests · 150 mutations proven by /falsify
+  576 unit tests · 150 mutations proven by /falsify
   CI: 5 jobs, Générateur · collection · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks and inventory against the emulator:
   reported by `mise run sanity` and `mise run integration`
@@ -255,6 +255,8 @@ in an archive is not a module Ansible can load.
 * [The collection runtime](docs/architecture/runtime.md)
 * [The dynamic inventory](docs/guides/dynamic-inventory.md), and Ansible's trap around strict mode
 * [What OpenSSF Scorecard says, and what it does not](docs/scorecard.md)
+* [The OpenSSF Best Practices badge](docs/best-practices.md): every answer, and the
+  three that are deliberately `Unmet`
 * [CONTRIBUTING.md](CONTRIBUTING.md): what to run before you push, and why a
   hand-edited generated file is refused
 * [RELEASING.md](RELEASING.md): where the version number comes from, and the six
