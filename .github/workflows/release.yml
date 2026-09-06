@@ -48,6 +48,21 @@ jobs:
     name: Publier sur Galaxy
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    # Le jeton vit dans cet environnement, dont la politique de référence
+    # n'autorise que les tags de version : un tag `essai` ou `debug` ne peut pas
+    # déclencher la publication, même poussé par quelqu'un qui a les droits.
+    #
+    # **Attention à la syntaxe de cette politique, qui n'est pas celle du filtre
+    # `on.push.tags` ci-dessus.** Le filtre d'un workflow accepte `+` comme
+    # quantificateur ; une politique de déploiement filtre en `fnmatch`, où `+`
+    # est un caractère littéral. Les motifs y sont donc
+    # `[0-9]*.[0-9]*.[0-9]*` et `v[0-9]*.[0-9]*.[0-9]*`. Recopier les motifs
+    # d'au-dessus a coûté une exécution : le tag a bien déclenché le workflow,
+    # et le job a été rejeté en deux secondes, avant sa première étape, avec
+    # « Tag "0.2.0" is not allowed to deploy to galaxy ».
+    #
+    # Une politique posée n'est pas une politique éprouvée : l'API répond
+    # « créé » pour un motif qui ne correspondra jamais.
     environment: galaxy
     permissions:
       contents: write

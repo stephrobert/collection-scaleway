@@ -99,9 +99,21 @@ The workflow runs, in this order:
 6. the GitHub release, **after** a successful publication. It records what went
    out; it does not announce it in advance.
 
-The token lives in the `galaxy` environment, reachable only from `main`, and it
-is passed through the environment rather than on a command line: a command ends
-up in a log, and a log gets shared.
+The token lives in the `galaxy` environment, whose deployment policy allows
+version tags and nothing else, and it is passed through the environment rather
+than on a command line: a command ends up in a log, and a log gets shared.
+
+**That policy does not use the same pattern syntax as the workflow's tag
+filter**, and the difference cost one run. A workflow filter accepts `+` as a
+quantifier; a deployment policy filters with `fnmatch`, where `+` is a literal
+character. The patterns are therefore `[0-9]*.[0-9]*.[0-9]*` and
+`v[0-9]*.[0-9]*.[0-9]*`. Copying the workflow's patterns across produced a
+policy that could never match: the tag triggered the workflow, and the job was
+rejected two seconds later, before its first step, with
+`Tag "0.2.0" is not allowed to deploy to galaxy`.
+
+A policy that has been created is not a policy that has been proven. The API
+answers "created" for a pattern that will never match anything.
 
 ## Verifying a release
 
