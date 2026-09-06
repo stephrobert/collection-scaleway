@@ -274,3 +274,35 @@ def test_la_porte_mesure_bien_la_collection_livree() -> None:
     bloquants = [f"{d.module} : {d.genre} ({d.detail})" for d in defauts if d.bloquant]
     assert bloquants == [], "\n".join(bloquants)
     assert mesure.modules > 0
+
+
+def test_le_plugin_dinventaire_entre_dans_la_mesure() -> None:
+    """C'est la page qu'un utilisateur lit en premier, et elle était hors mesure.
+
+    Le plugin d'inventaire a sa page sur Galaxy et ses 26 options ; la porte ne
+    regardait que `plugins/modules`. Surveiller les cinquante pages qu'on lit
+    après, mais pas celle qu'on lit d'abord, laissait le trou au pire endroit.
+    """
+    mesure, _ = docs_quality.mesurer()
+    assert mesure.modules == 51, (
+        f"{mesure.modules} pages examinées, 50 modules et 1 plugin attendus"
+    )
+
+
+def test_les_exemples_dun_plugin_sont_des_fichiers_entiers(tmp_path: Path) -> None:
+    """On copie un fichier d'inventaire, pas une tâche.
+
+    Ils sont donc séparés par `---`, et `safe_load` ne rend que le premier :
+    mesurer avec lui laissait trois exemples sur quatre hors de la mesure, et
+    ils pouvaient repasser en commentaires sans que rien ne le dise.
+    """
+    chemin = tmp_path / "demo.py"
+    chemin.write_text(
+        EN_TETE + 'DOCUMENTATION = r"""\nname: demo\nshort_description: Read\n'
+        'description:\n  - Read.\noptions: {}\n"""\n\n'
+        'EXAMPLES = r"""\nplugin: demo.demo.demo\n\n---\nplugin: demo.demo.demo\n'
+        'regions:\n  - fr-par\n"""\n\nRETURN = r"""\n"""\n',
+        encoding="utf-8",
+    )
+    mesure, _ = docs_quality.examiner(chemin, {})
+    assert mesure.exemples == 2, "le second document d'exemple n'est pas mesuré"

@@ -127,6 +127,28 @@ def _bloc(source: str, nom: str) -> Any:
         return None
 
 
+def _exemples(source: str) -> list[Any]:
+    """Les exemples d'un fichier, quelle que soit la forme qu'ils prennent.
+
+    Un module publie **une liste de tâches** ; un plugin d'inventaire publie
+    **plusieurs fichiers**, séparés par `---`, parce que c'est un fichier
+    d'inventaire entier qu'on copie et pas une tâche. `safe_load` ne rend que
+    le premier document : mesurer avec lui laissait trois exemples sur quatre
+    hors de la mesure, sur la page qu'un utilisateur lit en premier.
+    """
+    motif = re.compile(r'^EXAMPLES = r?"""(.*?)"""', re.S | re.M)
+    trouve = motif.search(source)
+    if not trouve:
+        return []
+    try:
+        documents = [d for d in yaml.safe_load_all(trouve.group(1)) if d is not None]
+    except yaml.YAMLError:
+        return []
+    if len(documents) == 1 and isinstance(documents[0], list):
+        return documents[0]
+    return documents
+
+
 def _texte(source: str, nom: str) -> str:
     motif = re.compile(rf'^{nom} = r?"""(.*?)"""', re.S | re.M)
     trouve = motif.search(source)
@@ -162,7 +184,7 @@ def examiner(chemin: Path, choix_exposes: dict[str, set[str]]) -> tuple[Mesure, 
 
     doc = _bloc(source, "DOCUMENTATION") or {}
     retour = _bloc(source, "RETURN") or {}
-    exemples = _bloc(source, "EXAMPLES") or []
+    exemples = _exemples(source)
     texte_publie = "\n".join(_texte(source, n) for n in ("DOCUMENTATION", "EXAMPLES", "RETURN"))
 
     # --- ce que le module dit de lui-même ---------------------------------
@@ -202,14 +224,19 @@ def examiner(chemin: Path, choix_exposes: dict[str, set[str]]) -> tuple[Mesure, 
                 mesure.sans_detail.append(f"{nom}.{cle}")
 
     # --- les exemples -------------------------------------------------------
-    for tache in exemples if isinstance(exemples, list) else []:
+    for rang, tache in enumerate(exemples, start=1):
         if not isinstance(tache, dict):
             continue
         mesure.exemples += 1
         rendu = yaml.safe_dump(tache, allow_unicode=True)
         if PLACEHOLDER.search(rendu):
             defauts.append(
-                Defaut(nom, "exemple-non-copiable", f"« {tache.get('name', '?')} »", True)
+                Defaut(
+                    nom,
+                    "exemple-non-copiable",
+                    f"« {tache.get('name') or f'exemple {rang}'} »",
+                    True,
+                )
             )
         else:
             mesure.exemples_copiables += 1
@@ -275,10 +302,18 @@ def mesurer() -> tuple[Mesure, list[Defaut]]:
     if not modules_dir.is_dir():
         raise QualiteError(f"{modules_dir} n'existe pas : lancer `mise run generate`.")
 
+    # **Le plugin d'inventaire est publié comme les modules.** Il a sa page sur
+    # Galaxy, ses 26 options, et il est la porte d'entrée de la collection :
+    # c'est le premier fichier qu'un utilisateur écrit. Le laisser hors de la
+    # mesure revenait à surveiller les 50 pages qu'on lit après, pas celle
+    # qu'on lit d'abord.
+    inventaire_dir = collection.path / "plugins" / "inventory"
+    a_examiner = sorted(modules_dir.glob("*.py")) + sorted(inventaire_dir.glob("*.py"))
+
     exposes = choix_par_module(modules_dir)
     total = Mesure()
     tous: list[Defaut] = []
-    for chemin in sorted(modules_dir.glob("*.py")):
+    for chemin in a_examiner:
         if chemin.stem.startswith("_"):
             continue
         mesure, defauts = examiner(chemin, exposes)
@@ -301,7 +336,7 @@ def mesurer() -> tuple[Mesure, list[Defaut]]:
 def rendre(mesure: Mesure, defauts: list[Defaut]) -> str:
     bloquants = [d for d in defauts if d.bloquant]
     lignes = [
-        f"{mesure.modules} modules publiés",
+        f"{mesure.modules} pages publiées",
         f"  options décrites   {mesure.options_decrites:4d} / {mesure.options:<4d} "
         f"{mesure.ratio(mesure.options_decrites, mesure.options)}",
         f"  retours décrits    {mesure.retours_decrits:4d} / {mesure.retours:<4d} "

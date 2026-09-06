@@ -46,7 +46,7 @@ homepage: https://github.com/stephrobert/collection-scaleway
 # Le dépôt produit un site avec `mise run docs:site`, et il n'est pas encore
 # publié. Un lien vrai vers le dépôt vaut mieux qu'un lien mort vers un site
 # qui n'existe pas : ce champ suivra le jour où le site aura une adresse.
-documentation: https://github.com/stephrobert/collection-scaleway/tree/main/docs
+documentation: https://github.com/stephrobert/collection-scaleway/tree/0.1.0/docs
 
 dependencies: {}
 

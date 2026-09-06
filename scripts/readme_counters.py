@@ -23,11 +23,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
+import docs_quality
 import yaml
 from example_coverage import mesurer as mesurer_exemple
 
@@ -37,6 +39,9 @@ ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 #: Le README que `galaxy.yml` désigne, donc celui que Galaxy publiera.
 README_COLLECTION = ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "README.md"
+#: Il porte lui aussi un lien vers le dépôt, et Galaxy l'affiche à côté de la
+#: version : un lien vers `main` y mène à un fichier qui a bougé depuis.
+GALAXY = ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "galaxy.yml"
 RAPPORTS = ROOT / "build" / "reports"
 MUTATIONS = ROOT / "tests" / "falsify" / "specs.json"
 WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
@@ -282,6 +287,7 @@ def bloc() -> str:
     nb_jobs, noms_jobs = _jobs()
     exemple = mesurer_exemple()
     appeles = len(exemple["appeles_par_lexemple"])
+    qualite, _ = docs_quality.mesurer()
 
     return "\n".join(
         [
@@ -317,6 +323,17 @@ def bloc() -> str:
             # exécution. `mise run coverage:example` le publie.
             f"  {appeles} modules called by the example playbook out of {ecrits} "
             f"({_pourcent_anglais(appeles, ecrits)}), which is not the same as played",
+            # **Ce qu'une page publiée vaut, et pas seulement combien il y en
+            # a.** Le bloc comptait les modules écrits ; il ne disait rien de ce
+            # qu'un lecteur y trouve. Les 15 options sans description et les 18
+            # exemples en `<zone>` étaient invisibles d'ici, et une page Galaxy
+            # est publiée pour toujours.
+            f"  {qualite.modules} published pages: "
+            f"{qualite.options_decrites}/{qualite.options} options and "
+            f"{qualite.retours_decrits}/{qualite.retours} returned keys documented",
+            f"  {qualite.exemples_copiables}/{qualite.exemples} examples copyable as is · "
+            f"{qualite.retours_detailles}/{qualite.retours_composites} returned keys "
+            "list their fields",
             f"  {_tests()} unit tests · {_mutations()} mutations proven by /falsify",
             f"  CI: {nb_jobs} jobs, {' · '.join(noms_jobs)}",
             "  ansible-test sanity, playbooks and inventory against the emulator:",
@@ -324,6 +341,25 @@ def bloc() -> str:
             "```",
         ]
     )
+
+
+#: Un lien vers ce dépôt, avec la référence git qu'il traverse. Seul ce dépôt
+#: est concerné : un lien vers `ansible-collections/ansible-inclusion` désigne
+#: un autre projet, dont `main` est la bonne référence.
+LIEN_DU_DEPOT = re.compile(
+    r"(https://github\.com/stephrobert/collection-scaleway/(?:blob|tree)/)([^/\s)]+)(/)"
+)
+
+
+def _versionner_les_liens(texte: str, version: str) -> str:
+    """Fait pointer les liens du dépôt sur le tag de la version publiée.
+
+    Sur Galaxy, la page annonce une version et ses liens menaient à `main`,
+    donc à des fichiers qui ont bougé depuis. Le tag existe forcément quand
+    quelqu'un lit la page : `release.py` refuse de publier si le tag et
+    `galaxy.yml` divergent.
+    """
+    return LIEN_DU_DEPOT.sub(rf"\g<1>{version}\g<3>", texte)
 
 
 def _remplace(fichier: Path, texte: str, nouveau: str) -> str:
@@ -360,10 +396,16 @@ def main(argv: list[str]) -> int:
     groupe.add_argument("--check", action="store_true", help="échouer s'il a vieilli")
     arguments = parseur.parse_args(argv[1:])
 
+    version = load_collection().version
     perimes: list[str] = []
-    for fichier, contenu in blocs().items():
+    # `galaxy.yml` n'a pas de bloc dérivé mais porte un lien : la liste des
+    # fichiers à versionner n'est donc pas celle des blocs.
+    a_versionner = {README, README_COLLECTION, GALAXY}
+    for fichier in sorted(set(blocs()) | a_versionner):
+        contenu = blocs().get(fichier)
         texte = fichier.read_text(encoding="utf-8")
-        attendu = _remplace(fichier, texte, contenu)
+        attendu = _remplace(fichier, texte, contenu) if contenu is not None else texte
+        attendu = _versionner_les_liens(attendu, version)
         nom = _affichable(fichier)
         if arguments.write:
             if attendu == texte:

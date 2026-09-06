@@ -1070,6 +1070,46 @@
       "find": "                    contains=_contains(service, source.payload_schema),",
       "replace": "                    contains=(),",
       "test": "tests/unit/generator/test_retours_detailles.py::test_le_repli_result_porte_aussi_ses_champs"
+    },
+    {
+      "name": "plugin-dinventaire-hors-mesure",
+      "why": "Le plugin d'inventaire est la page qu'un utilisateur lit en premier : surveiller les cinquante suivantes et pas celle-là laisse le trou au pire endroit.",
+      "file": "scripts/docs_quality.py",
+      "find": "    a_examiner = sorted(modules_dir.glob(\"*.py\")) + sorted(inventaire_dir.glob(\"*.py\"))",
+      "replace": "    a_examiner = sorted(modules_dir.glob(\"*.py\")) + sorted(inventaire_dir.glob(\"*.pyc\"))",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_le_plugin_dinventaire_entre_dans_la_mesure"
+    },
+    {
+      "name": "exemples-multi-documents-ignores",
+      "why": "Un plugin publie plusieurs fichiers d'inventaire séparés par `---` : n'en lire qu'un laisse les trois autres repasser en commentaires sans que rien ne le dise.",
+      "file": "scripts/docs_quality.py",
+      "find": "        documents = [d for d in yaml.safe_load_all(trouve.group(1)) if d is not None]",
+      "replace": "        documents = [d for d in [yaml.safe_load(trouve.group(1))] if d is not None]",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_les_exemples_dun_plugin_sont_des_fichiers_entiers"
+    },
+    {
+      "name": "lien-publie-vers-une-branche",
+      "why": "Sur Galaxy, la page annonce une version et son lien menait à `main` : le lecteur d'une version publiée atterrissait sur les fichiers d'aujourd'hui.",
+      "file": "scripts/readme_counters.py",
+      "find": "    return LIEN_DU_DEPOT.sub(rf\"\\g<1>{version}\\g<3>\", texte)",
+      "replace": "    return LIEN_DU_DEPOT.sub(r\"\\g<1>main\\g<3>\", texte)",
+      "test": "tests/unit/outillage/test_liens_versionnes.py::test_un_lien_du_depot_prend_la_version_publiee"
+    },
+    {
+      "name": "lien-dun-autre-projet-reecrit",
+      "why": "Une substitution qui prend toutes les URL GitHub fait pointer la checklist d'ansible-inclusion sur un tag de ce dépôt, dans un dépôt qui ne le porte pas.",
+      "file": "scripts/readme_counters.py",
+      "find": "    r\"(https://github\\.com/stephrobert/collection-scaleway/(?:blob|tree)/)([^/\\s)]+)(/)\"",
+      "replace": "    r\"(https://github\\.com/[^/]+/[^/]+/(?:blob|tree)/)([^/\\s)]+)(/)\"",
+      "test": "tests/unit/outillage/test_liens_versionnes.py::test_un_lien_vers_un_autre_projet_nest_pas_reecrit"
+    },
+    {
+      "name": "qualite-documentaire-non-publiee",
+      "why": "Un chiffre qui ne sort nulle part est un chiffre que personne ne surveille : les 15 options sans description étaient invisibles depuis le README.",
+      "file": "scripts/readme_counters.py",
+      "find": "            f\"  {qualite.modules} published pages: \"",
+      "replace": "            \"\" or f\"  {qualite.modules} \"",
+      "test": "tests/unit/outillage/test_liens_versionnes.py::test_le_bloc_derive_publie_la_qualite_documentaire"
     }
   ]
 }
