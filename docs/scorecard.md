@@ -11,33 +11,92 @@ describing practices nobody follows. That is the same fault as a comment
 describing a control nobody applies, and it is precisely what this repository
 spends its time hunting elsewhere.
 
-## The measured state, and its honesty
+## The measured state
 
-**As of 2 September 2026, there is no score yet.** The repository had just been
-created and published, and Scorecard audited nothing until the first `git push`
-happened. Everything below is therefore an **estimate read from the files**,
-not a reading. It will be replaced by the real score on the first run of the
-`Scorecard` workflow, and this sentence with it.
+**6.1 on 6 September 2026**, read from the public API rather than estimated:
 
-The reference is the sibling repository, `stephrobert/feint`, measured at
-**7.9** on 25 August 2026. Its configuration is reused here almost as is, and
-its five checks below 10 are exactly the ones no configuration fixes.
+```bash
+curl -s https://api.securityscorecards.dev/projects/github.com/stephrobert/collection-scaleway
+```
 
-## What the configuration should give
-
-| check | expected | what holds it |
+| check | score | what holds it, or what is missing |
 |---|---|---|
-| Token-Permissions | 10 | `permissions: {}` on every workflow, then the minimum per job |
-| Pinned-Dependencies | 10 | every action pinned by SHA, Python dependencies locked with hashes |
-| Dangerous-Workflow | 10 | no `pull_request_target`, no `workflow_run`, no interpolation inside a `run:` |
-| Security-Policy | 10 | `SECURITY.md`, with deadlines that can be held rather than copied |
-| Dependency-Update-Tool | 10 | `.github/dependabot.yml`, pip and github-actions, 14-day quarantine |
-| SAST | 10 | CodeQL on Python, plus four workflow scanners acting as a gate |
-| License | 10 | `LICENSE` at the root, GPL-3.0-or-later |
-| CI-Tests | 10 | four jobs on every pull request |
 | Binary-Artifacts | 10 | no binary under version control |
-| Vulnerabilities | 10 | OSV-Scanner on pull requests and every week |
-| Branch-Protection | 4 to 8 | ruleset versioned in `.github/rulesets/main.json`, compared to the live one by a gate |
+| CI-Tests | 10 | every pull request runs `mise run check` |
+| Dangerous-Workflow | 10 | no `pull_request_target`, no interpolation inside a `run:` |
+| Dependency-Update-Tool | 10 | `.github/dependabot.yml`, pip and github-actions |
+| License | 10 | `LICENSE` at the root, GPL-3.0-or-later |
+| Pinned-Dependencies | 10 | every action pinned by SHA, Python dependencies locked with hashes |
+| SAST | 10 | CodeQL, plus four workflow scanners acting as a gate |
+| Token-Permissions | 10 | `permissions: {}` on every workflow, minimum per job |
+| Vulnerabilities | 10 | OSV-Scanner on pull requests and weekly |
+| Security-Policy | 4 → 10 | it held no link and no address; both were added |
+| Branch-Protection | 4 | one maintainer, so the bypass is described rather than removed |
+| Contributors | 3 | one contributor |
+| Signed-Releases | 0 → 10 | the archive was published unsigned; it now carries a signature, a certificate and a provenance bundle |
+| CII-Best-Practices | 0 | the project is not registered on bestpractices.dev |
+| Code-Review | 0 | one maintainer |
+| Maintained | 0 | see below |
+| Fuzzing | 0 | see below |
+| Packaging | -1 | see below |
+
+**Where the previous estimate was wrong, and it matters.** This page used to
+carry a table of *expected* scores read from the files. Four of them were wrong:
+`Security-Policy` was estimated at 10 and measured 4, `Signed-Releases`,
+`Fuzzing` and `Packaging` were not in the table at all. An estimate that reads
+like a measurement is exactly what this repository refuses everywhere else, and
+it survived here for four days.
+
+### Signed-Releases: what is signed, and how to check it
+
+The tag was signed from the first release; the **archive** was not, and that is
+what this check reads. Since 0.4.0 the release workflow signs the archive
+without a key and attests its build provenance, both bound to the identity of
+the workflow that produced it rather than to a secret:
+
+```bash
+gh release download 0.4.0 --repo stephrobert/collection-scaleway
+cosign verify-blob \
+  --signature stephrobert-scaleway-0.4.0.tar.gz.sig \
+  --certificate stephrobert-scaleway-0.4.0.tar.gz.pem \
+  --certificate-identity-regexp '^https://github.com/stephrobert/collection-scaleway/.github/workflows/release.yml@refs/tags/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  stephrobert-scaleway-0.4.0.tar.gz
+
+gh attestation verify stephrobert-scaleway-0.4.0.tar.gz \
+  --repo stephrobert/collection-scaleway
+```
+
+The workflow runs that first command on itself before publishing: a recipe a
+reader copies and that does not work is worse than no recipe.
+
+### Fuzzing: what would move it, and what does not
+
+**Property-based tests do not move this check for a Python project.** The
+repository has them, in `tests/unit/generator/test_proprietes.py`, and they are
+there for what they find rather than for the score: Scorecard's detector covers
+Go fuzzing, Haskell, JavaScript and Erlang, and not Python. Measured on
+`docs/checks.md` before writing this paragraph, because assuming it would have
+been the same mistake as the estimate table above.
+
+Only two things move it: enrolling in OSS-Fuzz, or deploying ClusterFuzzLite.
+Both are real work on a parser that reads structured input, and neither is done.
+
+### Packaging: -1 is "not detected", not "badly done"
+
+The collection is published on Ansible Galaxy on every version tag. Scorecard
+does not know Galaxy: it looks for a publishing workflow among the ecosystems it
+supports. The honest way to score here is not to game the detector but to
+publish something it recognises **and that users want** — an execution
+environment image, which the collection's `meta/` already describes. It is not
+done.
+
+### Maintained: 0 on a repository committed to daily
+
+Both this repository and `stephrobert/feint` read 0 on a report dated the same
+day as commits landing in both. The check counts activity over 90 days; a
+repository younger than that has no window to fill. Nothing in the configuration
+moves it, and time will.
 
 ## The checks no configuration fixes
 
@@ -94,13 +153,11 @@ answers are true, not for the score.
 
 ## What is still missing, and is not a Scorecard check
 
-* **No release yet, so no signature and no provenance.** The collection is not
-  published on Galaxy. The day it is, signature and attestation will be a
-  condition of that publication, not an afterthought.
 * **`egress-policy: audit` and not `block`.** An allowlist written without
   having observed the real traffic breaks CI without proving anything. The move
   to `block` will be based on the `audit` readings, once there are some.
-* **Fuzzing.** The generator reads OpenAPI contracts, which is structured input
-  and a reasonable fuzzing subject. Nothing is done, and saying so is better
-  than counting on the 74 operations of the versioned contract as if it were a
-  corpus.
+* **Fuzzing, in the sense Scorecard means it.** The generator reads OpenAPI
+  contracts, which is structured input and a reasonable subject. Property-based
+  tests cover the translating functions; neither OSS-Fuzz nor ClusterFuzzLite is
+  deployed, and counting the 74 operations of the versioned contract as a corpus
+  would be counting the cases somebody already thought of.
