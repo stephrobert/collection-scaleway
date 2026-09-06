@@ -95,12 +95,166 @@ image:
   - Get details of an image with the specified ID.
   returned: when I(image_id) is provided
   type: dict
+  contains:
+    id:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    arch:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    creation_date:
+      description:
+      - (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    modification_date:
+      description:
+      - (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    default_bootscript:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    extra_volumes:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    from_server:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    organization:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    public:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: bool
+    root_volume:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    state:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    project:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: list
+      elements: str
+    zone:
+      description:
+      - The zone you want to target
+      returned: when the API returns it
+      type: str
 images:
   description:
   - List all existing Instance images.
   returned: when I(image_id) is omitted
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    arch:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    creation_date:
+      description:
+      - (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    modification_date:
+      description:
+      - (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    default_bootscript:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    extra_volumes:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    from_server:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    organization:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    public:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: bool
+    root_volume:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    state:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    project:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: list
+      elements: str
+    zone:
+      description:
+      - The zone you want to target
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

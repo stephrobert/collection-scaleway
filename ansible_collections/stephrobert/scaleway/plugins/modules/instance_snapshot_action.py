@@ -77,6 +77,52 @@ task:
   - Export a snapshot to a specified Object Storage bucket in the same region.
   returned: when the API returns it
   type: dict
+  contains:
+    id:
+      description:
+      - Unique ID of the task.
+      returned: when the API returns it
+      type: str
+    description:
+      description:
+      - Description of the task.
+      returned: when the API returns it
+      type: str
+    progress:
+      description:
+      - Progress of the task in percent.
+      returned: when the API returns it
+      type: int
+    started_at:
+      description:
+      - Task start date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    terminated_at:
+      description:
+      - Task end date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    status:
+      description:
+      - Task status.
+      returned: when the API returns it
+      type: str
+    href_from:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    href_result:
+      description:
+      - Location of the resulting resource.
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - Zone in which the task is executed.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

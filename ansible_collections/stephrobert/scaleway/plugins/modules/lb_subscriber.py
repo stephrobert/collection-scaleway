@@ -85,6 +85,27 @@ resource:
     object.
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - Subscriber ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Subscriber name.
+      returned: when the API returns it
+      type: str
+    email_config:
+      description:
+      - Email address of subscriber.
+      returned: when the API returns it
+      type: dict
+    webhook_config:
+      description:
+      - Webhook URI of subscriber.
+      returned: when the API returns it
+      type: dict
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

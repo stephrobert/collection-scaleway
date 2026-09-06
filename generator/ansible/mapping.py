@@ -145,6 +145,21 @@ def no_log_de(parameter: ApiParameter) -> bool | None:
     return None
 
 
+def return_type(api_type: ApiType) -> str:
+    """Le type Ansible d'un champ **rendu**, avec un repli assumé.
+
+    `argument_spec_entry` lève `UnmappedType` sur un type qu'il ne sait pas
+    traduire, et c'est juste : un module qui accepterait un paramètre sans
+    savoir ce qu'il en fait mentirait sur ce qu'il accepte.
+
+    Un champ de réponse n'a pas cette conséquence : il n'est pas envoyé, il est
+    lu. Refuser un module entier parce qu'un champ de sa réponse porte un type
+    non traduit coûterait plus cher que ce que ça protège, et `raw` est le type
+    Ansible qui dit exactement « ce que l'API rend, tel quel ».
+    """
+    return _ANSIBLE_TYPES.get(api_type, "raw")
+
+
 def argument_spec_entry(parameter: ApiParameter) -> dict[str, object]:
     """Traduit un paramètre de l'IR en entrée d'`argument_spec`.
 

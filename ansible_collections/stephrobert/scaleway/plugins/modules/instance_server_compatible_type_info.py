@@ -89,6 +89,13 @@ result:
     as is.'
   returned: success
   type: dict
+  contains:
+    compatible_types:
+      description:
+      - Instance compatible types.
+      returned: when the API returns it
+      type: list
+      elements: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

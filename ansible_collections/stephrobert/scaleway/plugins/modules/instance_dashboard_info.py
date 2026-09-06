@@ -69,6 +69,87 @@ dashboard:
     `snapshots_count`, `ips_count`, `ips_unused` and `security_groups_count`.'
   returned: success
   type: dict
+  contains:
+    volumes_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    running_servers_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    servers_by_types:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    images_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    snapshots_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    servers_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    ips_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    security_groups_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    ips_unused:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    volumes_l_ssd_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    volumes_l_ssd_total_size:
+      description:
+      - (in bytes)
+      returned: when the API returns it
+      type: int
+    private_nics_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    placement_groups_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    volumes_scratch_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    volumes_b_ssd_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    volumes_b_ssd_total_size:
+      description:
+      - (in bytes)
+      returned: when the API returns it
+      type: int
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

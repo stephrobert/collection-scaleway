@@ -64,6 +64,22 @@ servers:
   returned: success
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - Instance UUID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Instance name.
+      returned: when the API returns it
+      type: str
+    policy_respected:
+      description:
+      - Defines whether the placement group policy is respected (either 1 or 0).
+      returned: when the API returns it
+      type: bool
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

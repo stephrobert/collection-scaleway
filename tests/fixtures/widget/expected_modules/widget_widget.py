@@ -80,6 +80,23 @@ widget:
   - Get a widget
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: list
+      elements: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

@@ -10,6 +10,12 @@ minor_changes:
     Scaleway Lb backend`` used the index slug; the short descriptions read
     ``Manage a Scaleway Load Balancer backend``, and the product is no longer
     repeated when the resource already carries its name.
+  - "``RETURN`` blocks now list the fields of the resource they return. A page
+    said ``server: {type: dict}`` and nothing more; it now names the 36 fields
+    the contract declares on an Instance, each with its description and type.
+    53 of the 57 composite return keys carry them; the four others return a
+    payload for which the contract declares no schema, and the quality report
+    names them."
 bugfixes:
   - "``instance_server_action``: the ``RETURN`` block described the seven
     actions of the contract on a module whose ``argument_spec`` accepts four.

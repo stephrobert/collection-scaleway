@@ -6,6 +6,49 @@
   "source": "lb.v1.yml",
   "enums": [
     {
+      "name": "scaleway.lb.v1.BackendServerStats.HealthCheckStatus",
+      "values": [
+        "unknown",
+        "neutral",
+        "failed",
+        "passed",
+        "condpass"
+      ],
+      "default": "unknown",
+      "description": "Last health check status (unknown/neutral/failed/passed/condpass)."
+    },
+    {
+      "name": "scaleway.lb.v1.BackendServerStats.ServerState",
+      "values": [
+        "stopped",
+        "starting",
+        "running",
+        "stopping"
+      ],
+      "default": "stopped",
+      "description": "Server operational state (stopped/starting/running/stopping)."
+    },
+    {
+      "name": "scaleway.lb.v1.Certificate.Status",
+      "values": [
+        "pending",
+        "ready",
+        "error"
+      ],
+      "default": "pending",
+      "description": "Certificate status."
+    },
+    {
+      "name": "scaleway.lb.v1.Certificate.Type",
+      "values": [
+        "letsencryt",
+        "custom",
+        "letsencrypt"
+      ],
+      "default": "letsencryt",
+      "description": "Certificate type (Let's Encrypt or custom)."
+    },
+    {
       "name": "scaleway.lb.v1.ForwardPortAlgorithm",
       "values": [
         "roundrobin",
@@ -14,6 +57,35 @@
       ],
       "default": "roundrobin",
       "description": "Load balancing algorithm to be used when determining which backend server to forward new traffic to."
+    },
+    {
+      "name": "scaleway.lb.v1.Lb.Status",
+      "values": [
+        "unknown",
+        "ready",
+        "pending",
+        "stopped",
+        "error",
+        "locked",
+        "migrating",
+        "to_create",
+        "creating",
+        "to_delete",
+        "deleting"
+      ],
+      "default": "unknown",
+      "description": "Load Balancer status."
+    },
+    {
+      "name": "scaleway.lb.v1.LbType.Stock",
+      "values": [
+        "unknown",
+        "low_stock",
+        "out_of_stock",
+        "available"
+      ],
+      "default": "unknown",
+      "description": "Current stock status for a given Load Balancer type."
     },
     {
       "name": "scaleway.lb.v1.ListAclRequest.OrderBy",
@@ -110,6 +182,17 @@
       "description": "Action to take when a backend server is marked as down."
     },
     {
+      "name": "scaleway.lb.v1.PrivateNetwork.Status",
+      "values": [
+        "unknown",
+        "ready",
+        "pending",
+        "error"
+      ],
+      "default": "unknown",
+      "description": "Status of Private Network connection."
+    },
+    {
       "name": "scaleway.lb.v1.Protocol",
       "values": [
         "tcp",
@@ -151,6 +234,752 @@
       ],
       "default": "none",
       "description": "Defines whether to activate sticky sessions (binding a particular session to a particular backend server) and the method to use if so. None disables sticky sessions. Cookie-based uses an HTTP cookie to stick a session to a backend server. Table-based uses the source (client) IP address to stick a session to a backend server."
+    }
+  ],
+  "objects": [
+    {
+      "name": "scaleway.lb.v1.Acl",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "ACL ID."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "ACL name."
+        },
+        {
+          "name": "match",
+          "type": "object",
+          "description": "ACL match filter object. One of `ip_subnet`, `ips_edge_services` or `http_filter` & `http_filter_value` are required."
+        },
+        {
+          "name": "action",
+          "type": "object",
+          "description": "Action to take when incoming traffic matches an ACL filter."
+        },
+        {
+          "name": "frontend",
+          "type": "object",
+          "description": "ACL is attached to this frontend object."
+        },
+        {
+          "name": "index",
+          "type": "integer",
+          "description": "Priority of this ACL (ACLs are applied in ascending order, 0 is the first ACL executed)."
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date on which the ACL was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date on which the ACL was last updated. (RFC 3339 format)"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "ACL description."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.lb.v1.Backend",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Backend ID."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Name of the backend."
+        },
+        {
+          "name": "forward_protocol",
+          "type": "enum",
+          "description": "Protocol used by the backend when forwarding traffic to backend servers."
+        },
+        {
+          "name": "forward_port",
+          "type": "integer",
+          "description": "Port used by the backend when forwarding traffic to backend servers."
+        },
+        {
+          "name": "forward_port_algorithm",
+          "type": "enum",
+          "description": "Load balancing algorithm to use when determining which backend server to forward new traffic to."
+        },
+        {
+          "name": "sticky_sessions",
+          "type": "enum",
+          "description": "Defines whether sticky sessions (binding a particular session to a particular backend server) are activated and the method to use if so. None disables sticky sessions. Cookie-based uses an HTTP cookie to stick a session to a backend server. Table-based uses the source (client) IP address to stick a session to a backend server."
+        },
+        {
+          "name": "sticky_sessions_cookie_name",
+          "type": "string",
+          "description": "Cookie name for cookie-based sticky sessions."
+        },
+        {
+          "name": "health_check",
+          "type": "object",
+          "description": "Object defining the health check to be carried out by the backend when checking the status and health of backend servers."
+        },
+        {
+          "name": "pool",
+          "type": "array",
+          "item_type": "string",
+          "description": "List of IP addresses of backend servers attached to this backend."
+        },
+        {
+          "name": "lb",
+          "type": "object",
+          "description": "Load Balancer the backend is attached to."
+        },
+        {
+          "name": "send_proxy_v2",
+          "type": "boolean",
+          "description": "Deprecated in favor of proxy_protocol field."
+        },
+        {
+          "name": "timeout_server",
+          "type": "number",
+          "description": "Maximum allowed time for a backend server to process a request. (in milliseconds)"
+        },
+        {
+          "name": "timeout_connect",
+          "type": "number",
+          "description": "Maximum allowed time for establishing a connection to a backend server. (in milliseconds)"
+        },
+        {
+          "name": "timeout_tunnel",
+          "type": "number",
+          "description": "Maximum allowed tunnel inactivity time after Websocket is established (takes precedence over client and server timeout). (in milliseconds)"
+        },
+        {
+          "name": "on_marked_down_action",
+          "type": "enum",
+          "description": "Action to take when a backend server is marked as down."
+        },
+        {
+          "name": "proxy_protocol",
+          "type": "enum",
+          "description": "Protocol to use between the Load Balancer and backend servers. Allows the backend servers to be informed of the client's real IP address. The PROXY protocol must be supported by the backend servers' software."
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date at which the backend was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date at which the backend was updated. (RFC 3339 format)"
+        },
+        {
+          "name": "failover_host",
+          "type": "string",
+          "description": "Scaleway Object Storage bucket website to be served as failover if all backend servers are down, e.g. failover-website.s3-website.fr-par.scw.cloud."
+        },
+        {
+          "name": "ssl_bridging",
+          "type": "boolean",
+          "description": "Defines whether to enable SSL bridging between the Load Balancer and backend servers."
+        },
+        {
+          "name": "ignore_ssl_server_verify",
+          "type": "boolean",
+          "description": "Defines whether the server certificate verification should be ignored."
+        },
+        {
+          "name": "redispatch_attempt_count",
+          "type": "integer",
+          "description": "Whether to use another backend server on each attempt."
+        },
+        {
+          "name": "max_retries",
+          "type": "integer",
+          "description": "Number of retries when a backend server connection failed."
+        },
+        {
+          "name": "max_connections",
+          "type": "integer",
+          "description": "Maximum number of connections allowed per backend server."
+        },
+        {
+          "name": "timeout_queue",
+          "type": "string",
+          "description": "Maximum time for a request to be left pending in queue when `max_connections` is reached. (in seconds)"
+        }
+      ]
+    },
+    {
+      "name": "scaleway.lb.v1.BackendServerStats",
+      "fields": [
+        {
+          "name": "instance_id",
+          "type": "string",
+          "description": "ID of your Load Balancer's underlying Instance."
+        },
+        {
+          "name": "backend_id",
+          "type": "string",
+          "description": "Backend ID."
+        },
+        {
+          "name": "ip",
+          "type": "string",
+          "description": "IPv4 or IPv6 address of the backend server."
+        },
+        {
+          "name": "server_state",
+          "type": "enum",
+          "description": "Server operational state (stopped/starting/running/stopping)."
+        },
+        {
+          "name": "server_state_changed_at",
+          "type": "string",
+          "description": "Time since last operational change. (RFC 3339 format)"
+        },
+        {
+          "name": "last_health_check_status",
+          "type": "enum",
+          "description": "Last health check status (unknown/neutral/failed/passed/condpass)."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.lb.v1.Certificate",
+      "fields": [
+        {
+          "name": "type",
+          "type": "enum",
+          "description": "Certificate type (Let's Encrypt or custom)."
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Certificate ID."
+        },
+        {
+          "name": "common_name",
+          "type": "string",
+          "description": "Main domain name of certificate."
+        },
+        {
+          "name": "subject_alternative_name",
+          "type": "array",
+          "item_type": "string",
+          "description": "Alternative domain names."
+        },
+        {
+          "name": "fingerprint",
+          "type": "string",
+          "description": "Identifier (SHA-1) of the certificate."
+        },
+        {
+          "name": "not_valid_before",
+          "type": "string",
+          "description": "Lower validity bound. (RFC 3339 format)"
+        },
+        {
+          "name": "not_valid_after",
+          "type": "string",
+          "description": "Upper validity bound. (RFC 3339 format)"
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "description": "Certificate status."
+        },
+        {
+          "name": "lb",
+          "type": "object",
+          "description": "Load Balancer object the certificate is attached to."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Certificate name."
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date on which the certificate was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date on which the certificate was last updated. (RFC 3339 format)"
+        },
+        {
+          "name": "status_details",
+          "type": "string",
+          "description": "Additional information about the certificate status (useful in case of certificate generation failure, for example)."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.lb.v1.Frontend",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Frontend ID."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Name of the frontend."
+        },
+        {
+          "name": "inbound_port",
+          "type": "integer",
+          "description": "Port the frontend listens on."
+        },
+        {
+          "name": "backend",
+          "type": "object",
+          "description": "Backend object the frontend is attached to."
+        },
+        {
+          "name": "lb",
+          "type": "object",
+          "description": "Load Balancer object the frontend is attached to."
+        },
+        {
+          "name": "timeout_client",
+          "type": "number",
+          "description": "Maximum allowed inactivity time on the client side. (in milliseconds)"
+        },
+        {
+          "name": "certificate",
+          "type": "object",
+          "description": "Certificate, deprecated in favor of certificate_ids array."
+        },
+        {
+          "name": "certificate_ids",
+          "type": "array",
+          "item_type": "string",
+          "description": "List of SSL/TLS certificate IDs to bind to the frontend."
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date on which the frontend was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date on which the frontend was last updated. (RFC 3339 format)"
+        },
+        {
+          "name": "enable_http3",
+          "type": "boolean",
+          "description": "Defines whether to enable HTTP/3 protocol on the frontend."
+        },
+        {
+          "name": "connection_rate_limit",
+          "type": "integer",
+          "description": "Rate limit for new connections established on this frontend. Use 0 value to disable, else value is connections per second."
+        },
+        {
+          "name": "enable_access_logs",
+          "type": "boolean",
+          "description": "Defines whether to enable access logs on the frontend."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.lb.v1.HealthCheck",
+      "fields": [
+        {
+          "name": "port",
+          "type": "integer",
+          "description": "Port to use for the backend server health check."
+        },
+        {
+          "name": "check_delay",
+          "type": "number",
+          "description": "Time to wait between two consecutive health checks. (in milliseconds)"
+        },
+        {
+          "name": "check_timeout",
+          "type": "number",
+          "description": "Maximum time a backend server has to reply to the health check. (in milliseconds)"
+        },
+        {
+          "name": "check_max_retries",
+          "type": "integer",
+          "description": "Number of consecutive unsuccessful health checks after which the server will be considered dead."
+        },
+        {
+          "name": "tcp_config",
+          "type": "object",
+          "description": "Object to configure a basic TCP health check."
+        },
+        {
+          "name": "mysql_config",
+          "type": "object",
+          "description": "Object to configure a MySQL health check. The check requires MySQL >=3.22 or <9.0. For older or newer versions, use a TCP health check."
+        },
+        {
+          "name": "pgsql_config",
+          "type": "object",
+          "description": "Object to configure a PostgreSQL health check."
+        },
+        {
+          "name": "ldap_config",
+          "type": "object",
+          "description": "Object to configure an LDAP health check. The response is analyzed to find the LDAPv3 response message."
+        },
+        {
+          "name": "redis_config",
+          "type": "object",
+          "description": "Object to configure a Redis health check. The response is analyzed to find the +PONG response message."
+        },
+        {
+          "name": "http_config",
+          "type": "object",
+          "description": "Object to configure an HTTP health check."
+        },
+        {
+          "name": "https_config",
+          "type": "object",
+          "description": "Object to configure an HTTPS health check."
+        },
+        {
+          "name": "check_send_proxy",
+          "type": "boolean",
+          "description": "Defines whether proxy protocol should be activated for the health check."
+        },
+        {
+          "name": "transient_check_delay",
+          "type": "string",
+          "description": "Time to wait between two consecutive health checks when a backend server is in a transient state (going UP or DOWN). (in seconds)"
+        }
+      ]
+    },
+    {
+      "name": "scaleway.lb.v1.Ip",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "IP address ID."
+        },
+        {
+          "name": "ip_address",
+          "type": "string",
+          "description": "IP address."
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "description": "Organization ID of the Scaleway Organization the IP address is in."
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "description": "Project ID of the Scaleway Project the IP address is in."
+        },
+        {
+          "name": "lb_id",
+          "type": "string",
+          "description": "Load Balancer ID."
+        },
+        {
+          "name": "reverse",
+          "type": "string",
+          "description": "Reverse DNS (domain name) of the IP address."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "IP tags."
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "The region the IP address is in."
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "The zone the IP address is in."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.lb.v1.Lb",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Underlying Instance ID."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Load Balancer name."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Load Balancer description."
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "description": "Load Balancer status."
+        },
+        {
+          "name": "instances",
+          "type": "array",
+          "item_type": "object",
+          "description": "List of underlying Instances."
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "description": "Scaleway Organization ID."
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "description": "Scaleway Project ID."
+        },
+        {
+          "name": "ip",
+          "type": "array",
+          "item_type": "object",
+          "description": "List of IP addresses attached to the Load Balancer."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Load Balancer tags."
+        },
+        {
+          "name": "frontend_count",
+          "type": "integer",
+          "description": "Number of frontends the Load Balancer has."
+        },
+        {
+          "name": "backend_count",
+          "type": "integer",
+          "description": "Number of backends the Load Balancer has."
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Load Balancer offer type."
+        },
+        {
+          "name": "subscriber",
+          "type": "object",
+          "description": "Subscriber information."
+        },
+        {
+          "name": "ssl_compatibility_level",
+          "type": "enum",
+          "description": "Determines the minimal SSL version which needs to be supported on client side."
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date on which the Load Balancer was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date on which the Load Balancer was last updated. (RFC 3339 format)"
+        },
+        {
+          "name": "private_network_count",
+          "type": "integer",
+          "description": "Number of Private Networks attached to the Load Balancer."
+        },
+        {
+          "name": "route_count",
+          "type": "integer",
+          "description": "Number of routes configured on the Load Balancer."
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "The region the Load Balancer is in."
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "The zone the Load Balancer is in."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.lb.v1.LbStats",
+      "fields": [
+        {
+          "name": "backend_servers_stats",
+          "type": "array",
+          "item_type": "object",
+          "description": "List of objects containing Load Balancer statistics."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.lb.v1.LbType",
+      "fields": [
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Load Balancer commercial offer type name."
+        },
+        {
+          "name": "stock_status",
+          "type": "enum",
+          "description": "Current stock status for a given Load Balancer type."
+        },
+        {
+          "name": "bandwidth",
+          "type": "integer",
+          "description": "Maximum bandwidth for a given Load Balancer type."
+        },
+        {
+          "name": "multicloud",
+          "type": "boolean",
+          "description": "Ability to handle backend servers outside Scaleway for a given Load Balancer type."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Load Balancer commercial offer type description."
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "The region the Load Balancer stock is in."
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "The zone the Load Balancer stock is in."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.lb.v1.PrivateNetwork",
+      "fields": [
+        {
+          "name": "lb",
+          "type": "object",
+          "description": "Load Balancer object which is attached to the Private Network."
+        },
+        {
+          "name": "ipam_ids",
+          "type": "array",
+          "item_type": "string",
+          "description": "IPAM IDs of the booked IP addresses. (UUID format)"
+        },
+        {
+          "name": "static_config",
+          "type": "object",
+          "description": "Object containing an array of a local IP address for the Load Balancer on this Private Network."
+        },
+        {
+          "name": "dhcp_config",
+          "type": "object",
+          "description": "Object containing DHCP-assigned IP addresses."
+        },
+        {
+          "name": "private_network_id",
+          "type": "string",
+          "description": "Private Network ID."
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "description": "Status of Private Network connection."
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date on which the Private Network was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date on which the PN was last updated. (RFC 3339 format)"
+        }
+      ]
+    },
+    {
+      "name": "scaleway.lb.v1.Route",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Route ID."
+        },
+        {
+          "name": "frontend_id",
+          "type": "string",
+          "description": "ID of the source frontend."
+        },
+        {
+          "name": "backend_id",
+          "type": "string",
+          "description": "ID of the target backend."
+        },
+        {
+          "name": "match",
+          "type": "object",
+          "description": "Object defining the match condition for a route to be applied. If an incoming client session matches the specified condition (i.e. it has a matching SNI value or HTTP Host header value), it will be passed to the target backend."
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date on which the route was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date on which the route was last updated. (RFC 3339 format)"
+        }
+      ]
+    },
+    {
+      "name": "scaleway.lb.v1.Subscriber",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Subscriber ID."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Subscriber name."
+        },
+        {
+          "name": "email_config",
+          "type": "object",
+          "description": "Email address of subscriber."
+        },
+        {
+          "name": "webhook_config",
+          "type": "object",
+          "description": "Webhook URI of subscriber."
+        }
+      ]
     }
   ],
   "operations": [

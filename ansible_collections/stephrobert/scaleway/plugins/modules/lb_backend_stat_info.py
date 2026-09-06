@@ -68,6 +68,37 @@ backend_servers_stats:
   returned: success
   type: list
   elements: dict
+  contains:
+    instance_id:
+      description:
+      - ID of your Load Balancer's underlying Instance.
+      returned: when the API returns it
+      type: str
+    backend_id:
+      description:
+      - Backend ID.
+      returned: when the API returns it
+      type: str
+    ip:
+      description:
+      - IPv4 or IPv6 address of the backend server.
+      returned: when the API returns it
+      type: str
+    server_state:
+      description:
+      - Server operational state (stopped/starting/running/stopping).
+      returned: when the API returns it
+      type: str
+    server_state_changed_at:
+      description:
+      - Time since last operational change. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    last_health_check_status:
+      description:
+      - Last health check status (unknown/neutral/failed/passed/condpass).
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

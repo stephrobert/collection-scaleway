@@ -96,6 +96,15 @@ class Mesure:
     options_decrites: int = 0
     retours: int = 0
     retours_decrits: int = 0
+    #: Clés de retour `dict` ou `list`, les seules qui puissent porter des
+    #: champs, et celles qui les portent vraiment.
+    retours_composites: int = 0
+    retours_detailles: int = 0
+    #: Les clés composites qui n'ont pas de champs, nommées une par une. Le
+    #: contrat ne déclare pas de schéma pour elles : c'est une limite en amont,
+    #: pas un défaut du générateur, et un ratio dont on ignore ce que le reste
+    #: contient ne dit rien à personne.
+    sans_detail: list[str] = field(default_factory=list)
     exemples: int = 0
     exemples_copiables: int = 0
     defauts: list[Defaut] = field(default_factory=list)
@@ -179,6 +188,18 @@ def examiner(chemin: Path, choix_exposes: dict[str, set[str]]) -> tuple[Mesure, 
             mesure.retours_decrits += 1
         else:
             defauts.append(Defaut(nom, "retour-sans-description", f"clé `{cle}`", True))
+
+        # **Nommer la clé ne dit pas ce qu'on y trouve.** Un `contains` liste
+        # les champs de la ressource, et sans lui il faut appeler le module pour
+        # apprendre ce qu'il rend. Le dénominateur ne compte que les clés `dict`
+        # et `list` : une clé `str` n'a rien à contenir, et l'y ranger ferait un
+        # ratio qui reproche au module d'être correct.
+        if (corps or {}).get("type") in ("dict", "list"):
+            mesure.retours_composites += 1
+            if (corps or {}).get("contains"):
+                mesure.retours_detailles += 1
+            else:
+                mesure.sans_detail.append(f"{nom}.{cle}")
 
     # --- les exemples -------------------------------------------------------
     for tache in exemples if isinstance(exemples, list) else []:
@@ -266,6 +287,9 @@ def mesurer() -> tuple[Mesure, list[Defaut]]:
         total.options_decrites += mesure.options_decrites
         total.retours += mesure.retours
         total.retours_decrits += mesure.retours_decrits
+        total.retours_composites += mesure.retours_composites
+        total.retours_detailles += mesure.retours_detailles
+        total.sans_detail.extend(mesure.sans_detail)
         total.exemples += mesure.exemples
         total.exemples_copiables += mesure.exemples_copiables
         tous.extend(defauts)
@@ -282,6 +306,13 @@ def rendre(mesure: Mesure, defauts: list[Defaut]) -> str:
         f"{mesure.ratio(mesure.options_decrites, mesure.options)}",
         f"  retours décrits    {mesure.retours_decrits:4d} / {mesure.retours:<4d} "
         f"{mesure.ratio(mesure.retours_decrits, mesure.retours)}",
+        f"  retours détaillés  {mesure.retours_detailles:4d} / {mesure.retours_composites:<4d} "
+        f"{mesure.ratio(mesure.retours_detailles, mesure.retours_composites)}"
+        + (
+            f"   (sans schéma au contrat : {', '.join(sorted(mesure.sans_detail))})"
+            if mesure.sans_detail
+            else ""
+        ),
         f"  exemples copiables {mesure.exemples_copiables:4d} / {mesure.exemples:<4d} "
         f"{mesure.ratio(mesure.exemples_copiables, mesure.exemples)}",
         "",
@@ -319,6 +350,10 @@ def main(argv: list[str]) -> int:
                     "modules": mesure.modules,
                     "options": [mesure.options_decrites, mesure.options],
                     "retours": [mesure.retours_decrits, mesure.retours],
+                    "retours_detailles": [
+                        mesure.retours_detailles,
+                        mesure.retours_composites,
+                    ],
                     "exemples": [mesure.exemples_copiables, mesure.exemples],
                     "defauts": [vars(d) for d in defauts],
                 },

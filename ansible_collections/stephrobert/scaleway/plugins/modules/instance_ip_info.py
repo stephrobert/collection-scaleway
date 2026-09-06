@@ -92,12 +92,136 @@ ip:
   - Get details of an IP with the specified ID or address.
   returned: when I(ip) is provided
   type: dict
+  contains:
+    id:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    address:
+      description:
+      - (IP address)
+      returned: when the API returns it
+      type: str
+    reverse:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    server:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    organization:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: list
+      elements: str
+    project:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    type:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    state:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    prefix:
+      description:
+      - (IP network)
+      returned: when the API returns it
+      type: str
+    ipam_id:
+      description:
+      - (UUID format)
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - The zone you want to target
+      returned: when the API returns it
+      type: str
 ips:
   description:
   - List all flexible IPs in a specified zone.
   returned: when I(ip) is omitted
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    address:
+      description:
+      - (IP address)
+      returned: when the API returns it
+      type: str
+    reverse:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    server:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    organization:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: list
+      elements: str
+    project:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    type:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    state:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    prefix:
+      description:
+      - (IP network)
+      returned: when the API returns it
+      type: str
+    ipam_id:
+      description:
+      - (UUID format)
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - The zone you want to target
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

@@ -120,6 +120,57 @@ rule:
   - Get details of a security group rule with the specified ID.
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    protocol:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    direction:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    action:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    ip_range:
+      description:
+      - (IP network)
+      returned: when the API returns it
+      type: str
+    dest_port_from:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    dest_port_to:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    position:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    editable:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: bool
+    zone:
+      description:
+      - The zone you want to target
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

@@ -1038,6 +1038,38 @@
       "find": "NOM_DOPERATION = re.compile(r\"\\bRun [A-Z][A-Za-z]+\\b\")",
       "replace": "NOM_DOPERATION = re.compile(r\"\\bRun \\x00[A-Z][A-Za-z]+\\x00\\b\")",
       "test": "tests/unit/outillage/test_docs_quality.py::test_un_exemple_nomme_par_le_contrat_est_bloquant"
+    },
+    {
+      "name": "retour-sans-ses-champs",
+      "why": "Nommer la clé de retour ne dit pas ce qu'on y trouve : sans `contains`, il faut appeler le module ou lire le contrat OpenAPI pour l'apprendre.",
+      "file": "generator/ansible/models.py",
+      "find": "    objet = service.object(schema) if service is not None else None",
+      "replace": "    objet = service.object(schema) if service is None else None",
+      "test": "tests/unit/generator/test_retours_detailles.py::test_le_retour_dun_module_dinformation_liste_ses_champs"
+    },
+    {
+      "name": "ressource-de-reponse-inventee",
+      "why": "Un `contains` bâti sur un schéma que le contrat ne porte pas décrirait une réponse que personne n'a lue.",
+      "file": "generator/ir/models.py",
+      "find": "            if entry.name == name:",
+      "replace": "            if entry.name == name or True:",
+      "test": "tests/unit/generator/test_retours_detailles.py::test_une_ressource_inconnue_ne_produit_aucun_champ"
+    },
+    {
+      "name": "ir-qui-recopie-tous-les-schemas",
+      "why": "Recopier les deux cents schémas du contrat ferait un IR que personne ne relit en diff, et le golden est ce qui rend la dérive visible.",
+      "file": "generator/parser/openapi.py",
+      "find": "            if operation.response and operation.response.payload_schema",
+      "replace": "            if operation.response and operation.response.payload_schema or True",
+      "test": "tests/unit/generator/test_retours_detailles.py::test_lir_porte_les_champs_des_ressources_rendues"
+    },
+    {
+      "name": "repli-result-sans-ses-champs",
+      "why": "Quatre modules dont la réponse est la ressource elle-même publiaient une clé sans contenu, alors que le contrat déclarait le schéma.",
+      "file": "generator/ansible/models.py",
+      "find": "                    contains=_contains(service, source.payload_schema),",
+      "replace": "                    contains=(),",
+      "test": "tests/unit/generator/test_retours_detailles.py::test_le_repli_result_porte_aussi_ses_champs"
     }
   ]
 }

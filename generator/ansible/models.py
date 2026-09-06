@@ -35,6 +35,7 @@ from generator.ansible.mapping import (
     UnmappedType,
     argument_spec_entry,
     no_log_de,
+    return_type,
 )
 from generator.ir.enums import ApiType, HTTPMethod, OperationKind, ParameterLocation
 from generator.ir.models import ApiOperation, ApiParameter, ApiService
@@ -163,11 +164,38 @@ class OperationBinding:
     summary: str | None
     description: str | None
     csv_params: tuple[str, ...] = ()
+    #: Nom du schéma de la ressource rendue. Sert au `contains` du `RETURN` :
+    #: sans lui, la page nommait la clé sans dire ce qu'on y trouve.
+    payload_schema: str | None = None
 
     @property
     def documentation_line(self) -> str | None:
         """La phrase du contrat qui décrit l'opération, description d'abord."""
         return self.description or self.summary
+
+
+@dataclass(frozen=True)
+class ReturnField:
+    """Un champ de la ressource rendue, tel que le contrat le déclare.
+
+    Un seul niveau : `contains` sert à dire ce qu'on peut lire dans le résultat,
+    pas à recopier l'arbre des schémas. Un champ objet reste `dict`.
+    """
+
+    name: str
+    type: str
+    description: tuple[str, ...]
+    elements: str | None = None
+
+    def to_documentation(self) -> dict[str, Any]:
+        entry: dict[str, Any] = {
+            "description": list(self.description),
+            "returned": "when the API returns it",
+            "type": self.type,
+        }
+        if self.elements:
+            entry["elements"] = self.elements
+        return entry
 
 
 @dataclass(frozen=True)
@@ -179,6 +207,9 @@ class ReturnValue:
     returned: str
     type: str
     elements: str | None = None
+    #: Champs de la ressource. Sans eux, la page publiée nommait la clé sans
+    #: dire ce qu'on y trouve : il fallait appeler le module pour l'apprendre.
+    contains: tuple[ReturnField, ...] = ()
 
     def to_documentation(self) -> dict[str, Any]:
         entry: dict[str, Any] = {
@@ -188,6 +219,8 @@ class ReturnValue:
         }
         if self.elements:
             entry["elements"] = self.elements
+        if self.contains:
+            entry["contains"] = {champ.name: champ.to_documentation() for champ in self.contains}
         return entry
 
 
@@ -442,7 +475,7 @@ def build_module_spec(
         short_description=_short_description(service, resource),
         description=_description(get_operation, list_operation),
         options=options,
-        returns=_returns(get_operation, list_operation, selector),
+        returns=_returns(get_operation, list_operation, selector, service),
         examples=_examples(
             name,
             collection,
@@ -517,7 +550,9 @@ def _build_action_module(
         short_description=_action_short_description(service, resource),
         description=_action_description(action_operation, choix),
         options=options,
-        returns=_action_returns(action_operation, parametre, state_field, wait_states, choix),
+        returns=_action_returns(
+            action_operation, parametre, state_field, wait_states, choix, service
+        ),
         examples=_action_examples(name, collection, options, parametre, action_operation),
         get_operation=None,
         list_operation=None,
@@ -632,6 +667,7 @@ def _build_manage_module(
                 description=(read_operation.documentation_line or UNDOCUMENTED,),
                 returned="success",
                 type="dict",
+                contains=_contains(service, read_operation.payload_schema),
             ),
         ),
         examples=_manage_examples(name, collection, options, geres),
@@ -962,6 +998,7 @@ def _action_returns(
     state_field: str,
     wait_states: tuple[tuple[str, str], ...],
     choices: tuple[str, ...] = (),
+    service: ApiService | None = None,
 ) -> tuple[ReturnValue, ...]:
     # Le module rend toujours `action`, sous les deux formes. Quand l'action est
     # l'opération, la valeur rendue est son identifiant : un lecteur de journal
@@ -1000,6 +1037,7 @@ def _action_returns(
                 description=(decrit or UNDOCUMENTED,),
                 returned="when the API returns it",
                 type="dict",
+                contains=_contains(service, operation.payload_schema),
             )
         )
     return tuple(valeurs)
@@ -1113,6 +1151,7 @@ def _bind(
         body_params=body_params,
         csv_params=csv_params,
         payload_field=operation.response.payload_field if operation.response else None,
+        payload_schema=operation.response.payload_schema if operation.response else None,
         is_list=_is_list(operation),
         page_param=pagination.page_param if pagination else None,
         per_page_param=pagination.per_page_param if pagination else None,
@@ -1400,10 +1439,40 @@ def _description(
     return tuple(lines)
 
 
+def _contains(service: ApiService | None, schema: str | None) -> tuple[ReturnField, ...]:
+    """Les champs que le contrat déclare sur la ressource rendue.
+
+    Rend un tuple vide quand le contrat ne porte pas le schéma : un `contains`
+    inventé décrirait une réponse que personne n'a lue. Un champ sans
+    description sort quand même, avec le repli : sa **présence** est une
+    information, et c'est celle que le lecteur vient chercher.
+    """
+    objet = service.object(schema) if service is not None else None
+    if objet is None:
+        return ()
+    return tuple(
+        ReturnField(
+            name=champ.name,
+            type=return_type(champ.type),
+            description=(champ.description or UNDOCUMENTED,),
+            # Un tableau sans `items` est un cas mesuré du contrat, pas une
+            # exception : le repli `str` est le même que celui de
+            # l'`argument_spec`, et le rapport nomme le champ concerné.
+            elements=(
+                return_type(champ.item_type or ApiType.STRING)
+                if champ.type is ApiType.ARRAY
+                else None
+            ),
+        )
+        for champ in objet.fields
+    )
+
+
 def _returns(
     get_operation: OperationBinding | None,
     list_operation: OperationBinding | None,
     selector: str | None,
+    service: ApiService | None = None,
 ) -> tuple[ReturnValue, ...]:
     """Les clés que le module rend, décrites par le contrat qui les produit."""
     values: list[ReturnValue] = []
@@ -1415,6 +1484,7 @@ def _returns(
                 description=(get_operation.documentation_line or UNDOCUMENTED,),
                 returned=f"when I({selector}) is provided" if selector else "success",
                 type="dict",
+                contains=_contains(service, get_operation.payload_schema),
             )
         )
     if list_operation is not None and list_operation.payload_field:
@@ -1425,6 +1495,7 @@ def _returns(
                 returned=f"when I({selector}) is omitted" if selector else "success",
                 type="list",
                 elements="dict",
+                contains=_contains(service, list_operation.payload_schema),
             )
         )
 
@@ -1454,6 +1525,11 @@ def _returns(
                     ),
                     returned="success",
                     type="dict",
+                    # **Le corps entier est la ressource, donc ses champs sont
+                    # ceux du schéma.** Quatre modules d'information passent
+                    # par ce repli, dont `lb_acl_info` : leur `GetAcl` répond
+                    # par la ressource elle-même plutôt que par une enveloppe.
+                    contains=_contains(service, source.payload_schema),
                 )
             )
     return tuple(values)

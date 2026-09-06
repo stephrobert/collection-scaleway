@@ -117,6 +117,99 @@ security_group:
   - Get the details of a security group with the specified ID.
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - Security group unique ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Security group name.
+      returned: when the API returns it
+      type: str
+    description:
+      description:
+      - Security group description.
+      returned: when the API returns it
+      type: str
+    enable_default_security:
+      description:
+      - True if SMTP is blocked on IPv4 and IPv6. This feature is read only, please open a
+        support ticket if you need to make it configurable.
+      returned: when the API returns it
+      type: bool
+    inbound_default_policy:
+      description:
+      - Default inbound policy.
+      returned: when the API returns it
+      type: str
+    outbound_default_policy:
+      description:
+      - Default outbound policy.
+      returned: when the API returns it
+      type: str
+    organization:
+      description:
+      - Security group Organization ID.
+      returned: when the API returns it
+      type: str
+    project:
+      description:
+      - Security group Project ID.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Security group tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    organization_default:
+      description:
+      - True if it is your default security group for this Organization ID.
+      returned: when the API returns it
+      type: bool
+    project_default:
+      description:
+      - True if it is your default security group for this Project ID.
+      returned: when the API returns it
+      type: bool
+    creation_date:
+      description:
+      - Security group creation date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    modification_date:
+      description:
+      - Security group modification date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    servers:
+      description:
+      - List of Instances attached to this security group.
+      returned: when the API returns it
+      type: list
+      elements: dict
+    stateful:
+      description:
+      - Defines whether the security group is stateful.
+      returned: when the API returns it
+      type: bool
+    state:
+      description:
+      - 'The state of the security group. Set to `syncing` (until the changes.
+
+        Are applied) when the security group is updated (e.g., rules added, modified, or deleted)
+
+        or when it is attached to or detached from a server''s public network interface.'
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - Zone in which the security group is located.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

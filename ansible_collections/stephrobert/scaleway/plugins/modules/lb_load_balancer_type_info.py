@@ -58,6 +58,42 @@ lb_types:
   returned: success
   type: list
   elements: dict
+  contains:
+    name:
+      description:
+      - Load Balancer commercial offer type name.
+      returned: when the API returns it
+      type: str
+    stock_status:
+      description:
+      - Current stock status for a given Load Balancer type.
+      returned: when the API returns it
+      type: str
+    bandwidth:
+      description:
+      - Maximum bandwidth for a given Load Balancer type.
+      returned: when the API returns it
+      type: int
+    multicloud:
+      description:
+      - Ability to handle backend servers outside Scaleway for a given Load Balancer type.
+      returned: when the API returns it
+      type: bool
+    description:
+      description:
+      - Load Balancer commercial offer type description.
+      returned: when the API returns it
+      type: str
+    region:
+      description:
+      - The region the Load Balancer stock is in.
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - The zone the Load Balancer stock is in.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

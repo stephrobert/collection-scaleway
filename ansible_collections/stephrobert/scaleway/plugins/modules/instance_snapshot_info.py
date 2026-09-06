@@ -91,12 +91,146 @@ snapshot:
   - Get details of a snapshot with the specified ID.
   returned: when I(snapshot_id) is provided
   type: dict
+  contains:
+    id:
+      description:
+      - Snapshot ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Snapshot name.
+      returned: when the API returns it
+      type: str
+    organization:
+      description:
+      - Snapshot Organization ID.
+      returned: when the API returns it
+      type: str
+    project:
+      description:
+      - Snapshot Project ID.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Snapshot tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    volume_type:
+      description:
+      - Snapshot volume type.
+      returned: when the API returns it
+      type: str
+    size:
+      description:
+      - Snapshot size. (in bytes)
+      returned: when the API returns it
+      type: int
+    state:
+      description:
+      - Snapshot state.
+      returned: when the API returns it
+      type: str
+    base_volume:
+      description:
+      - Volume on which the snapshot is based on.
+      returned: when the API returns it
+      type: dict
+    creation_date:
+      description:
+      - Snapshot creation date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    modification_date:
+      description:
+      - Snapshot modification date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - Snapshot zone.
+      returned: when the API returns it
+      type: str
+    error_reason:
+      description:
+      - Reason for the failed snapshot import.
+      returned: when the API returns it
+      type: str
 snapshots:
   description:
   - List all snapshots of an Organization in a specified Availability Zone.
   returned: when I(snapshot_id) is omitted
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - Snapshot ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Snapshot name.
+      returned: when the API returns it
+      type: str
+    organization:
+      description:
+      - Snapshot Organization ID.
+      returned: when the API returns it
+      type: str
+    project:
+      description:
+      - Snapshot Project ID.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Snapshot tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    volume_type:
+      description:
+      - Snapshot volume type.
+      returned: when the API returns it
+      type: str
+    size:
+      description:
+      - Snapshot size. (in bytes)
+      returned: when the API returns it
+      type: int
+    state:
+      description:
+      - Snapshot state.
+      returned: when the API returns it
+      type: str
+    base_volume:
+      description:
+      - Volume on which the snapshot is based on.
+      returned: when the API returns it
+      type: dict
+    creation_date:
+      description:
+      - Snapshot creation date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    modification_date:
+      description:
+      - Snapshot modification date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - Snapshot zone.
+      returned: when the API returns it
+      type: str
+    error_reason:
+      description:
+      - Reason for the failed snapshot import.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

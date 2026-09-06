@@ -86,6 +86,54 @@ private_nic:
   - Get private NIC properties.
   returned: when I(private_nic_id) is provided
   type: dict
+  contains:
+    id:
+      description:
+      - Private NIC unique ID.
+      returned: when the API returns it
+      type: str
+    server_id:
+      description:
+      - Instance to which the private NIC is attached.
+      returned: when the API returns it
+      type: str
+    private_network_id:
+      description:
+      - Private Network the private NIC is attached to.
+      returned: when the API returns it
+      type: str
+    mac_address:
+      description:
+      - Private NIC MAC address.
+      returned: when the API returns it
+      type: str
+    state:
+      description:
+      - Private NIC state.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Private NIC tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    creation_date:
+      description:
+      - Private NIC creation date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - The zone in which the Private NIC is located.
+      returned: when the API returns it
+      type: str
+    ipam_ip_ids:
+      description:
+      - The list of IPAM IPs associated with this private NIC. (UUID format)
+      returned: when the API returns it
+      type: list
+      elements: str
 private_nics:
   description:
   - 'List all private NICs of a specified Instance.
@@ -96,6 +144,54 @@ private_nics:
   returned: when I(private_nic_id) is omitted
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - Private NIC unique ID.
+      returned: when the API returns it
+      type: str
+    server_id:
+      description:
+      - Instance to which the private NIC is attached.
+      returned: when the API returns it
+      type: str
+    private_network_id:
+      description:
+      - Private Network the private NIC is attached to.
+      returned: when the API returns it
+      type: str
+    mac_address:
+      description:
+      - Private NIC MAC address.
+      returned: when the API returns it
+      type: str
+    state:
+      description:
+      - Private NIC state.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Private NIC tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    creation_date:
+      description:
+      - Private NIC creation date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - The zone in which the Private NIC is located.
+      returned: when the API returns it
+      type: str
+    ipam_ip_ids:
+      description:
+      - The list of IPAM IPs associated with this private NIC. (UUID format)
+      returned: when the API returns it
+      type: list
+      elements: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

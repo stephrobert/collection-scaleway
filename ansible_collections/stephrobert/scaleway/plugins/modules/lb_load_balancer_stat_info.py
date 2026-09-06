@@ -67,6 +67,13 @@ result:
     as is.'
   returned: success
   type: dict
+  contains:
+    backend_servers_stats:
+      description:
+      - List of objects containing Load Balancer statistics.
+      returned: when the API returns it
+      type: list
+      elements: dict
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

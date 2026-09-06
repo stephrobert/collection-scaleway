@@ -73,6 +73,49 @@ private_network:
   returned: success
   type: list
   elements: dict
+  contains:
+    lb:
+      description:
+      - Load Balancer object which is attached to the Private Network.
+      returned: when the API returns it
+      type: dict
+    ipam_ids:
+      description:
+      - IPAM IDs of the booked IP addresses. (UUID format)
+      returned: when the API returns it
+      type: list
+      elements: str
+    static_config:
+      description:
+      - Object containing an array of a local IP address for the Load Balancer on this Private
+        Network.
+      returned: when the API returns it
+      type: dict
+    dhcp_config:
+      description:
+      - Object containing DHCP-assigned IP addresses.
+      returned: when the API returns it
+      type: dict
+    private_network_id:
+      description:
+      - Private Network ID.
+      returned: when the API returns it
+      type: str
+    status:
+      description:
+      - Status of Private Network connection.
+      returned: when the API returns it
+      type: str
+    created_at:
+      description:
+      - Date on which the Private Network was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date on which the PN was last updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402
