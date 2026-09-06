@@ -127,3 +127,14 @@ returns:
     )
     plan = plan_service(widget_service, load_overrides("widget", root=tmp_path))
     assert any("scaleway.disparu" in orphelin for orphelin in plan.orphan_overrides)
+
+
+def test_une_reformulation_met_les_abreviations_en_capitales(instance_plan, collection) -> None:
+    """`ips_count` sortait « Count of ips. » sous une phrase courte disant « Instance IPs ».
+
+    La table des acronymes n'était appliquée qu'au nom du schéma, pas au nom du
+    champ : deux moitiés de la même phrase, une seule passée par la table.
+    """
+    champs = _champs(_specs(instance_plan, collection)["instance_dashboard_info"])
+    assert champs["ips_count"] == ("Count of IPs.",)
+    assert champs["private_nics_count"] == ("Count of private NICs.",)
