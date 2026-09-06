@@ -59,6 +59,13 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+#
+# `route_id` decides which of the two reads runs: given, the
+# module returns that one resource; omitted, it lists them all,
+# walking every page rather than returning the first one in silence.
+
 - name: Get a route
   stephrobert.scaleway.lb_route_info:
     zone: fr-par-1
@@ -67,6 +74,11 @@ EXAMPLES = r"""
 - name: List all routes
   stephrobert.scaleway.lb_route_info:
     zone: fr-par-1
+  register: result
+- name: Filter Scaleway Load Balancer routes by frontend_id
+  stephrobert.scaleway.lb_route_info:
+    zone: fr-par-1
+    frontend_id: 11111111-2222-3333-4444-555555555555
   register: result
 """
 
@@ -79,6 +91,39 @@ routes:
   returned: when I(route_id) is omitted
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - Route ID.
+      returned: when the API returns it
+      type: str
+    frontend_id:
+      description:
+      - ID of the source frontend.
+      returned: when the API returns it
+      type: str
+    backend_id:
+      description:
+      - ID of the target backend.
+      returned: when the API returns it
+      type: str
+    match:
+      description:
+      - Object defining the match condition for a route to be applied. If an incoming client
+        session matches the specified condition (i.e. it has a matching SNI value or HTTP
+        Host header value), it will be passed to the target backend.
+      returned: when the API returns it
+      type: dict
+    created_at:
+      description:
+      - Date on which the route was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date on which the route was last updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

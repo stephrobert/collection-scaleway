@@ -58,12 +58,27 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Update a Scaleway instance snapshot
+# The module reads the resource, compares, and writes only what
+# differs: run it twice and the second run reports no change.
+#
+# Check mode compares without writing, and `--diff` shows what would
+# change. A parameter you do not pass is a parameter the module does
+# not touch.
+
+- name: Update a Scaleway Instance snapshot
   stephrobert.scaleway.instance_snapshot:
-    zone: <zone>
-    snapshot_id: <snapshot_id>
-    name: <name>
+    zone: fr-par-1
+    snapshot_id: 11111111-2222-3333-4444-555555555555
+    name: my-snapshot
   register: result
+- name: Preview the change on a Scaleway Instance snapshot without writing
+  stephrobert.scaleway.instance_snapshot:
+    zone: fr-par-1
+    snapshot_id: 11111111-2222-3333-4444-555555555555
+    name: my-snapshot
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""
@@ -72,6 +87,73 @@ snapshot:
   - Get details of a snapshot with the specified ID.
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - Snapshot ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Snapshot name.
+      returned: when the API returns it
+      type: str
+    organization:
+      description:
+      - Snapshot Organization ID.
+      returned: when the API returns it
+      type: str
+    project:
+      description:
+      - Snapshot Project ID.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Snapshot tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    volume_type:
+      description:
+      - Snapshot volume type.
+      returned: when the API returns it
+      type: str
+    size:
+      description:
+      - Snapshot size. (in bytes)
+      returned: when the API returns it
+      type: int
+    state:
+      description:
+      - Snapshot state.
+      returned: when the API returns it
+      type: str
+    base_volume:
+      description:
+      - Volume on which the snapshot is based on.
+      returned: when the API returns it
+      type: dict
+    creation_date:
+      description:
+      - Snapshot creation date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    modification_date:
+      description:
+      - Snapshot modification date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - Snapshot zone.
+      returned: when the API returns it
+      type: str
+    error_reason:
+      description:
+      - Reason for the failed snapshot import.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

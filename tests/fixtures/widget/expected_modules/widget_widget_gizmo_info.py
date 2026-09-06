@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: widget_widget_gizmo_info
-short_description: Gather information about Scaleway Widget widget gizmos
+short_description: Gather information about Scaleway Widget gizmos
 version_added: 9.9.9
 description:
 - List the gizmos of a widget
@@ -39,6 +39,9 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: List the gizmos of a widget
   lab.widget.widget_widget_gizmo_info:
     zone: fr-par-1
@@ -53,6 +56,23 @@ widgets:
   returned: success
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: list
+      elements: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

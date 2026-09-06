@@ -14,11 +14,10 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_backend
-short_description: Manage a Scaleway Lb backend
+short_description: Manage a Scaleway Load Balancer backend
 version_added: 0.1.0
 description:
-- Update a backend of a given Load Balancer, specified by its backend ID. Note that the request
-  type is PUT and not PATCH. You must set all parameters.
+- Update a backend of a given Load Balancer, specified by its backend ID.
 - 'The module reads the resource first and writes the whole body, because this operation replaces
   the resource: fields you do not set keep the value the API returns. A second run reports
   no change.'
@@ -161,16 +160,35 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Update a Scaleway lb backend
+# The module reads the resource, compares, and writes only what
+# differs: run it twice and the second run reports no change.
+#
+# Check mode compares without writing, and `--diff` shows what would
+# change. A parameter you do not pass is a parameter the module does
+# not touch.
+
+- name: Update a Scaleway Load Balancer backend
   stephrobert.scaleway.lb_backend:
-    zone: <zone>
-    backend_id: <backend_id>
-    forward_port: <forward_port>
-    forward_port_algorithm: <forward_port_algorithm>
-    forward_protocol: <forward_protocol>
-    name: <name>
-    sticky_sessions: <sticky_sessions>
+    zone: fr-par-1
+    backend_id: 11111111-2222-3333-4444-555555555555
+    forward_port: 80
+    forward_port_algorithm: roundrobin
+    forward_protocol: tcp
+    name: my-backend
+    sticky_sessions: none
   register: result
+- name: Preview the change on a Scaleway Load Balancer backend without writing
+  stephrobert.scaleway.lb_backend:
+    zone: fr-par-1
+    backend_id: 11111111-2222-3333-4444-555555555555
+    forward_port: 80
+    forward_port_algorithm: roundrobin
+    forward_protocol: tcp
+    name: my-backend
+    sticky_sessions: none
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""
@@ -180,6 +198,143 @@ resource:
     the backend's full configuration parameters including protocol, port and forwarding algorithm.
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - Backend ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Name of the backend.
+      returned: when the API returns it
+      type: str
+    forward_protocol:
+      description:
+      - Protocol used by the backend when forwarding traffic to backend servers.
+      returned: when the API returns it
+      type: str
+    forward_port:
+      description:
+      - Port used by the backend when forwarding traffic to backend servers.
+      returned: when the API returns it
+      type: int
+    forward_port_algorithm:
+      description:
+      - Load balancing algorithm to use when determining which backend server to forward new
+        traffic to.
+      returned: when the API returns it
+      type: str
+    sticky_sessions:
+      description:
+      - Defines whether sticky sessions (binding a particular session to a particular backend
+        server) are activated and the method to use if so. None disables sticky sessions.
+        Cookie-based uses an HTTP cookie to stick a session to a backend server. Table-based
+        uses the source (client) IP address to stick a session to a backend server.
+      returned: when the API returns it
+      type: str
+    sticky_sessions_cookie_name:
+      description:
+      - Cookie name for cookie-based sticky sessions.
+      returned: when the API returns it
+      type: str
+    health_check:
+      description:
+      - Object defining the health check to be carried out by the backend when checking the
+        status and health of backend servers.
+      returned: when the API returns it
+      type: dict
+    pool:
+      description:
+      - List of IP addresses of backend servers attached to this backend.
+      returned: when the API returns it
+      type: list
+      elements: str
+    lb:
+      description:
+      - Load Balancer the backend is attached to.
+      returned: when the API returns it
+      type: dict
+    send_proxy_v2:
+      description:
+      - Deprecated in favor of proxy_protocol field.
+      returned: when the API returns it
+      type: bool
+    timeout_server:
+      description:
+      - Maximum allowed time for a backend server to process a request. (in milliseconds)
+      returned: when the API returns it
+      type: float
+    timeout_connect:
+      description:
+      - Maximum allowed time for establishing a connection to a backend server. (in milliseconds)
+      returned: when the API returns it
+      type: float
+    timeout_tunnel:
+      description:
+      - Maximum allowed tunnel inactivity time after Websocket is established (takes precedence
+        over client and server timeout). (in milliseconds)
+      returned: when the API returns it
+      type: float
+    on_marked_down_action:
+      description:
+      - Action to take when a backend server is marked as down.
+      returned: when the API returns it
+      type: str
+    proxy_protocol:
+      description:
+      - Protocol to use between the Load Balancer and backend servers. Allows the backend
+        servers to be informed of the client's real IP address. The PROXY protocol must be
+        supported by the backend servers' software.
+      returned: when the API returns it
+      type: str
+    created_at:
+      description:
+      - Date at which the backend was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date at which the backend was updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    failover_host:
+      description:
+      - Scaleway Object Storage bucket website to be served as failover if all backend servers
+        are down, e.g. failover-website.s3-website.fr-par.scw.cloud.
+      returned: when the API returns it
+      type: str
+    ssl_bridging:
+      description:
+      - Defines whether to enable SSL bridging between the Load Balancer and backend servers.
+      returned: when the API returns it
+      type: bool
+    ignore_ssl_server_verify:
+      description:
+      - Defines whether the server certificate verification should be ignored.
+      returned: when the API returns it
+      type: bool
+    redispatch_attempt_count:
+      description:
+      - Whether to use another backend server on each attempt.
+      returned: when the API returns it
+      type: int
+    max_retries:
+      description:
+      - Number of retries when a backend server connection failed.
+      returned: when the API returns it
+      type: int
+    max_connections:
+      description:
+      - Maximum number of connections allowed per backend server.
+      returned: when the API returns it
+      type: int
+    timeout_queue:
+      description:
+      - Maximum time for a request to be left pending in queue when `max_connections` is reached.
+        (in seconds)
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: widget_widget_info
-short_description: Gather information about Scaleway Widget widgets
+short_description: Gather information about Scaleway Widgets
 version_added: 9.9.9
 description:
 - Get a widget
@@ -46,6 +46,13 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+#
+# `widget_id` decides which of the two reads runs: given, the
+# module returns that one resource; omitted, it lists them all,
+# walking every page rather than returning the first one in silence.
+
 - name: Get a widget
   lab.widget.widget_widget_info:
     zone: fr-par-1
@@ -55,6 +62,11 @@ EXAMPLES = r"""
   lab.widget.widget_widget_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Widgets by state
+  lab.widget.widget_widget_info:
+    zone: fr-par-1
+    state: running
+  register: result
 """
 
 RETURN = r"""
@@ -63,12 +75,46 @@ widget:
   - Get a widget
   returned: when I(widget_id) is provided
   type: dict
+  contains:
+    id:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: list
+      elements: str
 widgets:
   description:
   - Lister les widgets d'une zone.
   returned: when I(widget_id) is omitted
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: list
+      elements: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

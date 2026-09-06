@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_certificate
-short_description: Manage a Scaleway Lb certificate
+short_description: Manage a Scaleway Load Balancer certificate
 version_added: 0.1.0
 description:
 - Update the name of a particular SSL/TLS certificate, specified by its certificate ID.
@@ -53,12 +53,27 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Update a Scaleway lb certificate
+# The module reads the resource, compares, and writes only what
+# differs: run it twice and the second run reports no change.
+#
+# Check mode compares without writing, and `--diff` shows what would
+# change. A parameter you do not pass is a parameter the module does
+# not touch.
+
+- name: Update a Scaleway Load Balancer certificate
   stephrobert.scaleway.lb_certificate:
-    zone: <zone>
-    certificate_id: <certificate_id>
-    name: <name>
+    zone: fr-par-1
+    certificate_id: 11111111-2222-3333-4444-555555555555
+    name: my-certificate
   register: result
+- name: Preview the change on a Scaleway Load Balancer certificate without writing
+  stephrobert.scaleway.lb_certificate:
+    zone: fr-par-1
+    certificate_id: 11111111-2222-3333-4444-555555555555
+    name: my-certificate
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""
@@ -69,6 +84,74 @@ resource:
     name, and alternative domain names.
   returned: success
   type: dict
+  contains:
+    type:
+      description:
+      - Certificate type (Let's Encrypt or custom).
+      returned: when the API returns it
+      type: str
+    id:
+      description:
+      - Certificate ID.
+      returned: when the API returns it
+      type: str
+    common_name:
+      description:
+      - Main domain name of certificate.
+      returned: when the API returns it
+      type: str
+    subject_alternative_name:
+      description:
+      - Alternative domain names.
+      returned: when the API returns it
+      type: list
+      elements: str
+    fingerprint:
+      description:
+      - Identifier (SHA-1) of the certificate.
+      returned: when the API returns it
+      type: str
+    not_valid_before:
+      description:
+      - Lower validity bound. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    not_valid_after:
+      description:
+      - Upper validity bound. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    status:
+      description:
+      - Certificate status.
+      returned: when the API returns it
+      type: str
+    lb:
+      description:
+      - Load Balancer object the certificate is attached to.
+      returned: when the API returns it
+      type: dict
+    name:
+      description:
+      - Certificate name.
+      returned: when the API returns it
+      type: str
+    created_at:
+      description:
+      - Date on which the certificate was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date on which the certificate was last updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    status_details:
+      description:
+      - Additional information about the certificate status (useful in case of certificate
+        generation failure, for example).
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

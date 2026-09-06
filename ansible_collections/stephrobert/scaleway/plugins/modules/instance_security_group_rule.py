@@ -98,13 +98,29 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Update a Scaleway instance security group rule
+# The module reads the resource, compares, and writes only what
+# differs: run it twice and the second run reports no change.
+#
+# Check mode compares without writing, and `--diff` shows what would
+# change. A parameter you do not pass is a parameter the module does
+# not touch.
+
+- name: Update a Scaleway Instance security group rule
   stephrobert.scaleway.instance_security_group_rule:
-    zone: <zone>
-    security_group_id: <security_group_id>
-    security_group_rule_id: <security_group_rule_id>
-    protocol: <protocol>
+    zone: fr-par-1
+    security_group_id: 11111111-2222-3333-4444-555555555555
+    security_group_rule_id: 11111111-2222-3333-4444-555555555555
+    protocol: TCP
   register: result
+- name: Preview the change on a Scaleway Instance security group rule without writing
+  stephrobert.scaleway.instance_security_group_rule:
+    zone: fr-par-1
+    security_group_id: 11111111-2222-3333-4444-555555555555
+    security_group_rule_id: 11111111-2222-3333-4444-555555555555
+    protocol: TCP
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""
@@ -113,6 +129,57 @@ rule:
   - Get details of a security group rule with the specified ID.
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    protocol:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    direction:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    action:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    ip_range:
+      description:
+      - (IP network)
+      returned: when the API returns it
+      type: str
+    dest_port_from:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    dest_port_to:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    position:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    editable:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: bool
+    zone:
+      description:
+      - The zone you want to target
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

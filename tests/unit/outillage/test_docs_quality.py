@@ -1,0 +1,308 @@
+"""Ce que la porte documentaire mesure, et ce qu'elle refuse de laisser publier.
+
+`ansible-test sanity` dit qu'un bloc `DOCUMENTATION` est bien formé. Il ne dit
+rien de ce qu'il apprend à quelqu'un : un module dont les six options portent
+« Not documented by the Scaleway API contract. » et dont l'exemple montre
+`zone: <zone>` passe la sanity sans une remarque, et se publie tel quel.
+
+Ces tests portent sur des modules écrits ici, pas sur ceux du dépôt : une porte
+qui ne mesurerait plus rien le jour où la collection change n'est pas une porte.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import docs_quality
+import pytest
+
+EN_TETE = '#!/usr/bin/python\n"""Module de test."""\n\n'
+
+
+def _module(dossier: Path, nom: str, documentation: str, exemples: str, retour: str) -> Path:
+    chemin = dossier / f"{nom}.py"
+    chemin.write_text(
+        f'{EN_TETE}DOCUMENTATION = r"""{documentation}"""\n\n'
+        f'EXAMPLES = r"""{exemples}"""\n\n'
+        f'RETURN = r"""{retour}"""\n',
+        encoding="utf-8",
+    )
+    return chemin
+
+
+BON_EXEMPLE = """
+- name: Read a Scaleway Instance
+  stephrobert.scaleway.instance_server_info:
+    zone: fr-par-1
+    server_id: 11111111-2222-3333-4444-555555555555
+  register: result
+"""
+
+BON_RETOUR = """
+server:
+  description: The Instance.
+  returned: success
+  type: dict
+"""
+
+
+def test_un_repli_de_description_est_bloquant(tmp_path: Path) -> None:
+    """La phrase de repli est publiée telle quelle, et Galaxy ne se reprend pas."""
+    chemin = _module(
+        tmp_path,
+        "demo_thing_info",
+        f"""
+module: demo_thing_info
+short_description: Read a thing
+description:
+  - Read a thing.
+options:
+  server_id:
+    description:
+      - {docs_quality.REPLI}
+    type: str
+""",
+        BON_EXEMPLE,
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {})
+    genres = {d.genre for d in defauts if d.bloquant}
+    assert "option-sans-description" in genres
+
+
+def test_un_exemple_a_trou_est_bloquant(tmp_path: Path) -> None:
+    """`zone: <zone>` n'est pas du YAML qu'on copie, c'est un formulaire vide."""
+    chemin = _module(
+        tmp_path,
+        "demo_thing",
+        """
+module: demo_thing
+short_description: Update a thing
+description:
+  - Update a thing.
+options:
+  zone:
+    description:
+      - The zone you want to target.
+    type: str
+""",
+        """
+- name: Update a thing
+  demo.demo.demo_thing:
+    zone: <zone>
+  register: result
+""",
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {})
+    assert any(d.genre == "exemple-non-copiable" and d.bloquant for d in defauts)
+
+
+def test_un_module_qui_ne_dit_pas_ce_quil_fait_est_bloquant(tmp_path: Path) -> None:
+    chemin = _module(
+        tmp_path,
+        "demo_thing_info",
+        """
+module: demo_thing_info
+short_description: Read a thing
+options: {}
+""",
+        BON_EXEMPLE,
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {})
+    assert any(d.genre == "description-absente" and d.bloquant for d in defauts)
+
+
+def test_une_action_que_le_module_refuse_ne_doit_pas_etre_documentee(tmp_path: Path) -> None:
+    """L'`argument_spec` fait foi : documenter davantage promet ce qu'il refuse.
+
+    Le cas mesuré est `instance_server_action`, qui exposait quatre actions et
+    en documentait sept, `terminate` compris, sur un module qui le refuse.
+    """
+    chemin = _module(
+        tmp_path,
+        "demo_thing_action",
+        """
+module: demo_thing_action
+short_description: Act on a thing
+description:
+  - Perform an action.
+  - '* `poweron`: Start the thing.'
+  - '* `terminate`: Delete the thing.'
+options:
+  action:
+    description:
+      - The action to perform.
+    type: str
+    choices: [poweron]
+""",
+        BON_EXEMPLE,
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {"demo_thing_action": {"poweron"}})
+    fautes = [d for d in defauts if d.genre == "action-exclue-documentee"]
+    assert fautes and fautes[0].bloquant
+    assert "terminate" in fautes[0].detail
+
+
+def test_le_vocabulaire_du_contrat_est_bloquant(tmp_path: Path) -> None:
+    """`Scaleway Lb` est le slug d'index, pas le nom du produit.
+
+    Scaleway écrit « Load Balancer » dans sa console, sa facturation et sa
+    documentation. Un lecteur qui cherche ses modules de Load Balancer ne tape
+    pas « Lb ».
+    """
+    chemin = _module(
+        tmp_path,
+        "demo_thing",
+        """
+module: demo_thing
+short_description: Manage a Scaleway Lb thing
+description:
+  - Update a thing.
+options: {}
+""",
+        BON_EXEMPLE,
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {})
+    assert any(d.genre == "vocabulaire-du-contrat" and d.bloquant for d in defauts)
+
+
+def test_une_fuite_de_la_couche_http_est_bloquante(tmp_path: Path) -> None:
+    """« You must set all parameters » est vrai de l'API et faux du module.
+
+    Le module lit la ressource avant d'écrire et remplit lui-même les champs
+    qu'on ne lui donne pas. Recopier la phrase du contrat publie une
+    contradiction avec la phrase suivante, que le générateur écrit.
+    """
+    chemin = _module(
+        tmp_path,
+        "demo_thing",
+        """
+module: demo_thing
+short_description: Manage a thing
+description:
+  - Update a thing. You must set all parameters.
+options: {}
+""",
+        BON_EXEMPLE,
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {})
+    assert any(d.genre == "fuite-de-la-couche-http" and d.bloquant for d in defauts)
+
+
+def test_un_exemple_nomme_par_le_contrat_est_bloquant(tmp_path: Path) -> None:
+    """`Run GetDashboard` nomme l'appel HTTP, pas ce que la tâche fait.
+
+    Le nom reste dans la sortie d'Ansible de qui copie la tâche.
+    """
+    chemin = _module(
+        tmp_path,
+        "demo_thing_info",
+        """
+module: demo_thing_info
+short_description: Read a thing
+description:
+  - Read a thing.
+options: {}
+""",
+        """
+- name: Run GetDashboard
+  demo.demo.demo_thing_info:
+    zone: fr-par-1
+  register: result
+""",
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {})
+    assert any(d.genre == "exemple-nomme-par-le-contrat" and d.bloquant for d in defauts)
+
+
+def test_un_module_sans_defaut_ne_bloque_rien(tmp_path: Path) -> None:
+    """Une porte qui refuse tout ne mesure plus rien : elle mesure sa panne."""
+    chemin = _module(
+        tmp_path,
+        "demo_thing_info",
+        """
+module: demo_thing_info
+short_description: Read a thing
+description:
+  - Read a thing by its ID.
+options:
+  server_id:
+    description:
+      - UUID of the thing.
+    type: str
+""",
+        BON_EXEMPLE,
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {})
+    assert [d for d in defauts if d.bloquant] == []
+
+
+def test_une_mesure_sur_zero_module_est_une_erreur(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Zéro défaut sur zéro module est un vert qui ne dit rien.
+
+    C'est le défaut qui avait rendu un `ansible-test sanity` vert sur zéro
+    fichier examiné : le compte rendu ne distinguait pas « rien à redire » de
+    « rien mesuré ».
+    """
+    (tmp_path / "plugins" / "modules").mkdir(parents=True)
+
+    class _Collection:
+        path = tmp_path
+
+    monkeypatch.setattr(docs_quality, "load_collection", lambda: _Collection())
+    with pytest.raises(docs_quality.QualiteError, match="aucun module"):
+        docs_quality.mesurer()
+
+
+def test_la_porte_mesure_bien_la_collection_livree() -> None:
+    """La collection publiée ne porte aucun défaut bloquant.
+
+    Ce test regarde le dépôt et pas une fixture : c'est le seul du fichier qui
+    le fasse, et c'est voulu. Les autres prouvent que la porte sait refuser ;
+    celui-ci dit ce qu'elle mesure aujourd'hui sur ce qui part chez Galaxy.
+    """
+    mesure, defauts = docs_quality.mesurer()
+    bloquants = [f"{d.module} : {d.genre} ({d.detail})" for d in defauts if d.bloquant]
+    assert bloquants == [], "\n".join(bloquants)
+    assert mesure.modules > 0
+
+
+def test_le_plugin_dinventaire_entre_dans_la_mesure() -> None:
+    """C'est la page qu'un utilisateur lit en premier, et elle était hors mesure.
+
+    Le plugin d'inventaire a sa page sur Galaxy et ses 26 options ; la porte ne
+    regardait que `plugins/modules`. Surveiller les cinquante pages qu'on lit
+    après, mais pas celle qu'on lit d'abord, laissait le trou au pire endroit.
+    """
+    mesure, _ = docs_quality.mesurer()
+    assert mesure.modules == 51, (
+        f"{mesure.modules} pages examinées, 50 modules et 1 plugin attendus"
+    )
+
+
+def test_les_exemples_dun_plugin_sont_des_fichiers_entiers(tmp_path: Path) -> None:
+    """On copie un fichier d'inventaire, pas une tâche.
+
+    Ils sont donc séparés par `---`, et `safe_load` ne rend que le premier :
+    mesurer avec lui laissait trois exemples sur quatre hors de la mesure, et
+    ils pouvaient repasser en commentaires sans que rien ne le dise.
+    """
+    chemin = tmp_path / "demo.py"
+    chemin.write_text(
+        EN_TETE + 'DOCUMENTATION = r"""\nname: demo\nshort_description: Read\n'
+        'description:\n  - Read.\noptions: {}\n"""\n\n'
+        'EXAMPLES = r"""\nplugin: demo.demo.demo\n\n---\nplugin: demo.demo.demo\n'
+        'regions:\n  - fr-par\n"""\n\nRETURN = r"""\n"""\n',
+        encoding="utf-8",
+    )
+    mesure, _ = docs_quality.examiner(chemin, {})
+    assert mesure.exemples == 2, "le second document d'exemple n'est pas mesuré"

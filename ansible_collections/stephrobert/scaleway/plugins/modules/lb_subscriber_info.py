@@ -61,6 +61,13 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+#
+# `subscriber_id` decides which of the two reads runs: given, the
+# module returns that one resource; omitted, it lists them all,
+# walking every page rather than returning the first one in silence.
+
 - name: Get a subscriber
   stephrobert.scaleway.lb_subscriber_info:
     zone: fr-par-1
@@ -69,6 +76,11 @@ EXAMPLES = r"""
 - name: List all subscribers
   stephrobert.scaleway.lb_subscriber_info:
     zone: fr-par-1
+  register: result
+- name: Filter Scaleway Load Balancer subscribers by name
+  stephrobert.scaleway.lb_subscriber_info:
+    zone: fr-par-1
+    name: my-subscriber-info
   register: result
 """
 
@@ -81,6 +93,27 @@ subscribers:
   returned: when I(subscriber_id) is omitted
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - Subscriber ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Subscriber name.
+      returned: when the API returns it
+      type: str
+    email_config:
+      description:
+      - Email address of subscriber.
+      returned: when the API returns it
+      type: dict
+    webhook_config:
+      description:
+      - Webhook URI of subscriber.
+      returned: when the API returns it
+      type: dict
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

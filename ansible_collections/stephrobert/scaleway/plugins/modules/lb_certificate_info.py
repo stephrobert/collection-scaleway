@@ -65,6 +65,13 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+#
+# `certificate_id` decides which of the two reads runs: given, the
+# module returns that one resource; omitted, it lists them all,
+# walking every page rather than returning the first one in silence.
+
 - name: Get an SSL/TLS certificate
   stephrobert.scaleway.lb_certificate_info:
     zone: fr-par-1
@@ -73,6 +80,11 @@ EXAMPLES = r"""
 - name: List all SSL/TLS certificates on a given Load Balancer
   stephrobert.scaleway.lb_certificate_info:
     zone: fr-par-1
+  register: result
+- name: Filter Scaleway Load Balancer certificates by name
+  stephrobert.scaleway.lb_certificate_info:
+    zone: fr-par-1
+    name: my-certificate-info
   register: result
 """
 
@@ -84,6 +96,74 @@ certificates:
   returned: when I(certificate_id) is omitted
   type: list
   elements: dict
+  contains:
+    type:
+      description:
+      - Certificate type (Let's Encrypt or custom).
+      returned: when the API returns it
+      type: str
+    id:
+      description:
+      - Certificate ID.
+      returned: when the API returns it
+      type: str
+    common_name:
+      description:
+      - Main domain name of certificate.
+      returned: when the API returns it
+      type: str
+    subject_alternative_name:
+      description:
+      - Alternative domain names.
+      returned: when the API returns it
+      type: list
+      elements: str
+    fingerprint:
+      description:
+      - Identifier (SHA-1) of the certificate.
+      returned: when the API returns it
+      type: str
+    not_valid_before:
+      description:
+      - Lower validity bound. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    not_valid_after:
+      description:
+      - Upper validity bound. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    status:
+      description:
+      - Certificate status.
+      returned: when the API returns it
+      type: str
+    lb:
+      description:
+      - Load Balancer object the certificate is attached to.
+      returned: when the API returns it
+      type: dict
+    name:
+      description:
+      - Certificate name.
+      returned: when the API returns it
+      type: str
+    created_at:
+      description:
+      - Date on which the certificate was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date on which the certificate was last updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    status_details:
+      description:
+      - Additional information about the certificate status (useful in case of certificate
+        generation failure, for example).
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

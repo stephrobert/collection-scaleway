@@ -60,10 +60,19 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: List ACLs for a given frontend
   stephrobert.scaleway.lb_frontend_acl_info:
     zone: fr-par-1
     frontend_id: 11111111-2222-3333-4444-555555555555
+  register: result
+- name: Filter Scaleway Load Balancer frontend acls by name
+  stephrobert.scaleway.lb_frontend_acl_info:
+    zone: fr-par-1
+    frontend_id: 11111111-2222-3333-4444-555555555555
+    name: my-frontend-acl-info
   register: result
 """
 
@@ -76,6 +85,53 @@ acls:
   returned: success
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - ACL ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - ACL name.
+      returned: when the API returns it
+      type: str
+    match:
+      description:
+      - ACL match filter object. One of `ip_subnet`, `ips_edge_services` or `http_filter`
+        & `http_filter_value` are required.
+      returned: when the API returns it
+      type: dict
+    action:
+      description:
+      - Action to take when incoming traffic matches an ACL filter.
+      returned: when the API returns it
+      type: dict
+    frontend:
+      description:
+      - ACL is attached to this frontend object.
+      returned: when the API returns it
+      type: dict
+    index:
+      description:
+      - Priority of this ACL (ACLs are applied in ascending order, 0 is the first ACL executed).
+      returned: when the API returns it
+      type: int
+    created_at:
+      description:
+      - Date on which the ACL was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date on which the ACL was last updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    description:
+      description:
+      - ACL description.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

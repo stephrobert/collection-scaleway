@@ -76,12 +76,27 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Update a Scaleway instance image
+# The module reads the resource, compares, and writes only what
+# differs: run it twice and the second run reports no change.
+#
+# Check mode compares without writing, and `--diff` shows what would
+# change. A parameter you do not pass is a parameter the module does
+# not touch.
+
+- name: Update a Scaleway Instance image
   stephrobert.scaleway.instance_image:
-    zone: <zone>
-    image_id: <image_id>
-    name: <name>
+    zone: fr-par-1
+    image_id: 11111111-2222-3333-4444-555555555555
+    name: my-image
   register: result
+- name: Preview the change on a Scaleway Instance image without writing
+  stephrobert.scaleway.instance_image:
+    zone: fr-par-1
+    image_id: 11111111-2222-3333-4444-555555555555
+    name: my-image
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""
@@ -90,6 +105,83 @@ image:
   - Get details of an image with the specified ID.
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    arch:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    creation_date:
+      description:
+      - (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    modification_date:
+      description:
+      - (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    default_bootscript:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    extra_volumes:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    from_server:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    organization:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    public:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: bool
+    root_volume:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    state:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    project:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: list
+      elements: str
+    zone:
+      description:
+      - The zone you want to target
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

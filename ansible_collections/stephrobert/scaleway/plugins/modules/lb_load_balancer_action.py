@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_load_balancer_action
-short_description: Perform an action on a Scaleway Load Balancer load balancer
+short_description: Perform an action on a Scaleway Load Balancer
 version_added: 0.1.0
 description:
 - Migrate an existing Load Balancer from one commercial type to another. Allows you to scale
@@ -52,11 +52,15 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# An action is a trigger, not a state: running this a second time
+# reports `changed` again, and that is correct. Idempotence is the
+# business of the management modules.
+
 - name: Migrate
   stephrobert.scaleway.lb_load_balancer_action:
     zone: fr-par-1
     lb_id: 11111111-2222-3333-4444-555555555555
-    type: <type>
+    type: '{{ lb_offer_type }}'
   register: result
 """
 

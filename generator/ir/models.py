@@ -82,6 +82,48 @@ class ApiParameter:
 
 
 @dataclass(frozen=True)
+class ApiField:
+    """Un champ d'une ressource rendue, tel que le contrat le déclare."""
+
+    name: str
+    type: ApiType
+    description: str | None = None
+    #: Type des éléments quand le champ est un tableau, quand le contrat le dit.
+    item_type: ApiType | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return _compact(
+            {
+                "name": self.name,
+                "type": self.type.value,
+                "item_type": self.item_type.value if self.item_type else None,
+                "description": self.description,
+            }
+        )
+
+
+@dataclass(frozen=True)
+class ApiObject:
+    """Une ressource rendue par l'API, avec ses champs.
+
+    Rangée une fois par schéma plutôt que recopiée sur chaque opération : les
+    74 opérations d'Instance v1 ne renvoient que quinze ressources distinctes,
+    et l'IR resterait illisible en diff autrement.
+    """
+
+    name: str
+    fields: tuple[ApiField, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return _compact(
+            {
+                "name": self.name,
+                "fields": [f.to_dict() for f in self.fields] or None,
+            }
+        )
+
+
+@dataclass(frozen=True)
 class ApiResponse:
     """Forme de la réponse 200 d'une opération."""
 
@@ -201,12 +243,25 @@ class ApiService:
     source: str | None = None
     operations: tuple[ApiOperation, ...] = ()
     enums: tuple[ApiEnum, ...] = ()
+    #: Ressources rendues par les opérations, avec leurs champs. Seules celles
+    #: qu'une réponse désigne réellement y sont : recopier les deux cents
+    #: schémas du contrat ferait un IR que personne ne relit en diff.
+    objects: tuple[ApiObject, ...] = ()
     #: Anomalies rencontrées au parsing, remontées telles quelles dans le rapport.
     warnings: tuple[str, ...] = field(default=(), compare=False)
 
     @property
     def slug(self) -> str:
         return f"{self.name}.{self.version}"
+
+    def object(self, name: str | None) -> ApiObject | None:
+        """La ressource d'un nom de schéma, ou `None` si le contrat ne la porte pas."""
+        if name is None:
+            return None
+        for entry in self.objects:
+            if entry.name == name:
+                return entry
+        return None
 
     def operation(self, operation_id: str) -> ApiOperation | None:
         for operation in self.operations:
@@ -223,6 +278,7 @@ class ApiService:
                 "description": self.description,
                 "source": self.source,
                 "enums": [e.to_dict() for e in self.enums] or None,
+                "objects": [o.to_dict() for o in self.objects] or None,
                 "operations": [o.to_dict() for o in self.operations] or None,
                 "warnings": list(self.warnings) or None,
             }

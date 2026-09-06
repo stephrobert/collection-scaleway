@@ -68,6 +68,13 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# An action is a trigger, not a state: running this a second time
+# reports `changed` again, and that is correct. Idempotence is the
+# business of the management modules.
+#
+# The module waits until the API reports the target state before
+# returning, so the next task acts on a resource that has settled.
+
 - name: Poweron an Instance
   stephrobert.scaleway.instance_server_action:
     zone: fr-par-1
@@ -117,15 +124,55 @@ task:
 
     * `stop_in_place`: Stop the Instance, but keep the slot on the hypervisor.
 
-    * `reboot`: Stop the instance and restart it.
-
-    * `backup`: Create an image with all the volumes of an Instance.
-
-    * `terminate`: Delete the Instance along with its attached local volumes.
-
-    * `enable_routed_ip`: Migrate the Instance to the new network stack.'
+    * `reboot`: Stop the instance and restart it.'
   returned: when the API returns it
   type: dict
+  contains:
+    id:
+      description:
+      - Unique ID of the task.
+      returned: when the API returns it
+      type: str
+    description:
+      description:
+      - Description of the task.
+      returned: when the API returns it
+      type: str
+    progress:
+      description:
+      - Progress of the task in percent.
+      returned: when the API returns it
+      type: int
+    started_at:
+      description:
+      - Task start date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    terminated_at:
+      description:
+      - Task end date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    status:
+      description:
+      - Task status.
+      returned: when the API returns it
+      type: str
+    href_from:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    href_result:
+      description:
+      - Location of the resulting resource.
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - Zone in which the task is executed.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

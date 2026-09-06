@@ -14,12 +14,11 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_frontend
-short_description: Manage a Scaleway Lb frontend
+short_description: Manage a Scaleway Load Balancer frontend
 version_added: 0.1.0
 description:
 - Update a given frontend, specified by its frontend ID. You can update configuration parameters
-  including its name and the port it listens on. Note that the request type is PUT and not
-  PATCH. You must set all parameters.
+  including its name and the port it listens on.
 - 'The module reads the resource first and writes the whole body, because this operation replaces
   the resource: fields you do not set keep the value the API returns. A second run reports
   no change.'
@@ -92,14 +91,31 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Update a Scaleway lb frontend
+# The module reads the resource, compares, and writes only what
+# differs: run it twice and the second run reports no change.
+#
+# Check mode compares without writing, and `--diff` shows what would
+# change. A parameter you do not pass is a parameter the module does
+# not touch.
+
+- name: Update a Scaleway Load Balancer frontend
   stephrobert.scaleway.lb_frontend:
-    zone: <zone>
-    frontend_id: <frontend_id>
-    backend_id: <backend_id>
-    inbound_port: <inbound_port>
-    name: <name>
+    zone: fr-par-1
+    frontend_id: 11111111-2222-3333-4444-555555555555
+    backend_id: 11111111-2222-3333-4444-555555555555
+    inbound_port: 80
+    name: my-frontend
   register: result
+- name: Preview the change on a Scaleway Load Balancer frontend without writing
+  stephrobert.scaleway.lb_frontend:
+    zone: fr-par-1
+    frontend_id: 11111111-2222-3333-4444-555555555555
+    backend_id: 11111111-2222-3333-4444-555555555555
+    inbound_port: 80
+    name: my-frontend
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""
@@ -110,6 +126,74 @@ resource:
     the port it listens on, and any certificates it has.
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - Frontend ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Name of the frontend.
+      returned: when the API returns it
+      type: str
+    inbound_port:
+      description:
+      - Port the frontend listens on.
+      returned: when the API returns it
+      type: int
+    backend:
+      description:
+      - Backend object the frontend is attached to.
+      returned: when the API returns it
+      type: dict
+    lb:
+      description:
+      - Load Balancer object the frontend is attached to.
+      returned: when the API returns it
+      type: dict
+    timeout_client:
+      description:
+      - Maximum allowed inactivity time on the client side. (in milliseconds)
+      returned: when the API returns it
+      type: float
+    certificate:
+      description:
+      - Certificate, deprecated in favor of certificate_ids array.
+      returned: when the API returns it
+      type: dict
+    certificate_ids:
+      description:
+      - List of SSL/TLS certificate IDs to bind to the frontend.
+      returned: when the API returns it
+      type: list
+      elements: str
+    created_at:
+      description:
+      - Date on which the frontend was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date on which the frontend was last updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    enable_http3:
+      description:
+      - Defines whether to enable HTTP/3 protocol on the frontend.
+      returned: when the API returns it
+      type: bool
+    connection_rate_limit:
+      description:
+      - Rate limit for new connections established on this frontend. Use 0 value to disable,
+        else value is connections per second.
+      returned: when the API returns it
+      type: int
+    enable_access_logs:
+      description:
+      - Defines whether to enable access logs on the frontend.
+      returned: when the API returns it
+      type: bool
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

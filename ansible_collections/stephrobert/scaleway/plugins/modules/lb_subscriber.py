@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_subscriber
-short_description: Manage a Scaleway Lb subscriber
+short_description: Manage a Scaleway Load Balancer subscriber
 version_added: 0.1.0
 description:
 - Update the parameters of a given subscriber (e.g. name, webhook configuration, email configuration),
@@ -62,12 +62,27 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Update a Scaleway lb subscriber
+# The module reads the resource, compares, and writes only what
+# differs: run it twice and the second run reports no change.
+#
+# Check mode compares without writing, and `--diff` shows what would
+# change. A parameter you do not pass is a parameter the module does
+# not touch.
+
+- name: Update a Scaleway Load Balancer subscriber
   stephrobert.scaleway.lb_subscriber:
-    zone: <zone>
-    subscriber_id: <subscriber_id>
-    name: <name>
+    zone: fr-par-1
+    subscriber_id: 11111111-2222-3333-4444-555555555555
+    name: my-subscriber
   register: result
+- name: Preview the change on a Scaleway Load Balancer subscriber without writing
+  stephrobert.scaleway.lb_subscriber:
+    zone: fr-par-1
+    subscriber_id: 11111111-2222-3333-4444-555555555555
+    name: my-subscriber
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""
@@ -78,6 +93,27 @@ resource:
     object.
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - Subscriber ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Subscriber name.
+      returned: when the API returns it
+      type: str
+    email_config:
+      description:
+      - Email address of subscriber.
+      returned: when the API returns it
+      type: dict
+    webhook_config:
+      description:
+      - Webhook URI of subscriber.
+      returned: when the API returns it
+      type: dict
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

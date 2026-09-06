@@ -16,7 +16,10 @@ DOCUMENTATION = r"""
 module: instance_dashboard_info
 short_description: Gather information about Scaleway Instance dashboards
 version_added: 0.1.0
-description: []
+description:
+- 'Return the Instance dashboard of one zone: the resource counts the API keeps for an Organization
+  or a Project, such as `servers_count`, `running_servers_count`, `volumes_count`, `images_count`,
+  `snapshots_count`, `ips_count`, `ips_unused` and `security_groups_count`.'
 author:
 - Stéphane Robert (@stephrobert)
 options:
@@ -38,18 +41,21 @@ options:
     - it-mil-1
   organization:
     description:
-    - Not documented by the Scaleway API contract.
+    - Organization ID whose dashboard is returned.
     type: str
   project:
     description:
-    - Not documented by the Scaleway API contract.
+    - Project ID whose dashboard is returned.
     type: str
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
 """
 
 EXAMPLES = r"""
-- name: Run GetDashboard
+# This module only reads: it never changes anything, and check mode
+# is native.
+
+- name: Read a Scaleway Instance dashboard
   stephrobert.scaleway.instance_dashboard_info:
     zone: fr-par-1
   register: result
@@ -58,9 +64,92 @@ EXAMPLES = r"""
 RETURN = r"""
 dashboard:
   description:
-  - Not documented by the Scaleway API contract.
+  - 'Return the Instance dashboard of one zone: the resource counts the API keeps for an Organization
+    or a Project, such as `servers_count`, `running_servers_count`, `volumes_count`, `images_count`,
+    `snapshots_count`, `ips_count`, `ips_unused` and `security_groups_count`.'
   returned: success
   type: dict
+  contains:
+    volumes_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    running_servers_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    servers_by_types:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    images_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    snapshots_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    servers_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    ips_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    security_groups_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    ips_unused:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    volumes_l_ssd_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    volumes_l_ssd_total_size:
+      description:
+      - (in bytes)
+      returned: when the API returns it
+      type: int
+    private_nics_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    placement_groups_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    volumes_scratch_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    volumes_b_ssd_count:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: int
+    volumes_b_ssd_total_size:
+      description:
+      - (in bytes)
+      returned: when the API returns it
+      type: int
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

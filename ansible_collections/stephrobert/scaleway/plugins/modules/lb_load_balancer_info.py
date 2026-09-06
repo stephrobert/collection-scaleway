@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_load_balancer_info
-short_description: Gather information about Scaleway Load Balancer load balancers
+short_description: Gather information about Scaleway Load Balancers
 version_added: 0.1.0
 description:
 - Retrieve information about an existing Load Balancer, specified by its Load Balancer ID.
@@ -71,6 +71,13 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+#
+# `lb_id` decides which of the two reads runs: given, the
+# module returns that one resource; omitted, it lists them all,
+# walking every page rather than returning the first one in silence.
+
 - name: Get a Load Balancer
   stephrobert.scaleway.lb_load_balancer_info:
     zone: fr-par-1
@@ -79,6 +86,12 @@ EXAMPLES = r"""
 - name: List Load Balancers
   stephrobert.scaleway.lb_load_balancer_info:
     zone: fr-par-1
+  register: result
+- name: Filter Scaleway Load Balancers by tags
+  stephrobert.scaleway.lb_load_balancer_info:
+    zone: fr-par-1
+    tags:
+    - production
   register: result
 """
 
@@ -91,6 +104,110 @@ lbs:
   returned: when I(lb_id) is omitted
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - Underlying Instance ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Load Balancer name.
+      returned: when the API returns it
+      type: str
+    description:
+      description:
+      - Load Balancer description.
+      returned: when the API returns it
+      type: str
+    status:
+      description:
+      - Load Balancer status.
+      returned: when the API returns it
+      type: str
+    instances:
+      description:
+      - List of underlying Instances.
+      returned: when the API returns it
+      type: list
+      elements: dict
+    organization_id:
+      description:
+      - Scaleway Organization ID.
+      returned: when the API returns it
+      type: str
+    project_id:
+      description:
+      - Scaleway Project ID.
+      returned: when the API returns it
+      type: str
+    ip:
+      description:
+      - List of IP addresses attached to the Load Balancer.
+      returned: when the API returns it
+      type: list
+      elements: dict
+    tags:
+      description:
+      - Load Balancer tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    frontend_count:
+      description:
+      - Number of frontends the Load Balancer has.
+      returned: when the API returns it
+      type: int
+    backend_count:
+      description:
+      - Number of backends the Load Balancer has.
+      returned: when the API returns it
+      type: int
+    type:
+      description:
+      - Load Balancer offer type.
+      returned: when the API returns it
+      type: str
+    subscriber:
+      description:
+      - Subscriber information.
+      returned: when the API returns it
+      type: dict
+    ssl_compatibility_level:
+      description:
+      - Determines the minimal SSL version which needs to be supported on client side.
+      returned: when the API returns it
+      type: str
+    created_at:
+      description:
+      - Date on which the Load Balancer was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date on which the Load Balancer was last updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    private_network_count:
+      description:
+      - Number of Private Networks attached to the Load Balancer.
+      returned: when the API returns it
+      type: int
+    route_count:
+      description:
+      - Number of routes configured on the Load Balancer.
+      returned: when the API returns it
+      type: int
+    region:
+      description:
+      - The region the Load Balancer is in.
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - The zone the Load Balancer is in.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from generator.ansible.collection import Collection, load_collection
 from generator.ir.models import ApiService
 from generator.overrides.loader import OverrideSet
 from generator.parser.openapi import parse_document
@@ -38,3 +39,19 @@ def instance_service() -> ApiService:
 @pytest.fixture(scope="session")
 def instance_plan() -> ProductPlan:
     return build_plan("instance", "v1", spec_root=INSTANCE_SPECS)
+
+
+@pytest.fixture(scope="session")
+def lb_plan() -> ProductPlan:
+    """Le second produit généré, et celui dont le nom publié diffère du slug.
+
+    « Load Balancer API » d'un côté, `lb` de l'autre : c'est sur lui que se
+    voient les défauts de vocabulaire qu'Instance ne peut pas montrer.
+    """
+    return build_plan("lb", "v1", spec_root=INSTANCE_SPECS)
+
+
+@pytest.fixture(scope="session")
+def collection() -> Collection:
+    """La collection livrée, lue dans `galaxy.yml` comme le générateur le fait."""
+    return load_collection()

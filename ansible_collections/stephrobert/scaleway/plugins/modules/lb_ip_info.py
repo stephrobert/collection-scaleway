@@ -63,6 +63,13 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+#
+# `ip_id` decides which of the two reads runs: given, the
+# module returns that one resource; omitted, it lists them all,
+# walking every page rather than returning the first one in silence.
+
 - name: Get an IP address
   stephrobert.scaleway.lb_ip_info:
     zone: fr-par-1
@@ -71,6 +78,12 @@ EXAMPLES = r"""
 - name: List IP addresses
   stephrobert.scaleway.lb_ip_info:
     zone: fr-par-1
+  register: result
+- name: Filter Scaleway Load Balancer ips by tags
+  stephrobert.scaleway.lb_ip_info:
+    zone: fr-par-1
+    tags:
+    - production
   register: result
 """
 
@@ -82,6 +95,53 @@ ips:
   returned: when I(ip_id) is omitted
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - IP address ID.
+      returned: when the API returns it
+      type: str
+    ip_address:
+      description:
+      - IP address.
+      returned: when the API returns it
+      type: str
+    organization_id:
+      description:
+      - Organization ID of the Scaleway Organization the IP address is in.
+      returned: when the API returns it
+      type: str
+    project_id:
+      description:
+      - Project ID of the Scaleway Project the IP address is in.
+      returned: when the API returns it
+      type: str
+    lb_id:
+      description:
+      - Load Balancer ID.
+      returned: when the API returns it
+      type: str
+    reverse:
+      description:
+      - Reverse DNS (domain name) of the IP address.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - IP tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    region:
+      description:
+      - The region the IP address is in.
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - The zone the IP address is in.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

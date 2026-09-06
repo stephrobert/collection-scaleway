@@ -42,6 +42,9 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: List volume types
   stephrobert.scaleway.instance_volume_type_info:
     zone: fr-par-1

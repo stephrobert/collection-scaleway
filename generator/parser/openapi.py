@@ -22,6 +22,8 @@ from typing import Any
 from generator.ir.enums import ApiType, HTTPMethod, ParameterLocation, Scope
 from generator.ir.models import (
     ApiEnum,
+    ApiField,
+    ApiObject,
     ApiOperation,
     ApiParameter,
     ApiResponse,
@@ -104,6 +106,11 @@ def parse_document(spec: SpecDocument) -> ApiService:
                 )
             )
 
+    # **Les champs des ressources rendues, une fois par schéma.** Ils viennent
+    # après les opérations parce qu'ils se déduisent d'elles : seuls les
+    # schémas qu'une réponse désigne sont retenus.
+    objects = _parse_objects(operations, schemas, enums, warnings)
+
     info = document.get("info", {})
     return ApiService(
         name=spec.product,
@@ -113,8 +120,62 @@ def parse_document(spec: SpecDocument) -> ApiService:
         source=str(spec.path.name),
         operations=tuple(sorted(operations, key=lambda op: op.id)),
         enums=tuple(sorted(enums.values(), key=lambda enum: enum.name)),
+        objects=objects,
         warnings=tuple(sorted(set(warnings))),
     )
+
+
+def _parse_objects(
+    operations: list[ApiOperation],
+    schemas: dict[str, Any],
+    enums: dict[str, ApiEnum],
+    warnings: list[str],
+) -> tuple[ApiObject, ...]:
+    """Les champs des ressources que les opérations rendent réellement.
+
+    **Un seul niveau, et c'est une décision.** Le `contains` d'un `RETURN` sert
+    à dire ce qu'on peut lire dans le résultat ; recopier l'arbre entier des
+    schémas ferait une page que personne ne parcourt et un IR que personne ne
+    relit. Un champ objet reste donc `dict`, un tableau d'objets reste `list`.
+
+    Les enums rencontrés ici rejoignent ceux des paramètres : une valeur
+    d'énumération renommée dans une réponse est une évolution de la surface, et
+    le golden doit la voir passer.
+    """
+    voulus = sorted(
+        {
+            operation.response.payload_schema
+            for operation in operations
+            if operation.response and operation.response.payload_schema
+        }
+    )
+    objets: list[ApiObject] = []
+    for nom in voulus:
+        schema = schemas.get(nom)
+        if not isinstance(schema, dict):
+            warnings.append(f"{nom} : schéma de réponse absent des composants du contrat")
+            continue
+        champs: list[ApiField] = []
+        for champ, declaration in (schema.get("properties") or {}).items():
+            if not isinstance(declaration, dict):
+                continue
+            resolu = _resolve_type(
+                schema=declaration,
+                schemas=schemas,
+                enums=enums,
+                warnings=warnings,
+                context=f"{nom}.{champ}",
+            )
+            champs.append(
+                ApiField(
+                    name=champ,
+                    type=resolu.type,
+                    item_type=resolu.item_type,
+                    description=_first_paragraph(declaration.get("description")),
+                )
+            )
+        objets.append(ApiObject(name=nom, fields=tuple(champs)))
+    return tuple(objets)
 
 
 def _parse_operation(

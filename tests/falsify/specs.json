@@ -43,8 +43,8 @@
       "name": "override-orphelin",
       "why": "Un override qui ne désigne rien décrit une API qui n'existe pas, et il est inerte.",
       "file": "generator/overrides/loader.py",
-      "find": "        return tuple(sorted(key for key in self.operations if key not in known))",
-      "replace": "        return tuple(sorted(key for key in self.operations if key not in known and False))",
+      "find": "            operation = par_cle.get(cle)",
+      "replace": "            operation = par_cle.get(cle) or next(iter(par_cle.values()), None)",
       "test": "tests/unit/generator/test_overrides.py::test_un_override_orphelin_est_signale"
     },
     {
@@ -902,6 +902,254 @@
       "find": "        for chemin in entrees(archive)",
       "replace": "        for chemin in members(archive)",
       "test": "tests/unit/outillage/test_verdicts.py::test_un_repertoire_interdit_meme_vide_est_une_fuite"
+    },
+    {
+      "name": "tag-hors-de-main-publiable",
+      "why": "Le workflow de publication se déclenche sur un **tag**, pas sur une branche. Un tag est mobile et se pose sur n'importe quel commit : une branche jamais relue, un correctif poussé en vitesse. Sans cette garde, rien ne vérifie que ce qui part sur Galaxy a traversé une pull request, et ce qui part est immuable.",
+      "file": "scripts/release.py",
+      "find": "    if tag is not None and not sur_la_branche_principale(tag):",
+      "replace": "    if tag is not None and not sur_la_branche_principale(tag) and False:",
+      "test": "tests/unit/outillage/test_release.py::test_un_tag_hors_de_main_est_refuse"
+    },
+    {
+      "name": "cle-doverride-en-double",
+      "why": "YAML garde la dernière occurrence en silence : un second bloc efface la décision du premier, et le module publié change de nom sans qu'aucun contrôle ne rougisse.",
+      "file": "generator/overrides/loader.py",
+      "find": "            if cle in vues:",
+      "replace": "            if cle in vues and False:",
+      "test": "tests/unit/generator/test_overrides_documentaires.py::test_une_cle_declaree_deux_fois_est_refusee"
+    },
+    {
+      "name": "description-doverride-sans-raison",
+      "why": "Le texte sort sur Galaxy sous le nom de la collection : sans raison, un lecteur ne peut pas le distinguer d'une phrase de Scaleway.",
+      "file": "generator/overrides/loader.py",
+      "find": "        if documente and not declaration.get(\"reason\"):",
+      "replace": "        if documente and not declaration.get(\"reason\") and False:",
+      "test": "tests/unit/generator/test_overrides_documentaires.py::test_une_description_publiee_sans_raison_est_refusee"
+    },
+    {
+      "name": "override-qui-recouvre-le-contrat",
+      "why": "Un override qui gagne sur le contrat fait diverger la page publiée de l'API, et rien sur la page ne dit d'où vient le texte.",
+      "file": "generator/ansible/models.py",
+      "find": "    lines.append(parameter.description or comble or UNDOCUMENTED)",
+      "replace": "    lines.append(comble or parameter.description or UNDOCUMENTED)",
+      "test": "tests/unit/generator/test_overrides_documentaires.py::test_le_contrat_gagne_toujours_sur_loverride"
+    },
+    {
+      "name": "orphelin-documentaire",
+      "why": "Le jour où l'amont documente le champ, l'override cesse d'être lu : un texte mort qu'une relecture croirait publié.",
+      "file": "generator/overrides/loader.py",
+      "find": "                if restriction.description and nom in documentes:",
+      "replace": "                if restriction.description and nom in documentes and False:",
+      "test": "tests/unit/generator/test_overrides_documentaires.py::test_un_override_qui_ne_comble_plus_rien_est_orphelin"
+    },
+    {
+      "name": "documentation-impubliable-publiable",
+      "why": "Une page Galaxy est immuable : un module qui y arrive sans descriptions ni exemples copiables ne s'explique nulle part, et la version ne se reprend pas.",
+      "file": "scripts/release.py",
+      "find": "        if bloquants:",
+      "replace": "        if bloquants and False:",
+      "test": "tests/unit/outillage/test_release.py::test_une_documentation_impubliable_est_refusee"
+    },
+    {
+      "name": "repli-de-description-accepte",
+      "why": "« Not documented by the Scaleway API contract. » est une phrase publiée, pas une absence : sans ce refus elle part sur Galaxy pour toujours.",
+      "file": "scripts/docs_quality.py",
+      "find": "REPLI = \"Not documented by the Scaleway API contract.\"",
+      "replace": "REPLI = \"\\x00 phrase que rien ne porte \\x00\"",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_un_repli_de_description_est_bloquant"
+    },
+    {
+      "name": "exemple-a-trou-accepte",
+      "why": "`zone: <zone>` n'est pas du YAML qu'on copie : c'est un formulaire vide, et le lecteur n'a nulle part où trouver la valeur.",
+      "file": "scripts/docs_quality.py",
+      "find": "PLACEHOLDER = re.compile(r\"<[a-z_]+>\")",
+      "replace": "PLACEHOLDER = re.compile(r\"<\\x00jamais\\x00>\")",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_un_exemple_a_trou_est_bloquant"
+    },
+    {
+      "name": "mesure-documentaire-sur-zero-module",
+      "why": "Zéro défaut sur zéro module est le vert qui a déjà menti une fois ici : un `ansible-test sanity` vert sur zéro fichier examiné.",
+      "file": "scripts/docs_quality.py",
+      "find": "    if total.modules == 0:",
+      "replace": "    if total.modules == 0 and False:",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_une_mesure_sur_zero_module_est_une_erreur"
+    },
+    {
+      "name": "produit-nomme-par-son-slug",
+      "why": "« Manage a Scaleway Lb backend » nomme le produit par son slug d'index, que Scaleway n'emploie ni dans sa console ni dans sa facturation.",
+      "file": "generator/ansible/models.py",
+      "find": "    return (service.title or service.name).removesuffix(\" API\")",
+      "replace": "    return (service.name or service.title).capitalize().removesuffix(\" API\")",
+      "test": "tests/unit/generator/test_vocabulaire.py::test_le_produit_se_nomme_comme_le_contrat_le_publie"
+    },
+    {
+      "name": "produit-repete-dans-la-ressource",
+      "why": "« Manage a Scaleway Load Balancer load balancer » : la ressource déduite du chemin porte déjà le nom du produit.",
+      "file": "generator/ansible/models.py",
+      "find": "    if resource.casefold().startswith(f\"{tete}_\"):",
+      "replace": "    if resource.casefold().startswith(f\"{tete}_\") and False:",
+      "test": "tests/unit/generator/test_vocabulaire.py::test_le_produit_ne_se_repete_pas_dans_la_ressource"
+    },
+    {
+      "name": "couche-http-publiee",
+      "why": "« You must set all parameters » est vrai de l'API et faux du module, qui lit la ressource avant d'écrire ; publier les deux publie une contradiction.",
+      "file": "generator/ansible/models.py",
+      "find": "    return re.sub(r\"\\s{2,}\", \" \", FUITES_HTTP.sub(\"\", texte)).strip()",
+      "replace": "    return re.sub(r\"\\s{2,}\", \" \", texte).strip()",
+      "test": "tests/unit/generator/test_vocabulaire.py::test_la_couche_http_ne_sort_pas_dans_la_documentation"
+    },
+    {
+      "name": "nettoyage-http-qui-efface-le-contrat",
+      "why": "Retirer la fuite est un nettoyage : effacer toute la description passerait le test de la fuite en perdant ce que le contrat dit.",
+      "file": "generator/ansible/models.py",
+      "find": "    return re.sub(r\"\\s{2,}\", \" \", FUITES_HTTP.sub(\"\", texte)).strip()",
+      "replace": "    return \"\" if FUITES_HTTP.search(texte) else texte.strip()",
+      "test": "tests/unit/generator/test_vocabulaire.py::test_le_reste_de_la_phrase_du_contrat_sort_mot_pour_mot"
+    },
+    {
+      "name": "exemple-nomme-par-loperation",
+      "why": "`Run GetDashboard` nomme l'appel HTTP dans un playbook, et ce nom reste dans la sortie d'Ansible de qui copie la tâche.",
+      "file": "generator/ansible/models.py",
+      "find": "    lecture = f\"Read a Scaleway {libelle}\" if libelle else f\"Run {name}\"",
+      "replace": "    lecture = f\"Run {name}\" if libelle else f\"Run {name}\"",
+      "test": "tests/unit/generator/test_vocabulaire.py::test_un_exemple_ne_porte_pas_didentifiant_doperation"
+    },
+    {
+      "name": "vocabulaire-du-contrat-accepte",
+      "why": "La porte documentaire doit refuser « Scaleway Lb » : sans ce détecteur, le vocabulaire du slug revient sans qu'on s'en aperçoive.",
+      "file": "scripts/docs_quality.py",
+      "find": "    (re.compile(r\"\\bScaleway Lb\\b\"), \"Scaleway Load Balancer\"),",
+      "replace": "    (re.compile(r\"\\bScaleway \\x00Lb\\x00\\b\"), \"Scaleway Load Balancer\"),",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_le_vocabulaire_du_contrat_est_bloquant"
+    },
+    {
+      "name": "fuite-http-acceptee-par-la-porte",
+      "why": "Sans ce détecteur, une description qui contredit le module repasse dans une release sans que rien ne le dise.",
+      "file": "scripts/docs_quality.py",
+      "find": "    \"You must set all parameters\",",
+      "replace": "    \"\\x00 phrase que rien ne porte \\x00\",",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_une_fuite_de_la_couche_http_est_bloquante"
+    },
+    {
+      "name": "nom-doperation-accepte-par-la-porte",
+      "why": "Sans ce détecteur, un exemple nommé par l'identifiant du SDK repart sur Galaxy.",
+      "file": "scripts/docs_quality.py",
+      "find": "NOM_DOPERATION = re.compile(r\"\\bRun [A-Z][A-Za-z]+\\b\")",
+      "replace": "NOM_DOPERATION = re.compile(r\"\\bRun \\x00[A-Z][A-Za-z]+\\x00\\b\")",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_un_exemple_nomme_par_le_contrat_est_bloquant"
+    },
+    {
+      "name": "retour-sans-ses-champs",
+      "why": "Nommer la clé de retour ne dit pas ce qu'on y trouve : sans `contains`, il faut appeler le module ou lire le contrat OpenAPI pour l'apprendre.",
+      "file": "generator/ansible/models.py",
+      "find": "    objet = service.object(schema) if service is not None else None",
+      "replace": "    objet = service.object(schema) if service is None else None",
+      "test": "tests/unit/generator/test_retours_detailles.py::test_le_retour_dun_module_dinformation_liste_ses_champs"
+    },
+    {
+      "name": "ressource-de-reponse-inventee",
+      "why": "Un `contains` bâti sur un schéma que le contrat ne porte pas décrirait une réponse que personne n'a lue.",
+      "file": "generator/ir/models.py",
+      "find": "            if entry.name == name:",
+      "replace": "            if entry.name == name or True:",
+      "test": "tests/unit/generator/test_retours_detailles.py::test_une_ressource_inconnue_ne_produit_aucun_champ"
+    },
+    {
+      "name": "ir-qui-recopie-tous-les-schemas",
+      "why": "Recopier les deux cents schémas du contrat ferait un IR que personne ne relit en diff, et le golden est ce qui rend la dérive visible.",
+      "file": "generator/parser/openapi.py",
+      "find": "            if operation.response and operation.response.payload_schema",
+      "replace": "            if operation.response and operation.response.payload_schema or True",
+      "test": "tests/unit/generator/test_retours_detailles.py::test_lir_porte_les_champs_des_ressources_rendues"
+    },
+    {
+      "name": "repli-result-sans-ses-champs",
+      "why": "Quatre modules dont la réponse est la ressource elle-même publiaient une clé sans contenu, alors que le contrat déclarait le schéma.",
+      "file": "generator/ansible/models.py",
+      "find": "                    contains=_contains(service, source.payload_schema),",
+      "replace": "                    contains=(),",
+      "test": "tests/unit/generator/test_retours_detailles.py::test_le_repli_result_porte_aussi_ses_champs"
+    },
+    {
+      "name": "plugin-dinventaire-hors-mesure",
+      "why": "Le plugin d'inventaire est la page qu'un utilisateur lit en premier : surveiller les cinquante suivantes et pas celle-là laisse le trou au pire endroit.",
+      "file": "scripts/docs_quality.py",
+      "find": "    a_examiner = sorted(modules_dir.glob(\"*.py\")) + sorted(inventaire_dir.glob(\"*.py\"))",
+      "replace": "    a_examiner = sorted(modules_dir.glob(\"*.py\")) + sorted(inventaire_dir.glob(\"*.pyc\"))",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_le_plugin_dinventaire_entre_dans_la_mesure"
+    },
+    {
+      "name": "exemples-multi-documents-ignores",
+      "why": "Un plugin publie plusieurs fichiers d'inventaire séparés par `---` : n'en lire qu'un laisse les trois autres repasser en commentaires sans que rien ne le dise.",
+      "file": "scripts/docs_quality.py",
+      "find": "        documents = [d for d in yaml.safe_load_all(trouve.group(1)) if d is not None]",
+      "replace": "        documents = [d for d in [yaml.safe_load(trouve.group(1))] if d is not None]",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_les_exemples_dun_plugin_sont_des_fichiers_entiers"
+    },
+    {
+      "name": "lien-publie-vers-une-branche",
+      "why": "Sur Galaxy, la page annonce une version et son lien menait à `main` : le lecteur d'une version publiée atterrissait sur les fichiers d'aujourd'hui.",
+      "file": "scripts/readme_counters.py",
+      "find": "    return LIEN_DU_DEPOT.sub(rf\"\\g<1>{version}\\g<3>\", texte)",
+      "replace": "    return LIEN_DU_DEPOT.sub(r\"\\g<1>main\\g<3>\", texte)",
+      "test": "tests/unit/outillage/test_liens_versionnes.py::test_un_lien_du_depot_prend_la_version_publiee"
+    },
+    {
+      "name": "lien-dun-autre-projet-reecrit",
+      "why": "Une substitution qui prend toutes les URL GitHub fait pointer la checklist d'ansible-inclusion sur un tag de ce dépôt, dans un dépôt qui ne le porte pas.",
+      "file": "scripts/readme_counters.py",
+      "find": "    r\"(https://github\\.com/stephrobert/collection-scaleway/(?:blob|tree)/)([^/\\s)]+)(/)\"",
+      "replace": "    r\"(https://github\\.com/[^/]+/[^/]+/(?:blob|tree)/)([^/\\s)]+)(/)\"",
+      "test": "tests/unit/outillage/test_liens_versionnes.py::test_un_lien_vers_un_autre_projet_nest_pas_reecrit"
+    },
+    {
+      "name": "qualite-documentaire-non-publiee",
+      "why": "Un chiffre qui ne sort nulle part est un chiffre que personne ne surveille : les 15 options sans description étaient invisibles depuis le README.",
+      "file": "scripts/readme_counters.py",
+      "find": "            f\"  {qualite.modules} published pages: \"",
+      "replace": "            \"\" or f\"  {qualite.modules} \"",
+      "test": "tests/unit/outillage/test_liens_versionnes.py::test_le_bloc_derive_publie_la_qualite_documentaire"
+    },
+    {
+      "name": "module-dinformation-sans-filtre",
+      "why": "Lister un parc entier pour en garder trois machines n'est pas une réponse, et aucune tâche ne montrait un filtre.",
+      "file": "generator/ansible/models.py",
+      "find": "        filtre = _filtre_dexemple(options, selector)",
+      "replace": "        filtre = _filtre_dexemple(options, selector) and None",
+      "test": "tests/unit/generator/test_exemples_semantiques.py::test_un_module_dinformation_montre_comment_filtrer"
+    },
+    {
+      "name": "tri-presente-comme-un-filtre",
+      "why": "`order_by` ordonne une liste : le montrer à qui cherche comment la réduire répond à côté.",
+      "file": "generator/ansible/models.py",
+      "find": "    ecartes = {selector, \"zone\", \"region\", \"order_by\"}",
+      "replace": "    ecartes = {selector, \"zone\", \"region\"}",
+      "test": "tests/unit/generator/test_exemples_semantiques.py::test_un_tri_nest_pas_un_filtre"
+    },
+    {
+      "name": "gestion-sans-mode-simulation",
+      "why": "Le préambule parle du mode simulation et de `--diff` depuis toujours, et aucune tâche ne les montrait.",
+      "file": "generator/ansible/models.py",
+      "find": "            keywords=((\"check_mode\", True), (\"diff\", True)),",
+      "replace": "            keywords=(),",
+      "test": "tests/unit/generator/test_exemples_semantiques.py::test_un_module_de_gestion_montre_le_mode_simulation"
+    },
+    {
+      "name": "simulation-qui-ne-simule-pas-lecriture",
+      "why": "Une simulation qui n'écrit pas la même chose que la tâche d'écriture ne simule rien.",
+      "file": "generator/ansible/models.py",
+      "find": "            parameters=dict(requis),\n            register=\"result\",\n            keywords=((\"check_mode\", True), (\"diff\", True)),",
+      "replace": "            parameters={},\n            register=\"result\",\n            keywords=((\"check_mode\", True), (\"diff\", True)),",
+      "test": "tests/unit/generator/test_exemples_semantiques.py::test_lexemple_de_simulation_porte_les_memes_parametres"
+    },
+    {
+      "name": "ancre-yaml-dans-un-exemple",
+      "why": "Une ancre est du YAML valide qu'on ne peut pas copier tâche par tâche : la seconde tâche ne dit plus ce qu'elle envoie.",
+      "file": "generator/renderer/modules.py",
+      "find": "    def ignore_aliases(self, data: Any) -> bool:\n        return True",
+      "replace": "    def ignore_aliases(self, data: Any) -> bool:\n        return super().ignore_aliases(data)",
+      "test": "tests/unit/generator/test_exemples_semantiques.py::test_le_rendu_nemet_jamais_dancre_yaml"
     }
   ]
 }

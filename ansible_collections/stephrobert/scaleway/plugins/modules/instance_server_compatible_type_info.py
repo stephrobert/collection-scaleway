@@ -59,6 +59,9 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: Get Instance compatible types
   stephrobert.scaleway.instance_server_compatible_type_info:
     zone: fr-par-1
@@ -86,6 +89,13 @@ result:
     as is.'
   returned: success
   type: dict
+  contains:
+    compatible_types:
+      description:
+      - Instance compatible types.
+      returned: when the API returns it
+      type: list
+      elements: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

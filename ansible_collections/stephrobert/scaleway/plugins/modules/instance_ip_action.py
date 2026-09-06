@@ -48,6 +48,10 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# An action is a trigger, not a state: running this a second time
+# reports `changed` again, and that is correct. Idempotence is the
+# business of the management modules.
+
 - name: Release to ipam
   stephrobert.scaleway.instance_ip_action:
     zone: fr-par-1

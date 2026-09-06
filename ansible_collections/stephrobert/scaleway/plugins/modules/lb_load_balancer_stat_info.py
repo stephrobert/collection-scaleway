@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_load_balancer_stat_info
-short_description: Gather information about Scaleway Load Balancer load balancer stats
+short_description: Gather information about Scaleway Load Balancer stats
 version_added: 0.1.0
 description:
 - Get usage statistics of a given Load Balancer
@@ -49,6 +49,9 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: Get usage statistics of a given Load Balancer
   stephrobert.scaleway.lb_load_balancer_stat_info:
     zone: fr-par-1
@@ -64,6 +67,13 @@ result:
     as is.'
   returned: success
   type: dict
+  contains:
+    backend_servers_stats:
+      description:
+      - List of objects containing Load Balancer statistics.
+      returned: when the API returns it
+      type: list
+      elements: dict
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

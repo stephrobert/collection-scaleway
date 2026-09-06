@@ -59,13 +59,31 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Update a Scaleway instance server private nic
+# The module reads the resource, compares, and writes only what
+# differs: run it twice and the second run reports no change.
+#
+# Check mode compares without writing, and `--diff` shows what would
+# change. A parameter you do not pass is a parameter the module does
+# not touch.
+
+- name: Update a Scaleway Instance server private nic
   stephrobert.scaleway.instance_server_private_nic:
-    zone: <zone>
-    server_id: <server_id>
-    private_nic_id: <private_nic_id>
-    tags: <tags>
+    zone: fr-par-1
+    server_id: 11111111-2222-3333-4444-555555555555
+    private_nic_id: 11111111-2222-3333-4444-555555555555
+    tags:
+    - production
   register: result
+- name: Preview the change on a Scaleway Instance server private nic without writing
+  stephrobert.scaleway.instance_server_private_nic:
+    zone: fr-par-1
+    server_id: 11111111-2222-3333-4444-555555555555
+    private_nic_id: 11111111-2222-3333-4444-555555555555
+    tags:
+    - production
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""
@@ -74,6 +92,54 @@ private_nic:
   - Get private NIC properties.
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - Private NIC unique ID.
+      returned: when the API returns it
+      type: str
+    server_id:
+      description:
+      - Instance to which the private NIC is attached.
+      returned: when the API returns it
+      type: str
+    private_network_id:
+      description:
+      - Private Network the private NIC is attached to.
+      returned: when the API returns it
+      type: str
+    mac_address:
+      description:
+      - Private NIC MAC address.
+      returned: when the API returns it
+      type: str
+    state:
+      description:
+      - Private NIC state.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Private NIC tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    creation_date:
+      description:
+      - Private NIC creation date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - The zone in which the Private NIC is located.
+      returned: when the API returns it
+      type: str
+    ipam_ip_ids:
+      description:
+      - The list of IPAM IPs associated with this private NIC. (UUID format)
+      returned: when the API returns it
+      type: list
+      elements: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

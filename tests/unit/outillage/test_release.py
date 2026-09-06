@@ -26,6 +26,12 @@ def _sans_bruit(monkeypatch: pytest.MonkeyPatch, collection: Any) -> None:
     monkeypatch.setattr(release, "load_collection", lambda: collection)
     monkeypatch.setattr(release, "_git", lambda *_: "")
     monkeypatch.setattr(release, "fragments_en_attente", lambda _: [])
+    # Sans ça, la garde du tag sur `main` lit un `_git` neutralisé, conclut au
+    # refus, et chaque test en compterait un de plus que le sien.
+    monkeypatch.setattr(release, "sur_la_branche_principale", lambda _: True)
+    # Même raison pour la porte documentaire : elle lit les modules du dépôt,
+    # donc un défaut réel ajouterait un refus à chaque test qui n'en juge pas.
+    monkeypatch.setattr(release.docs_quality, "mesurer", lambda: (None, []))
 
 
 class _Collection:
@@ -109,3 +115,75 @@ def test_les_fragments_se_lisent_sur_le_disque(tmp_path: Path) -> None:
     (dossier / "a.yml").write_text("", encoding="utf-8")
     (dossier / ".gitkeep").write_text("", encoding="utf-8")
     assert release.fragments_en_attente(tmp_path) == ["a.yml", "b.yml"]
+
+
+# --- ce qui part doit venir de la branche protégée -------------------------
+
+
+def test_un_tag_hors_de_main_est_refuse(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Un tag est mobile, et le workflow se déclenche dessus, pas sur la branche.
+
+    Rien d'autre ne vérifie donc d'où vient ce qui part. Ce qui est publié sur
+    Galaxy est immuable : ça doit être du code qui a traversé une pull request
+    et ses contrôles, pas une branche que personne n'a relue.
+    """
+    _sans_bruit(monkeypatch, _Collection("0.1.0", tmp_path))
+    monkeypatch.setattr(release, "sur_la_branche_principale", lambda _: False)
+    refus = release.controler("0.1.0")
+    assert len(refus) == 1
+    assert "ne désigne aucun commit de `main`" in refus[0]
+
+
+def test_un_tag_sur_main_passe(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Le cas voisin : la garde ne doit pas refuser une publication légitime."""
+    _sans_bruit(monkeypatch, _Collection("0.1.0", tmp_path))
+    monkeypatch.setattr(release, "sur_la_branche_principale", lambda _: True)
+    assert release.controler("0.1.0") == []
+
+
+def test_une_documentation_impubliable_est_refusee(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Une page Galaxy est publiée pour toujours, y compris ce qu'elle ne dit pas.
+
+    Les quatre autres refus protègent la reproductibilité de l'archive. Celui-ci
+    protège son lecteur : un module qui sort avec « Not documented by the
+    Scaleway API contract. » ou avec `zone: <zone>` en guise d'exemple ne
+    s'explique nulle part, et la version ne se reprend pas.
+    """
+    _sans_bruit(monkeypatch, _Collection("0.1.0", tmp_path))
+    monkeypatch.setattr(
+        release.docs_quality,
+        "mesurer",
+        lambda: (
+            None,
+            [
+                release.docs_quality.Defaut(
+                    "instance_ip", "exemple-non-copiable", "« Update »", True
+                )
+            ],
+        ),
+    )
+    refus = release.controler("0.1.0")
+    assert len(refus) == 1
+    assert "exemple-non-copiable" in refus[0]
+
+
+def test_une_qualite_documentaire_non_mesurable_est_refusee(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ne pas savoir n'est pas savoir que tout va bien.
+
+    Si les modules n'ont pas été générés, `mesurer` lève plutôt que de rendre
+    zéro défaut sur zéro module : un dossier vide passerait pour une
+    documentation parfaite.
+    """
+    _sans_bruit(monkeypatch, _Collection("0.1.0", tmp_path))
+
+    def _casse() -> None:
+        raise release.docs_quality.QualiteError("aucun module examiné")
+
+    monkeypatch.setattr(release.docs_quality, "mesurer", _casse)
+    refus = release.controler("0.1.0")
+    assert len(refus) == 1
+    assert "n'a pas pu être mesurée" in refus[0]

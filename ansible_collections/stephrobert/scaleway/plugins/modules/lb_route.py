@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_route
-short_description: Manage a Scaleway Lb route
+short_description: Manage a Scaleway Load Balancer route
 version_added: 0.1.0
 description:
 - Update the configuration of an existing route, specified by its route ID.
@@ -58,12 +58,27 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Update a Scaleway lb route
+# The module reads the resource, compares, and writes only what
+# differs: run it twice and the second run reports no change.
+#
+# Check mode compares without writing, and `--diff` shows what would
+# change. A parameter you do not pass is a parameter the module does
+# not touch.
+
+- name: Update a Scaleway Load Balancer route
   stephrobert.scaleway.lb_route:
-    zone: <zone>
-    route_id: <route_id>
-    backend_id: <backend_id>
+    zone: fr-par-1
+    route_id: 11111111-2222-3333-4444-555555555555
+    backend_id: 11111111-2222-3333-4444-555555555555
   register: result
+- name: Preview the change on a Scaleway Load Balancer route without writing
+  stephrobert.scaleway.lb_route:
+    zone: fr-par-1
+    route_id: 11111111-2222-3333-4444-555555555555
+    backend_id: 11111111-2222-3333-4444-555555555555
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""
@@ -73,6 +88,39 @@ resource:
     origin frontend, target backend and match condition, are returned in the response object.
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - Route ID.
+      returned: when the API returns it
+      type: str
+    frontend_id:
+      description:
+      - ID of the source frontend.
+      returned: when the API returns it
+      type: str
+    backend_id:
+      description:
+      - ID of the target backend.
+      returned: when the API returns it
+      type: str
+    match:
+      description:
+      - Object defining the match condition for a route to be applied. If an incoming client
+        session matches the specified condition (i.e. it has a matching SNI value or HTTP
+        Host header value), it will be passed to the target backend.
+      returned: when the API returns it
+      type: dict
+    created_at:
+      description:
+      - Date on which the route was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date on which the route was last updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

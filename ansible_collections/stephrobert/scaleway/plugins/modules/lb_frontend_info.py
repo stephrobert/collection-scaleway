@@ -67,6 +67,13 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+#
+# `frontend_id` decides which of the two reads runs: given, the
+# module returns that one resource; omitted, it lists them all,
+# walking every page rather than returning the first one in silence.
+
 - name: Get a frontend
   stephrobert.scaleway.lb_frontend_info:
     zone: fr-par-1
@@ -75,6 +82,11 @@ EXAMPLES = r"""
 - name: List frontends of a given Load Balancer
   stephrobert.scaleway.lb_frontend_info:
     zone: fr-par-1
+  register: result
+- name: Filter Scaleway Load Balancer frontends by name
+  stephrobert.scaleway.lb_frontend_info:
+    zone: fr-par-1
+    name: my-frontend-info
   register: result
 """
 
@@ -88,6 +100,74 @@ frontends:
   returned: when I(frontend_id) is omitted
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - Frontend ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Name of the frontend.
+      returned: when the API returns it
+      type: str
+    inbound_port:
+      description:
+      - Port the frontend listens on.
+      returned: when the API returns it
+      type: int
+    backend:
+      description:
+      - Backend object the frontend is attached to.
+      returned: when the API returns it
+      type: dict
+    lb:
+      description:
+      - Load Balancer object the frontend is attached to.
+      returned: when the API returns it
+      type: dict
+    timeout_client:
+      description:
+      - Maximum allowed inactivity time on the client side. (in milliseconds)
+      returned: when the API returns it
+      type: float
+    certificate:
+      description:
+      - Certificate, deprecated in favor of certificate_ids array.
+      returned: when the API returns it
+      type: dict
+    certificate_ids:
+      description:
+      - List of SSL/TLS certificate IDs to bind to the frontend.
+      returned: when the API returns it
+      type: list
+      elements: str
+    created_at:
+      description:
+      - Date on which the frontend was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date on which the frontend was last updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    enable_http3:
+      description:
+      - Defines whether to enable HTTP/3 protocol on the frontend.
+      returned: when the API returns it
+      type: bool
+    connection_rate_limit:
+      description:
+      - Rate limit for new connections established on this frontend. Use 0 value to disable,
+        else value is connections per second.
+      returned: when the API returns it
+      type: int
+    enable_access_logs:
+      description:
+      - Defines whether to enable access logs on the frontend.
+      returned: when the API returns it
+      type: bool
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

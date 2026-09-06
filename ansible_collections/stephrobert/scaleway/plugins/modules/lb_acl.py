@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_acl
-short_description: Manage a Scaleway Lb acl
+short_description: Manage a Scaleway Load Balancer acl
 version_added: 0.1.0
 description:
 - Update a particular ACL, specified by its ACL ID. You can update details including its name,
@@ -73,14 +73,33 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Update a Scaleway lb acl
+# The module reads the resource, compares, and writes only what
+# differs: run it twice and the second run reports no change.
+#
+# Check mode compares without writing, and `--diff` shows what would
+# change. A parameter you do not pass is a parameter the module does
+# not touch.
+
+- name: Update a Scaleway Load Balancer acl
   stephrobert.scaleway.lb_acl:
-    zone: <zone>
-    acl_id: <acl_id>
-    action: <action>
-    index: <index>
-    name: <name>
+    zone: fr-par-1
+    acl_id: 11111111-2222-3333-4444-555555555555
+    action:
+      type: allow
+    index: 0
+    name: my-acl
   register: result
+- name: Preview the change on a Scaleway Load Balancer acl without writing
+  stephrobert.scaleway.lb_acl:
+    zone: fr-par-1
+    acl_id: 11111111-2222-3333-4444-555555555555
+    action:
+      type: allow
+    index: 0
+    name: my-acl
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""
@@ -90,6 +109,53 @@ resource:
     details of the ACL, including its name, action, match rule and frontend.
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - ACL ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - ACL name.
+      returned: when the API returns it
+      type: str
+    match:
+      description:
+      - ACL match filter object. One of `ip_subnet`, `ips_edge_services` or `http_filter`
+        & `http_filter_value` are required.
+      returned: when the API returns it
+      type: dict
+    action:
+      description:
+      - Action to take when incoming traffic matches an ACL filter.
+      returned: when the API returns it
+      type: dict
+    frontend:
+      description:
+      - ACL is attached to this frontend object.
+      returned: when the API returns it
+      type: dict
+    index:
+      description:
+      - Priority of this ACL (ACLs are applied in ascending order, 0 is the first ACL executed).
+      returned: when the API returns it
+      type: int
+    created_at:
+      description:
+      - Date on which the ACL was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date on which the ACL was last updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    description:
+      description:
+      - ACL description.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

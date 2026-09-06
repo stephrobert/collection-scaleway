@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_load_balancer_type_info
-short_description: Gather information about Scaleway Load Balancer load balancer types
+short_description: Gather information about Scaleway Load Balancer types
 version_added: 0.1.0
 description:
 - List all the different commercial Load Balancer types. The response includes an array of
@@ -41,6 +41,9 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: List all Load Balancer offer types
   stephrobert.scaleway.lb_load_balancer_type_info:
     zone: fr-par-1
@@ -55,6 +58,42 @@ lb_types:
   returned: success
   type: list
   elements: dict
+  contains:
+    name:
+      description:
+      - Load Balancer commercial offer type name.
+      returned: when the API returns it
+      type: str
+    stock_status:
+      description:
+      - Current stock status for a given Load Balancer type.
+      returned: when the API returns it
+      type: str
+    bandwidth:
+      description:
+      - Maximum bandwidth for a given Load Balancer type.
+      returned: when the API returns it
+      type: int
+    multicloud:
+      description:
+      - Ability to handle backend servers outside Scaleway for a given Load Balancer type.
+      returned: when the API returns it
+      type: bool
+    description:
+      description:
+      - Load Balancer commercial offer type description.
+      returned: when the API returns it
+      type: str
+    region:
+      description:
+      - The region the Load Balancer stock is in.
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - The zone the Load Balancer stock is in.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

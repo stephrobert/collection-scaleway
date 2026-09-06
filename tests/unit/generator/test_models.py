@@ -214,9 +214,15 @@ def test_la_phrase_courte_nomme_le_produit_et_la_ressource(instance_plan: Produc
 
 
 def test_les_exemples_montrent_les_deux_modes(instance_plan: ProductPlan) -> None:
+    """Le sélecteur fait basculer le module, et les deux exemples le montrent.
+
+    Un troisième est venu depuis, qui montre comment filtrer la liste : le test
+    porte sur les deux premiers, qui sont ce qu'il mesure, plutôt que sur leur
+    nombre, qui n'était pas ce qu'il voulait dire.
+    """
     spec = _spec(instance_plan, "instance_server_info")
     exemples = spec.examples_documentation()
-    assert len(exemples) == 2
+    assert len(exemples) >= 2
     assert "server_id" in exemples[0]["stephrobert.scaleway.instance_server_info"]
     assert "server_id" not in exemples[1]["stephrobert.scaleway.instance_server_info"]
 

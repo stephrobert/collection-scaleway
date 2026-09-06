@@ -50,7 +50,7 @@ options:
     type: str
   server:
     description:
-    - Not documented by the Scaleway API contract.
+    - Instance attached to the IP.
     type: str
   tags:
     description:
@@ -70,12 +70,27 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Update a Scaleway instance ip
+# The module reads the resource, compares, and writes only what
+# differs: run it twice and the second run reports no change.
+#
+# Check mode compares without writing, and `--diff` shows what would
+# change. A parameter you do not pass is a parameter the module does
+# not touch.
+
+- name: Update a Scaleway Instance ip
   stephrobert.scaleway.instance_ip:
-    zone: <zone>
-    ip: <ip>
-    reverse: <reverse>
+    zone: fr-par-1
+    ip: 11111111-2222-3333-4444-555555555555
+    reverse: server-1.example.com
   register: result
+- name: Preview the change on a Scaleway Instance ip without writing
+  stephrobert.scaleway.instance_ip:
+    zone: fr-par-1
+    ip: 11111111-2222-3333-4444-555555555555
+    reverse: server-1.example.com
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""
@@ -84,6 +99,68 @@ ip:
   - Get details of an IP with the specified ID or address.
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    address:
+      description:
+      - (IP address)
+      returned: when the API returns it
+      type: str
+    reverse:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    server:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    organization:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: list
+      elements: str
+    project:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    type:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    state:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    prefix:
+      description:
+      - (IP network)
+      returned: when the API returns it
+      type: str
+    ipam_id:
+      description:
+      - (UUID format)
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - The zone you want to target
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

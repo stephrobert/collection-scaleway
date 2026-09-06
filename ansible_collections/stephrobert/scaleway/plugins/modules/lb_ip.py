@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: lb_ip
-short_description: Manage a Scaleway Lb ip
+short_description: Manage a Scaleway Load Balancer ip
 version_added: 0.1.0
 description:
 - Update the reverse DNS of a Load Balancer flexible IP address.
@@ -60,12 +60,27 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Update a Scaleway lb ip
+# The module reads the resource, compares, and writes only what
+# differs: run it twice and the second run reports no change.
+#
+# Check mode compares without writing, and `--diff` shows what would
+# change. A parameter you do not pass is a parameter the module does
+# not touch.
+
+- name: Update a Scaleway Load Balancer ip
   stephrobert.scaleway.lb_ip:
-    zone: <zone>
-    ip_id: <ip_id>
-    reverse: <reverse>
+    zone: fr-par-1
+    ip_id: 11111111-2222-3333-4444-555555555555
+    reverse: server-1.example.com
   register: result
+- name: Preview the change on a Scaleway Load Balancer ip without writing
+  stephrobert.scaleway.lb_ip:
+    zone: fr-par-1
+    ip_id: 11111111-2222-3333-4444-555555555555
+    reverse: server-1.example.com
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""
@@ -74,6 +89,53 @@ resource:
   - Retrieve the full details of a Load Balancer flexible IP address.
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - IP address ID.
+      returned: when the API returns it
+      type: str
+    ip_address:
+      description:
+      - IP address.
+      returned: when the API returns it
+      type: str
+    organization_id:
+      description:
+      - Organization ID of the Scaleway Organization the IP address is in.
+      returned: when the API returns it
+      type: str
+    project_id:
+      description:
+      - Project ID of the Scaleway Project the IP address is in.
+      returned: when the API returns it
+      type: str
+    lb_id:
+      description:
+      - Load Balancer ID.
+      returned: when the API returns it
+      type: str
+    reverse:
+      description:
+      - Reverse DNS (domain name) of the IP address.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - IP tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    region:
+      description:
+      - The region the IP address is in.
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - The zone the IP address is in.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

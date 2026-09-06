@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: widget_widget_action
-short_description: Perform an action on a Scaleway Widget widget
+short_description: Perform an action on a Scaleway Widget
 version_added: 9.9.9
 description:
 - Perform an action on a widget
@@ -47,6 +47,10 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# An action is a trigger, not a state: running this a second time
+# reports `changed` again, and that is correct. Idempotence is the
+# business of the management modules.
+
 - name: Poweron an Instance
   lab.widget.widget_widget_action:
     zone: fr-par-1

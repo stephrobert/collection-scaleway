@@ -46,6 +46,17 @@
       "default": "available"
     },
     {
+      "name": "scaleway.instance.v1.Ip.State",
+      "values": [
+        "unknown_state",
+        "detached",
+        "attached",
+        "pending",
+        "error"
+      ],
+      "default": "unknown_state"
+    },
+    {
       "name": "scaleway.instance.v1.IpType",
       "values": [
         "unknown_iptype",
@@ -84,6 +95,16 @@
       "description": "Policy type of the placement group."
     },
     {
+      "name": "scaleway.instance.v1.PrivateNIC.State",
+      "values": [
+        "available",
+        "syncing",
+        "syncing_error"
+      ],
+      "default": "available",
+      "description": "Private NIC state."
+    },
+    {
       "name": "scaleway.instance.v1.SecurityGroup.Policy",
       "values": [
         "unknown_policy",
@@ -92,6 +113,16 @@
       ],
       "default": "unknown_policy",
       "description": "Default policy for inbound rules."
+    },
+    {
+      "name": "scaleway.instance.v1.SecurityGroup.State",
+      "values": [
+        "available",
+        "syncing",
+        "syncing_error"
+      ],
+      "default": "available",
+      "description": "The state of the security group. Set to `syncing` (until the changes.\nAre applied) when the security group is updated (e.g., rules added, modified, or deleted)\nor when it is attached to or detached from a server's public network interface."
     },
     {
       "name": "scaleway.instance.v1.SecurityGroupRule.Action",
@@ -172,6 +203,18 @@
       "description": "Volume type of the snapshot.\nOverrides the volume_type of the snapshot.\nIf omitted, the volume type of the original volume will be used."
     },
     {
+      "name": "scaleway.instance.v1.Task.Status",
+      "values": [
+        "pending",
+        "started",
+        "success",
+        "failure",
+        "retry"
+      ],
+      "default": "pending",
+      "description": "Task status."
+    },
+    {
       "name": "scaleway.instance.v1.Volume.State",
       "values": [
         "available",
@@ -197,6 +240,881 @@
         "sbs_snapshot"
       ],
       "default": "l_ssd"
+    }
+  ],
+  "objects": [
+    {
+      "name": "scaleway.instance.v1.Dashboard",
+      "fields": [
+        {
+          "name": "volumes_count",
+          "type": "integer"
+        },
+        {
+          "name": "running_servers_count",
+          "type": "integer"
+        },
+        {
+          "name": "servers_by_types",
+          "type": "map"
+        },
+        {
+          "name": "images_count",
+          "type": "integer"
+        },
+        {
+          "name": "snapshots_count",
+          "type": "integer"
+        },
+        {
+          "name": "servers_count",
+          "type": "integer"
+        },
+        {
+          "name": "ips_count",
+          "type": "integer"
+        },
+        {
+          "name": "security_groups_count",
+          "type": "integer"
+        },
+        {
+          "name": "ips_unused",
+          "type": "integer"
+        },
+        {
+          "name": "volumes_l_ssd_count",
+          "type": "integer"
+        },
+        {
+          "name": "volumes_l_ssd_total_size",
+          "type": "integer",
+          "description": "(in bytes)"
+        },
+        {
+          "name": "private_nics_count",
+          "type": "integer"
+        },
+        {
+          "name": "placement_groups_count",
+          "type": "integer"
+        },
+        {
+          "name": "volumes_scratch_count",
+          "type": "integer"
+        },
+        {
+          "name": "volumes_b_ssd_count",
+          "type": "integer"
+        },
+        {
+          "name": "volumes_b_ssd_total_size",
+          "type": "integer",
+          "description": "(in bytes)"
+        }
+      ]
+    },
+    {
+      "name": "scaleway.instance.v1.Image",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "arch",
+          "type": "enum"
+        },
+        {
+          "name": "creation_date",
+          "type": "string",
+          "description": "(RFC 3339 format)"
+        },
+        {
+          "name": "modification_date",
+          "type": "string",
+          "description": "(RFC 3339 format)"
+        },
+        {
+          "name": "default_bootscript",
+          "type": "object"
+        },
+        {
+          "name": "extra_volumes",
+          "type": "map"
+        },
+        {
+          "name": "from_server",
+          "type": "string"
+        },
+        {
+          "name": "organization",
+          "type": "string"
+        },
+        {
+          "name": "public",
+          "type": "boolean"
+        },
+        {
+          "name": "root_volume",
+          "type": "object"
+        },
+        {
+          "name": "state",
+          "type": "enum"
+        },
+        {
+          "name": "project",
+          "type": "string"
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string"
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "The zone you want to target"
+        }
+      ]
+    },
+    {
+      "name": "scaleway.instance.v1.Ip",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "address",
+          "type": "string",
+          "description": "(IP address)"
+        },
+        {
+          "name": "reverse",
+          "type": "string"
+        },
+        {
+          "name": "server",
+          "type": "object"
+        },
+        {
+          "name": "organization",
+          "type": "string"
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string"
+        },
+        {
+          "name": "project",
+          "type": "string"
+        },
+        {
+          "name": "type",
+          "type": "enum"
+        },
+        {
+          "name": "state",
+          "type": "enum"
+        },
+        {
+          "name": "prefix",
+          "type": "string",
+          "description": "(IP network)"
+        },
+        {
+          "name": "ipam_id",
+          "type": "string",
+          "description": "(UUID format)"
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "The zone you want to target"
+        }
+      ]
+    },
+    {
+      "name": "scaleway.instance.v1.PlacementGroup",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Placement group unique ID."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Placement group name."
+        },
+        {
+          "name": "organization",
+          "type": "string",
+          "description": "Placement group Organization ID."
+        },
+        {
+          "name": "project",
+          "type": "string",
+          "description": "Placement group Project ID."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Placement group tags."
+        },
+        {
+          "name": "policy_mode",
+          "type": "enum",
+          "description": "Select the failure mode when the placement cannot be respected, either optional or enforced."
+        },
+        {
+          "name": "policy_type",
+          "type": "enum",
+          "description": "Select the behavior of the placement group, either low_latency (group) or max_availability (spread)."
+        },
+        {
+          "name": "policy_respected",
+          "type": "boolean",
+          "description": "True if the policy is respected, false otherwise.\nIn the server endpoints the value is always false as it is deprecated.\nIn the placement group endpoints the value is correct."
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "Zone in which the placement group is located."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.instance.v1.PlacementGroupServer",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Instance UUID."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Instance name."
+        },
+        {
+          "name": "policy_respected",
+          "type": "boolean",
+          "description": "Defines whether the placement group policy is respected (either 1 or 0)."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.instance.v1.PrivateNIC",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Private NIC unique ID."
+        },
+        {
+          "name": "server_id",
+          "type": "string",
+          "description": "Instance to which the private NIC is attached."
+        },
+        {
+          "name": "private_network_id",
+          "type": "string",
+          "description": "Private Network the private NIC is attached to."
+        },
+        {
+          "name": "mac_address",
+          "type": "string",
+          "description": "Private NIC MAC address."
+        },
+        {
+          "name": "state",
+          "type": "enum",
+          "description": "Private NIC state."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Private NIC tags."
+        },
+        {
+          "name": "creation_date",
+          "type": "string",
+          "description": "Private NIC creation date. (RFC 3339 format)"
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "The zone in which the Private NIC is located."
+        },
+        {
+          "name": "ipam_ip_ids",
+          "type": "array",
+          "item_type": "string",
+          "description": "The list of IPAM IPs associated with this private NIC. (UUID format)"
+        }
+      ]
+    },
+    {
+      "name": "scaleway.instance.v1.SecurityGroup",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Security group unique ID."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Security group name."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Security group description."
+        },
+        {
+          "name": "enable_default_security",
+          "type": "boolean",
+          "description": "True if SMTP is blocked on IPv4 and IPv6. This feature is read only, please open a support ticket if you need to make it configurable."
+        },
+        {
+          "name": "inbound_default_policy",
+          "type": "enum",
+          "description": "Default inbound policy."
+        },
+        {
+          "name": "outbound_default_policy",
+          "type": "enum",
+          "description": "Default outbound policy."
+        },
+        {
+          "name": "organization",
+          "type": "string",
+          "description": "Security group Organization ID."
+        },
+        {
+          "name": "project",
+          "type": "string",
+          "description": "Security group Project ID."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Security group tags."
+        },
+        {
+          "name": "organization_default",
+          "type": "boolean",
+          "description": "True if it is your default security group for this Organization ID."
+        },
+        {
+          "name": "project_default",
+          "type": "boolean",
+          "description": "True if it is your default security group for this Project ID."
+        },
+        {
+          "name": "creation_date",
+          "type": "string",
+          "description": "Security group creation date. (RFC 3339 format)"
+        },
+        {
+          "name": "modification_date",
+          "type": "string",
+          "description": "Security group modification date. (RFC 3339 format)"
+        },
+        {
+          "name": "servers",
+          "type": "array",
+          "item_type": "object",
+          "description": "List of Instances attached to this security group."
+        },
+        {
+          "name": "stateful",
+          "type": "boolean",
+          "description": "Defines whether the security group is stateful."
+        },
+        {
+          "name": "state",
+          "type": "enum",
+          "description": "The state of the security group. Set to `syncing` (until the changes.\nAre applied) when the security group is updated (e.g., rules added, modified, or deleted)\nor when it is attached to or detached from a server's public network interface."
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "Zone in which the security group is located."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.instance.v1.SecurityGroupRule",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "protocol",
+          "type": "enum"
+        },
+        {
+          "name": "direction",
+          "type": "enum"
+        },
+        {
+          "name": "action",
+          "type": "enum"
+        },
+        {
+          "name": "ip_range",
+          "type": "string",
+          "description": "(IP network)"
+        },
+        {
+          "name": "dest_port_from",
+          "type": "integer"
+        },
+        {
+          "name": "dest_port_to",
+          "type": "integer"
+        },
+        {
+          "name": "position",
+          "type": "integer"
+        },
+        {
+          "name": "editable",
+          "type": "boolean"
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "The zone you want to target"
+        }
+      ]
+    },
+    {
+      "name": "scaleway.instance.v1.Server",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Instance unique ID."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Instance name."
+        },
+        {
+          "name": "organization",
+          "type": "string",
+          "description": "Instance Organization ID."
+        },
+        {
+          "name": "project",
+          "type": "string",
+          "description": "Instance Project ID."
+        },
+        {
+          "name": "allowed_actions",
+          "type": "array",
+          "item_type": "enum",
+          "description": "List of allowed actions on the Instance."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Tags associated with the Instance."
+        },
+        {
+          "name": "commercial_type",
+          "type": "string",
+          "description": "Instance commercial type (eg. GP1-M)."
+        },
+        {
+          "name": "creation_date",
+          "type": "string",
+          "description": "Instance creation date. (RFC 3339 format)"
+        },
+        {
+          "name": "dynamic_ip_required",
+          "type": "boolean",
+          "description": "True if a dynamic IPv4 is required."
+        },
+        {
+          "name": "routed_ip_enabled",
+          "type": "boolean",
+          "description": "True to configure the instance so it uses the routed IP mode. Use of `routed_ip_enabled` as `False` is deprecated."
+        },
+        {
+          "name": "enable_ipv6",
+          "type": "boolean",
+          "description": "True if IPv6 is enabled (deprecated and always `False` when `routed_ip_enabled` is `True`)."
+        },
+        {
+          "name": "hostname",
+          "type": "string",
+          "description": "Instance host name."
+        },
+        {
+          "name": "image",
+          "type": "object",
+          "description": "Information about the Instance image."
+        },
+        {
+          "name": "protected",
+          "type": "boolean",
+          "description": "Defines whether the Instance protection option is activated."
+        },
+        {
+          "name": "private_ip",
+          "type": "string",
+          "description": "Private IP address of the Instance (deprecated and always `null` when `routed_ip_enabled` is `True`)."
+        },
+        {
+          "name": "public_ip",
+          "type": "object",
+          "description": "Information about the public IP (deprecated in favor of `public_ips`)."
+        },
+        {
+          "name": "public_ips",
+          "type": "array",
+          "item_type": "object",
+          "description": "Information about all the public IPs attached to the server."
+        },
+        {
+          "name": "mac_address",
+          "type": "string",
+          "description": "The server's MAC address."
+        },
+        {
+          "name": "modification_date",
+          "type": "string",
+          "description": "Instance modification date. (RFC 3339 format)"
+        },
+        {
+          "name": "state",
+          "type": "enum",
+          "description": "Instance state."
+        },
+        {
+          "name": "location",
+          "type": "object",
+          "description": "Instance location."
+        },
+        {
+          "name": "ipv6",
+          "type": "object",
+          "description": "Instance IPv6 address (deprecated when `routed_ip_enabled` is `True`)."
+        },
+        {
+          "name": "boot_type",
+          "type": "enum",
+          "description": "Instance boot type."
+        },
+        {
+          "name": "volumes",
+          "type": "map",
+          "description": "Instance volumes."
+        },
+        {
+          "name": "security_group",
+          "type": "object",
+          "description": "Instance security group."
+        },
+        {
+          "name": "maintenances",
+          "type": "array",
+          "item_type": "object",
+          "description": "Instance planned maintenance."
+        },
+        {
+          "name": "state_detail",
+          "type": "string",
+          "description": "Detailed information about the Instance state."
+        },
+        {
+          "name": "arch",
+          "type": "enum",
+          "description": "Instance architecture."
+        },
+        {
+          "name": "placement_group",
+          "type": "object",
+          "description": "Instance placement group."
+        },
+        {
+          "name": "private_nics",
+          "type": "array",
+          "item_type": "object",
+          "description": "Instance private NICs."
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "Zone in which the Instance is located."
+        },
+        {
+          "name": "admin_password_encryption_ssh_key_id",
+          "type": "string",
+          "description": "UUID of the SSH RSA key that will be used to encrypt the initial admin password for OS requiring it. Mandatory for Windows OS.\nThe public_key value of this key is used to encrypt the admin password. When set to an empty string, reset this value and admin_password_encrypted_value to an empty string so a new password may be generated."
+        },
+        {
+          "name": "admin_password_encrypted_value",
+          "type": "string",
+          "description": "A base64 encoded string containing the admin password encrypted with the public key pointed to by admin_password_encryption_ssh_key_id.\nThis value is reset when admin_password_encryption_ssh_key_id is set to an empty string."
+        },
+        {
+          "name": "filesystems",
+          "type": "array",
+          "item_type": "object",
+          "description": "List of attached filesystems."
+        },
+        {
+          "name": "end_of_service",
+          "type": "boolean",
+          "description": "True if the Instance type has reached end of service."
+        },
+        {
+          "name": "dns",
+          "type": "string",
+          "description": "Public DNS of the server."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.instance.v1.Server.Action"
+    },
+    {
+      "name": "scaleway.instance.v1.ServerCompatibleTypes",
+      "fields": [
+        {
+          "name": "compatible_types",
+          "type": "array",
+          "item_type": "string",
+          "description": "Instance compatible types."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.instance.v1.Snapshot",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Snapshot ID."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Snapshot name."
+        },
+        {
+          "name": "organization",
+          "type": "string",
+          "description": "Snapshot Organization ID."
+        },
+        {
+          "name": "project",
+          "type": "string",
+          "description": "Snapshot Project ID."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Snapshot tags."
+        },
+        {
+          "name": "volume_type",
+          "type": "enum",
+          "description": "Snapshot volume type."
+        },
+        {
+          "name": "size",
+          "type": "integer",
+          "description": "Snapshot size. (in bytes)"
+        },
+        {
+          "name": "state",
+          "type": "enum",
+          "description": "Snapshot state."
+        },
+        {
+          "name": "base_volume",
+          "type": "object",
+          "description": "Volume on which the snapshot is based on."
+        },
+        {
+          "name": "creation_date",
+          "type": "string",
+          "description": "Snapshot creation date. (RFC 3339 format)"
+        },
+        {
+          "name": "modification_date",
+          "type": "string",
+          "description": "Snapshot modification date. (RFC 3339 format)"
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "Snapshot zone."
+        },
+        {
+          "name": "error_reason",
+          "type": "string",
+          "description": "Reason for the failed snapshot import."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.instance.v1.Task",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Unique ID of the task."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Description of the task."
+        },
+        {
+          "name": "progress",
+          "type": "integer",
+          "description": "Progress of the task in percent."
+        },
+        {
+          "name": "started_at",
+          "type": "string",
+          "description": "Task start date. (RFC 3339 format)"
+        },
+        {
+          "name": "terminated_at",
+          "type": "string",
+          "description": "Task end date. (RFC 3339 format)"
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "description": "Task status."
+        },
+        {
+          "name": "href_from",
+          "type": "string"
+        },
+        {
+          "name": "href_result",
+          "type": "string",
+          "description": "Location of the resulting resource."
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "Zone in which the task is executed."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.instance.v1.Volume",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Volume unique ID."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Volume name."
+        },
+        {
+          "name": "export_uri",
+          "type": "string",
+          "description": "Show the volume NBD export URI (deprecated, will always be empty)."
+        },
+        {
+          "name": "size",
+          "type": "integer",
+          "description": "Volume disk size. (in bytes)"
+        },
+        {
+          "name": "volume_type",
+          "type": "enum",
+          "description": "Volume type."
+        },
+        {
+          "name": "creation_date",
+          "type": "string",
+          "description": "Volume creation date. (RFC 3339 format)"
+        },
+        {
+          "name": "modification_date",
+          "type": "string",
+          "description": "Volume modification date. (RFC 3339 format)"
+        },
+        {
+          "name": "organization",
+          "type": "string",
+          "description": "Volume Organization ID."
+        },
+        {
+          "name": "project",
+          "type": "string",
+          "description": "Volume Project ID."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Volume tags."
+        },
+        {
+          "name": "server",
+          "type": "object",
+          "description": "Instance attached to the volume."
+        },
+        {
+          "name": "state",
+          "type": "enum",
+          "description": "Volume state."
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "Zone in which the volume is located."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.std.File",
+      "fields": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "content_type",
+          "type": "string"
+        },
+        {
+          "name": "content",
+          "type": "string"
+        }
+      ]
     }
   ],
   "operations": [

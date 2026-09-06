@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: widget_widget
-short_description: Manage a Scaleway Widget widget
+short_description: Manage a Scaleway Widget
 version_added: 9.9.9
 description:
 - Update a widget
@@ -58,12 +58,29 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Update a Scaleway widget widget
+# The module reads the resource, compares, and writes only what
+# differs: run it twice and the second run reports no change.
+#
+# Check mode compares without writing, and `--diff` shows what would
+# change. A parameter you do not pass is a parameter the module does
+# not touch.
+
+- name: Update a Scaleway Widget
   lab.widget.widget_widget:
-    zone: <zone>
-    widget_id: <widget_id>
-    tags: <tags>
+    zone: fr-par-1
+    widget_id: 11111111-2222-3333-4444-555555555555
+    tags:
+    - production
   register: result
+- name: Preview the change on a Scaleway Widget without writing
+  lab.widget.widget_widget:
+    zone: fr-par-1
+    widget_id: 11111111-2222-3333-4444-555555555555
+    tags:
+    - production
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""
@@ -72,6 +89,23 @@ widget:
   - Get a widget
   returned: success
   type: dict
+  contains:
+    id:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Not documented by the Scaleway API contract.
+      returned: when the API returns it
+      type: list
+      elements: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

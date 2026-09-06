@@ -65,6 +65,13 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+#
+# `placement_group_id` decides which of the two reads runs: given, the
+# module returns that one resource; omitted, it lists them all,
+# walking every page rather than returning the first one in silence.
+
 - name: Get a placement group
   stephrobert.scaleway.instance_placement_group_info:
     zone: fr-par-1
@@ -74,6 +81,12 @@ EXAMPLES = r"""
   stephrobert.scaleway.instance_placement_group_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Instance placement groups by tags
+  stephrobert.scaleway.instance_placement_group_info:
+    zone: fr-par-1
+    tags:
+    - production
+  register: result
 """
 
 RETURN = r"""
@@ -82,12 +95,118 @@ placement_group:
   - Get the specified placement group.
   returned: when I(placement_group_id) is provided
   type: dict
+  contains:
+    id:
+      description:
+      - Placement group unique ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Placement group name.
+      returned: when the API returns it
+      type: str
+    organization:
+      description:
+      - Placement group Organization ID.
+      returned: when the API returns it
+      type: str
+    project:
+      description:
+      - Placement group Project ID.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Placement group tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    policy_mode:
+      description:
+      - Select the failure mode when the placement cannot be respected, either optional or
+        enforced.
+      returned: when the API returns it
+      type: str
+    policy_type:
+      description:
+      - Select the behavior of the placement group, either low_latency (group) or max_availability
+        (spread).
+      returned: when the API returns it
+      type: str
+    policy_respected:
+      description:
+      - 'True if the policy is respected, false otherwise.
+
+        In the server endpoints the value is always false as it is deprecated.
+
+        In the placement group endpoints the value is correct.'
+      returned: when the API returns it
+      type: bool
+    zone:
+      description:
+      - Zone in which the placement group is located.
+      returned: when the API returns it
+      type: str
 placement_groups:
   description:
   - List all placement groups in a specified Availability Zone.
   returned: when I(placement_group_id) is omitted
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - Placement group unique ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Placement group name.
+      returned: when the API returns it
+      type: str
+    organization:
+      description:
+      - Placement group Organization ID.
+      returned: when the API returns it
+      type: str
+    project:
+      description:
+      - Placement group Project ID.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Placement group tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    policy_mode:
+      description:
+      - Select the failure mode when the placement cannot be respected, either optional or
+        enforced.
+      returned: when the API returns it
+      type: str
+    policy_type:
+      description:
+      - Select the behavior of the placement group, either low_latency (group) or max_availability
+        (spread).
+      returned: when the API returns it
+      type: str
+    policy_respected:
+      description:
+      - 'True if the policy is respected, false otherwise.
+
+        In the server endpoints the value is always false as it is deprecated.
+
+        In the placement group endpoints the value is correct.'
+      returned: when the API returns it
+      type: bool
+    zone:
+      description:
+      - Zone in which the placement group is located.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

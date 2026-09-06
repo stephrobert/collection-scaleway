@@ -238,3 +238,126 @@ operations:
       Balancer. Le modèle l'écartait déjà, mais pour un symptôme, l'absence de
       lecture unitaire : c'est la décision qui doit porter l'écart, pas ce qui
       l'a révélé.
+
+  # --- Combler les trous de documentation du contrat ------------------------
+  #
+  # **Ce qui est publié sur Galaxy y reste : la version est immuable.** Un
+  # module qui sort avec « Not documented by the Scaleway API contract. » sur
+  # six options publie ce texte pour toujours, et le lecteur n'a nulle part où
+  # aller le compléter.
+  #
+  # Les phrases posées ici ne sont pas écrites de mémoire : chacune transpose
+  # ce que **le même contrat** dit du même champ ailleurs, et la `reason` dit
+  # où. Le chargeur exige cette raison, et le contrôle d'orphelins signale
+  # l'override le jour où Scaleway documente le champ : c'est alors la phrase
+  # de Scaleway qui sort, et celle-ci qui devient une erreur de CI.
+
+  instance.v1.Dashboard.GetDashboard:
+    description: >-
+      Return the Instance dashboard of one zone: the resource counts the API
+      keeps for an Organization or a Project, such as `servers_count`,
+      `running_servers_count`, `volumes_count`, `images_count`,
+      `snapshots_count`, `ips_count`, `ips_unused` and `security_groups_count`.
+    reason: >-
+      `GetDashboard` est la seule opération d'Instance v1 sans `summary` ni
+      `description` : le module sortait avec `description: []`, ce
+      qu'`ansible-test sanity` accepte sans rien dire. La phrase énumère les
+      champs du schéma `scaleway.instance.v1.Dashboard`, mot pour mot ; elle
+      n'affirme rien de plus que ce que le contrat déclare rendre.
+    parameters:
+      organization:
+        description: Organization ID whose dashboard is returned.
+        reason: >-
+          Le contrat déclare ce paramètre de requête sans description. Partout
+          ailleurs dans le même contrat il est décrit « Organization ID »
+          (`scaleway.instance.v1.Server`, `ListIps`, `ListSecurityGroups`) :
+          la phrase transpose cet usage, elle ne l'invente pas.
+      project:
+        description: Project ID whose dashboard is returned.
+        reason: >-
+          Même cas que `organization`, même source : « Project ID » dans
+          `scaleway.instance.v1.Server`, `ListVolumes` et `ListSnapshots`.
+
+  # **ListImages est la seule liste d'Instance v1 dont aucun filtre n'est
+  # décrit.** Les six autres listes décrivent les mêmes filtres, avec la même
+  # tournure ; l'override transpose ces tournures et rien d'autre.
+  instance.v1.Image.ListImages:
+    parameters:
+      name:
+        description: Filter images by name.
+        reason: >-
+          Transposé de `ListSnapshots`, « List snapshots of the requested
+          name. », et de `ListSecurityGroups`, « Name of the security group. ».
+          La phrase ne reprend pas les exemples de correspondance partielle que
+          `ListServers` donne pour son propre filtre : le contrat ne dit pas
+          que celui-ci se comporte pareil.
+      arch:
+        description: Filter images by CPU architecture.
+        reason: >-
+          `scaleway.instance.v1.Arch` se décrit lui-même « Architecture of the
+          image. », et `scaleway.instance.v1.ServerType.arch` « CPU
+          architecture. ». Le contrat déclare ici un `StringValue` et non
+          l'enum, donc le module n'expose aucun `choices` et la description ne
+          promet aucune liste de valeurs.
+      public:
+        description: Filter images on their public flag.
+        reason: >-
+          Le seul champ de ce lot que le contrat ne décrit nulle part :
+          `scaleway.instance.v1.Image.public` est un booléen nu. La phrase ne
+          dit donc rien de plus que le nom du champ, et surtout pas ce qu'un
+          image publique serait, que le contrat ne définit pas.
+      organization:
+        description: List only images of this Organization ID.
+        reason: >-
+          Tournure de `ListServers` et `ListPlacementGroups` pour le même
+          filtre, mot pour mot avec la ressource changée.
+      project:
+        description: List only images of this Project ID.
+        reason: >-
+          Même source que `organization` : `ListServers` et `ListSnapshots`
+          décrivent ce filtre « List only ... of this Project ID ».
+      tags:
+        description: List images with these exact tags.
+        reason: >-
+          Tournure de `ListServers`, amputée de sa seconde phrase. Les autres
+          listes ajoutent « to filter with several tags, use commas to separate
+          them » ; c'est cette phrase que l'override `csv` lit pour exposer le
+          filtre en liste, et `ListImages` ne la porte pas. L'écrire ici
+          promettrait un comportement que rien ne mesure.
+
+  instance.v1.SecurityGroupRule.GetSecurityGroupRule:
+    parameters:
+      security_group_rule_id:
+        description: UUID of the rule. (UUID format)
+        reason: >-
+          Recopié mot pour mot de `UpdateSecurityGroupRule`, qui déclare le même
+          paramètre de chemin avec cette description. Le trou est sur la lecture
+          unitaire seulement.
+
+  instance.v1.Ip.UpdateIp:
+    parameters:
+      server:
+        description: Instance attached to the IP.
+        reason: >-
+          `scaleway.instance.v1.Volume.server` est décrit « Instance attached to
+          the volume. » : même champ, même rôle, ressource changée.
+
+  instance.v1.Server.UpdateServer:
+    parameters:
+      boot_type:
+        description: Instance boot type.
+        reason: Recopié de `scaleway.instance.v1.Server.boot_type`.
+      dynamic_ip_required:
+        description: True if a dynamic IPv4 is required.
+        reason: Recopié de `scaleway.instance.v1.Server.dynamic_ip_required`.
+      enable_ipv6:
+        description: >-
+          True if IPv6 is enabled (deprecated and always `False` when
+          `routed_ip_enabled` is `True`).
+        reason: Recopié de `scaleway.instance.v1.Server.enable_ipv6`.
+      security_group:
+        description: Instance security group.
+        reason: Recopié de `scaleway.instance.v1.Server.security_group`.
+      volumes:
+        description: Instance volumes.
+        reason: Recopié de `scaleway.instance.v1.Server.volumes`.

@@ -184,44 +184,55 @@ options:
 """
 
 EXAMPLES = r"""
-# Le cas minimal : le profil Scaleway habituel décide du reste.
+# Four inventory files, each complete and each meant to be copied whole. Save
+# one as `scaleway.yml` and run `ansible-inventory -i scaleway.yml --graph`.
+
+# 1. The smallest thing that works: the usual Scaleway profile decides the rest.
 plugin: stephrobert.scaleway.compute
 
-# Production : un projet, une région, les machines qui tournent.
-# plugin: stephrobert.scaleway.compute
-# projects:
-#   - 11111111-1111-1111-1111-111111111111
-# products:
-#   - instance
-# regions:
-#   - fr-par
-# states:
-#   - running
-# tags:
-#   - production
-# address_priority:
-#   - private_ipv4
-#   - public_ipv4
-# group_by:
-#   - product
-#   - project
-#   - zone
-#   - tags
-# cache: true
+---
+# 2. Production: one project, one region, the machines that are running.
+plugin: stephrobert.scaleway.compute
+projects:
+  - 11111111-1111-1111-1111-111111111111
+products:
+  - instance
+regions:
+  - fr-par
+states:
+  - running
+tags:
+  - production
+address_priority:
+  - private_ipv4
+  - public_ipv4
+group_by:
+  - product
+  - project
+  - zone
+  - tags
+cache: true
 
-# Joindre les machines par un réseau privé précis.
-# plugin: stephrobert.scaleway.compute
-# address:
-#   private_network: production
-# require_address: true
+---
+# 3. Reach the machines over one named private network. Useful when a machine
+# sits on several: without this, the first one found wins, which is not a
+# decision. `require_address` then turns a machine with no address on that
+# network into an error rather than a silent absence from the inventory.
+plugin: stephrobert.scaleway.compute
+address:
+  private_network: production
+require_address: true
 
-# Groupes et variables construits par Ansible lui-même.
-# plugin: stephrobert.scaleway.compute
-# compose:
-#   ansible_user: "'ubuntu'"
-# keyed_groups:
-#   - prefix: scw_type
-#     key: scaleway_instance.commercial_type
+---
+# 4. Groups and variables built by Ansible itself, from what the plugin
+# exposes. `scaleway_instance` carries the API object, so any of its fields can
+# key a group.
+plugin: stephrobert.scaleway.compute
+compose:
+  ansible_user: "'ubuntu'"
+keyed_groups:
+  - prefix: scw_type
+    key: scaleway_instance.commercial_type
 """
 
 import traceback

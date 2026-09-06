@@ -75,6 +75,13 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+#
+# `volume_id` decides which of the two reads runs: given, the
+# module returns that one resource; omitted, it lists them all,
+# walking every page rather than returning the first one in silence.
+
 - name: Get a volume
   stephrobert.scaleway.instance_volume_info:
     zone: fr-par-1
@@ -84,6 +91,12 @@ EXAMPLES = r"""
   stephrobert.scaleway.instance_volume_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Instance volumes by tags
+  stephrobert.scaleway.instance_volume_info:
+    zone: fr-par-1
+    tags:
+    - production
+  register: result
 """
 
 RETURN = r"""
@@ -92,12 +105,146 @@ volume:
   - Get details of a volume with the specified ID.
   returned: when I(volume_id) is provided
   type: dict
+  contains:
+    id:
+      description:
+      - Volume unique ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Volume name.
+      returned: when the API returns it
+      type: str
+    export_uri:
+      description:
+      - Show the volume NBD export URI (deprecated, will always be empty).
+      returned: when the API returns it
+      type: str
+    size:
+      description:
+      - Volume disk size. (in bytes)
+      returned: when the API returns it
+      type: int
+    volume_type:
+      description:
+      - Volume type.
+      returned: when the API returns it
+      type: str
+    creation_date:
+      description:
+      - Volume creation date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    modification_date:
+      description:
+      - Volume modification date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    organization:
+      description:
+      - Volume Organization ID.
+      returned: when the API returns it
+      type: str
+    project:
+      description:
+      - Volume Project ID.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Volume tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    server:
+      description:
+      - Instance attached to the volume.
+      returned: when the API returns it
+      type: dict
+    state:
+      description:
+      - Volume state.
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - Zone in which the volume is located.
+      returned: when the API returns it
+      type: str
 volumes:
   description:
   - List volumes in the specified Availability Zone. You can filter the output by volume type.
   returned: when I(volume_id) is omitted
   type: list
   elements: dict
+  contains:
+    id:
+      description:
+      - Volume unique ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Volume name.
+      returned: when the API returns it
+      type: str
+    export_uri:
+      description:
+      - Show the volume NBD export URI (deprecated, will always be empty).
+      returned: when the API returns it
+      type: str
+    size:
+      description:
+      - Volume disk size. (in bytes)
+      returned: when the API returns it
+      type: int
+    volume_type:
+      description:
+      - Volume type.
+      returned: when the API returns it
+      type: str
+    creation_date:
+      description:
+      - Volume creation date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    modification_date:
+      description:
+      - Volume modification date. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    organization:
+      description:
+      - Volume Organization ID.
+      returned: when the API returns it
+      type: str
+    project:
+      description:
+      - Volume Project ID.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - Volume tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    server:
+      description:
+      - Instance attached to the volume.
+      returned: when the API returns it
+      type: dict
+    state:
+      description:
+      - Volume state.
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - Zone in which the volume is located.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402

@@ -35,11 +35,16 @@ from generator.ansible.mapping import (
     UnmappedType,
     argument_spec_entry,
     no_log_de,
+    return_type,
 )
 from generator.ir.enums import ApiType, HTTPMethod, OperationKind, ParameterLocation
 from generator.ir.models import ApiOperation, ApiParameter, ApiService
-from generator.overrides.loader import OperationOverride, OverrideSet
-from generator.parser.naming import pluralize_phrase
+from generator.overrides.loader import (
+    OperationOverride,
+    OverrideSet,
+    ParameterOverride,
+)
+from generator.parser.naming import pluralize, pluralize_phrase
 from generator.plan import OperationPlan, ProductPlan
 
 #: Classes que le renderer sait produire aujourd'hui. Une classe absente n'est
@@ -102,6 +107,10 @@ class AnsibleOption:
     elements: str | None = None
     no_log: bool | None = None
     default: object | None = None
+    #: Valeur que l'exemple publiera, quand ni le contrat ni une convention de
+    #: nom ne peuvent la donner. Elle vient d'un override, donc avec sa raison,
+    #: et ne rejoint jamais l'`argument_spec` : c'est de la documentation.
+    example: object | None = None
 
     def to_argument_spec(self) -> dict[str, Any]:
         entry: dict[str, Any] = {"type": self.type}
@@ -155,11 +164,38 @@ class OperationBinding:
     summary: str | None
     description: str | None
     csv_params: tuple[str, ...] = ()
+    #: Nom du schéma de la ressource rendue. Sert au `contains` du `RETURN` :
+    #: sans lui, la page nommait la clé sans dire ce qu'on y trouve.
+    payload_schema: str | None = None
 
     @property
     def documentation_line(self) -> str | None:
         """La phrase du contrat qui décrit l'opération, description d'abord."""
         return self.description or self.summary
+
+
+@dataclass(frozen=True)
+class ReturnField:
+    """Un champ de la ressource rendue, tel que le contrat le déclare.
+
+    Un seul niveau : `contains` sert à dire ce qu'on peut lire dans le résultat,
+    pas à recopier l'arbre des schémas. Un champ objet reste `dict`.
+    """
+
+    name: str
+    type: str
+    description: tuple[str, ...]
+    elements: str | None = None
+
+    def to_documentation(self) -> dict[str, Any]:
+        entry: dict[str, Any] = {
+            "description": list(self.description),
+            "returned": "when the API returns it",
+            "type": self.type,
+        }
+        if self.elements:
+            entry["elements"] = self.elements
+        return entry
 
 
 @dataclass(frozen=True)
@@ -171,6 +207,9 @@ class ReturnValue:
     returned: str
     type: str
     elements: str | None = None
+    #: Champs de la ressource. Sans eux, la page publiée nommait la clé sans
+    #: dire ce qu'on y trouve : il fallait appeler le module pour l'apprendre.
+    contains: tuple[ReturnField, ...] = ()
 
     def to_documentation(self) -> dict[str, Any]:
         entry: dict[str, Any] = {
@@ -180,6 +219,8 @@ class ReturnValue:
         }
         if self.elements:
             entry["elements"] = self.elements
+        if self.contains:
+            entry["contains"] = {champ.name: champ.to_documentation() for champ in self.contains}
         return entry
 
 
@@ -191,12 +232,17 @@ class ExampleTask:
     module: str
     parameters: dict[str, Any]
     register: str
+    #: Mots-clés d'Ansible portés par la tâche elle-même, `check_mode` et
+    #: `diff`. Un tuple plutôt qu'un dict : le modèle est gelé, et la génération
+    #: doit rendre le même octet à contrat égal.
+    keywords: tuple[tuple[str, Any], ...] = ()
 
     def to_documentation(self) -> dict[str, Any]:
         return {
             "name": self.name,
             self.module: dict(self.parameters),
             "register": self.register,
+            **dict(self.keywords),
         }
 
 
@@ -270,6 +316,58 @@ class AnsibleModuleSpec:
 
     def examples_documentation(self) -> list[dict[str, Any]]:
         return [example.to_documentation() for example in self.examples]
+
+    def examples_preamble(self) -> tuple[str, ...]:
+        """Ce que ces exemples montrent, et ce qu'un second passage donnerait.
+
+        **Publié, donc en anglais.** Ce texte sort dans `ansible-doc` et sur la
+        page Galaxy : c'est ce qu'un utilisateur lit avant d'essayer.
+
+        Il dit ce que les tâches ne peuvent pas dire d'elles-mêmes. Une tâche
+        nommée « Poweron an Instance » montre la syntaxe ; elle ne dit pas
+        qu'une action est un déclenchement et non un état, donc qu'un second
+        passage rendra `changed` à nouveau. C'est précisément la question qu'un
+        lecteur se pose, et la seule dont la réponse coûte cher quand on se
+        trompe.
+        """
+        if self.kind is OperationKind.INFO:
+            lignes = [
+                "This module only reads: it never changes anything, and check mode",
+                "is native.",
+            ]
+            if self.selector and self.list_operation is not None:
+                lignes += [
+                    "",
+                    f"`{self.selector}` decides which of the two reads runs: given, the",
+                    "module returns that one resource; omitted, it lists them all,",
+                    "walking every page rather than returning the first one in silence.",
+                ]
+            return tuple(lignes)
+
+        if self.kind is OperationKind.ACTION:
+            lignes = [
+                "An action is a trigger, not a state: running this a second time",
+                "reports `changed` again, and that is correct. Idempotence is the",
+                "business of the management modules.",
+            ]
+            if self.wait_states:
+                lignes += [
+                    "",
+                    "The module waits until the API reports the target state before",
+                    "returning, so the next task acts on a resource that has settled.",
+                ]
+            return tuple(lignes)
+
+        if self.kind is OperationKind.MANAGE:
+            return (
+                "The module reads the resource, compares, and writes only what",
+                "differs: run it twice and the second run reports no change.",
+                "",
+                "Check mode compares without writing, and `--diff` shows what would",
+                "change. A parameter you do not pass is a parameter the module does",
+                "not touch.",
+            )
+        return ()
 
 
 def build_module_specs(
@@ -371,7 +469,7 @@ def build_module_spec(
 
     operations = [item.operation for item in plans]
     options, limits = _build_options(
-        operations, ("zone", "region", selector or ""), override_list or override_get
+        operations, ("zone", "region", selector or ""), override_get, override_list
     )
     resource = plans[0].resource
 
@@ -382,8 +480,16 @@ def build_module_spec(
         short_description=_short_description(service, resource),
         description=_description(get_operation, list_operation),
         options=options,
-        returns=_returns(get_operation, list_operation, selector),
-        examples=_examples(name, collection, options, selector, get_operation, list_operation),
+        returns=_returns(get_operation, list_operation, selector, service),
+        examples=_examples(
+            name,
+            collection,
+            options,
+            selector,
+            get_operation,
+            list_operation,
+            _libelle(service, resource),
+        ),
         get_operation=get_operation,
         list_operation=list_operation,
         selector=selector,
@@ -449,7 +555,9 @@ def _build_action_module(
         short_description=_action_short_description(service, resource),
         description=_action_description(action_operation, choix),
         options=options,
-        returns=_action_returns(action_operation, parametre, state_field, wait_states),
+        returns=_action_returns(
+            action_operation, parametre, state_field, wait_states, choix, service
+        ),
         examples=_action_examples(name, collection, options, parametre, action_operation),
         get_operation=None,
         list_operation=None,
@@ -548,7 +656,7 @@ def _build_manage_module(
         collection=collection,
         short_description=f"Manage a Scaleway {_libelle(service, item.resource)}",
         description=(
-            update_operation.documentation_line or UNDOCUMENTED,
+            _sans_la_couche_http(update_operation.documentation_line or "") or UNDOCUMENTED,
             (
                 "The module reads the resource first and writes the whole body, "
                 "because this operation replaces the resource: fields you do not "
@@ -564,9 +672,12 @@ def _build_manage_module(
                 description=(read_operation.documentation_line or UNDOCUMENTED,),
                 returned="success",
                 type="dict",
+                contains=_contains(service, read_operation.payload_schema),
             ),
         ),
-        examples=_manage_examples(name, collection, options, geres),
+        examples=_manage_examples(
+            name, collection, options, geres, _libelle(service, item.resource)
+        ),
         options=options,
         get_operation=None,
         list_operation=None,
@@ -579,10 +690,56 @@ def _build_manage_module(
     )
 
 
+def _produit(service: ApiService) -> str:
+    """Le nom que Scaleway publie, pas le slug qui indexe le contrat.
+
+    `service.name` vaut `lb`, et « Manage a Scaleway Lb backend » en sortait.
+    Le contrat porte son propre titre, « Load Balancer API », qui est le nom de
+    la console, de la facturation et de la documentation Scaleway.
+    """
+    return (service.title or service.name).removesuffix(" API")
+
+
+def _reste_de_ressource(service: ApiService, resource: str) -> str:
+    """La ressource, moins le nom du produit qu'elle répète déjà.
+
+    Les ressources du Load Balancer sont déduites de chemins qui commencent par
+    `/lbs`, donc `load_balancer`, `load_balancer_stat`,
+    `load_balancer_private_network`. Collées au produit, elles donnaient « Load
+    Balancer load balancer private networks ». Le préfixe se retire ici, sur la
+    forme snake_case et avant toute pluralisation : après, `load balancers` ne
+    ressemble plus assez à `load balancer` pour se reconnaître.
+
+    Rend la chaîne vide quand la ressource **est** le produit : l'appelant
+    décide alors de la phrase, qui n'a plus de complément.
+    """
+    tete = _produit(service).casefold().replace(" ", "_")
+    if resource.casefold() == tete:
+        return ""
+    if resource.casefold().startswith(f"{tete}_"):
+        return resource[len(tete) + 1 :]
+    return resource
+
+
+def _pluriel(phrase: str) -> str:
+    """`Load Balancer` -> `Load Balancers`, la casse conservée.
+
+    `pluralize` rend une forme minuscule : elle est faite pour une ressource
+    déduite d'un chemin, pas pour un nom de produit que Scaleway écrit avec ses
+    majuscules dans sa console et sa facturation.
+    """
+    mots = phrase.replace("_", " ").split(" ")
+    dernier = pluralize(mots[-1])
+    if mots[-1][:1].isupper():
+        dernier = dernier[:1].upper() + dernier[1:]
+    return " ".join([*mots[:-1], dernier])
+
+
 def _libelle(service: ApiService, resource: str) -> str:
-    """`security_group` -> `Instance security group`, pour une phrase lisible."""
-    produit = service.name.capitalize()
-    return f"{produit} {resource.replace('_', ' ')}"
+    """`security_group` -> `Instance security group`, et sans redite."""
+    produit = _produit(service)
+    reste = _reste_de_ressource(service, resource)
+    return f"{produit} {reste.replace('_', ' ')}" if reste else produit
 
 
 def _manage_examples(
@@ -590,18 +747,43 @@ def _manage_examples(
     collection: Collection,
     options: tuple[AnsibleOption, ...],
     geres: tuple[str, ...],
+    libelle: str = "",
 ) -> tuple[ExampleTask, ...]:
-    """Un exemple qui écrit un seul champ, parce que c'est l'usage courant."""
-    requis = {option.name: f"<{option.name}>" for option in options if option.required}
-    premier = next((nom for nom in geres if nom in {o.name for o in options}), None)
+    """Un exemple qui écrit un seul champ, parce que c'est l'usage courant.
+
+    **Les valeurs viennent de `_example_value` comme partout ailleurs.** Cette
+    fonction les fabriquait, `f"<{option.name}>"`, et c'est ce qui publiait
+    `zone: <zone>` sur dix-sept modules alors que le contrat porte les dix
+    valeurs de l'enum, et `backend_id: <backend_id>` alors que le repli des
+    identifiants existe depuis le premier module.
+    """
+    par_nom = {option.name: option for option in options}
+    requis = {option.name: _example_value(option, name) for option in options if option.required}
+    premier = next((nom for nom in geres if nom in par_nom), None)
     if premier is not None:
-        requis[premier] = f"<{premier}>"
+        requis[premier] = _example_value(par_nom[premier], name)
+    module = collection.module_fqcn(name)
+    # Le libellé de la phrase courte, pas le nom du module : « Instance server »
+    # et non « instance server », pour que la tâche se lise comme le titre de la
+    # page qui la porte.
+    libelle = libelle or name.replace("_", " ")
     return (
         ExampleTask(
-            name=f"Update a Scaleway {name.replace('_', ' ')}",
-            module=collection.module_fqcn(name),
+            name=f"Update a Scaleway {libelle}",
+            module=module,
             parameters=requis,
             register="result",
+        ),
+        # **Le préambule parlait du mode simulation, aucune tâche ne le
+        # montrait.** C'est pourtant ce qu'on fait avant d'écrire sur un parc
+        # qu'on ne possède pas seul, et `--diff` est ce qui rend la comparaison
+        # lisible plutôt que de rendre un `changed` sans contenu.
+        ExampleTask(
+            name=f"Preview the change on a Scaleway {libelle} without writing",
+            module=module,
+            parameters=dict(requis),
+            register="result",
+            keywords=(("check_mode", True), ("diff", True)),
         ),
     )
 
@@ -791,6 +973,28 @@ def _unitary_read_operation(
     return None
 
 
+def _sans_les_actions_refusees(texte: str, choices: tuple[str, ...]) -> str:
+    """Le texte du contrat, privé des puces nommant une action non exposée.
+
+    **La documentation décrit le module produit, pas l'API dont il vient.** Le
+    contrat décrit ses sept actions ; le module en accepte quatre. Recopier les
+    sept promet ce que l'`argument_spec` refuse, et un lecteur de Galaxy n'a
+    aucun moyen de s'en apercevoir avant que son playbook échoue.
+
+    C'est un nettoyage, pas une réécriture : les puces conservées sont celles du
+    contrat, mot pour mot.
+    """
+    if not texte:
+        return texte
+    gardees = []
+    for ligne in texte.split("\n"):
+        nomme = re.match(r"\* `([a-z0-9_]+)`\s*:", ligne.strip())
+        if nomme and nomme.group(1) not in choices:
+            continue
+        gardees.append(ligne)
+    return "\n".join(gardees).strip()
+
+
 def _action_description(
     operation: OperationBinding,
     choices: tuple[str, ...],
@@ -804,22 +1008,12 @@ def _action_description(
     C'est un nettoyage, pas une réécriture : les puces conservées sont celles
     du contrat, mot pour mot.
     """
-    texte = operation.documentation_line
-    if not texte:
-        return ()
-
-    gardees = []
-    for ligne in texte.split("\n"):
-        nomme = re.match(r"\* `([a-z0-9_]+)`\s*:", ligne.strip())
-        if nomme and nomme.group(1) not in choices:
-            continue
-        gardees.append(ligne)
-    return ("\n".join(gardees).strip(),)
+    nettoye = _sans_les_actions_refusees(operation.documentation_line or "", choices)
+    return (nettoye,) if nettoye else ()
 
 
 def _action_short_description(service: ApiService, resource: str) -> str:
-    product = (service.title or service.name).removesuffix(" API")
-    return f"Perform an action on a Scaleway {product} {resource.replace('_', ' ')}"
+    return f"Perform an action on a Scaleway {_libelle(service, resource)}"
 
 
 def _action_returns(
@@ -827,6 +1021,8 @@ def _action_returns(
     action_parameter: str | None,
     state_field: str,
     wait_states: tuple[tuple[str, str], ...],
+    choices: tuple[str, ...] = (),
+    service: ApiService | None = None,
 ) -> tuple[ReturnValue, ...]:
     # Le module rend toujours `action`, sous les deux formes. Quand l'action est
     # l'opération, la valeur rendue est son identifiant : un lecteur de journal
@@ -854,12 +1050,18 @@ def _action_returns(
             )
         )
     if operation.payload_field:
+        # **Le même filtre que la description.** Sans lui, la charge utile
+        # réinjectait les sept actions du contrat dans un module qui en accepte
+        # quatre, et la page Galaxy promettait `terminate` sur un module qui le
+        # refuse.
+        decrit = _sans_les_actions_refusees(operation.documentation_line or "", choices)
         valeurs.append(
             ReturnValue(
                 name=operation.payload_field,
-                description=(operation.documentation_line or UNDOCUMENTED,),
+                description=(decrit or UNDOCUMENTED,),
                 returned="when the API returns it",
                 type="dict",
+                contains=_contains(service, operation.payload_schema),
             )
         )
     return tuple(valeurs)
@@ -875,7 +1077,7 @@ def _action_examples(
     """Un exemple par action exposée : c'est ce qu'un lecteur vient chercher."""
     module = collection.module_fqcn(name)
     requis = {
-        option.name: _example_value(option)
+        option.name: _example_value(option, name)
         for option in options
         if option.required and option.name != action_parameter
     }
@@ -973,11 +1175,16 @@ def _bind(
         body_params=body_params,
         csv_params=csv_params,
         payload_field=operation.response.payload_field if operation.response else None,
+        payload_schema=operation.response.payload_schema if operation.response else None,
         is_list=_is_list(operation),
         page_param=pagination.page_param if pagination else None,
         per_page_param=pagination.per_page_param if pagination else None,
         summary=operation.summary,
-        description=operation.description,
+        # **Le contrat gagne, l'override comble.** L'ordre est celui-là et pas
+        # l'inverse : un override qui recouvrirait la phrase de Scaleway ferait
+        # diverger la page publiée de l'API sans que rien ne le signale. Devenu
+        # inutile, l'override sort en orphelin plutôt qu'en silence.
+        description=operation.description or (override.description if override else None),
     )
 
 
@@ -1037,7 +1244,7 @@ def _le_mieux_decrit(connu: ApiParameter | None, candidat: ApiParameter) -> ApiP
 def _build_options(
     operations: list[ApiOperation],
     priorities: tuple[str, ...] = (),
-    override: OperationOverride | None = None,
+    *overrides: OperationOverride | None,
 ) -> tuple[tuple[AnsibleOption, ...], tuple[str, ...]]:
     """Fusionne les paramètres des opérations en options de module.
 
@@ -1107,7 +1314,7 @@ def _build_options(
     total = len(operations)
     options: list[AnsibleOption] = []
     for name, parameter in seen.items():
-        restriction = (override.parameters.get(name) if override else None) or None
+        restriction = _restriction(name, overrides)
         if restriction is not None and restriction.expose is False:
             limits.append(f"{name} : paramètre du contrat masqué par override")
             continue
@@ -1116,9 +1323,13 @@ def _build_options(
         if restriction is not None and restriction.required is not None:
             required = restriction.required
         entry = argument_spec_entry(parameter)
-        description, missing = _option_description(parameter)
+        description, missing = _option_description(parameter, restriction)
         if missing:
-            limits.append(f"{name} : aucune description dans le contrat")
+            comblee = restriction is not None and restriction.description
+            limits.append(
+                f"{name} : aucune description dans le contrat"
+                + (", comblée par override" if comblee else "")
+            )
         if parameter.type is ApiType.ARRAY and parameter.item_type is None:
             limits.append(f"{name} : tableau sans type d'éléments dans le contrat, `str` par repli")
 
@@ -1164,11 +1375,32 @@ def _build_options(
                 elements=elements,
                 no_log=no_log_de(parameter),
                 default=entry.get("default"),
+                example=restriction.example if restriction else None,
             )
         )
 
     ordre = tuple(nom for nom in priorities if nom)
     return tuple(sorted(options, key=lambda option: _option_order(option, ordre))), tuple(limits)
+
+
+def _restriction(
+    name: str,
+    overrides: tuple[OperationOverride | None, ...],
+) -> ParameterOverride | None:
+    """La décision posée sur ce paramètre, prise là où elle est écrite.
+
+    Un module d'information fusionne un GET et une LIST, chacun avec sa clé.
+    Chercher dans un seul des deux obligeait à écrire la décision sur une
+    opération qui ne déclare pas le paramètre : l'override ne désignait plus
+    rien, et c'est le défaut que le contrôle d'orphelins existe pour attraper.
+    """
+    for override in overrides:
+        if override is None:
+            continue
+        restriction = override.parameters.get(name)
+        if restriction is not None:
+            return restriction
+    return None
 
 
 def _option_order(option: AnsibleOption, priorities: tuple[str, ...]) -> tuple[int, str]:
@@ -1183,11 +1415,20 @@ def _option_order(option: AnsibleOption, priorities: tuple[str, ...]) -> tuple[i
     return (len(priorities), option.name)
 
 
-def _option_description(parameter: ApiParameter) -> tuple[tuple[str, ...], bool]:
-    """Description d'une option, prise au contrat et jamais inventée."""
+def _option_description(
+    parameter: ApiParameter,
+    restriction: ParameterOverride | None = None,
+) -> tuple[tuple[str, ...], bool]:
+    """Description d'une option : le contrat, un override qui comble, ou rien.
+
+    `missing` reste vrai quand le contrat ne dit rien, **même comblé**. Le
+    rapport doit continuer à compter les trous du contrat : les combler est
+    une réparation de la page publiée, pas une correction de l'amont.
+    """
     lines: list[str] = []
     missing = not parameter.description
-    lines.append(parameter.description or UNDOCUMENTED)
+    comble = restriction.description if restriction else None
+    lines.append(parameter.description or comble or UNDOCUMENTED)
     if parameter.deprecated:
         lines.append(DEPRECATED_NOTICE)
     return tuple(lines), missing
@@ -1201,8 +1442,10 @@ def _short_description(service: ApiService, resource: str) -> str:
     un module qui sert le GET et le LIST n'est décrit correctement par aucune
     des deux.
     """
-    product = (service.title or service.name).removesuffix(" API")
-    return f"Gather information about Scaleway {product} {pluralize_phrase(resource)}"
+    produit = _produit(service)
+    reste = _reste_de_ressource(service, resource)
+    sujet = f"{produit} {pluralize_phrase(reste)}" if reste else _pluriel(produit)
+    return f"Gather information about Scaleway {sujet}"
 
 
 def _description(
@@ -1220,10 +1463,40 @@ def _description(
     return tuple(lines)
 
 
+def _contains(service: ApiService | None, schema: str | None) -> tuple[ReturnField, ...]:
+    """Les champs que le contrat déclare sur la ressource rendue.
+
+    Rend un tuple vide quand le contrat ne porte pas le schéma : un `contains`
+    inventé décrirait une réponse que personne n'a lue. Un champ sans
+    description sort quand même, avec le repli : sa **présence** est une
+    information, et c'est celle que le lecteur vient chercher.
+    """
+    objet = service.object(schema) if service is not None else None
+    if objet is None:
+        return ()
+    return tuple(
+        ReturnField(
+            name=champ.name,
+            type=return_type(champ.type),
+            description=(champ.description or UNDOCUMENTED,),
+            # Un tableau sans `items` est un cas mesuré du contrat, pas une
+            # exception : le repli `str` est le même que celui de
+            # l'`argument_spec`, et le rapport nomme le champ concerné.
+            elements=(
+                return_type(champ.item_type or ApiType.STRING)
+                if champ.type is ApiType.ARRAY
+                else None
+            ),
+        )
+        for champ in objet.fields
+    )
+
+
 def _returns(
     get_operation: OperationBinding | None,
     list_operation: OperationBinding | None,
     selector: str | None,
+    service: ApiService | None = None,
 ) -> tuple[ReturnValue, ...]:
     """Les clés que le module rend, décrites par le contrat qui les produit."""
     values: list[ReturnValue] = []
@@ -1235,6 +1508,7 @@ def _returns(
                 description=(get_operation.documentation_line or UNDOCUMENTED,),
                 returned=f"when I({selector}) is provided" if selector else "success",
                 type="dict",
+                contains=_contains(service, get_operation.payload_schema),
             )
         )
     if list_operation is not None and list_operation.payload_field:
@@ -1245,6 +1519,7 @@ def _returns(
                 returned=f"when I({selector}) is omitted" if selector else "success",
                 type="list",
                 elements="dict",
+                contains=_contains(service, list_operation.payload_schema),
             )
         )
 
@@ -1274,6 +1549,11 @@ def _returns(
                     ),
                     returned="success",
                     type="dict",
+                    # **Le corps entier est la ressource, donc ses champs sont
+                    # ceux du schéma.** Quatre modules d'information passent
+                    # par ce repli, dont `lb_acl_info` : leur `GetAcl` répond
+                    # par la ressource elle-même plutôt que par une enveloppe.
+                    contains=_contains(service, source.payload_schema),
                 )
             )
     return tuple(values)
@@ -1286,10 +1566,20 @@ def _examples(
     selector: str | None,
     get_operation: OperationBinding | None,
     list_operation: OperationBinding | None,
+    libelle: str = "",
 ) -> tuple[ExampleTask, ...]:
-    """Un exemple par mode du module : lire une ressource, lister les autres."""
+    """Un exemple par mode du module : lire une ressource, lister les autres.
+
+    `libelle` sert au repli du nom de tâche. Le résumé du contrat est meilleur
+    quand il existe (« List all SSL/TLS certificates on a given Load Balancer »),
+    mais quand il manque le repli écrivait `Run GetDashboard` : l'identifiant du
+    SDK, recopié tel quel dans un playbook, où il nomme l'appel HTTP plutôt que
+    ce que la tâche fait.
+    """
     module = collection.module_fqcn(name)
-    required = {option.name: _example_value(option) for option in options if option.required}
+    lecture = f"Read a Scaleway {libelle}" if libelle else f"Run {name}"
+    liste = f"List Scaleway {_pluriel(libelle)}" if libelle else f"Run {name}"
+    required = {option.name: _example_value(option, name) for option in options if option.required}
     examples: list[ExampleTask] = []
 
     if get_operation is not None and selector is not None:
@@ -1297,7 +1587,7 @@ def _examples(
         parameters[selector] = EXAMPLE_ID
         examples.append(
             ExampleTask(
-                name=get_operation.summary or f"Run {get_operation.id}",
+                name=get_operation.summary or lecture,
                 module=module,
                 parameters=parameters,
                 register="result",
@@ -1306,16 +1596,29 @@ def _examples(
     if list_operation is not None:
         examples.append(
             ExampleTask(
-                name=list_operation.summary or f"Run {list_operation.id}",
+                name=list_operation.summary or liste,
                 module=module,
                 parameters=dict(required),
                 register="result",
             )
         )
+    if list_operation is not None:
+        filtre = _filtre_dexemple(options, selector)
+        if filtre is not None:
+            examples.append(
+                ExampleTask(
+                    name=f"Filter Scaleway {_pluriel(libelle)} by {filtre.name}"
+                    if libelle
+                    else f"{liste} filtered by {filtre.name}",
+                    module=module,
+                    parameters={**required, filtre.name: _example_value(filtre, name)},
+                    register="result",
+                )
+            )
     if not examples and get_operation is not None:
         examples.append(
             ExampleTask(
-                name=get_operation.summary or f"Run {get_operation.id}",
+                name=get_operation.summary or lecture,
                 module=module,
                 parameters=dict(required),
                 register="result",
@@ -1324,12 +1627,111 @@ def _examples(
     return tuple(examples)
 
 
-def _example_value(option: AnsibleOption) -> Any:
-    """Valeur d'exemple d'une option, déterministe et jamais aléatoire."""
+#: Phrases du contrat qui décrivent la requête HTTP, et que le module dément.
+#:
+#: Quatre opérations d'écriture du Load Balancer portent « Note that the request
+#: type is PUT and not PATCH. You must set all parameters. » C'est vrai de l'API
+#: et faux du module : il lit la ressource avant d'écrire et remplit lui-même
+#: les champs qu'on ne lui donne pas. La phrase que le générateur ajoute juste
+#: après le dit déjà, donc publier les deux publie une contradiction.
+#:
+#: C'est un nettoyage, au sens où la documentation du module peut normaliser une
+#: description du contrat ; ce n'en est pas une réécriture : rien n'est ajouté à
+#: la place, et le reste de la phrase du contrat sort mot pour mot.
+FUITES_HTTP = re.compile(
+    r"\s*(?:Note that )?[Tt]he request type is PUT and not PATCH\.?"
+    r"|\s*You must set all parameters\.?"
+)
+
+
+def _sans_la_couche_http(texte: str) -> str:
+    """Le texte du contrat, privé de ce qu'il dit du protocole."""
+    return re.sub(r"\s{2,}", " ", FUITES_HTTP.sub("", texte)).strip()
+
+
+#: Valeur d'enum que le contrat déclare et qu'aucun exemple ne doit montrer.
+#:
+#: Scaleway ouvre presque tous ses enums par `unknown_<champ>` : c'est la valeur
+#: zéro du protobuf dont ses contrats sont dérivés, pas une valeur d'usage.
+#: `choices[0]` la retenait, et l'exemple publiait `protocol: unknown_protocol`,
+#: que l'API refuse. Une valeur copiable et fausse est pire qu'un trou.
+SENTINELLE_DENUM = re.compile(r"^unknown(_|$)")
+
+#: Ce qu'un exemple montre pour une chaîne libre, par convention de nom.
+#:
+#: **Ce n'est pas une affirmation sur l'API.** Ces champs n'ont pas de
+#: vocabulaire : le contrat les déclare `string` sans enum, donc toute chaîne y
+#: est valide, et ce qui se décide ici est seulement ce qu'un lecteur voit.
+#: `example.com` est le domaine que la RFC 2606 réserve à la documentation.
+#:
+#: Un champ dont le vocabulaire existe mais vit ailleurs que dans le contrat
+#: n'a rien à faire ici : il se règle par un override, qui porte sa raison.
+CONVENTIONS: tuple[tuple[re.Pattern[str], Any], ...] = (
+    (re.compile(r"^description$"), "Managed by Ansible"),
+    (re.compile(r"^tags$"), ["production"]),
+    (re.compile(r"reverse"), "server-1.example.com"),
+    # `instance_ip.ip` : « IP ID or IP address », dit le contrat. L'UUID est
+    # donc une valeur valide, et c'est celle que les autres exemples emploient.
+    (re.compile(r"^ip$"), EXAMPLE_ID),
+    (re.compile(r"port$"), 80),
+    # `lb_acl.index` : « ACLs are applied in ascending order, 0 is the first ».
+    (re.compile(r"^index$"), 0),
+)
+
+
+#: Filtres qu'un opérateur emploie vraiment, dans l'ordre où on les essaie.
+#: Le choix doit être total et déterministe : à défaut de l'un d'eux, c'est la
+#: première option facultative dans l'ordre déjà calculé du module.
+FILTRES_UTILES = ("tags", "name", "state", "private_network_id", "server")
+
+
+def _filtre_dexemple(
+    options: tuple[AnsibleOption, ...],
+    selector: str | None,
+) -> AnsibleOption | None:
+    """Le filtre que l'exemple de liste montrera, ou rien s'il n'y en a pas.
+
+    Un module d'information montrait « tout lire » et « tout lister », jamais
+    « lister ce qui m'intéresse ». Les filtres sont pourtant la moitié de ses
+    options, et un lecteur qui liste un parc entier pour en garder trois
+    machines ne trouve nulle part comment demander les trois.
+    """
+    # `order_by` trie, il ne filtre pas : le repli l'avait retenu sur
+    # `lb_load_balancer_private_network_info`, faute d'autre option facultative,
+    # et l'exemple s'appelait « filtered by order_by ».
+    ecartes = {selector, "zone", "region", "order_by"}
+    candidats = [option for option in options if not option.required and option.name not in ecartes]
+    if not candidats:
+        return None
+    par_nom = {option.name: option for option in candidats}
+    for prefere in FILTRES_UTILES:
+        if prefere in par_nom:
+            return par_nom[prefere]
+    return candidats[0]
+
+
+def _example_value(option: AnsibleOption, module: str = "") -> Any:
+    """Valeur d'exemple d'une option, déterministe et jamais aléatoire.
+
+    L'ordre est celui de la confiance : ce que le contrat porte d'abord, une
+    convention de nom ensuite, un repli par type en dernier. `module` sert au
+    seul champ dont la valeur dépend de la ressource, `name`.
+    """
+    if option.example is not None:
+        return option.example
     if option.choices:
-        return option.choices[0]
+        return _premier_choix_utile(option.choices)
     if option.name.endswith("_id"):
         return EXAMPLE_ID
+    if option.name == "name":
+        # `lb_backend` -> `my-backend`, `instance_security_group` ->
+        # `my-security-group`. Le préfixe produit est le nom du service, qui
+        # n'apprend rien de plus que le nom du module déjà écrit au-dessus.
+        ressource = module.split("_", 1)[-1].replace("_", "-") if "_" in module else "resource"
+        return f"my-{ressource}"
+    for motif, valeur in CONVENTIONS:
+        if motif.search(option.name):
+            return list(valeur) if isinstance(valeur, list) else valeur
     return {
         "int": 1,
         "float": 1.0,
@@ -1337,3 +1739,11 @@ def _example_value(option: AnsibleOption) -> Any:
         "list": [],
         "dict": {},
     }.get(option.type, f"<{option.name}>")
+
+
+def _premier_choix_utile(choices: tuple[str, ...]) -> str:
+    """La première valeur d'enum qu'un opérateur écrirait vraiment."""
+    for valeur in choices:
+        if not SENTINELLE_DENUM.match(valeur):
+            return valeur
+    return choices[0]

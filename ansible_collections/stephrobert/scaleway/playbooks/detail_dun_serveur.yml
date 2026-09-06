@@ -1,15 +1,15 @@
-# Lire une Instance précise, et n'appeler l'API qu'une fois pour cela.
+# Read one Instance, and call the API once to do it.
 #
-# Le même module sert les deux modes : `server_id` fourni lit une ressource,
-# `server_id` absent liste la zone. C'est le seul choix que le module fait, et
-# il se voit dans le playbook.
+# The same module serves both modes: `server_id` given reads one resource,
+# `server_id` omitted lists the zone. That is the only choice the module makes,
+# and the playbook shows it.
 #
-#   ansible-playbook playbooks/detail_dun_serveur.yml \
+#   ansible-playbook stephrobert.scaleway.detail_dun_serveur \
 #     -e zone=fr-par-1 -e server_id=<uuid>
 #
-# Sans `server_id`, le playbook prend la première Instance de la zone, ce qui
-# permet de l'essayer sans rien connaître à l'avance.
-- name: Détail d'une Instance Scaleway
+# Without `server_id`, the playbook takes the first Instance in the zone, so it
+# can be tried without knowing anything in advance.
+- name: Detail of one Scaleway Instance
   hosts: localhost
   connection: local
   gather_facts: false
@@ -18,34 +18,34 @@
     server_id: ""
 
   tasks:
-    - name: Trouver une Instance quand aucune n'est nommée
+    - name: Find an Instance when none was named
       stephrobert.scaleway.instance_server_info:
         zone: "{{ zone }}"
       register: inventaire
       when: not server_id
 
-    - name: Retenir l'Instance à lire
+    - name: Keep the Instance to read
       ansible.builtin.set_fact:
         cible: "{{ server_id or (inventaire.servers | first).id }}"
 
-    - name: Lire l'Instance
+    - name: Read the Instance
       stephrobert.scaleway.instance_server_info:
         zone: "{{ zone }}"
         server_id: "{{ cible }}"
       register: instance
 
-    - name: Ce que l'API dit de cette Instance
+    - name: What the API says about this Instance
       ansible.builtin.debug:
         msg:
-          - "nom             : {{ instance.server.name }}"
-          - "état            : {{ instance.server.state }}"
-          - "type commercial : {{ instance.server.commercial_type }}"
+          - "name            : {{ instance.server.name }}"
+          - "state           : {{ instance.server.state }}"
+          - "commercial type : {{ instance.server.commercial_type }}"
           - "zone            : {{ instance.server.zone }}"
-          - "créée le        : {{ instance.server.creation_date }}"
-          - "étiquettes      : {{ instance.server.tags | default([]) }}"
+          - "created         : {{ instance.server.creation_date }}"
+          - "tags            : {{ instance.server.tags | default([]) }}"
 
-    - name: Un module d'information ne modifie jamais rien
+    - name: An information module never changes anything
       ansible.builtin.assert:
         that:
           - instance is not changed
-        success_msg: "lecture seule confirmée, changed=false"
+        success_msg: "read-only confirmed, changed=false"
