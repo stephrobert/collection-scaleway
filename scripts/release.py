@@ -72,6 +72,39 @@ def fragments_en_attente(collection_path: Path) -> list[str]:
     return sorted(f.name for f in dossier.glob("*.yml") if not f.name.startswith("."))
 
 
+def sur_la_branche_principale(tag: str) -> bool:
+    """Le commit du tag appartient-il à l'historique de `main` ?
+
+    **C'est la garde qui empêche une publication depuis n'importe où.** Un tag
+    est mobile et se pose sur n'importe quel commit : une branche jamais
+    relue, un fork, un correctif poussé en vitesse. Le workflow se déclenche
+    sur le tag, pas sur la branche, donc rien d'autre ne le vérifie.
+
+    Ce qui part sur Galaxy est immuable. Ce qui part doit donc être ce que la
+    branche protégée porte, c'est-à-dire du code qui a traversé une pull
+    request et ses contrôles.
+
+    On compare à `origin/main` quand il existe, à `main` sinon : en CI, le
+    dépôt est cloné et la branche locale peut ne pas exister.
+    """
+    commit = _git("rev-list", "-n", "1", tag)
+    if not commit:
+        return False
+    for reference in ("origin/main", "main"):
+        if not _git("rev-parse", "--verify", "--quiet", reference):
+            continue
+        # `merge-base --is-ancestor` rend 0 quand le commit est atteignable
+        # depuis la référence. C'est exactement la question posée.
+        resultat = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", commit, reference],
+            cwd=ROOT,
+            capture_output=True,
+            check=False,
+        )
+        return resultat.returncode == 0
+    return False
+
+
 def controler(tag: str | None) -> list[str]:
     """Rend la liste des refus. Vide veut dire qu'on peut publier."""
     collection = load_collection()
@@ -93,6 +126,13 @@ def controler(tag: str | None) -> list[str]:
             f"le tag dit {normaliser(tag)!r} et `galaxy.yml` dit {collection.version!r}. "
             "L'archive est nommée d'après `galaxy.yml` : on publierait une version que "
             "l'historique ne porte pas."
+        )
+
+    if tag is not None and not sur_la_branche_principale(tag):
+        refus.append(
+            f"le tag {tag!r} ne désigne aucun commit de `main`. Ce qui part sur Galaxy "
+            "est immuable : ça doit être du code qui a traversé une pull request et ses "
+            "contrôles, pas une branche que personne n'a relue."
         )
 
     sale = _git("status", "--porcelain")
