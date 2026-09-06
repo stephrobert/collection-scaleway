@@ -40,6 +40,7 @@ KNOWN_FIELDS: frozenset[str] = frozenset(
         "check_mode",
         "idempotency",
         "related",
+        "description",
     }
 )
 
@@ -63,7 +64,9 @@ class OverrideError(ValueError):
 
 
 #: Champs qu'un override de paramètre peut porter.
-_PARAMETER_FIELDS: frozenset[str] = frozenset({"choices", "required", "expose", "csv", "reason"})
+_PARAMETER_FIELDS: frozenset[str] = frozenset(
+    {"choices", "required", "expose", "csv", "reason", "description", "example"}
+)
 
 #: Champs qu'un bloc `wait` peut porter.
 _WAIT_FIELDS: frozenset[str] = frozenset({"field", "states", "reason"})
@@ -97,6 +100,16 @@ class ParameterOverride:
     #: la chaîne `"['a', 'b']"`, l'API ne trouve rien, et le playbook lit zéro
     #: machine sur un parc qui en porte cinq.
     csv: bool | None = None
+    #: Description à publier **quand le contrat n'en porte aucune**, et
+    #: seulement là. Le contrat gagne toujours : un override qui recouvrirait
+    #: une phrase de Scaleway ferait diverger la page de l'API sans que rien ne
+    #: le dise. Devenu inutile, il est signalé comme orphelin.
+    description: str | None = None
+    #: Valeur que l'exemple publiera, quand ni le contrat ni une convention de
+    #: nom ne peuvent la donner. Le cas mesuré est `MigrateLb.type` : le contrat
+    #: renvoie à un point d'API pour connaître les valeurs, il n'en déclare
+    #: aucune, et un exemple qui en inventerait une serait copiable et faux.
+    example: Any = None
     reason: str | None = None
 
 
@@ -125,6 +138,10 @@ class OperationOverride:
     resource: str | None = None
     reason: str | None = None
     expose: bool | None = None
+    #: Description à publier quand l'opération n'en porte ni description ni
+    #: résumé. `GetDashboard` est ce cas : le module sortait avec un
+    #: `description: []`, qu'`ansible-test sanity` accepte sans rien dire.
+    description: str | None = None
     parameters: dict[str, ParameterOverride] = field(default_factory=dict)
     wait: WaitOverride | None = None
     extra: dict[str, Any] = field(default_factory=dict)
@@ -141,9 +158,71 @@ class OverrideSet:
         return self.operations.get(key)
 
     def orphans(self, service: ApiService) -> tuple[str, ...]:
-        """Clés d'override qui ne désignent aucune opération du contrat."""
-        known = {operation.key for operation in service.operations}
-        return tuple(sorted(key for key in self.operations if key not in known))
+        """Overrides qui ne portent plus sur rien, par clé ou par effet.
+
+        Deux façons pour un override de devenir inerte, et les deux disent la
+        même chose : quelque chose a bougé en amont, et le fichier ne le sait
+        pas encore.
+
+        * **la clé ne désigne aucune opération.** L'opération a disparu, ou la
+          ressource déduite a changé et la clé avec elle ;
+        * **la description ne comble plus rien.** Scaleway a documenté le champ,
+          donc c'est sa phrase qui sort, et celle qu'on avait écrite pour
+          combler le trou n'est plus lue par personne. La laisser reviendrait à
+          maintenir un texte mort qu'une relecture croirait publié.
+
+        Les deux sortent par le même canal, donc `report --strict` sort en 2
+        dans les deux cas. C'est ce qui rend la dérive visible, et ça ne se
+        désarme pas pour faire passer la CI.
+        """
+        par_cle = {operation.key: operation for operation in service.operations}
+        inertes: list[str] = []
+
+        for cle, override in self.operations.items():
+            operation = par_cle.get(cle)
+            if operation is None:
+                inertes.append(cle)
+                continue
+            if override.description and (operation.description or operation.summary):
+                inertes.append(
+                    f"{cle} : description d'override devenue inutile, le contrat en porte une"
+                )
+            documentes = {
+                parameter.name for parameter in operation.parameters if parameter.description
+            }
+            for nom, restriction in override.parameters.items():
+                if restriction.description and nom in documentes:
+                    inertes.append(
+                        f"{cle}.parameters.{nom} : description d'override devenue "
+                        "inutile, le contrat en porte une"
+                    )
+        return tuple(sorted(inertes))
+
+
+class _SansDoublon(yaml.SafeLoader):
+    """Un chargeur YAML qui refuse une clé déclarée deux fois.
+
+    **YAML garde la dernière occurrence, sans un mot.** Un second bloc écrit
+    sous une clé déjà présente n'ajoute pas ses champs : il remplace tout le
+    premier. Le cas mesuré a effacé un `resource: load_balancer`, et le module
+    publié a changé de nom sans qu'aucun contrôle ne rougisse.
+
+    Le contrôle d'orphelins ne pouvait pas l'attraper : la clé désigne bien une
+    opération, c'est la décision qui a disparu. Elle ne se voit qu'ici.
+    """
+
+    def construct_mapping(self, node: Any, deep: bool = False) -> dict[Any, Any]:
+        vues: set[Any] = set()
+        for cle_node, _ in node.value:
+            cle = self.construct_object(cle_node, deep=deep)
+            if cle in vues:
+                raise OverrideError(
+                    f"clé déclarée deux fois : {cle!r} (ligne "
+                    f"{cle_node.start_mark.line + 1}). YAML garde la dernière et "
+                    "efface la première en silence : réunir les deux blocs."
+                )
+            vues.add(cle)
+        return super().construct_mapping(node, deep)
 
 
 def load_overrides(product: str, root: Path = DEFAULT_OVERRIDES_ROOT) -> OverrideSet:
@@ -153,7 +232,7 @@ def load_overrides(product: str, root: Path = DEFAULT_OVERRIDES_ROOT) -> Overrid
         return OverrideSet(source=None)
 
     with path.open(encoding="utf-8") as handle:
-        document = yaml.safe_load(handle) or {}
+        document = yaml.load(handle, _SansDoublon) or {}
     if not isinstance(document, dict):
         raise OverrideError(f"{path} : le document doit être un mapping")
 
@@ -195,6 +274,12 @@ def _parse_override(key: str, raw: Any, path: Path) -> OperationOverride:
             "Un override sans raison est indéfendable à la relecture."
         )
 
+    if raw.get("description") is not None and not raw.get("reason"):
+        raise OverrideError(
+            f"{path} : {key} publie une description sans `reason`. Elle sortira sur "
+            "Galaxy sous le nom de la collection : la raison doit dire d'où elle vient."
+        )
+
     return OperationOverride(
         key=key,
         kind=kind,
@@ -203,13 +288,23 @@ def _parse_override(key: str, raw: Any, path: Path) -> OperationOverride:
         resource=raw.get("resource"),
         reason=raw.get("reason"),
         expose=raw.get("expose"),
+        description=raw.get("description"),
         parameters=_parse_parameters(key, raw.get("parameters"), path),
         wait=_parse_wait(key, raw.get("wait"), path),
         extra={
             name: value
             for name, value in raw.items()
             if name
-            not in {"generation", "module", "resource", "reason", "expose", "parameters", "wait"}
+            not in {
+                "generation",
+                "module",
+                "resource",
+                "reason",
+                "expose",
+                "description",
+                "parameters",
+                "wait",
+            }
         },
     )
 
@@ -246,12 +341,26 @@ def _parse_parameters(key: str, raw: Any, path: Path) -> dict[str, ParameterOver
                 "arbitrage, pas une correction."
             )
 
+        # **Écrire ce que le contrat ne dit pas est une décision, pas une
+        # correction.** La phrase sera publiée sur Galaxy sous le nom de la
+        # collection, et un lecteur n'a aucun moyen de la distinguer de celles
+        # de Scaleway. La `reason` dit d'où elle vient.
+        documente = any(declaration.get(champ) is not None for champ in ("description", "example"))
+        if documente and not declaration.get("reason"):
+            raise OverrideError(
+                f"{path} : {key}.parameters.{nom} publie une description ou une valeur "
+                "d'exemple sans `reason`. Ce texte sortira sur Galaxy sous le nom de "
+                "la collection : la raison doit dire d'où il vient."
+            )
+
         parametres[nom] = ParameterOverride(
             name=nom,
             choices=tuple(str(valeur) for valeur in choices or ()),
             required=declaration.get("required"),
             expose=declaration.get("expose"),
             csv=declaration.get("csv"),
+            description=declaration.get("description"),
+            example=declaration.get("example"),
             reason=declaration.get("reason"),
         )
     return parametres

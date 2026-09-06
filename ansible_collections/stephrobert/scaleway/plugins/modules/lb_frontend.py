@@ -101,11 +101,11 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway lb frontend
   stephrobert.scaleway.lb_frontend:
-    zone: <zone>
-    frontend_id: <frontend_id>
-    backend_id: <backend_id>
-    inbound_port: <inbound_port>
-    name: <name>
+    zone: fr-par-1
+    frontend_id: 11111111-2222-3333-4444-555555555555
+    backend_id: 11111111-2222-3333-4444-555555555555
+    inbound_port: 80
+    name: my-frontend
   register: result
 """
 

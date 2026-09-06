@@ -32,6 +32,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import docs_quality
+
 from generator.ansible.collection import load_collection
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -144,6 +146,28 @@ def controler(tag: str | None) -> list[str]:
             + "\n    ".join(lignes[:5])
             + ("\n    ..." if len(lignes) > 5 else "")
         )
+
+    # **La documentation publiée est un livrable, pas un sous-produit.** Une
+    # page Galaxy qui dit « Not documented by the Scaleway API contract » ou qui
+    # montre `<zone>` en guise d'exemple est publiée pour toujours : la version
+    # est immuable. Ce refus arrive donc ici, au même rang que le changelog
+    # absent et l'arbre sale.
+    try:
+        _, defauts = docs_quality.mesurer()
+    except docs_quality.QualiteError as erreur:
+        refus.append(f"la qualité documentaire n'a pas pu être mesurée : {erreur}")
+    else:
+        bloquants = [d for d in defauts if d.bloquant]
+        if bloquants:
+            genres: dict[str, int] = {}
+            for defaut in bloquants:
+                genres[defaut.genre] = genres.get(defaut.genre, 0) + 1
+            detail = ", ".join(f"{genre} ({compte})" for genre, compte in sorted(genres.items()))
+            refus.append(
+                f"{len(bloquants)} défaut(s) documentaire(s) bloquant(s) : {detail}.\n"
+                "    Un lecteur de Galaxy doit comprendre le module depuis sa seule page.\n"
+                "    `python scripts/docs_quality.py` les nomme un par un."
+            )
 
     fragments = fragments_en_attente(collection.path)
     if fragments:

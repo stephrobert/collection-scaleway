@@ -170,13 +170,13 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway lb backend
   stephrobert.scaleway.lb_backend:
-    zone: <zone>
-    backend_id: <backend_id>
-    forward_port: <forward_port>
-    forward_port_algorithm: <forward_port_algorithm>
-    forward_protocol: <forward_protocol>
-    name: <name>
-    sticky_sessions: <sticky_sessions>
+    zone: fr-par-1
+    backend_id: 11111111-2222-3333-4444-555555555555
+    forward_port: 80
+    forward_port_algorithm: roundrobin
+    forward_protocol: tcp
+    name: my-backend
+    sticky_sessions: none
   register: result
 """
 

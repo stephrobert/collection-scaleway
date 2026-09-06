@@ -1,0 +1,201 @@
+"""Ce que la porte documentaire mesure, et ce qu'elle refuse de laisser publier.
+
+`ansible-test sanity` dit qu'un bloc `DOCUMENTATION` est bien formé. Il ne dit
+rien de ce qu'il apprend à quelqu'un : un module dont les six options portent
+« Not documented by the Scaleway API contract. » et dont l'exemple montre
+`zone: <zone>` passe la sanity sans une remarque, et se publie tel quel.
+
+Ces tests portent sur des modules écrits ici, pas sur ceux du dépôt : une porte
+qui ne mesurerait plus rien le jour où la collection change n'est pas une porte.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import docs_quality
+import pytest
+
+EN_TETE = '#!/usr/bin/python\n"""Module de test."""\n\n'
+
+
+def _module(dossier: Path, nom: str, documentation: str, exemples: str, retour: str) -> Path:
+    chemin = dossier / f"{nom}.py"
+    chemin.write_text(
+        f'{EN_TETE}DOCUMENTATION = r"""{documentation}"""\n\n'
+        f'EXAMPLES = r"""{exemples}"""\n\n'
+        f'RETURN = r"""{retour}"""\n',
+        encoding="utf-8",
+    )
+    return chemin
+
+
+BON_EXEMPLE = """
+- name: Read a Scaleway Instance
+  stephrobert.scaleway.instance_server_info:
+    zone: fr-par-1
+    server_id: 11111111-2222-3333-4444-555555555555
+  register: result
+"""
+
+BON_RETOUR = """
+server:
+  description: The Instance.
+  returned: success
+  type: dict
+"""
+
+
+def test_un_repli_de_description_est_bloquant(tmp_path: Path) -> None:
+    """La phrase de repli est publiée telle quelle, et Galaxy ne se reprend pas."""
+    chemin = _module(
+        tmp_path,
+        "demo_thing_info",
+        f"""
+module: demo_thing_info
+short_description: Read a thing
+description:
+  - Read a thing.
+options:
+  server_id:
+    description:
+      - {docs_quality.REPLI}
+    type: str
+""",
+        BON_EXEMPLE,
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {})
+    genres = {d.genre for d in defauts if d.bloquant}
+    assert "option-sans-description" in genres
+
+
+def test_un_exemple_a_trou_est_bloquant(tmp_path: Path) -> None:
+    """`zone: <zone>` n'est pas du YAML qu'on copie, c'est un formulaire vide."""
+    chemin = _module(
+        tmp_path,
+        "demo_thing",
+        """
+module: demo_thing
+short_description: Update a thing
+description:
+  - Update a thing.
+options:
+  zone:
+    description:
+      - The zone you want to target.
+    type: str
+""",
+        """
+- name: Update a thing
+  demo.demo.demo_thing:
+    zone: <zone>
+  register: result
+""",
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {})
+    assert any(d.genre == "exemple-non-copiable" and d.bloquant for d in defauts)
+
+
+def test_un_module_qui_ne_dit_pas_ce_quil_fait_est_bloquant(tmp_path: Path) -> None:
+    chemin = _module(
+        tmp_path,
+        "demo_thing_info",
+        """
+module: demo_thing_info
+short_description: Read a thing
+options: {}
+""",
+        BON_EXEMPLE,
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {})
+    assert any(d.genre == "description-absente" and d.bloquant for d in defauts)
+
+
+def test_une_action_que_le_module_refuse_ne_doit_pas_etre_documentee(tmp_path: Path) -> None:
+    """L'`argument_spec` fait foi : documenter davantage promet ce qu'il refuse.
+
+    Le cas mesuré est `instance_server_action`, qui exposait quatre actions et
+    en documentait sept, `terminate` compris, sur un module qui le refuse.
+    """
+    chemin = _module(
+        tmp_path,
+        "demo_thing_action",
+        """
+module: demo_thing_action
+short_description: Act on a thing
+description:
+  - Perform an action.
+  - '* `poweron`: Start the thing.'
+  - '* `terminate`: Delete the thing.'
+options:
+  action:
+    description:
+      - The action to perform.
+    type: str
+    choices: [poweron]
+""",
+        BON_EXEMPLE,
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {"demo_thing_action": {"poweron"}})
+    fautes = [d for d in defauts if d.genre == "action-exclue-documentee"]
+    assert fautes and fautes[0].bloquant
+    assert "terminate" in fautes[0].detail
+
+
+def test_un_module_sans_defaut_ne_bloque_rien(tmp_path: Path) -> None:
+    """Une porte qui refuse tout ne mesure plus rien : elle mesure sa panne."""
+    chemin = _module(
+        tmp_path,
+        "demo_thing_info",
+        """
+module: demo_thing_info
+short_description: Read a thing
+description:
+  - Read a thing by its ID.
+options:
+  server_id:
+    description:
+      - UUID of the thing.
+    type: str
+""",
+        BON_EXEMPLE,
+        BON_RETOUR,
+    )
+    _, defauts = docs_quality.examiner(chemin, {})
+    assert [d for d in defauts if d.bloquant] == []
+
+
+def test_une_mesure_sur_zero_module_est_une_erreur(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Zéro défaut sur zéro module est un vert qui ne dit rien.
+
+    C'est le défaut qui avait rendu un `ansible-test sanity` vert sur zéro
+    fichier examiné : le compte rendu ne distinguait pas « rien à redire » de
+    « rien mesuré ».
+    """
+    (tmp_path / "plugins" / "modules").mkdir(parents=True)
+
+    class _Collection:
+        path = tmp_path
+
+    monkeypatch.setattr(docs_quality, "load_collection", lambda: _Collection())
+    with pytest.raises(docs_quality.QualiteError, match="aucun module"):
+        docs_quality.mesurer()
+
+
+def test_la_porte_mesure_bien_la_collection_livree() -> None:
+    """La collection publiée ne porte aucun défaut bloquant.
+
+    Ce test regarde le dépôt et pas une fixture : c'est le seul du fichier qui
+    le fasse, et c'est voulu. Les autres prouvent que la porte sait refuser ;
+    celui-ci dit ce qu'elle mesure aujourd'hui sur ce qui part chez Galaxy.
+    """
+    mesure, defauts = docs_quality.mesurer()
+    bloquants = [f"{d.module} : {d.genre} ({d.detail})" for d in defauts if d.bloquant]
+    assert bloquants == [], "\n".join(bloquants)
+    assert mesure.modules > 0

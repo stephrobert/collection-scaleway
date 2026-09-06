@@ -82,11 +82,12 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway lb acl
   stephrobert.scaleway.lb_acl:
-    zone: <zone>
-    acl_id: <acl_id>
-    action: <action>
-    index: <index>
-    name: <name>
+    zone: fr-par-1
+    acl_id: 11111111-2222-3333-4444-555555555555
+    action:
+      type: allow
+    index: 0
+    name: my-acl
   register: result
 """
 

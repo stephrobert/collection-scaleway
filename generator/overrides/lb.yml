@@ -47,6 +47,19 @@ operations:
 
   lb.v1.LbMigrate.MigrateLb:
     resource: load_balancer
+    parameters:
+      type:
+        # Un exemple se copie, ou il n'apprend rien. `_example_value` tire sa
+        # valeur du contrat quand il la porte, d'une convention de nom sinon ;
+        # ce champ échappe aux deux.
+        example: "{{ lb_offer_type }}"
+        reason: >-
+          Le contrat ne déclare aucune valeur : sa description renvoie à un
+          point d'API, « use the List all Load Balancer offer types endpoint to
+          get a list of Load Balancer types ». Écrire `LB-S` serait une valeur
+          copiable et non vérifiée, exactement ce que la règle 3 refuse. Une
+          variable Jinja est du YAML valide, elle se copie, et elle échoue avec
+          un message lisible plutôt qu'avec un 400 de l'API.
 
   lb.v1.LbStat.GetLbStats:
     resource: load_balancer_stat
@@ -167,3 +180,24 @@ operations:
       modèle l'écartait faute de lecture unitaire, ce qui est vrai et n'est pas
       la raison : si le contrat en gagnait une demain, l'opération serait
       générée par accident.
+
+  # --- Un exemple que le contrat ne peut pas fournir seul -------------------
+  #
+  # Un exemple se copie, ou il n'apprend rien. `_example_value` tire sa valeur
+  # du contrat quand il la porte, d'une convention de nom sinon ; ce champ
+  # échappe aux deux, et la valeur se décide donc ici, avec sa source. Même cas
+  # que `MigrateLb.type`, plus haut.
+
+  lb.v1.Acl.UpdateAcl:
+    parameters:
+      action:
+        example:
+          type: allow
+        reason: >-
+          Le repli par type rendait `action: {}`, copiable et refusé par l'API
+          sur un paramètre obligatoire. La valeur vient du contrat :
+          `scaleway.lb.v1.AclAction.type` référence
+          `scaleway.lb.v1.AclActionType`, dont les valeurs sont `allow`, `deny`
+          et `redirect`, et dont le défaut déclaré est `allow`. Le parser aplatit
+          le corps et perd cette forme ; l'override la remet, il ne l'invente
+          pas.

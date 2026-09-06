@@ -72,9 +72,9 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway instance volume
   stephrobert.scaleway.instance_volume:
-    zone: <zone>
-    volume_id: <volume_id>
-    name: <name>
+    zone: fr-par-1
+    volume_id: 11111111-2222-3333-4444-555555555555
+    name: my-volume
   register: result
 """
 

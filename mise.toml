@@ -345,6 +345,15 @@ description = "ansible-lint en profil production sur la collection livrée"
 # l'appelle dans le job de la collection.
 run = "python scripts/ansible_lint.py"
 
+[tasks."docs:quality"]
+description = "Ce que la documentation publiée vaut, et ce qui la rend impubliable"
+# `ansible-test sanity` dit qu'un bloc est bien formé, pas qu'il apprend quelque
+# chose à quelqu'un. Cette porte cherche des défauts nommés, chacun trouvé sur
+# un module réel, et chacun réparable dans le générateur plutôt que dans le
+# fichier produit.
+depends = ["generate"]
+run = "python scripts/docs_quality.py --check"
+
 [tasks."release:check"]
 description = "Ce qui doit être vrai avant de publier sur Galaxy"
 # **Hors de `check`**, et c'est délibéré : cette garde exige un tag qui désigne

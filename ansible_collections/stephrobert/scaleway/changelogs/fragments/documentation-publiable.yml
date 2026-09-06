@@ -1,0 +1,21 @@
+minor_changes:
+  - Module documentation no longer inherits the gaps of the API contract. Every
+    option and every returned key of the 50 published modules now carries a
+    description, and every example is copyable as is.
+  - Overrides gained a documentation layer. A ``description`` fills a gap the
+    contract leaves, an ``example`` supplies a value the contract cannot give,
+    and both require a ``reason``. The contract always wins over an override,
+    and an override that no longer fills anything is reported as orphaned.
+bugfixes:
+  - "``instance_server_action``: the ``RETURN`` block described the seven
+    actions of the contract on a module whose ``argument_spec`` accepts four.
+    ``terminate``, ``backup`` and ``enable_routed_ip`` are no longer documented
+    as available."
+  - Examples of the management modules published ``<zone>``, ``<name>`` and
+    ``<backend_id>`` rather than values. They now use the zone the contract
+    declares, a UUID, and the enum values an operator would really write.
+  - Enum examples no longer show the ``unknown_*`` protobuf sentinel that opens
+    most Scaleway enumerations, which the API rejects.
+  - Loading an override file now refuses a key declared twice. YAML silently
+    keeps the last one, which had erased a ``resource`` decision and renamed a
+    published module without any check turning red.

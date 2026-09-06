@@ -62,9 +62,9 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway lb certificate
   stephrobert.scaleway.lb_certificate:
-    zone: <zone>
-    certificate_id: <certificate_id>
-    name: <name>
+    zone: fr-par-1
+    certificate_id: 11111111-2222-3333-4444-555555555555
+    name: my-certificate
   register: result
 """
 

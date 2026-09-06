@@ -55,7 +55,7 @@ options:
     type: str
   boot_type:
     description:
-    - Not documented by the Scaleway API contract.
+    - Instance boot type.
     type: str
     choices:
     - local
@@ -79,11 +79,11 @@ options:
     type: str
   dynamic_ip_required:
     description:
-    - Not documented by the Scaleway API contract.
+    - True if a dynamic IPv4 is required.
     type: bool
   enable_ipv6:
     description:
-    - Not documented by the Scaleway API contract.
+    - True if IPv6 is enabled (deprecated and always `False` when `routed_ip_enabled` is `True`).
     - Deprecated by the Scaleway API contract.
     type: bool
   name:
@@ -116,7 +116,7 @@ options:
     type: bool
   security_group:
     description:
-    - Not documented by the Scaleway API contract.
+    - Instance security group.
     type: dict
   tags:
     description:
@@ -125,7 +125,7 @@ options:
     elements: str
   volumes:
     description:
-    - Not documented by the Scaleway API contract.
+    - Instance volumes.
     type: dict
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
@@ -141,9 +141,9 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway instance server
   stephrobert.scaleway.instance_server:
-    zone: <zone>
-    server_id: <server_id>
-    name: <name>
+    zone: fr-par-1
+    server_id: 11111111-2222-3333-4444-555555555555
+    name: my-server
   register: result
 """
 

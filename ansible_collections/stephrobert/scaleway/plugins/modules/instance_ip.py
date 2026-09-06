@@ -50,7 +50,7 @@ options:
     type: str
   server:
     description:
-    - Not documented by the Scaleway API contract.
+    - Instance attached to the IP.
     type: str
   tags:
     description:
@@ -79,9 +79,9 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway instance ip
   stephrobert.scaleway.instance_ip:
-    zone: <zone>
-    ip: <ip>
-    reverse: <reverse>
+    zone: fr-par-1
+    ip: 11111111-2222-3333-4444-555555555555
+    reverse: server-1.example.com
   register: result
 """
 

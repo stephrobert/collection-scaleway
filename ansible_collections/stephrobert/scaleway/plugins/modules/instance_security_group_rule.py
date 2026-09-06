@@ -107,10 +107,10 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway instance security group rule
   stephrobert.scaleway.instance_security_group_rule:
-    zone: <zone>
-    security_group_id: <security_group_id>
-    security_group_rule_id: <security_group_rule_id>
-    protocol: <protocol>
+    zone: fr-par-1
+    security_group_id: 11111111-2222-3333-4444-555555555555
+    security_group_rule_id: 11111111-2222-3333-4444-555555555555
+    protocol: TCP
   register: result
 """
 

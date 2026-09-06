@@ -44,27 +44,27 @@ options:
     type: str
   arch:
     description:
-    - Not documented by the Scaleway API contract.
+    - Filter images by CPU architecture.
     type: str
   name:
     description:
-    - Not documented by the Scaleway API contract.
+    - Filter images by name.
     type: str
   organization:
     description:
-    - Not documented by the Scaleway API contract.
+    - List only images of this Organization ID.
     type: str
   project:
     description:
-    - Not documented by the Scaleway API contract.
+    - List only images of this Project ID.
     type: str
   public:
     description:
-    - Not documented by the Scaleway API contract.
+    - Filter images on their public flag.
     type: bool
   tags:
     description:
-    - Not documented by the Scaleway API contract.
+    - List images with these exact tags.
     type: str
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway

@@ -67,9 +67,10 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway widget widget
   lab.widget.widget_widget:
-    zone: <zone>
-    widget_id: <widget_id>
-    tags: <tags>
+    zone: fr-par-1
+    widget_id: 11111111-2222-3333-4444-555555555555
+    tags:
+    - production
   register: result
 """
 

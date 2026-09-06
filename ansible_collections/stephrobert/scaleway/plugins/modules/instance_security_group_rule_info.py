@@ -40,7 +40,7 @@ options:
     - it-mil-1
   security_group_rule_id:
     description:
-    - Not documented by the Scaleway API contract.
+    - UUID of the rule. (UUID format)
     type: str
   security_group_id:
     description:

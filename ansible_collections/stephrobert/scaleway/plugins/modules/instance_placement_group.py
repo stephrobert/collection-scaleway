@@ -81,9 +81,9 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway instance placement group
   stephrobert.scaleway.instance_placement_group:
-    zone: <zone>
-    placement_group_id: <placement_group_id>
-    name: <name>
+    zone: fr-par-1
+    placement_group_id: 11111111-2222-3333-4444-555555555555
+    name: my-placement-group
   register: result
 """
 

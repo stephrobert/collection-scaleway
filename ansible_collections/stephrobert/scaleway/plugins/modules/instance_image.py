@@ -85,9 +85,9 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway instance image
   stephrobert.scaleway.instance_image:
-    zone: <zone>
-    image_id: <image_id>
-    name: <name>
+    zone: fr-par-1
+    image_id: 11111111-2222-3333-4444-555555555555
+    name: my-image
   register: result
 """
 

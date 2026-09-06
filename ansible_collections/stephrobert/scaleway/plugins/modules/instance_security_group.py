@@ -105,9 +105,9 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway instance security group
   stephrobert.scaleway.instance_security_group:
-    zone: <zone>
-    security_group_id: <security_group_id>
-    name: <name>
+    zone: fr-par-1
+    security_group_id: 11111111-2222-3333-4444-555555555555
+    name: my-security-group
   register: result
 """
 

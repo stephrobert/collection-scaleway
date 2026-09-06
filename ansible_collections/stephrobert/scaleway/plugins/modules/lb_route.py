@@ -67,9 +67,9 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway lb route
   stephrobert.scaleway.lb_route:
-    zone: <zone>
-    route_id: <route_id>
-    backend_id: <backend_id>
+    zone: fr-par-1
+    route_id: 11111111-2222-3333-4444-555555555555
+    backend_id: 11111111-2222-3333-4444-555555555555
   register: result
 """
 

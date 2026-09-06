@@ -71,9 +71,9 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway lb subscriber
   stephrobert.scaleway.lb_subscriber:
-    zone: <zone>
-    subscriber_id: <subscriber_id>
-    name: <name>
+    zone: fr-par-1
+    subscriber_id: 11111111-2222-3333-4444-555555555555
+    name: my-subscriber
   register: result
 """
 

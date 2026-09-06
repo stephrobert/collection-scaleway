@@ -87,10 +87,10 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway lb load balancer
   stephrobert.scaleway.lb_load_balancer:
-    zone: <zone>
-    lb_id: <lb_id>
-    description: <description>
-    name: <name>
+    zone: fr-par-1
+    lb_id: 11111111-2222-3333-4444-555555555555
+    description: Managed by Ansible
+    name: my-load-balancer
   register: result
 """
 

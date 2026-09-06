@@ -60,7 +60,7 @@ EXAMPLES = r"""
   stephrobert.scaleway.lb_load_balancer_action:
     zone: fr-par-1
     lb_id: 11111111-2222-3333-4444-555555555555
-    type: <type>
+    type: '{{ lb_offer_type }}'
   register: result
 """
 

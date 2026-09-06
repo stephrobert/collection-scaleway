@@ -69,9 +69,9 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway lb ip
   stephrobert.scaleway.lb_ip:
-    zone: <zone>
-    ip_id: <ip_id>
-    reverse: <reverse>
+    zone: fr-par-1
+    ip_id: 11111111-2222-3333-4444-555555555555
+    reverse: server-1.example.com
   register: result
 """
 

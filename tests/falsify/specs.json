@@ -43,8 +43,8 @@
       "name": "override-orphelin",
       "why": "Un override qui ne désigne rien décrit une API qui n'existe pas, et il est inerte.",
       "file": "generator/overrides/loader.py",
-      "find": "        return tuple(sorted(key for key in self.operations if key not in known))",
-      "replace": "        return tuple(sorted(key for key in self.operations if key not in known and False))",
+      "find": "            operation = par_cle.get(cle)",
+      "replace": "            operation = par_cle.get(cle) or next(iter(par_cle.values()), None)",
       "test": "tests/unit/generator/test_overrides.py::test_un_override_orphelin_est_signale"
     },
     {
@@ -910,6 +910,70 @@
       "find": "    if tag is not None and not sur_la_branche_principale(tag):",
       "replace": "    if tag is not None and not sur_la_branche_principale(tag) and False:",
       "test": "tests/unit/outillage/test_release.py::test_un_tag_hors_de_main_est_refuse"
+    },
+    {
+      "name": "cle-doverride-en-double",
+      "why": "YAML garde la dernière occurrence en silence : un second bloc efface la décision du premier, et le module publié change de nom sans qu'aucun contrôle ne rougisse.",
+      "file": "generator/overrides/loader.py",
+      "find": "            if cle in vues:",
+      "replace": "            if cle in vues and False:",
+      "test": "tests/unit/generator/test_overrides_documentaires.py::test_une_cle_declaree_deux_fois_est_refusee"
+    },
+    {
+      "name": "description-doverride-sans-raison",
+      "why": "Le texte sort sur Galaxy sous le nom de la collection : sans raison, un lecteur ne peut pas le distinguer d'une phrase de Scaleway.",
+      "file": "generator/overrides/loader.py",
+      "find": "        if documente and not declaration.get(\"reason\"):",
+      "replace": "        if documente and not declaration.get(\"reason\") and False:",
+      "test": "tests/unit/generator/test_overrides_documentaires.py::test_une_description_publiee_sans_raison_est_refusee"
+    },
+    {
+      "name": "override-qui-recouvre-le-contrat",
+      "why": "Un override qui gagne sur le contrat fait diverger la page publiée de l'API, et rien sur la page ne dit d'où vient le texte.",
+      "file": "generator/ansible/models.py",
+      "find": "    lines.append(parameter.description or comble or UNDOCUMENTED)",
+      "replace": "    lines.append(comble or parameter.description or UNDOCUMENTED)",
+      "test": "tests/unit/generator/test_overrides_documentaires.py::test_le_contrat_gagne_toujours_sur_loverride"
+    },
+    {
+      "name": "orphelin-documentaire",
+      "why": "Le jour où l'amont documente le champ, l'override cesse d'être lu : un texte mort qu'une relecture croirait publié.",
+      "file": "generator/overrides/loader.py",
+      "find": "                if restriction.description and nom in documentes:",
+      "replace": "                if restriction.description and nom in documentes and False:",
+      "test": "tests/unit/generator/test_overrides_documentaires.py::test_un_override_qui_ne_comble_plus_rien_est_orphelin"
+    },
+    {
+      "name": "documentation-impubliable-publiable",
+      "why": "Une page Galaxy est immuable : un module qui y arrive sans descriptions ni exemples copiables ne s'explique nulle part, et la version ne se reprend pas.",
+      "file": "scripts/release.py",
+      "find": "        if bloquants:",
+      "replace": "        if bloquants and False:",
+      "test": "tests/unit/outillage/test_release.py::test_une_documentation_impubliable_est_refusee"
+    },
+    {
+      "name": "repli-de-description-accepte",
+      "why": "« Not documented by the Scaleway API contract. » est une phrase publiée, pas une absence : sans ce refus elle part sur Galaxy pour toujours.",
+      "file": "scripts/docs_quality.py",
+      "find": "REPLI = \"Not documented by the Scaleway API contract.\"",
+      "replace": "REPLI = \"\\x00 phrase que rien ne porte \\x00\"",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_un_repli_de_description_est_bloquant"
+    },
+    {
+      "name": "exemple-a-trou-accepte",
+      "why": "`zone: <zone>` n'est pas du YAML qu'on copie : c'est un formulaire vide, et le lecteur n'a nulle part où trouver la valeur.",
+      "file": "scripts/docs_quality.py",
+      "find": "PLACEHOLDER = re.compile(r\"<[a-z_]+>\")",
+      "replace": "PLACEHOLDER = re.compile(r\"<\\x00jamais\\x00>\")",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_un_exemple_a_trou_est_bloquant"
+    },
+    {
+      "name": "mesure-documentaire-sur-zero-module",
+      "why": "Zéro défaut sur zéro module est le vert qui a déjà menti une fois ici : un `ansible-test sanity` vert sur zéro fichier examiné.",
+      "file": "scripts/docs_quality.py",
+      "find": "    if total.modules == 0:",
+      "replace": "    if total.modules == 0 and False:",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_une_mesure_sur_zero_module_est_une_erreur"
     }
   ]
 }

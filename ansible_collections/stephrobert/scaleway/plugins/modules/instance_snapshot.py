@@ -67,9 +67,9 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway instance snapshot
   stephrobert.scaleway.instance_snapshot:
-    zone: <zone>
-    snapshot_id: <snapshot_id>
-    name: <name>
+    zone: fr-par-1
+    snapshot_id: 11111111-2222-3333-4444-555555555555
+    name: my-snapshot
   register: result
 """
 

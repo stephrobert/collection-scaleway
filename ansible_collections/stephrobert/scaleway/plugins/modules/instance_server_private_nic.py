@@ -68,10 +68,11 @@ EXAMPLES = r"""
 
 - name: Update a Scaleway instance server private nic
   stephrobert.scaleway.instance_server_private_nic:
-    zone: <zone>
-    server_id: <server_id>
-    private_nic_id: <private_nic_id>
-    tags: <tags>
+    zone: fr-par-1
+    server_id: 11111111-2222-3333-4444-555555555555
+    private_nic_id: 11111111-2222-3333-4444-555555555555
+    tags:
+    - production
   register: result
 """
 
