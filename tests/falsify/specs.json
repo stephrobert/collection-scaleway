@@ -1198,6 +1198,14 @@
       "find": "    (\"modules\", README),",
       "replace": "    (\"modules\", README_COLLECTION),",
       "test": "tests/unit/outillage/test_liens_versionnes.py::test_chaque_bloc_nomme_va_au_fichier_qui_le_porte"
+    },
+    {
+      "name": "abreviation-en-minuscules-dans-une-reformulation",
+      "why": "« Count of ips. » sous une phrase courte qui dit « Instance IPs » : deux moitiés d'une même page, une seule passée par la table des acronymes.",
+      "file": "generator/ansible/models.py",
+      "find": "            return phrase.format(quoi=_lisible(quoi.replace(\"_\", \" \")), ressource=lisible)",
+      "replace": "            return phrase.format(quoi=quoi.replace(\"_\", \" \"), ressource=lisible)",
+      "test": "tests/unit/generator/test_champs_decrits.py::test_une_reformulation_met_les_abreviations_en_capitales"
     }
   ]
 }

@@ -1,0 +1,5 @@
+bugfixes:
+  - "A restated field description kept the abbreviation in lowercase.
+    ``ips_count`` read ``Count of ips.`` on a page whose short description
+    already said ``Instance IPs``: the acronym table was applied to the schema
+    name and not to the field name."

@@ -1530,8 +1530,12 @@ def _reformulation(ressource: str, champ: str) -> str | None:
     for motif, phrase in REFORMULATIONS:
         trouve = motif.match(champ)
         if trouve:
+            # `_lisible` sur les deux côtés, et pas seulement sur la ressource :
+            # la première version ne le passait qu'au nom du schéma, et
+            # `ips_count` sortait publié « Count of ips. » là où la phrase
+            # courte du même module dit déjà « Instance IPs ».
             quoi = trouve.groupdict().get("quoi") or ""
-            return phrase.format(quoi=quoi.replace("_", " "), ressource=lisible)
+            return phrase.format(quoi=_lisible(quoi.replace("_", " ")), ressource=lisible)
     return None
 
 

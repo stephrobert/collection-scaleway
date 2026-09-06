@@ -102,7 +102,7 @@ dashboard:
       type: int
     ips_count:
       description:
-      - Count of ips.
+      - Count of IPs.
       returned: when the API returns it
       type: int
     security_groups_count:
@@ -127,7 +127,7 @@ dashboard:
       type: int
     private_nics_count:
       description:
-      - Count of private nics.
+      - Count of private NICs.
       returned: when the API returns it
       type: int
     placement_groups_count:
