@@ -34,6 +34,7 @@ import logging
 import time
 import traceback
 from dataclasses import dataclass, field
+from collections.abc import Iterable
 from typing import Any, Callable
 from urllib.parse import quote
 
@@ -911,10 +912,31 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
 
     champ = spec.read_operation.payload_field or "resource"
     masque = "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
-    avant = {
-        nom: (masque if nom in spec.secret_params else _valeur_courante(courant, nom))
-        for nom in ecarts
-    }
+
+    def _cote_du_diff(ressource: dict[str, Any], noms: Iterable[str]) -> dict[str, Any]:
+        """Un côté du `diff`, lu **exactement** comme la comparaison le lit.
+
+        **L'invariant, plus général que le correctif qui l'a fait écrire.** Toute
+        projection qui sert à *comparer* l'état doit servir à *montrer* le diff.
+        Les deux côtés passent donc par la même fonction, par construction, et
+        non parce que quelqu'un a pensé à recopier l'appel.
+
+        Ce que l'asymétrie donnait : `avant` passait par `_valeur_courante`,
+        `apres` faisait un `apres.get(nom)` direct. Sur `lb_frontend.backend_id`,
+        que la lecture rend sous `backend: {"id": ...}`, l'utilisateur voyait
+
+            before: {backend_id: abc}
+            after:  {backend_id: null}
+
+        alors que l'API avait parfaitement rendu `backend.id`. Le module
+        marchait ; le diff mentait, ce qui est pire qu'un module qui échoue.
+        """
+        return {
+            nom: (masque if nom in spec.secret_params else _valeur_courante(ressource, nom))
+            for nom in noms
+        }
+
+    avant = _cote_du_diff(courant, ecarts)
     apres_demande = {
         nom: (masque if nom in spec.secret_params else valeur) for nom, valeur in ecarts.items()
     }
@@ -973,9 +995,7 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
         changed=True,
         diff={
             "before": avant,
-            "after": {
-                nom: (masque if nom in spec.secret_params else apres.get(nom)) for nom in ecarts
-            },
+            "after": _cote_du_diff(apres, ecarts),
         },
         **{champ: apres},
     )

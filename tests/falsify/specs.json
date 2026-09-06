@@ -1264,12 +1264,12 @@
       "test": "tests/unit/generator/test_parser_refuse.py::test_une_operation_qui_nest_pas_un_mapping_est_ignoree_avec_sa_trace"
     },
     {
-      "name": "description-non-textuelle-fait-tomber-le-produit",
-      "why": "Une description n'est pas porteuse : la laisser lever un AttributeError ferait tomber le parsing d'un produit entier pour un champ que le rapport compte déjà comme absent.",
-      "file": "generator/parser/openapi.py",
-      "find": "    if not isinstance(text, str) or not text:",
-      "replace": "    if not text:",
-      "test": "tests/unit/generator/test_parser_refuse.py::test_une_description_qui_nest_pas_une_chaine_vaut_une_absence"
+      "name": "diff-asymetrique",
+      "why": "Le `before` passait par la projection et l'`after` non : sur un champ que la lecture rend imbriqué, l'utilisateur voyait `after: null` alors que l'API avait rendu la valeur. Le module marche, et le diff ment.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "            \"after\": _cote_du_diff(apres, ecarts),",
+      "replace": "            \"after\": {\n                nom: (masque if nom in spec.secret_params else apres.get(nom)) for nom in ecarts\n            },",
+      "test": "tests/unit/collection/test_runtime.py::test_le_diff_lit_ses_deux_cotes_de_la_meme_facon"
     }
   ]
 }
