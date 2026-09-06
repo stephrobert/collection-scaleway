@@ -773,6 +773,53 @@ def test_seuls_les_champs_differents_sont_envoyes(runtime: Any, monkeypatch: Any
     assert module.resultat["diff"] == {"before": {"name": "web"}, "after": {"name": "api"}}
 
 
+def test_le_diff_lit_ses_deux_cotes_de_la_meme_facon(runtime: Any, monkeypatch: Any) -> None:
+    """Une projection qui sert à comparer doit servir à montrer.
+
+    L'écriture prend `backend_id`, la lecture rend `backend: {"id": ...}`. Le
+    `before` passait par la projection qui réconcilie les deux ; l'`after`
+    lisait `apres.get("backend_id")` et trouvait `None`. L'utilisateur voyait
+    donc :
+
+        before: {backend_id: abc}
+        after:  {backend_id: null}
+
+    alors que l'API avait parfaitement rendu `backend.id = xyz`. Le module
+    marchait, et le diff mentait — ce qui est pire qu'un module qui échoue,
+    parce que rien ne le signale.
+    """
+    spec = runtime.ManageModule(
+        read_operation=runtime.Operation(
+            id="GetChose", method="GET", path="/x/{chose_id}", payload_field="chose"
+        ),
+        update_operation=runtime.Operation(
+            id="UpdateChose",
+            method="PATCH",
+            path="/x/{chose_id}",
+            body_params=("backend_id",),
+            payload_field="chose",
+        ),
+        managed_params=("backend_id",),
+    )
+    api = _ApiGestionFactice(
+        [
+            {"id": "c1", "backend": {"id": "abc", "name": "ancien"}},
+            {"id": "c1", "backend": {"id": "xyz", "name": "nouveau"}},
+        ]
+    )
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
+    module = _ModuleFactice(chose_id="c1", backend_id="xyz")
+
+    with pytest.raises(SystemExit):
+        runtime.run_manage_module(module, spec)
+
+    assert module.resultat is not None
+    assert module.resultat["diff"] == {
+        "before": {"backend_id": "abc"},
+        "after": {"backend_id": "xyz"},
+    }, "les deux côtés passent par la même projection"
+
+
 def test_un_parametre_non_fourni_nest_pas_gere(runtime: Any, monkeypatch: Any) -> None:
     """La convention d'Ansible, et ce qui permet à deux playbooks de coexister.
 
