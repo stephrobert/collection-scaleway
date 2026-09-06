@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_ip_info
 short_description: Gather information about Scaleway Load Balancer ips
-version_added: 0.1.0
+version_added: 0.2.0
 description:
 - Retrieve the full details of a Load Balancer flexible IP address.
 - List the Load Balancer flexible IP addresses held in the account (filtered by Organization

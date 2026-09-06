@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_volume_type_info
 short_description: Gather information about Scaleway Instance volume types
-version_added: 0.1.0
+version_added: 0.2.0
 description:
 - List all volume types and their technical details.
 author:

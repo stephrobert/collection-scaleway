@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_server_action
 short_description: Perform an action on a Scaleway Instance server
-version_added: 0.1.0
+version_added: 0.2.0
 description:
 - 'Perform an action on an Instance.
 

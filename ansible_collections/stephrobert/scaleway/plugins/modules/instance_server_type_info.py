@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_server_type_info
 short_description: Gather information about Scaleway Instance server types
-version_added: 0.1.0
+version_added: 0.2.0
 description:
 - List available Instance types and their technical details.
 author:

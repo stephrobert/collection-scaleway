@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_acl_info
 short_description: Gather information about Scaleway Load Balancer acls
-version_added: 0.1.0
+version_added: 0.2.0
 description:
 - Get information for a particular ACL, specified by its ACL ID. The response returns full
   details of the ACL, including its name, action, match rule and frontend.

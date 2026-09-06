@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_snapshot
 short_description: Manage a Scaleway Instance snapshot
-version_added: 0.1.0
+version_added: 0.2.0
 description:
 - Update the properties of a snapshot.
 - The module reads the resource first and writes only the fields that differ, so a second

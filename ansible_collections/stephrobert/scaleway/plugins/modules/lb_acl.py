@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_acl
 short_description: Manage a Scaleway Load Balancer acl
-version_added: 0.1.0
+version_added: 0.2.0
 description:
 - Update a particular ACL, specified by its ACL ID. You can update details including its name,
   action and match rule.

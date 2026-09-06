@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_placement_group_server_info
 short_description: Gather information about Scaleway Instance placement group servers
-version_added: 0.1.0
+version_added: 0.2.0
 description:
 - Get all Instances belonging to the specified placement group.
 author:
