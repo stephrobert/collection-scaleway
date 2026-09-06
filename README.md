@@ -255,6 +255,8 @@ in an archive is not a module Ansible can load.
 * [The collection runtime](docs/architecture/runtime.md)
 * [The dynamic inventory](docs/guides/dynamic-inventory.md), and Ansible's trap around strict mode
 * [What OpenSSF Scorecard says, and what it does not](docs/scorecard.md)
+* [The OpenSSF Best Practices badge](docs/best-practices.md): every answer, and the
+  three that are deliberately `Unmet`
 * [CONTRIBUTING.md](CONTRIBUTING.md): what to run before you push, and why a
   hand-edited generated file is refused
 * [RELEASING.md](RELEASING.md): where the version number comes from, and the six
