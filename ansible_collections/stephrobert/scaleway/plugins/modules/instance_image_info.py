@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_image_info
 short_description: Gather information about Scaleway Instance images
-version_added: 0.2.0
+version_added: 0.3.0
 description:
 - Get details of an image with the specified ID.
 - List all existing Instance images.

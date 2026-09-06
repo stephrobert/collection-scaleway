@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_route_info
 short_description: Gather information about Scaleway Load Balancer routes
-version_added: 0.2.0
+version_added: 0.3.0
 description:
 - Retrieve information about an existing route, specified by its route ID. Its full details,
   origin frontend, target backend and match condition, are returned in the response object.
