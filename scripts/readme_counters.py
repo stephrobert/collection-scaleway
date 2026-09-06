@@ -454,6 +454,26 @@ def bloc_versionnement() -> str:
     )
 
 
+def bloc_image() -> str:
+    """La commande qui tire l'environnement d'exécution de la version publiée.
+
+    Le numéro y était écrit à la main, et il aurait vieilli comme les trois
+    autres qu'un audit a trouvés faux : il n'y a pas de `latest`, donc une
+    commande périmée tire une image qui n'existe pas.
+    """
+    version = load_collection().version
+    image = f"ghcr.io/stephrobert/collection-scaleway/ee:{version}"
+    return "\n".join(
+        [
+            "```bash",
+            f"podman pull {image}",
+            "ansible-navigator run playbook.yml \\",
+            f"  --execution-environment-image {image}",
+            "```",
+        ]
+    )
+
+
 def bloc_nombre_de_modules() -> str:
     """La phrase du README racine qui compte les modules.
 
@@ -470,6 +490,7 @@ def bloc_nombre_de_modules() -> str:
 NOMMES = {
     "compatibilite": lambda: bloc_compatibilite(),
     "versionnement": lambda: bloc_versionnement(),
+    "image": lambda: bloc_image(),
     "modules": lambda: bloc_nombre_de_modules(),
 }
 
@@ -479,6 +500,7 @@ NOMMES = {
 BLOCS_NOMMES: tuple[tuple[str, Path], ...] = (
     ("compatibilite", README_COLLECTION),
     ("versionnement", README_COLLECTION),
+    ("image", README_COLLECTION),
     ("modules", README),
 )
 

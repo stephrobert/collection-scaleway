@@ -225,6 +225,24 @@ ansible-playbook stephrobert.scaleway.arreter_un_serveur -e zone=fr-par-1 -e ser
 
 See [playbooks/README.md](playbooks/README.md).
 
+## Execution environment
+
+Playbooks in AWX, `ansible-navigator` or a CI runner do not use the controller's
+`ansible-core`: they run inside an execution environment. One is published with
+every version, carrying this collection and the Scaleway SDK:
+
+<!-- compteurs:image:début, produits par scripts/readme_counters.py -->
+```bash
+podman pull ghcr.io/stephrobert/collection-scaleway/ee:0.3.0
+ansible-navigator run playbook.yml \
+  --execution-environment-image ghcr.io/stephrobert/collection-scaleway/ee:0.3.0
+```
+<!-- compteurs:image:fin -->
+
+There is no `latest` tag, on purpose: a moving reference makes it impossible to
+say afterwards what was run. The image is signed without a key and carries a
+build provenance attestation, verified the same way as the archive.
+
 ## Compatibility
 
 <!-- compteurs:compatibilite:début, produits par scripts/readme_counters.py -->

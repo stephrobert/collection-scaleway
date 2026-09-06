@@ -160,6 +160,53 @@ jobs:
       - name: Documentation de la collection
         run: mise run lint:docs
 
+  image:
+    # **L'environnement d'exécution, construit et interrogé, jamais publié
+    # ici.** Un utilisateur d'AWX ou d'`ansible-navigator` ne joue pas un
+    # playbook avec l'`ansible-core` de sa machine : il le joue dans une image.
+    # Celle-ci porte la collection et le SDK, et le `Containerfile` vérifie
+    # dans sa propre construction qu'Ansible sait les charger.
+    #
+    # Publier depuis une pull request donnerait une image que personne n'a
+    # relue ; ne construire qu'au moment du tag donnerait une image dont on
+    # découvrirait qu'elle casse **pendant** une publication irréversible.
+    name: Image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Installer mise
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
+        with:
+          version: 2026.2.23
+
+      - name: Installer
+        run: mise run setup
+
+      # L'image copie l'archive : elle doit exister avant, et être celle que ce
+      # dépôt vient de produire plutôt que celle que Galaxy servirait.
+      - name: Construire l'archive
+        run: mise run package
+
+      - name: Construire l'image, sans la publier
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: Containerfile
+          push: false
+          tags: stephrobert-scaleway-ee:pr
+
   package:
     # L'archive installable, et la preuve qu'elle sert : contenu contrôlé,
     # installation réelle, puis `ansible-doc` et `ansible-playbook` interrogés
