@@ -473,11 +473,13 @@ NOMMES = {
     "modules": lambda: bloc_nombre_de_modules(),
 }
 
-#: Les blocs nommés, et le fichier de chacun.
-BLOCS_NOMMES: tuple[tuple[str, str], ...] = (
-    ("compatibilite", "collection"),
-    ("versionnement", "collection"),
-    ("modules", "racine"),
+#: Les blocs nommés, et le fichier de chacun. Un fichier, pas une catégorie :
+#: le premier essai rangeait par « collection ou pas », et `galaxy.yml`, qui
+#: n'est ni l'un ni l'autre, se voyait réclamer les marqueurs du README racine.
+BLOCS_NOMMES: tuple[tuple[str, Path], ...] = (
+    ("compatibilite", README_COLLECTION),
+    ("versionnement", README_COLLECTION),
+    ("modules", README),
 )
 
 
@@ -514,7 +516,7 @@ def main(argv: list[str]) -> int:
         texte = fichier.read_text(encoding="utf-8")
         attendu = _remplace(fichier, texte, contenu) if contenu is not None else texte
         for nom, cible in BLOCS_NOMMES:
-            if (cible == "collection") != (fichier == README_COLLECTION):
+            if cible != fichier:
                 continue
             attendu = _remplace(fichier, attendu, NOMMES[nom](), _marqueurs(nom))
         attendu = _versionner_les_liens(attendu, version)

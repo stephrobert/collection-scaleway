@@ -1190,6 +1190,14 @@
       "find": "                *((DEPRECATED_NOTICE,) if champ.deprecated else ()),",
       "replace": "                *((DEPRECATED_NOTICE,) if champ.deprecated and False else ()),",
       "test": "tests/unit/generator/test_champs_decrits.py::test_un_champ_deprecie_le_dit"
+    },
+    {
+      "name": "bloc-nomme-reclame-au-mauvais-fichier",
+      "why": "Un bloc réclamé à `galaxy.yml`, qui ne le porte pas, fait sortir `readme:check` en 1 pour un fichier qui n'a jamais eu à porter ce marqueur.",
+      "file": "scripts/readme_counters.py",
+      "find": "    (\"modules\", README),",
+      "replace": "    (\"modules\", README_COLLECTION),",
+      "test": "tests/unit/outillage/test_liens_versionnes.py::test_chaque_bloc_nomme_va_au_fichier_qui_le_porte"
     }
   ]
 }
