@@ -83,12 +83,20 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway instance image
+- name: Update a Scaleway Instance image
   stephrobert.scaleway.instance_image:
     zone: fr-par-1
     image_id: 11111111-2222-3333-4444-555555555555
     name: my-image
   register: result
+- name: Preview the change on a Scaleway Instance image without writing
+  stephrobert.scaleway.instance_image:
+    zone: fr-par-1
+    image_id: 11111111-2222-3333-4444-555555555555
+    name: my-image
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""

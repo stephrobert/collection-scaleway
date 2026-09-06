@@ -1110,6 +1110,46 @@
       "find": "            f\"  {qualite.modules} published pages: \"",
       "replace": "            \"\" or f\"  {qualite.modules} \"",
       "test": "tests/unit/outillage/test_liens_versionnes.py::test_le_bloc_derive_publie_la_qualite_documentaire"
+    },
+    {
+      "name": "module-dinformation-sans-filtre",
+      "why": "Lister un parc entier pour en garder trois machines n'est pas une réponse, et aucune tâche ne montrait un filtre.",
+      "file": "generator/ansible/models.py",
+      "find": "        filtre = _filtre_dexemple(options, selector)",
+      "replace": "        filtre = _filtre_dexemple(options, selector) and None",
+      "test": "tests/unit/generator/test_exemples_semantiques.py::test_un_module_dinformation_montre_comment_filtrer"
+    },
+    {
+      "name": "tri-presente-comme-un-filtre",
+      "why": "`order_by` ordonne une liste : le montrer à qui cherche comment la réduire répond à côté.",
+      "file": "generator/ansible/models.py",
+      "find": "    ecartes = {selector, \"zone\", \"region\", \"order_by\"}",
+      "replace": "    ecartes = {selector, \"zone\", \"region\"}",
+      "test": "tests/unit/generator/test_exemples_semantiques.py::test_un_tri_nest_pas_un_filtre"
+    },
+    {
+      "name": "gestion-sans-mode-simulation",
+      "why": "Le préambule parle du mode simulation et de `--diff` depuis toujours, et aucune tâche ne les montrait.",
+      "file": "generator/ansible/models.py",
+      "find": "            keywords=((\"check_mode\", True), (\"diff\", True)),",
+      "replace": "            keywords=(),",
+      "test": "tests/unit/generator/test_exemples_semantiques.py::test_un_module_de_gestion_montre_le_mode_simulation"
+    },
+    {
+      "name": "simulation-qui-ne-simule-pas-lecriture",
+      "why": "Une simulation qui n'écrit pas la même chose que la tâche d'écriture ne simule rien.",
+      "file": "generator/ansible/models.py",
+      "find": "            parameters=dict(requis),\n            register=\"result\",\n            keywords=((\"check_mode\", True), (\"diff\", True)),",
+      "replace": "            parameters={},\n            register=\"result\",\n            keywords=((\"check_mode\", True), (\"diff\", True)),",
+      "test": "tests/unit/generator/test_exemples_semantiques.py::test_lexemple_de_simulation_porte_les_memes_parametres"
+    },
+    {
+      "name": "ancre-yaml-dans-un-exemple",
+      "why": "Une ancre est du YAML valide qu'on ne peut pas copier tâche par tâche : la seconde tâche ne dit plus ce qu'elle envoie.",
+      "file": "generator/renderer/modules.py",
+      "find": "    def ignore_aliases(self, data: Any) -> bool:\n        return True",
+      "replace": "    def ignore_aliases(self, data: Any) -> bool:\n        return super().ignore_aliases(data)",
+      "test": "tests/unit/generator/test_exemples_semantiques.py::test_le_rendu_nemet_jamais_dancre_yaml"
     }
   ]
 }

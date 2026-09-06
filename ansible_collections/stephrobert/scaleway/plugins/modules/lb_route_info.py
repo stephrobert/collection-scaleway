@@ -75,6 +75,11 @@ EXAMPLES = r"""
   stephrobert.scaleway.lb_route_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Load Balancer routes by frontend_id
+  stephrobert.scaleway.lb_route_info:
+    zone: fr-par-1
+    frontend_id: 11111111-2222-3333-4444-555555555555
+  register: result
 """
 
 RETURN = r"""

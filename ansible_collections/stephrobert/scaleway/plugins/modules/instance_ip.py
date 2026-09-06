@@ -77,12 +77,20 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway instance ip
+- name: Update a Scaleway Instance ip
   stephrobert.scaleway.instance_ip:
     zone: fr-par-1
     ip: 11111111-2222-3333-4444-555555555555
     reverse: server-1.example.com
   register: result
+- name: Preview the change on a Scaleway Instance ip without writing
+  stephrobert.scaleway.instance_ip:
+    zone: fr-par-1
+    ip: 11111111-2222-3333-4444-555555555555
+    reverse: server-1.example.com
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""

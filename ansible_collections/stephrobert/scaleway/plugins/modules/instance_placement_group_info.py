@@ -81,6 +81,12 @@ EXAMPLES = r"""
   stephrobert.scaleway.instance_placement_group_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Instance placement groups by tags
+  stephrobert.scaleway.instance_placement_group_info:
+    zone: fr-par-1
+    tags:
+    - production
+  register: result
 """
 
 RETURN = r"""

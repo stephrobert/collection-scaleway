@@ -91,6 +91,12 @@ EXAMPLES = r"""
   stephrobert.scaleway.instance_volume_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Instance volumes by tags
+  stephrobert.scaleway.instance_volume_info:
+    zone: fr-par-1
+    tags:
+    - production
+  register: result
 """
 
 RETURN = r"""

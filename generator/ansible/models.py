@@ -232,12 +232,17 @@ class ExampleTask:
     module: str
     parameters: dict[str, Any]
     register: str
+    #: Mots-clés d'Ansible portés par la tâche elle-même, `check_mode` et
+    #: `diff`. Un tuple plutôt qu'un dict : le modèle est gelé, et la génération
+    #: doit rendre le même octet à contrat égal.
+    keywords: tuple[tuple[str, Any], ...] = ()
 
     def to_documentation(self) -> dict[str, Any]:
         return {
             "name": self.name,
             self.module: dict(self.parameters),
             "register": self.register,
+            **dict(self.keywords),
         }
 
 
@@ -670,7 +675,9 @@ def _build_manage_module(
                 contains=_contains(service, read_operation.payload_schema),
             ),
         ),
-        examples=_manage_examples(name, collection, options, geres),
+        examples=_manage_examples(
+            name, collection, options, geres, _libelle(service, item.resource)
+        ),
         options=options,
         get_operation=None,
         list_operation=None,
@@ -740,6 +747,7 @@ def _manage_examples(
     collection: Collection,
     options: tuple[AnsibleOption, ...],
     geres: tuple[str, ...],
+    libelle: str = "",
 ) -> tuple[ExampleTask, ...]:
     """Un exemple qui écrit un seul champ, parce que c'est l'usage courant.
 
@@ -754,12 +762,28 @@ def _manage_examples(
     premier = next((nom for nom in geres if nom in par_nom), None)
     if premier is not None:
         requis[premier] = _example_value(par_nom[premier], name)
+    module = collection.module_fqcn(name)
+    # Le libellé de la phrase courte, pas le nom du module : « Instance server »
+    # et non « instance server », pour que la tâche se lise comme le titre de la
+    # page qui la porte.
+    libelle = libelle or name.replace("_", " ")
     return (
         ExampleTask(
-            name=f"Update a Scaleway {name.replace('_', ' ')}",
-            module=collection.module_fqcn(name),
+            name=f"Update a Scaleway {libelle}",
+            module=module,
             parameters=requis,
             register="result",
+        ),
+        # **Le préambule parlait du mode simulation, aucune tâche ne le
+        # montrait.** C'est pourtant ce qu'on fait avant d'écrire sur un parc
+        # qu'on ne possède pas seul, et `--diff` est ce qui rend la comparaison
+        # lisible plutôt que de rendre un `changed` sans contenu.
+        ExampleTask(
+            name=f"Preview the change on a Scaleway {libelle} without writing",
+            module=module,
+            parameters=dict(requis),
+            register="result",
+            keywords=(("check_mode", True), ("diff", True)),
         ),
     )
 
@@ -1578,6 +1602,19 @@ def _examples(
                 register="result",
             )
         )
+    if list_operation is not None:
+        filtre = _filtre_dexemple(options, selector)
+        if filtre is not None:
+            examples.append(
+                ExampleTask(
+                    name=f"Filter Scaleway {_pluriel(libelle)} by {filtre.name}"
+                    if libelle
+                    else f"{liste} filtered by {filtre.name}",
+                    module=module,
+                    parameters={**required, filtre.name: _example_value(filtre, name)},
+                    register="result",
+                )
+            )
     if not examples and get_operation is not None:
         examples.append(
             ExampleTask(
@@ -1640,6 +1677,37 @@ CONVENTIONS: tuple[tuple[re.Pattern[str], Any], ...] = (
     # `lb_acl.index` : « ACLs are applied in ascending order, 0 is the first ».
     (re.compile(r"^index$"), 0),
 )
+
+
+#: Filtres qu'un opérateur emploie vraiment, dans l'ordre où on les essaie.
+#: Le choix doit être total et déterministe : à défaut de l'un d'eux, c'est la
+#: première option facultative dans l'ordre déjà calculé du module.
+FILTRES_UTILES = ("tags", "name", "state", "private_network_id", "server")
+
+
+def _filtre_dexemple(
+    options: tuple[AnsibleOption, ...],
+    selector: str | None,
+) -> AnsibleOption | None:
+    """Le filtre que l'exemple de liste montrera, ou rien s'il n'y en a pas.
+
+    Un module d'information montrait « tout lire » et « tout lister », jamais
+    « lister ce qui m'intéresse ». Les filtres sont pourtant la moitié de ses
+    options, et un lecteur qui liste un parc entier pour en garder trois
+    machines ne trouve nulle part comment demander les trois.
+    """
+    # `order_by` trie, il ne filtre pas : le repli l'avait retenu sur
+    # `lb_load_balancer_private_network_info`, faute d'autre option facultative,
+    # et l'exemple s'appelait « filtered by order_by ».
+    ecartes = {selector, "zone", "region", "order_by"}
+    candidats = [option for option in options if not option.required and option.name not in ecartes]
+    if not candidats:
+        return None
+    par_nom = {option.name: option for option in candidats}
+    for prefere in FILTRES_UTILES:
+        if prefere in par_nom:
+            return par_nom[prefere]
+    return candidats[0]
 
 
 def _example_value(option: AnsibleOption, module: str = "") -> Any:

@@ -139,12 +139,20 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway instance server
+- name: Update a Scaleway Instance server
   stephrobert.scaleway.instance_server:
     zone: fr-par-1
     server_id: 11111111-2222-3333-4444-555555555555
     name: my-server
   register: result
+- name: Preview the change on a Scaleway Instance server without writing
+  stephrobert.scaleway.instance_server:
+    zone: fr-par-1
+    server_id: 11111111-2222-3333-4444-555555555555
+    name: my-server
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""

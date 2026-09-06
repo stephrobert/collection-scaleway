@@ -87,6 +87,12 @@ EXAMPLES = r"""
   stephrobert.scaleway.lb_load_balancer_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Load Balancers by tags
+  stephrobert.scaleway.lb_load_balancer_info:
+    zone: fr-par-1
+    tags:
+    - production
+  register: result
 """
 
 RETURN = r"""

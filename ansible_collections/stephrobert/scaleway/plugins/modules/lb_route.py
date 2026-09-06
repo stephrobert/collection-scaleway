@@ -65,12 +65,20 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway lb route
+- name: Update a Scaleway Load Balancer route
   stephrobert.scaleway.lb_route:
     zone: fr-par-1
     route_id: 11111111-2222-3333-4444-555555555555
     backend_id: 11111111-2222-3333-4444-555555555555
   register: result
+- name: Preview the change on a Scaleway Load Balancer route without writing
+  stephrobert.scaleway.lb_route:
+    zone: fr-par-1
+    route_id: 11111111-2222-3333-4444-555555555555
+    backend_id: 11111111-2222-3333-4444-555555555555
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""

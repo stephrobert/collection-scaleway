@@ -62,6 +62,11 @@ EXAMPLES = r"""
   lab.widget.widget_widget_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Widgets by state
+  lab.widget.widget_widget_info:
+    zone: fr-par-1
+    state: running
+  register: result
 """
 
 RETURN = r"""

@@ -77,6 +77,11 @@ EXAMPLES = r"""
   stephrobert.scaleway.lb_subscriber_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Load Balancer subscribers by name
+  stephrobert.scaleway.lb_subscriber_info:
+    zone: fr-par-1
+    name: my-subscriber-info
+  register: result
 """
 
 RETURN = r"""

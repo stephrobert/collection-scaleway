@@ -87,6 +87,12 @@ EXAMPLES = r"""
   stephrobert.scaleway.instance_image_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Instance images by tags
+  stephrobert.scaleway.instance_image_info:
+    zone: fr-par-1
+    tags:
+    - production
+  register: result
 """
 
 RETURN = r"""

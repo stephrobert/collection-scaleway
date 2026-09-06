@@ -22,6 +22,10 @@ minor_changes:
   - Documentation links published next to a version now point at that version's
     tag rather than at ``main``. A reader of an older release used to land on
     today's files, with nothing on the page saying so.
+  - Examples now show what an operator actually looks for. An information
+    module shows how to filter a list, not only how to read one resource and
+    how to list them all; a management module shows check mode with ``--diff``,
+    which its own preamble had always described without ever showing.
 bugfixes:
   - "``instance_server_action``: the ``RETURN`` block described the seven
     actions of the contract on a module whose ``argument_spec`` accepts four.
@@ -41,3 +45,6 @@ bugfixes:
     which reads the resource before writing and fills in what you leave out."
   - An example with no summary in the contract was named after the SDK
     operation, ``Run GetDashboard``. It now says what the task does.
+  - "Two example tasks sharing a value made ``safe_dump`` emit a YAML anchor,
+    ``tags: &id001`` then ``tags: *id001``. Valid YAML that cannot be copied
+    task by task, and whose second task no longer says what it sends."

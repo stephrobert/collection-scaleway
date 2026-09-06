@@ -105,13 +105,22 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway instance security group rule
+- name: Update a Scaleway Instance security group rule
   stephrobert.scaleway.instance_security_group_rule:
     zone: fr-par-1
     security_group_id: 11111111-2222-3333-4444-555555555555
     security_group_rule_id: 11111111-2222-3333-4444-555555555555
     protocol: TCP
   register: result
+- name: Preview the change on a Scaleway Instance security group rule without writing
+  stephrobert.scaleway.instance_security_group_rule:
+    zone: fr-par-1
+    security_group_id: 11111111-2222-3333-4444-555555555555
+    security_group_rule_id: 11111111-2222-3333-4444-555555555555
+    protocol: TCP
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""

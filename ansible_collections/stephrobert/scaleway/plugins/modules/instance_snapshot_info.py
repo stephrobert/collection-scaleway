@@ -83,6 +83,12 @@ EXAMPLES = r"""
   stephrobert.scaleway.instance_snapshot_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Instance snapshots by tags
+  stephrobert.scaleway.instance_snapshot_info:
+    zone: fr-par-1
+    tags:
+    - production
+  register: result
 """
 
 RETURN = r"""

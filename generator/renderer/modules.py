@@ -228,14 +228,33 @@ def _examples_block(spec: AnsibleModuleSpec) -> str:
     return f"{entete}\n\n{taches}"
 
 
+class _SansAncre(yaml.SafeDumper):
+    """Un sérialiseur qui n'écrit jamais d'ancre YAML.
+
+    **Un exemple se copie tâche par tâche.** Deux tâches qui partagent une
+    valeur, comme la tâche d'écriture et sa simulation, faisaient écrire
+    `tags: &id001` à la première et `tags: *id001` à la seconde : du YAML
+    parfaitement valide, que personne ne peut copier séparément, et dont la
+    seconde tâche ne dit plus ce qu'elle envoie.
+
+    Le golden l'a montré à la ligne près. Rendre une valeur deux fois coûte
+    quelques octets ; une page publiée qu'on ne peut pas copier coûte le service
+    qu'elle est censée rendre.
+    """
+
+    def ignore_aliases(self, data: Any) -> bool:
+        return True
+
+
 def _yaml_block(payload: Any) -> str:
     """Sérialise un bloc de documentation en YAML, sans réordonner les clés.
 
     L'ordre vient du modèle : il est celui d'une lecture humaine, et le trier
     alphabétiquement mettrait `author` avant `description`.
     """
-    text = yaml.safe_dump(
+    text = yaml.dump(
         payload,
+        Dumper=_SansAncre,
         sort_keys=False,
         default_flow_style=False,
         allow_unicode=True,

@@ -82,6 +82,11 @@ EXAMPLES = r"""
   stephrobert.scaleway.lb_backend_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Load Balancer backends by name
+  stephrobert.scaleway.lb_backend_info:
+    zone: fr-par-1
+    name: my-backend-info
+  register: result
 """
 
 RETURN = r"""

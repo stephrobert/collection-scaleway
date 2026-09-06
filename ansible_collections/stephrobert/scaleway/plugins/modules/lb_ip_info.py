@@ -79,6 +79,12 @@ EXAMPLES = r"""
   stephrobert.scaleway.lb_ip_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Load Balancer ips by tags
+  stephrobert.scaleway.lb_ip_info:
+    zone: fr-par-1
+    tags:
+    - production
+  register: result
 """
 
 RETURN = r"""

@@ -68,6 +68,12 @@ EXAMPLES = r"""
     zone: fr-par-1
     frontend_id: 11111111-2222-3333-4444-555555555555
   register: result
+- name: Filter Scaleway Load Balancer frontend acls by name
+  stephrobert.scaleway.lb_frontend_acl_info:
+    zone: fr-par-1
+    frontend_id: 11111111-2222-3333-4444-555555555555
+    name: my-frontend-acl-info
+  register: result
 """
 
 RETURN = r"""

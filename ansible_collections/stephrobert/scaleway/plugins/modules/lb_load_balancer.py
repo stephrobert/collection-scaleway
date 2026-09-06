@@ -84,13 +84,22 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway lb load balancer
+- name: Update a Scaleway Load Balancer
   stephrobert.scaleway.lb_load_balancer:
     zone: fr-par-1
     lb_id: 11111111-2222-3333-4444-555555555555
     description: Managed by Ansible
     name: my-load-balancer
   register: result
+- name: Preview the change on a Scaleway Load Balancer without writing
+  stephrobert.scaleway.lb_load_balancer:
+    zone: fr-par-1
+    lb_id: 11111111-2222-3333-4444-555555555555
+    description: Managed by Ansible
+    name: my-load-balancer
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""

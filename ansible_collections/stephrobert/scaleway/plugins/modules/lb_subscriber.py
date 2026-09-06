@@ -69,12 +69,20 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway lb subscriber
+- name: Update a Scaleway Load Balancer subscriber
   stephrobert.scaleway.lb_subscriber:
     zone: fr-par-1
     subscriber_id: 11111111-2222-3333-4444-555555555555
     name: my-subscriber
   register: result
+- name: Preview the change on a Scaleway Load Balancer subscriber without writing
+  stephrobert.scaleway.lb_subscriber:
+    zone: fr-par-1
+    subscriber_id: 11111111-2222-3333-4444-555555555555
+    name: my-subscriber
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""

@@ -167,7 +167,7 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway lb backend
+- name: Update a Scaleway Load Balancer backend
   stephrobert.scaleway.lb_backend:
     zone: fr-par-1
     backend_id: 11111111-2222-3333-4444-555555555555
@@ -177,6 +177,18 @@ EXAMPLES = r"""
     name: my-backend
     sticky_sessions: none
   register: result
+- name: Preview the change on a Scaleway Load Balancer backend without writing
+  stephrobert.scaleway.lb_backend:
+    zone: fr-par-1
+    backend_id: 11111111-2222-3333-4444-555555555555
+    forward_port: 80
+    forward_port_algorithm: roundrobin
+    forward_protocol: tcp
+    name: my-backend
+    sticky_sessions: none
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""

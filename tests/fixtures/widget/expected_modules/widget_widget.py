@@ -65,13 +65,22 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway widget widget
+- name: Update a Scaleway Widget
   lab.widget.widget_widget:
     zone: fr-par-1
     widget_id: 11111111-2222-3333-4444-555555555555
     tags:
     - production
   register: result
+- name: Preview the change on a Scaleway Widget without writing
+  lab.widget.widget_widget:
+    zone: fr-par-1
+    widget_id: 11111111-2222-3333-4444-555555555555
+    tags:
+    - production
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""

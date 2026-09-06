@@ -81,6 +81,11 @@ EXAMPLES = r"""
   stephrobert.scaleway.lb_certificate_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Load Balancer certificates by name
+  stephrobert.scaleway.lb_certificate_info:
+    zone: fr-par-1
+    name: my-certificate-info
+  register: result
 """
 
 RETURN = r"""

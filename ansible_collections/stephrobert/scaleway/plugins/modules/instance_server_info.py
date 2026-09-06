@@ -135,6 +135,12 @@ EXAMPLES = r"""
   stephrobert.scaleway.instance_server_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Instance servers by tags
+  stephrobert.scaleway.instance_server_info:
+    zone: fr-par-1
+    tags:
+    - production
+  register: result
 """
 
 RETURN = r"""

@@ -84,6 +84,12 @@ EXAMPLES = r"""
   stephrobert.scaleway.instance_security_group_info:
     zone: fr-par-1
   register: result
+- name: Filter Scaleway Instance security groups by tags
+  stephrobert.scaleway.instance_security_group_info:
+    zone: fr-par-1
+    tags:
+    - production
+  register: result
 """
 
 RETURN = r"""

@@ -67,12 +67,20 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway lb ip
+- name: Update a Scaleway Load Balancer ip
   stephrobert.scaleway.lb_ip:
     zone: fr-par-1
     ip_id: 11111111-2222-3333-4444-555555555555
     reverse: server-1.example.com
   register: result
+- name: Preview the change on a Scaleway Load Balancer ip without writing
+  stephrobert.scaleway.lb_ip:
+    zone: fr-par-1
+    ip_id: 11111111-2222-3333-4444-555555555555
+    reverse: server-1.example.com
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""

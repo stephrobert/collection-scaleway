@@ -60,12 +60,20 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway lb certificate
+- name: Update a Scaleway Load Balancer certificate
   stephrobert.scaleway.lb_certificate:
     zone: fr-par-1
     certificate_id: 11111111-2222-3333-4444-555555555555
     name: my-certificate
   register: result
+- name: Preview the change on a Scaleway Load Balancer certificate without writing
+  stephrobert.scaleway.lb_certificate:
+    zone: fr-par-1
+    certificate_id: 11111111-2222-3333-4444-555555555555
+    name: my-certificate
+  register: result
+  check_mode: true
+  diff: true
 """
 
 RETURN = r"""
