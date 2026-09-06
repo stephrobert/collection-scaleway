@@ -5,8 +5,8 @@ what already exists.
 
 [![ci](https://github.com/stephrobert/collection-scaleway/actions/workflows/ci.yml/badge.svg)](https://github.com/stephrobert/collection-scaleway/actions/workflows/ci.yml)
 [![Ansible Galaxy](https://img.shields.io/badge/galaxy-stephrobert.scaleway-660198?logo=ansible&logoColor=white)](https://galaxy.ansible.com/ui/repo/published/stephrobert/scaleway/)
-[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/stephrobert/collection-scaleway?label=OpenSSF%20Scorecard)](https://github.com/stephrobert/collection-scaleway/blob/0.1.0/docs/scorecard.md)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/stephrobert/collection-scaleway/blob/0.1.0/LICENSE)
+[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/stephrobert/collection-scaleway?label=OpenSSF%20Scorecard)](https://github.com/stephrobert/collection-scaleway/blob/0.2.0/docs/scorecard.md)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/stephrobert/collection-scaleway/blob/0.2.0/LICENSE)
 
 > Terraform provisions resources. Ansible operates existing resources.
 
@@ -211,7 +211,7 @@ ignores the source.
 
 The full guide, covering how `ansible_host` is chosen per private network, name
 collisions, and Ansible's trap around strict mode:
-[docs/guides/dynamic-inventory.md](https://github.com/stephrobert/collection-scaleway/blob/0.1.0/docs/guides/dynamic-inventory.md).
+[docs/guides/dynamic-inventory.md](https://github.com/stephrobert/collection-scaleway/blob/0.2.0/docs/guides/dynamic-inventory.md).
 
 ## Shipped playbooks
 

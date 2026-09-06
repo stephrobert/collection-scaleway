@@ -202,3 +202,80 @@ releases:
         name: instance_server_info
         namespace: ''
     release_date: '2026-09-04'
+  0.2.0:
+    changes:
+      bugfixes:
+        - An example with no summary in the contract was named after the SDK operation,
+          ``Run GetDashboard``. It now says what the task does.
+        - Enum examples no longer show the ``unknown_*`` protobuf sentinel that opens
+          most Scaleway enumerations, which the API rejects.
+        - Examples of the management modules published ``<zone>``, ``<name>`` and
+          ``<backend_id>`` rather than values. They now use the zone the contract
+          declares, a UUID, and the enum values an operator would really write.
+        - Loading an override file now refuses a key declared twice. YAML silently
+          keeps the last one, which had erased a ``resource`` decision and renamed
+          a published module without any check turning red.
+        - The description of four Load Balancer management modules carried the contract
+          sentence ``Note that the request type is PUT and not PATCH. You must set
+          all parameters.`` That is true of the API and false of the module, which
+          reads the resource before writing and fills in what you leave out.
+        - 'Two example tasks sharing a value made ``safe_dump`` emit a YAML anchor,
+          ``tags: &id001`` then ``tags: *id001``. Valid YAML that cannot be copied
+          task by task, and whose second task no longer says what it sends.'
+        - '``instance_server_action``: the ``RETURN`` block described the seven actions
+          of the contract on a module whose ``argument_spec`` accepts four. ``terminate``,
+          ``backup`` and ``enable_routed_ip`` are no longer documented as available.'
+      minor_changes:
+        - Documentation links published next to a version now point at that version's
+          tag rather than at ``main``. A reader of an older release used to land on
+          today's files, with nothing on the page saying so.
+        - Examples now show what an operator actually looks for. An information module
+          shows how to filter a list, not only how to read one resource and how to
+          list them all; a management module shows check mode with ``--diff``, which
+          its own preamble had always described without ever showing.
+        - Module documentation no longer inherits the gaps of the API contract. Every
+          option and every returned key of the 50 published modules now carries a
+          description, and every example is copyable as is.
+        - Modules now name the product the way Scaleway publishes it. ``Manage a Scaleway
+          Lb backend`` used the index slug; the short descriptions read ``Manage a
+          Scaleway Load Balancer backend``, and the product is no longer repeated
+          when the resource already carries its name.
+        - Overrides gained a documentation layer. A ``description`` fills a gap the
+          contract leaves, an ``example`` supplies a value the contract cannot give,
+          and both require a ``reason``. The contract always wins over an override,
+          and an override that no longer fills anything is reported as orphaned.
+        - The inventory plugin now ships four complete inventory files as examples,
+          each one meant to be copied whole. Three of the four used to be commented
+          out line by line, so none of them could be used without editing.
+        - '``RETURN`` blocks now list the fields of the resource they return. A page
+          said ``server: {type: dict}`` and nothing more; it now names the 36 fields
+          the contract declares on an Instance, each with its description and type.
+          53 of the 57 composite return keys carry them; the four others return a
+          payload for which the contract declares no schema, and the quality report
+          names them.'
+      release_summary: 'Every published page now explains its module on its own. All
+        297 options and
+
+        all 62 returned keys carry a description, every example can be copied as is,
+
+        and 53 of the 57 composite return keys list the fields of the resource they
+
+        return, each with the description the contract gives it.
+
+
+        None of this is a documentation pass over the produced files: the fixes are
+        in
+
+        the generator, so the next product inherits them. A quality gate now refuses
+        a
+
+        release that would publish a page unable to explain itself, and a page on
+
+        Galaxy is published for good.
+
+        '
+    fragments:
+      - documentation-publiable.yml
+      - fichiers-communautaires.yml
+      - resume.yml
+    release_date: '2026-09-06'

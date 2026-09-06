@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_ip_info
 short_description: Gather information about Scaleway Instance ips
-version_added: 0.1.0
+version_added: 0.2.0
 description:
 - Get details of an IP with the specified ID or address.
 - List all flexible IPs in a specified zone.

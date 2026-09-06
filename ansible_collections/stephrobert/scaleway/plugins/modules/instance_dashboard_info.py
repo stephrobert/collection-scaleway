@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_dashboard_info
 short_description: Gather information about Scaleway Instance dashboards
-version_added: 0.1.0
+version_added: 0.2.0
 description:
 - 'Return the Instance dashboard of one zone: the resource counts the API keeps for an Organization
   or a Project, such as `servers_count`, `running_servers_count`, `volumes_count`, `images_count`,

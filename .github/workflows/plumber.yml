@@ -37,6 +37,12 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      # **OIDC, et c'est ce qui rend la vignette du README digne de foi.** Le
+      # score est publié sur `score.getplumber.io` avec un jeton d'identité
+      # émis par la CI : une exécution locale ne peut donc pas publier, et
+      # personne ne peut usurper la vignette d'un autre dépôt. La publication
+      # n'a lieu que depuis ce workflow, et il ne tourne que sur `main`.
+      id-token: write
     steps:
       - name: Durcir le runner
         uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
@@ -82,5 +88,9 @@ jobs:
       # `.plumber.yaml` plutôt que laissé à s'abstenir en silence, faute d'un
       # jeton à portée Administration. Ce que couvre à sa place le job
       # `La protection de branche est celle qui est déclarée` est écrit là-bas.
+      # `--score-push` publie le score, et c'est ce qui manquait : sans lui la
+      # vignette du README répondait bien 200, avec « Plumber Score: unknown »
+      # dedans. Un code de retour n'est pas un contenu, et c'est exactement le
+      # défaut que ce dépôt traque ailleurs.
       - name: Plumber
-        run: plumber analyze --min-score B
+        run: plumber analyze --min-score B --score-push

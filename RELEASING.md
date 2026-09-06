@@ -46,9 +46,23 @@ it looks: the documentation links published next to the version are derived from
 it, so skipping this step ships links pointing at the previous release.
 
 ```bash
+git switch -c release/0.2.0
 git commit -am "Version 0.2.0"
+git push -u origin release/0.2.0
+gh pr create --base main --title "Version 0.2.0"
+```
+
+**The version commit goes through a pull request like every other commit.** A
+repository rule requires it and refuses a direct push to `main`, and that is the
+right shape: what ships must come from the branch that ran the fourteen required
+checks. `git push origin main` will simply be rejected.
+
+Once it is merged — and **only** then, because a squash merge rewrites the
+commit and a tag placed before would point at something `main` does not contain:
+
+```bash
+git switch main && git pull
 git tag -s 0.2.0 -m "stephrobert.scaleway 0.2.0"
-git push origin main
 git push origin 0.2.0
 ```
 
