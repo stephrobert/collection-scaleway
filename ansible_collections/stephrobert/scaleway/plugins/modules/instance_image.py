@@ -108,17 +108,17 @@ image:
   contains:
     id:
       description:
-      - Not documented by the Scaleway API contract.
+      - Unique ID of the image.
       returned: when the API returns it
       type: str
     name:
       description:
-      - Not documented by the Scaleway API contract.
+      - Name of the image.
       returned: when the API returns it
       type: str
     arch:
       description:
-      - Not documented by the Scaleway API contract.
+      - CPU architecture of the image.
       returned: when the API returns it
       type: str
     creation_date:
@@ -133,47 +133,48 @@ image:
       type: str
     default_bootscript:
       description:
-      - Not documented by the Scaleway API contract.
+      - Default bootscript of the image.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: dict
     extra_volumes:
       description:
-      - Not documented by the Scaleway API contract.
+      - Extra volumes of the image.
       returned: when the API returns it
       type: dict
     from_server:
       description:
-      - Not documented by the Scaleway API contract.
+      - Server the image comes from.
       returned: when the API returns it
       type: str
     organization:
       description:
-      - Not documented by the Scaleway API contract.
+      - Organization ID of the image.
       returned: when the API returns it
       type: str
     public:
       description:
-      - Not documented by the Scaleway API contract.
+      - Whether the image is public.
       returned: when the API returns it
       type: bool
     root_volume:
       description:
-      - Not documented by the Scaleway API contract.
+      - UUID of the snapshot.
       returned: when the API returns it
       type: dict
     state:
       description:
-      - Not documented by the Scaleway API contract.
+      - State of the image.
       returned: when the API returns it
       type: str
     project:
       description:
-      - Not documented by the Scaleway API contract.
+      - Project ID of the image.
       returned: when the API returns it
       type: str
     tags:
       description:
-      - Not documented by the Scaleway API contract.
+      - Tags of the image.
       returned: when the API returns it
       type: list
       elements: str

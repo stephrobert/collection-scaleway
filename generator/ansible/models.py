@@ -480,7 +480,7 @@ def build_module_spec(
         short_description=_short_description(service, resource),
         description=_description(get_operation, list_operation),
         options=options,
-        returns=_returns(get_operation, list_operation, selector, service),
+        returns=_returns(get_operation, list_operation, selector, service, overrides),
         examples=_examples(
             name,
             collection,
@@ -556,7 +556,7 @@ def _build_action_module(
         description=_action_description(action_operation, choix),
         options=options,
         returns=_action_returns(
-            action_operation, parametre, state_field, wait_states, choix, service
+            action_operation, parametre, state_field, wait_states, choix, service, overrides
         ),
         examples=_action_examples(name, collection, options, parametre, action_operation),
         get_operation=None,
@@ -672,7 +672,7 @@ def _build_manage_module(
                 description=(read_operation.documentation_line or UNDOCUMENTED,),
                 returned="success",
                 type="dict",
-                contains=_contains(service, read_operation.payload_schema),
+                contains=_contains(service, read_operation.payload_schema, overrides),
             ),
         ),
         examples=_manage_examples(
@@ -688,6 +688,38 @@ def _build_manage_module(
         secret_params=secrets,
         limits=limits,
     )
+
+
+#: Mots qu'une ressource porte en abrégé, et leur forme publiée.
+#:
+#: Une ressource déduite d'un chemin arrive en minuscules, `ip`, `acl`,
+#: `private_nic` : c'est un identifiant, pas de la prose. Collé tel quel dans
+#: une phrase, ça donnait « Manage a Scaleway Instance ip » sur une page qui se
+#: veut une référence. Le reste des mots n'est pas capitalisé pour autant : ce
+#: sont des noms communs, et « Instance Server » ne serait pas mieux.
+ACRONYMES: dict[str, str] = {
+    "ip": "IP",
+    "ips": "IPs",
+    "acl": "ACL",
+    "acls": "ACLs",
+    "nic": "NIC",
+    "nics": "NICs",
+    "ssl": "SSL",
+    "tls": "TLS",
+    "dns": "DNS",
+    "id": "ID",
+    "ids": "IDs",
+    "url": "URL",
+    "urls": "URLs",
+    "cpu": "CPU",
+    "vpc": "VPC",
+    "uuid": "UUID",
+}
+
+
+def _lisible(mots: str) -> str:
+    """Rend une suite de mots publiable, les abréviations en capitales."""
+    return " ".join(ACRONYMES.get(mot, mot) for mot in mots.split(" "))
 
 
 def _produit(service: ApiService) -> str:
@@ -739,7 +771,7 @@ def _libelle(service: ApiService, resource: str) -> str:
     """`security_group` -> `Instance security group`, et sans redite."""
     produit = _produit(service)
     reste = _reste_de_ressource(service, resource)
-    return f"{produit} {reste.replace('_', ' ')}" if reste else produit
+    return f"{produit} {_lisible(reste.replace('_', ' '))}" if reste else produit
 
 
 def _manage_examples(
@@ -1023,6 +1055,7 @@ def _action_returns(
     wait_states: tuple[tuple[str, str], ...],
     choices: tuple[str, ...] = (),
     service: ApiService | None = None,
+    jeu: OverrideSet | None = None,
 ) -> tuple[ReturnValue, ...]:
     # Le module rend toujours `action`, sous les deux formes. Quand l'action est
     # l'opération, la valeur rendue est son identifiant : un lecteur de journal
@@ -1061,7 +1094,7 @@ def _action_returns(
                 description=(decrit or UNDOCUMENTED,),
                 returned="when the API returns it",
                 type="dict",
-                contains=_contains(service, operation.payload_schema),
+                contains=_contains(service, operation.payload_schema, jeu),
             )
         )
     return tuple(valeurs)
@@ -1444,7 +1477,7 @@ def _short_description(service: ApiService, resource: str) -> str:
     """
     produit = _produit(service)
     reste = _reste_de_ressource(service, resource)
-    sujet = f"{produit} {pluralize_phrase(reste)}" if reste else _pluriel(produit)
+    sujet = f"{produit} {_lisible(pluralize_phrase(reste))}" if reste else _pluriel(produit)
     return f"Gather information about Scaleway {sujet}"
 
 
@@ -1463,7 +1496,60 @@ def _description(
     return tuple(lines)
 
 
-def _contains(service: ApiService | None, schema: str | None) -> tuple[ReturnField, ...]:
+#: Reformulations qui ne disent que ce que le nom du champ dit déjà.
+#:
+#: **Ce ne sont pas des affirmations sur l'API.** « Count of volumes. » pour
+#: `volumes_count` ne dit ni la zone ni le projet : elle dit que le champ compte
+#: des volumes, ce que son nom dit. Une phrase qui ajouterait « in the selected
+#: zone » serait une invention, et c'est précisément la frontière.
+#:
+#: `{quoi}` vient du nom du champ, `{ressource}` du nom du schéma : les deux
+#: sont des faits du contrat.
+REFORMULATIONS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"^(?P<quoi>[a-z0-9_]+)_count$"), "Count of {quoi}."),
+    (re.compile(r"^id$"), "Unique ID of the {ressource}."),
+    (re.compile(r"^name$"), "Name of the {ressource}."),
+    (re.compile(r"^tags$"), "Tags of the {ressource}."),
+    (re.compile(r"^organization$"), "Organization ID of the {ressource}."),
+    (re.compile(r"^project$"), "Project ID of the {ressource}."),
+    (re.compile(r"^state$"), "State of the {ressource}."),
+)
+
+
+def _decide(overrides: OverrideSet | None, schema: str, champ: str) -> str | None:
+    """La description qu'une décision humaine pose sur ce champ rendu."""
+    if overrides is None:
+        return None
+    pose = overrides.returns.get(schema, {}).get(champ)
+    return pose.description if pose else None
+
+
+def _reformulation(ressource: str, champ: str) -> str | None:
+    """La phrase qui redit le nom du champ, ou rien si aucune règle ne s'applique."""
+    lisible = _mots(ressource)
+    for motif, phrase in REFORMULATIONS:
+        trouve = motif.match(champ)
+        if trouve:
+            quoi = trouve.groupdict().get("quoi") or ""
+            return phrase.format(quoi=quoi.replace("_", " "), ressource=lisible)
+    return None
+
+
+def _mots(schema: str) -> str:
+    """`scaleway.instance.v1.SecurityGroupRule` -> `security group rule`.
+
+    Le nom de la ressource tel que le contrat le nomme, en mots : c'est ce qui
+    entre dans une phrase, et il ne se devine pas puisqu'il est écrit.
+    """
+    dernier = schema.rsplit(".", 1)[-1]
+    return _lisible(re.sub(r"(?<!^)(?=[A-Z])", " ", dernier).lower())
+
+
+def _contains(
+    service: ApiService | None,
+    schema: str | None,
+    overrides: OverrideSet | None = None,
+) -> tuple[ReturnField, ...]:
     """Les champs que le contrat déclare sur la ressource rendue.
 
     Rend un tuple vide quand le contrat ne porte pas le schéma : un `contains`
@@ -1478,7 +1564,20 @@ def _contains(service: ApiService | None, schema: str | None) -> tuple[ReturnFie
         ReturnField(
             name=champ.name,
             type=return_type(champ.type),
-            description=(champ.description or UNDOCUMENTED,),
+            # **Quatre étages, du plus sûr au moins informatif.** Ce que le
+            # contrat dit du champ ; ce qu'il en dit ailleurs quand il ne le dit
+            # qu'une fois ; une reformulation qui ne redit que le nom ; et le
+            # repli, que `docs_quality` refuse de laisser publier.
+            description=(
+                (
+                    champ.description
+                    or _decide(overrides, objet.name, champ.name)
+                    or (service.described(champ.name) if service else None)
+                    or _reformulation(objet.name, champ.name)
+                    or UNDOCUMENTED
+                ),
+                *((DEPRECATED_NOTICE,) if champ.deprecated else ()),
+            ),
             # Un tableau sans `items` est un cas mesuré du contrat, pas une
             # exception : le repli `str` est le même que celui de
             # l'`argument_spec`, et le rapport nomme le champ concerné.
@@ -1497,6 +1596,7 @@ def _returns(
     list_operation: OperationBinding | None,
     selector: str | None,
     service: ApiService | None = None,
+    overrides: OverrideSet | None = None,
 ) -> tuple[ReturnValue, ...]:
     """Les clés que le module rend, décrites par le contrat qui les produit."""
     values: list[ReturnValue] = []
@@ -1508,7 +1608,7 @@ def _returns(
                 description=(get_operation.documentation_line or UNDOCUMENTED,),
                 returned=f"when I({selector}) is provided" if selector else "success",
                 type="dict",
-                contains=_contains(service, get_operation.payload_schema),
+                contains=_contains(service, get_operation.payload_schema, overrides),
             )
         )
     if list_operation is not None and list_operation.payload_field:
@@ -1519,7 +1619,7 @@ def _returns(
                 returned=f"when I({selector}) is omitted" if selector else "success",
                 type="list",
                 elements="dict",
-                contains=_contains(service, list_operation.payload_schema),
+                contains=_contains(service, list_operation.payload_schema, overrides),
             )
         )
 
@@ -1553,7 +1653,7 @@ def _returns(
                     # ceux du schéma.** Quatre modules d'information passent
                     # par ce repli, dont `lb_acl_info` : leur `GetAcl` répond
                     # par la ressource elle-même plutôt que par une enveloppe.
-                    contains=_contains(service, source.payload_schema),
+                    contains=_contains(service, source.payload_schema, overrides),
                 )
             )
     return tuple(values)

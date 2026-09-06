@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: instance_server_private_nic
-short_description: Manage a Scaleway Instance server private nic
+short_description: Manage a Scaleway Instance server private NIC
 version_added: 0.2.0
 description:
 - Update one or more parameter(s) of a specified private NIC.
@@ -66,7 +66,7 @@ EXAMPLES = r"""
 # change. A parameter you do not pass is a parameter the module does
 # not touch.
 
-- name: Update a Scaleway Instance server private nic
+- name: Update a Scaleway Instance server private NIC
   stephrobert.scaleway.instance_server_private_nic:
     zone: fr-par-1
     server_id: 11111111-2222-3333-4444-555555555555
@@ -74,7 +74,7 @@ EXAMPLES = r"""
     tags:
     - production
   register: result
-- name: Preview the change on a Scaleway Instance server private nic without writing
+- name: Preview the change on a Scaleway Instance server private NIC without writing
   stephrobert.scaleway.instance_server_private_nic:
     zone: fr-par-1
     server_id: 11111111-2222-3333-4444-555555555555

@@ -1,0 +1,23 @@
+bugfixes:
+  - "0.2.0 published one hundred ``Not documented by the Scaleway API contract.``
+    lines inside its ``RETURN`` blocks. The generator had just gained the right
+    to publish the fields of a resource, and the documentation gate still only
+    looked at top-level keys: the published surface had grown, the measurement
+    had not. Every published field now carries a description, and the gate
+    counts them."
+  - "Resource names no longer appear in lowercase where they are acronyms.
+    ``Manage a Scaleway Instance ip`` reads ``Manage a Scaleway Instance IP``,
+    and the same for ACL and NIC."
+  - "A returned field the contract declares deprecated now says so. The notice
+    existed for options and was lost for return values, so a reader could build
+    on ``default_bootscript`` with nothing saying it was deprecated."
+minor_changes:
+  - "A returned field with no description in the contract is now filled by one
+    of three mechanisms before the gate refuses it: a human decision carrying
+    its reason, what the same contract says of that field name when it says it
+    exactly once, or a restatement that says nothing more than the field name.
+    ``volumes_count`` reads ``Count of volumes.`` and not ``Number of volumes in
+    the selected zone``, which the contract nowhere supports."
+  - "The compatibility table, the versioning examples and the module count in
+    the READMEs are derived from ``galaxy.yml`` and the CI matrix. They were
+    hand-written, and 0.2.0 shipped announcing the 0.1.x series."

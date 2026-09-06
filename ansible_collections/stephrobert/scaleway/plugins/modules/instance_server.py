@@ -213,12 +213,14 @@ server:
       description:
       - True to configure the instance so it uses the routed IP mode. Use of `routed_ip_enabled`
         as `False` is deprecated.
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: bool
     enable_ipv6:
       description:
       - True if IPv6 is enabled (deprecated and always `False` when `routed_ip_enabled` is
         `True`).
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: bool
     hostname:
@@ -245,6 +247,7 @@ server:
     public_ip:
       description:
       - Information about the public IP (deprecated in favor of `public_ips`).
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: dict
     public_ips:
@@ -276,6 +279,7 @@ server:
     ipv6:
       description:
       - Instance IPv6 address (deprecated when `routed_ip_enabled` is `True`).
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: dict
     boot_type:

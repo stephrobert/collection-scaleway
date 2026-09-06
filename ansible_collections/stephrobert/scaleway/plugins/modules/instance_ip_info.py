@@ -14,7 +14,7 @@ from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: instance_ip_info
-short_description: Gather information about Scaleway Instance ips
+short_description: Gather information about Scaleway Instance IPs
 version_added: 0.2.0
 description:
 - Get details of an IP with the specified ID or address.
@@ -84,7 +84,7 @@ EXAMPLES = r"""
   stephrobert.scaleway.instance_ip_info:
     zone: fr-par-1
   register: result
-- name: Filter Scaleway Instance ips by tags
+- name: Filter Scaleway Instance Ips by tags
   stephrobert.scaleway.instance_ip_info:
     zone: fr-par-1
     tags:
@@ -101,7 +101,7 @@ ip:
   contains:
     id:
       description:
-      - Not documented by the Scaleway API contract.
+      - Unique ID of the IP.
       returned: when the API returns it
       type: str
     address:
@@ -111,38 +111,38 @@ ip:
       type: str
     reverse:
       description:
-      - Not documented by the Scaleway API contract.
+      - Reverse domain name.
       returned: when the API returns it
       type: str
     server:
       description:
-      - Not documented by the Scaleway API contract.
+      - Instance attached to the volume.
       returned: when the API returns it
       type: dict
     organization:
       description:
-      - Not documented by the Scaleway API contract.
+      - Organization ID of the IP.
       returned: when the API returns it
       type: str
     tags:
       description:
-      - Not documented by the Scaleway API contract.
+      - Tags of the IP.
       returned: when the API returns it
       type: list
       elements: str
     project:
       description:
-      - Not documented by the Scaleway API contract.
+      - Project ID of the IP.
       returned: when the API returns it
       type: str
     type:
       description:
-      - Not documented by the Scaleway API contract.
+      - Type of the IP address.
       returned: when the API returns it
       type: str
     state:
       description:
-      - Not documented by the Scaleway API contract.
+      - State of the IP.
       returned: when the API returns it
       type: str
     prefix:
@@ -169,7 +169,7 @@ ips:
   contains:
     id:
       description:
-      - Not documented by the Scaleway API contract.
+      - Unique ID of the IP.
       returned: when the API returns it
       type: str
     address:
@@ -179,38 +179,38 @@ ips:
       type: str
     reverse:
       description:
-      - Not documented by the Scaleway API contract.
+      - Reverse domain name.
       returned: when the API returns it
       type: str
     server:
       description:
-      - Not documented by the Scaleway API contract.
+      - Instance attached to the volume.
       returned: when the API returns it
       type: dict
     organization:
       description:
-      - Not documented by the Scaleway API contract.
+      - Organization ID of the IP.
       returned: when the API returns it
       type: str
     tags:
       description:
-      - Not documented by the Scaleway API contract.
+      - Tags of the IP.
       returned: when the API returns it
       type: list
       elements: str
     project:
       description:
-      - Not documented by the Scaleway API contract.
+      - Project ID of the IP.
       returned: when the API returns it
       type: str
     type:
       description:
-      - Not documented by the Scaleway API contract.
+      - Type of the IP address.
       returned: when the API returns it
       type: str
     state:
       description:
-      - Not documented by the Scaleway API contract.
+      - State of the IP.
       returned: when the API returns it
       type: str
     prefix:

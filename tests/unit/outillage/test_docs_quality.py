@@ -306,3 +306,46 @@ def test_les_exemples_dun_plugin_sont_des_fichiers_entiers(tmp_path: Path) -> No
     )
     mesure, _ = docs_quality.examiner(chemin, {})
     assert mesure.exemples == 2, "le second document d'exemple n'est pas mesuré"
+
+
+def test_un_champ_de_retour_sans_description_est_bloquant(tmp_path: Path) -> None:
+    """La porte ne regardait que les clés de premier niveau.
+
+    Le générateur venait de gagner le droit de publier les champs des
+    ressources, et cent phrases de repli sont parties sur Galaxy sans que rien
+    ne les compte : la surface publiée s'était élargie, la mesure non.
+    """
+    chemin = _module(
+        tmp_path,
+        "demo_thing_info",
+        """
+module: demo_thing_info
+short_description: Read a thing
+description:
+  - Read a thing.
+options: {}
+""",
+        BON_EXEMPLE,
+        f"""
+thing:
+  description: The thing.
+  returned: success
+  type: dict
+  contains:
+    id:
+      description:
+        - Unique ID of the thing.
+      returned: when the API returns it
+      type: str
+    couleur:
+      description:
+        - {docs_quality.REPLI}
+      returned: when the API returns it
+      type: str
+""",
+    )
+    mesure, defauts = docs_quality.examiner(chemin, {})
+    assert mesure.champs == 2 and mesure.champs_decrits == 1
+    fautes = [d for d in defauts if d.genre == "champ-de-retour-sans-description"]
+    assert fautes and fautes[0].bloquant
+    assert "couleur" in fautes[0].detail

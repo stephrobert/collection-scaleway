@@ -74,31 +74,22 @@ jobs:
       - name: Installer
         run: mise run setup
 
-      - name: Style
-        run: mise run lint
-
-      - name: Types
-        run: mise run typecheck
-
-      - name: Tests
-        run: mise run test
-
-      # Sort en code 2 sur toute opération non classée ou tout override
-      # orphelin : une API qui bouge ne passe pas en silence.
-      - name: Rapport de couverture
-        run: mise run report
-
-      # Les artefacts versionnés doivent être ceux que le générateur produit,
-      # golden de l'IR, modules rendus et modules de la collection compris.
-      - name: Dérive des artefacts générés
-        run: mise run check:generated
-
-      - name: Fragments de changelog
-        run: mise run lint:changelog
-
-      # Une garde dont la suppression laisse les tests verts est un commentaire.
-      - name: Falsification des gardes
-        run: mise run falsify
+      # **Une seule commande, et c'est une correction.** Ce job recopiait sept
+      # des dix tâches de `check`, et l'écart ne se voyait nulle part :
+      # `readme:check` n'était joué par personne, et une pull request est passée
+      # verte alors que le contrôle des compteurs sortait en 1 en local.
+      #
+      # `check` se décrit lui-même « ce qu'une pull request doit passer », et le
+      # workflow de release l'appelle sous ce nom. Le job qui garde les pull
+      # requests doit donc l'appeler aussi, plutôt que d'en tenir une seconde
+      # liste qui diverge en silence. mise nomme chaque tâche dans le journal :
+      # la granularité de lecture est conservée, c'est la granularité de
+      # l'oubli qui disparaît.
+      #
+      # Ce qu'il ajoute par rapport aux sept étapes précédentes : `readme:check`,
+      # `coverage:check`, `package` et `docs:quality`.
+      - name: Ce qu'une pull request doit passer
+        run: mise run check
 
       - name: Publier les rapports
         if: always()

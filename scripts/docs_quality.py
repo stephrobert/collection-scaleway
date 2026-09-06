@@ -105,6 +105,9 @@ class Mesure:
     #: pas un défaut du générateur, et un ratio dont on ignore ce que le reste
     #: contient ne dit rien à personne.
     sans_detail: list[str] = field(default_factory=list)
+    #: Champs publiés dans un `contains`, et ceux qui portent une description.
+    champs: int = 0
+    champs_decrits: int = 0
     exemples: int = 0
     exemples_copiables: int = 0
     defauts: list[Defaut] = field(default_factory=list)
@@ -223,6 +226,22 @@ def examiner(chemin: Path, choix_exposes: dict[str, set[str]]) -> tuple[Mesure, 
             else:
                 mesure.sans_detail.append(f"{nom}.{cle}")
 
+        # **Les champs d'un `contains` sont publiés comme le reste.** La porte
+        # ne regardait que les clés de premier niveau : le jour où le générateur
+        # a commencé à publier les champs des ressources, cent phrases de repli
+        # sont parties sur Galaxy sans que rien ne les compte. Étendre la
+        # surface publiée sans étendre la mesure est exactement le défaut que
+        # ce dépôt traque ailleurs.
+        for champ, detail in ((corps or {}).get("contains") or {}).items():
+            mesure.champs += 1
+            phrases = (detail or {}).get("description") or []
+            if phrases and REPLI not in " ".join(str(x) for x in phrases):
+                mesure.champs_decrits += 1
+            else:
+                defauts.append(
+                    Defaut(nom, "champ-de-retour-sans-description", f"`{cle}.{champ}`", True)
+                )
+
     # --- les exemples -------------------------------------------------------
     for rang, tache in enumerate(exemples, start=1):
         if not isinstance(tache, dict):
@@ -325,6 +344,8 @@ def mesurer() -> tuple[Mesure, list[Defaut]]:
         total.retours_composites += mesure.retours_composites
         total.retours_detailles += mesure.retours_detailles
         total.sans_detail.extend(mesure.sans_detail)
+        total.champs += mesure.champs
+        total.champs_decrits += mesure.champs_decrits
         total.exemples += mesure.exemples
         total.exemples_copiables += mesure.exemples_copiables
         tous.extend(defauts)
@@ -348,6 +369,8 @@ def rendre(mesure: Mesure, defauts: list[Defaut]) -> str:
             if mesure.sans_detail
             else ""
         ),
+        f"  champs décrits     {mesure.champs_decrits:4d} / {mesure.champs:<4d} "
+        f"{mesure.ratio(mesure.champs_decrits, mesure.champs)}",
         f"  exemples copiables {mesure.exemples_copiables:4d} / {mesure.exemples:<4d} "
         f"{mesure.ratio(mesure.exemples_copiables, mesure.exemples)}",
         "",
@@ -385,6 +408,7 @@ def main(argv: list[str]) -> int:
                     "modules": mesure.modules,
                     "options": [mesure.options_decrites, mesure.options],
                     "retours": [mesure.retours_decrits, mesure.retours],
+                    "champs": [mesure.champs_decrits, mesure.champs],
                     "retours_detailles": [
                         mesure.retours_detailles,
                         mesure.retours_composites,

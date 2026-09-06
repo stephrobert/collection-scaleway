@@ -431,6 +431,11 @@ depends = [
   # « ce qu'une pull request doit passer » : l'omission le rendait faux, et
   # coûte trois secondes à réparer.
   "package",
+  # **Elle n'y était pas, et une version est partie avec cent phrases de repli
+  # dans ses `RETURN`.** La porte documentaire n'était appelée que par
+  # `release:check`, donc au moment où refuser coûte un numéro plutôt qu'un
+  # aller-retour. Une pull request doit la passer comme le reste.
+  "docs:quality",
 ]
 
 [tasks.clean]

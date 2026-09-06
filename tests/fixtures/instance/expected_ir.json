@@ -305,11 +305,13 @@
         },
         {
           "name": "volumes_b_ssd_count",
-          "type": "integer"
+          "type": "integer",
+          "deprecated": true
         },
         {
           "name": "volumes_b_ssd_total_size",
           "type": "integer",
+          "deprecated": true,
           "description": "(in bytes)"
         }
       ]
@@ -341,7 +343,8 @@
         },
         {
           "name": "default_bootscript",
-          "type": "object"
+          "type": "object",
+          "deprecated": true
         },
         {
           "name": "extra_volumes",
@@ -616,6 +619,7 @@
         {
           "name": "organization_default",
           "type": "boolean",
+          "deprecated": true,
           "description": "True if it is your default security group for this Organization ID."
         },
         {
@@ -756,11 +760,13 @@
         {
           "name": "routed_ip_enabled",
           "type": "boolean",
+          "deprecated": true,
           "description": "True to configure the instance so it uses the routed IP mode. Use of `routed_ip_enabled` as `False` is deprecated."
         },
         {
           "name": "enable_ipv6",
           "type": "boolean",
+          "deprecated": true,
           "description": "True if IPv6 is enabled (deprecated and always `False` when `routed_ip_enabled` is `True`)."
         },
         {
@@ -786,6 +792,7 @@
         {
           "name": "public_ip",
           "type": "object",
+          "deprecated": true,
           "description": "Information about the public IP (deprecated in favor of `public_ips`)."
         },
         {
@@ -817,6 +824,7 @@
         {
           "name": "ipv6",
           "type": "object",
+          "deprecated": true,
           "description": "Instance IPv6 address (deprecated when `routed_ip_enabled` is `True`)."
         },
         {
@@ -985,31 +993,37 @@
         {
           "name": "id",
           "type": "string",
+          "deprecated": true,
           "description": "Unique ID of the task."
         },
         {
           "name": "description",
           "type": "string",
+          "deprecated": true,
           "description": "Description of the task."
         },
         {
           "name": "progress",
           "type": "integer",
+          "deprecated": true,
           "description": "Progress of the task in percent."
         },
         {
           "name": "started_at",
           "type": "string",
+          "deprecated": true,
           "description": "Task start date. (RFC 3339 format)"
         },
         {
           "name": "terminated_at",
           "type": "string",
+          "deprecated": true,
           "description": "Task end date. (RFC 3339 format)"
         },
         {
           "name": "status",
           "type": "enum",
+          "deprecated": true,
           "description": "Task status."
         },
         {
@@ -1024,6 +1038,7 @@
         {
           "name": "zone",
           "type": "string",
+          "deprecated": true,
           "description": "Zone in which the task is executed."
         }
       ]
@@ -1044,6 +1059,7 @@
         {
           "name": "export_uri",
           "type": "string",
+          "deprecated": true,
           "description": "Show the volume NBD export URI (deprecated, will always be empty)."
         },
         {
@@ -1117,6 +1133,119 @@
       ]
     }
   ],
+  "glossary": {
+    "action": "Action to apply when the rule matches a packet.",
+    "admin_password_encrypted_value": "A base64 encoded string containing the admin password encrypted with the public key pointed to by admin_password_encryption_ssh_key_id.\nThis value is reset when admin_password_encryption_ssh_key_id is set to an empty string.",
+    "admin_password_encryption_ssh_key_id": "UUID of the SSH RSA key that will be used to encrypt the initial admin password for OS requiring it. Mandatory for Windows OS.\nThe public_key value of this key is used to encrypt the admin password. When set to an empty string, reset this value and admin_password_encrypted_value to an empty string so a new password may be generated.",
+    "allowed_actions": "List of allowed actions on the Instance.",
+    "alt_names": "Alternative Instance name, if any.",
+    "base_snapshot": "ID of the snapshot on which this volume will be based.",
+    "base_volume": "Volume on which the snapshot is based on.",
+    "base_volume_id": "List snapshots originating only from this volume.",
+    "block_bandwidth": "The maximum bandwidth allocated to block storage access (in bytes per second).",
+    "block_storage": "Defines whether the Instance supports block storage.",
+    "boot": "Force the Instance to boot on this volume.",
+    "boot_type": "Instance boot type.",
+    "boot_types": "List of supported boot types.",
+    "capabilities": "Capabilities.",
+    "commercial_type": "Instance commercial type (eg. GP1-M).",
+    "compatible_types": "Instance compatible types.",
+    "dest_port_from": "Beginning of the range of ports this rule applies to (inclusive). This value will be set to null if protocol is ICMP or ANY.",
+    "dest_port_to": "End of the range of ports this rule applies to (inclusive). This value will be set to null if protocol is ICMP or ANY, or if it is equal to dest_port_from.",
+    "direction": "Direction the rule applies to.",
+    "disable_ipv6": "Disable IPv6 on the Instance (true by default).\nDisable IPv6 on the Instance while performing migration to routed IPs.\nThis field should only be specified when performing a enable_routed_ip action.",
+    "dns": "Public DNS of the server.",
+    "dynamic": "True if the IP address is dynamic.",
+    "dynamic_ip_required": "True if a dynamic IPv4 is required.",
+    "editable": "Indicates if this rule is editable. Rules with the value false will be ignored.",
+    "enable_default_security": "True if SMTP is blocked on IPv4 and IPv6. This feature is read only, please open a support ticket if you need to make it configurable.",
+    "enable_ipv6": "True if IPv6 is enabled (deprecated and always `False` when `routed_ip_enabled` is `True`).",
+    "error_reason": "Reason for the failed snapshot import.",
+    "export_uri": "Show the volume NBD export URI (deprecated, will always be empty).",
+    "family": "IP address family (inet or inet6).",
+    "filesystem_id": "(UUID format)",
+    "filesystems": "List of attached filesystems.",
+    "gpu": "Number of GPU.",
+    "gpu_info": "GPU information.",
+    "gpu_manufacturer": "GPU manufacturer.",
+    "gpu_memory": "RAM of a single GPU, in bytes. (in bytes)",
+    "gpu_name": "GPU model name.",
+    "hostname": "Instance host name.",
+    "hourly_price": "Hourly price in Euro.",
+    "href_result": "Location of the resulting resource.",
+    "image": "Information about the Instance image.",
+    "images": "List of images.",
+    "inbound_default_policy": "Default inbound policy.",
+    "interfaces": "List of available network interfaces.",
+    "internal_bandwidth": "Maximum internal bandwidth in bits per seconds.",
+    "internet_bandwidth": "Maximum internet bandwidth in bits per seconds.",
+    "ip_id": "ID of the IP you want to release from the Instance but retain in IPAM.",
+    "ipam_ip_ids": "The list of IPAM IPs associated with this private NIC. (UUID format)",
+    "ips": "List of ips.",
+    "ipv6": "Instance IPv6 address (deprecated when `routed_ip_enabled` is `True`).",
+    "ipv6_support": "True if IPv6 is enabled.",
+    "l_ssd": "Local SSD volumes.",
+    "location": "Instance location.",
+    "maintenances": "Instance planned maintenance.",
+    "max": "(in bytes)",
+    "max_file_systems": "Max number of SFS (Scaleway File Systems) that can be attached to the Instance.",
+    "max_size": "Maximum volume size in bytes. (in bytes)",
+    "min": "(in bytes)",
+    "min_size": "Minimum volume size in bytes. (in bytes)",
+    "monthly_price": "Estimated monthly price, for a 30 days month, in Euro.",
+    "ncpus": "Number of CPU.",
+    "network": "Network available for the Instance.",
+    "order": "Define the order of the returned servers.",
+    "organization_default": "True if it is your default security group for this Organization ID.",
+    "outbound_default_policy": "Default outbound policy.",
+    "per_volume_constraint": "Additional volume constraints.",
+    "placement_group": "Instance placement group.",
+    "placement_groups": "List of placement groups.",
+    "policy_mode": "Select the failure mode when the placement cannot be respected, either optional or enforced.",
+    "policy_type": "Select the behavior of the placement group, either low_latency (group) or max_availability (spread).",
+    "position": "Position of this rule in the security group rules list. If several rules are passed with the same position, the resulting order is undefined.",
+    "prefix": "(IP network)",
+    "private_ip": "Private IP address of the Instance (deprecated and always `null` when `routed_ip_enabled` is `True`).",
+    "private_network": "List Instances in this Private Network.",
+    "private_network_id": "Private Network the private NIC is attached to.",
+    "private_networks": "List Instances from the given Private Networks (use commas to separate them).",
+    "private_nic_id": "Private NIC unique ID.",
+    "private_nic_mac_address": "List Instances associated with the given private NIC MAC address.",
+    "private_nics": "Instance private NICs.",
+    "progress": "Progress of the task in percent.",
+    "project_default": "True if it is your default security group for this Project ID.",
+    "protected": "Defines whether the Instance protection option is activated.",
+    "protocol": "Protocol family this rule applies to.",
+    "provisioning_mode": "Information about this address provisioning mode.",
+    "public_ip": "Information about the public IP (deprecated in favor of `public_ips`).",
+    "public_ips": "Information about all the public IPs attached to the server.",
+    "ram": "Available RAM in bytes.",
+    "reverse": "Reverse domain name.",
+    "root_volume": "UUID of the snapshot.",
+    "routed_ip_enabled": "True to configure the instance so it uses the routed IP mode. Use of `routed_ip_enabled` as `False` is deprecated.",
+    "rules": "List of security rules.",
+    "scratch_storage_max_size": "Maximum available scratch storage. (in bytes)",
+    "scratch_storage_max_volumes_count": "Maximum supported number of scratch volumes.",
+    "security_group": "Instance security group.",
+    "security_group_rule_id": "UUID of the rule. (UUID format)",
+    "security_groups": "List of security groups.",
+    "server": "Instance attached to the volume.",
+    "server_id": "Instance to which the private NIC is attached.",
+    "snapshots": "List of snapshots.",
+    "start_date": "(RFC 3339 format)",
+    "started_at": "Task start date. (RFC 3339 format)",
+    "state_detail": "Detailed information about the Instance state.",
+    "stateful": "Defines whether the security group is stateful.",
+    "status": "Task status.",
+    "sum_internal_bandwidth": "Total maximum internal bandwidth in bits per seconds.",
+    "sum_internet_bandwidth": "Total maximum internet bandwidth in bits per seconds.",
+    "terminated_at": "Task end date. (RFC 3339 format)",
+    "volumes_b_ssd_total_size": "(in bytes)",
+    "volumes_constraint": "Initial volume constraints.",
+    "volumes_l_ssd_total_size": "(in bytes)",
+    "with_ip": "List Instances by IP (both private_ip and public_ip are supported). (IP address)",
+    "without_ip": "List Instances that are not attached to a public IP."
+  },
   "operations": [
     {
       "key": "instance.v1.Server.AttachServerFileSystem",

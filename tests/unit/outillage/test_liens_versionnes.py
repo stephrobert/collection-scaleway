@@ -107,3 +107,42 @@ def test_le_bloc_derive_publie_la_qualite_documentaire(
     assert "options and" in bloc
     assert "examples copyable as is" in bloc
     assert re.search(r"\d+/\d+ returned keys list their fields", bloc)
+
+
+def test_chaque_bloc_nomme_a_ses_marqueurs_dans_son_fichier() -> None:
+    """Un bloc réclamé au mauvais fichier fait échouer le contrôle pour rien.
+
+    Le premier rangement classait les blocs par « collection ou pas », et
+    `galaxy.yml`, qui n'est ni l'un ni l'autre, se voyait réclamer les marqueurs
+    du README racine : `readme:check` sortait en 1 en disant qu'il manquait des
+    marqueurs dans un fichier qui n'a jamais eu à en porter.
+    """
+    for nom, fichier in readme_counters.BLOCS_NOMMES:
+        debut, fin = readme_counters._marqueurs(nom)
+        texte = fichier.read_text(encoding="utf-8")
+        assert debut in texte and fin in texte, f"{fichier.name} ne porte pas le bloc {nom!r}"
+
+
+def test_chaque_bloc_nomme_va_au_fichier_qui_le_porte() -> None:
+    """Un bloc réclamé au mauvais fichier fait échouer le contrôle pour rien.
+
+    Le premier rangement classait les blocs par « collection ou pas », et
+    `galaxy.yml`, qui n'est ni l'un ni l'autre, se voyait réclamer les marqueurs
+    du README racine : `readme:check` sortait en 1 en disant qu'il manquait des
+    marqueurs dans un fichier qui n'a jamais eu à en porter.
+
+    Le test lit les fichiers plutôt que d'appeler `--check`, qui a besoin des
+    comptes rendus de `build/` : la copie hors dépôt de `/falsify` ne les
+    emporte pas, et le test échouerait faute d'artefact, ce qui ressemble
+    exactement à une garde prouvée.
+    """
+    concernes = {readme_counters.README, readme_counters.README_COLLECTION, readme_counters.GALAXY}
+    for nom, cible in readme_counters.BLOCS_NOMMES:
+        debut, fin = readme_counters._marqueurs(nom)
+        for fichier in concernes:
+            texte = fichier.read_text(encoding="utf-8")
+            porte = debut in texte and fin in texte
+            assert porte == (fichier == cible), (
+                f"le bloc {nom!r} est {'présent' if porte else 'absent'} dans "
+                f"{fichier.name}, alors qu'il vise {cible.name}"
+            )

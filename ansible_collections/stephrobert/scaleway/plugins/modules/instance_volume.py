@@ -106,6 +106,7 @@ volume:
     export_uri:
       description:
       - Show the volume NBD export URI (deprecated, will always be empty).
+      - Deprecated by the Scaleway API contract.
       returned: when the API returns it
       type: str
     size:
