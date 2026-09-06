@@ -1,0 +1,5 @@
+trivial:
+  - "The collection README now carries build, Galaxy, OpenSSF Scorecard and
+    licence badges, and the repository ships the community files the Ansible
+    inclusion checklist asks for: a code of conduct, a contributing guide, a
+    release guide, issue templates and a pull request template."

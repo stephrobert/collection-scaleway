@@ -1,0 +1,55 @@
+name: An operation has no module
+description: The Scaleway API exposes something this collection does not
+labels: [surface]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Run `mise run report` first, and say what it printed.** Every
+        operation of a tracked contract is in one of three states, never in
+        silence: generated, excluded with its reason in
+        `generator/overrides/`, or `UNKNOWN` and the CI is red. Which of the
+        three it is changes the whole conversation.
+
+        The most common answer is the second one, and the reason is usually the
+        same: **Terraform provisions resources, Ansible operates existing
+        ones.** An operation that creates, deletes or links resources is out of
+        scope even though the generator could produce it.
+
+  - type: input
+    id: operation
+    attributes:
+      label: The operation
+      description: Its identifier in the Scaleway API, as the contract names it.
+      placeholder: ListSnapshots
+    validations:
+      required: true
+
+  - type: input
+    id: produit
+    attributes:
+      label: The product
+      description: Its slug on the developers portal — `baremetal` is called `elastic-metal` there, `k8s` is called `kubernetes`.
+      placeholder: instance
+    validations:
+      required: true
+
+  - type: dropdown
+    id: etat
+    attributes:
+      label: What `mise run report` says about it
+      options:
+        - It is excluded, and I disagree with the reason
+        - It is UNKNOWN
+        - The product is not tracked at all
+        - The report does not mention it
+    validations:
+      required: true
+
+  - type: textarea
+    id: usage
+    attributes:
+      label: What you would do with it
+      description: A real day-2 task, not a capability. "Read the snapshots of a project to check their age before a migration" says more than "support snapshots".
+    validations:
+      required: true
