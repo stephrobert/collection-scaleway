@@ -49,6 +49,9 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: Get usage statistics of a given Load Balancer
   stephrobert.scaleway.lb_load_balancer_stat_info:
     zone: fr-par-1

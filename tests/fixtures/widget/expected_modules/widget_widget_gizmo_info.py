@@ -39,6 +39,9 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: List the gizmos of a widget
   lab.widget.widget_widget_gizmo_info:
     zone: fr-par-1

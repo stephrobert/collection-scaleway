@@ -52,6 +52,10 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# An action is a trigger, not a state: running this a second time
+# reports `changed` again, and that is correct. Idempotence is the
+# business of the management modules.
+
 - name: Migrate
   stephrobert.scaleway.lb_load_balancer_action:
     zone: fr-par-1

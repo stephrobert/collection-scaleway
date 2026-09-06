@@ -161,6 +161,13 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# The module reads the resource, compares, and writes only what
+# differs: run it twice and the second run reports no change.
+#
+# Check mode compares without writing, and `--diff` shows what would
+# change. A parameter you do not pass is a parameter the module does
+# not touch.
+
 - name: Update a Scaleway lb backend
   stephrobert.scaleway.lb_backend:
     zone: <zone>

@@ -50,6 +50,9 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: List backend server statistics
   stephrobert.scaleway.lb_backend_stat_info:
     zone: fr-par-1

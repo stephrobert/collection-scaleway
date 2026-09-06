@@ -271,6 +271,58 @@ class AnsibleModuleSpec:
     def examples_documentation(self) -> list[dict[str, Any]]:
         return [example.to_documentation() for example in self.examples]
 
+    def examples_preamble(self) -> tuple[str, ...]:
+        """Ce que ces exemples montrent, et ce qu'un second passage donnerait.
+
+        **Publié, donc en anglais.** Ce texte sort dans `ansible-doc` et sur la
+        page Galaxy : c'est ce qu'un utilisateur lit avant d'essayer.
+
+        Il dit ce que les tâches ne peuvent pas dire d'elles-mêmes. Une tâche
+        nommée « Poweron an Instance » montre la syntaxe ; elle ne dit pas
+        qu'une action est un déclenchement et non un état, donc qu'un second
+        passage rendra `changed` à nouveau. C'est précisément la question qu'un
+        lecteur se pose, et la seule dont la réponse coûte cher quand on se
+        trompe.
+        """
+        if self.kind is OperationKind.INFO:
+            lignes = [
+                "This module only reads: it never changes anything, and check mode",
+                "is native.",
+            ]
+            if self.selector and self.list_operation is not None:
+                lignes += [
+                    "",
+                    f"`{self.selector}` decides which of the two reads runs: given, the",
+                    "module returns that one resource; omitted, it lists them all,",
+                    "walking every page rather than returning the first one in silence.",
+                ]
+            return tuple(lignes)
+
+        if self.kind is OperationKind.ACTION:
+            lignes = [
+                "An action is a trigger, not a state: running this a second time",
+                "reports `changed` again, and that is correct. Idempotence is the",
+                "business of the management modules.",
+            ]
+            if self.wait_states:
+                lignes += [
+                    "",
+                    "The module waits until the API reports the target state before",
+                    "returning, so the next task acts on a resource that has settled.",
+                ]
+            return tuple(lignes)
+
+        if self.kind is OperationKind.MANAGE:
+            return (
+                "The module reads the resource, compares, and writes only what",
+                "differs: run it twice and the second run reports no change.",
+                "",
+                "Check mode compares without writing, and `--diff` shows what would",
+                "change. A parameter you do not pass is a parameter the module does",
+                "not touch.",
+            )
+        return ()
+
 
 def build_module_specs(
     plan: ProductPlan,

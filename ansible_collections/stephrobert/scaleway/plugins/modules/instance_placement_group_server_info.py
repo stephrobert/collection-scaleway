@@ -47,6 +47,9 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: Get placement group servers
   stephrobert.scaleway.instance_placement_group_server_info:
     zone: fr-par-1

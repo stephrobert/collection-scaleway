@@ -49,6 +49,9 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: Run GetDashboard
   stephrobert.scaleway.instance_dashboard_info:
     zone: fr-par-1

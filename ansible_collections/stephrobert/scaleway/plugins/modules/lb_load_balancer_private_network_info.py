@@ -54,6 +54,9 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: List Private Networks attached to a Load Balancer
   stephrobert.scaleway.lb_load_balancer_private_network_info:
     zone: fr-par-1

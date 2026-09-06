@@ -42,6 +42,9 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: Get availability
   stephrobert.scaleway.instance_server_type_availability_info:
     zone: fr-par-1

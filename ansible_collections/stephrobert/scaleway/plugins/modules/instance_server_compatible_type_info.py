@@ -59,6 +59,9 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: Get Instance compatible types
   stephrobert.scaleway.instance_server_compatible_type_info:
     zone: fr-par-1

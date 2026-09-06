@@ -67,7 +67,7 @@ def render_module(spec: AnsibleModuleSpec, *, source: str) -> str:
         source=source,
         operations=", ".join(operations),
         documentation=_yaml_block(spec.documentation()),
-        examples=_yaml_block(spec.examples_documentation()),
+        examples=_examples_block(spec),
         returns=_yaml_block(spec.return_documentation()),
         module_utils_import=spec.collection.module_utils_import,
         runtime_imports=_runtime_imports(spec),
@@ -210,6 +210,22 @@ def _environment() -> Environment:
         # OpenAPI versionné, relu en revue avant d'entrer dans le dépôt.
         autoescape=False,  # codeql[py/jinja2/autoescape-false]
     )
+
+
+def _examples_block(spec: AnsibleModuleSpec) -> str:
+    """Le préambule en commentaires, puis les tâches.
+
+    YAML ne porte pas de commentaire à travers `safe_dump` : le texte se
+    préfixe ici, une fois le bloc sérialisé. Une ligne vide du préambule devient
+    un `#` seul plutôt qu'une ligne blanche, sinon le commentaire se coupe en
+    deux blocs et le second flotte au-dessus des tâches.
+    """
+    taches = _yaml_block(spec.examples_documentation())
+    preambule = spec.examples_preamble()
+    if not preambule:
+        return taches
+    entete = "\n".join(f"# {ligne}".rstrip() for ligne in preambule)
+    return f"{entete}\n\n{taches}"
 
 
 def _yaml_block(payload: Any) -> str:

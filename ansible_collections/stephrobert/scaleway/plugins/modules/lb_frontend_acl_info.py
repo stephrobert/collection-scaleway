@@ -60,6 +60,9 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# This module only reads: it never changes anything, and check mode
+# is native.
+
 - name: List ACLs for a given frontend
   stephrobert.scaleway.lb_frontend_acl_info:
     zone: fr-par-1

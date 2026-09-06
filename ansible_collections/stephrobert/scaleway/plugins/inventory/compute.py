@@ -184,10 +184,10 @@ options:
 """
 
 EXAMPLES = r"""
-# Le cas minimal : le profil Scaleway habituel décide du reste.
+# The smallest thing that works: the usual Scaleway profile decides the rest.
 plugin: stephrobert.scaleway.compute
 
-# Production : un projet, une région, les machines qui tournent.
+# Production: one project, one region, the machines that are running.
 # plugin: stephrobert.scaleway.compute
 # projects:
 #   - 11111111-1111-1111-1111-111111111111
@@ -209,13 +209,14 @@ plugin: stephrobert.scaleway.compute
 #   - tags
 # cache: true
 
-# Joindre les machines par un réseau privé précis.
+# Reach the machines over one named private network. Useful when a machine sits
+# on several: without this, the first one found wins, which is not a decision.
 # plugin: stephrobert.scaleway.compute
 # address:
 #   private_network: production
 # require_address: true
 
-# Groupes et variables construits par Ansible lui-même.
+# Groups and variables built by Ansible itself, from what the plugin exposes.
 # plugin: stephrobert.scaleway.compute
 # compose:
 #   ansible_user: "'ubuntu'"
