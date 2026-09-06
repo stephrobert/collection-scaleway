@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: What the collection covers, and what it excludes
+    url: https://github.com/stephrobert/collection-scaleway#state-and-coverage
+    about: Terraform provisions, Ansible operates. Every excluded operation carries its reason in generator/overrides/ — check there before reporting a missing module.
+  - name: Module documentation
+    url: https://galaxy.ansible.com/ui/repo/published/stephrobert/scaleway/
+    about: Every module's options, return values and examples, per published version.
+  - name: Guides and walkthroughs
+    url: https://blog.stephane-robert.info
+    about: Longer-form articles on the author's blog.
+  - name: Security report
+    url: https://github.com/stephrobert/collection-scaleway/security/advisories/new
+    about: Report a vulnerability privately instead of opening a public issue.

@@ -354,6 +354,24 @@ description = "Ce que la documentation publiée vaut, et ce qui la rend impublia
 depends = ["generate"]
 run = "python scripts/docs_quality.py --check"
 
+[tasks."version"]
+description = "Ce que les fragments de changelog impliquent comme prochain numéro"
+# **Le numéro se déduit, il ne se saisit pas.** Ce qu'une version promet est
+# déjà écrit dans les fragments : une rupture, un ajout, ou une correction. Ce
+# dépôt a corrigé quatre numéros recopiés à la main en deux jours.
+#
+# Pourquoi les fragments et non les sujets de commit, comme le fait
+# `cz bump` ailleurs : Ansible lit `version:` dans `galaxy.yml` et nomme
+# l'archive d'après lui, donc un fichier porte forcément le numéro et
+# `version_provider = "scm"` est impossible ; le changelog appartient à
+# antsibull, dont la CI vérifie le format ; et les commits sont en français,
+# quand un fragment est publié, donc en anglais.
+run = "python scripts/version.py --show"
+
+[tasks."version:bump"]
+description = "Écrire le prochain numéro dans galaxy.yml et composer le changelog"
+run = "python scripts/version.py --bump"
+
 [tasks."release:check"]
 description = "Ce qui doit être vrai avant de publier sur Galaxy"
 # **Hors de `check`**, et c'est délibéré : cette garde exige un tag qui désigne

@@ -3,6 +3,13 @@
 A generator of **Day-2** Ansible modules for the Scaleway APIs, and the
 collection it produces.
 
+[![ci](https://github.com/stephrobert/collection-scaleway/actions/workflows/ci.yml/badge.svg)](https://github.com/stephrobert/collection-scaleway/actions/workflows/ci.yml)
+[![dérive](https://github.com/stephrobert/collection-scaleway/actions/workflows/drift.yml/badge.svg)](https://github.com/stephrobert/collection-scaleway/actions/workflows/drift.yml)
+[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/stephrobert/collection-scaleway?label=OpenSSF%20Scorecard)](docs/scorecard.md)
+[![Plumber compliance](https://score.getplumber.io/github.com/stephrobert/collection-scaleway.svg)](https://score.getplumber.io/github.com/stephrobert/collection-scaleway)
+[![Ansible Galaxy](https://img.shields.io/badge/galaxy-stephrobert.scaleway-660198?logo=ansible&logoColor=white)](https://galaxy.ansible.com/ui/repo/published/stephrobert/scaleway/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
+
 Responsibility is split, and that boundary decides everything else:
 
 > Terraform provisions resources. Ansible operates existing resources.
@@ -246,7 +253,12 @@ in an archive is not a module Ansible can load.
 * [The collection runtime](docs/architecture/runtime.md)
 * [The dynamic inventory](docs/guides/dynamic-inventory.md), and Ansible's trap around strict mode
 * [What OpenSSF Scorecard says, and what it does not](docs/scorecard.md)
+* [CONTRIBUTING.md](CONTRIBUTING.md): what to run before you push, and why a
+  hand-edited generated file is refused
+* [RELEASING.md](RELEASING.md): where the version number comes from, and the six
+  things the gate refuses
 * [SECURITY.md](SECURITY.md): how to report a vulnerability, and what the repository already holds
+* [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 * [The shipped playbooks](ansible_collections/stephrobert/scaleway/playbooks/README.md), played on every `mise run integration`
 
 ## License

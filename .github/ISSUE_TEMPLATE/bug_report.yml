@@ -1,0 +1,75 @@
+name: A playbook did not behave
+description: A module returned, changed or reported something the Scaleway API did not
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The one thing that helps most: **what Ansible printed.** This project's
+        claim is that a generated module is the one an operator would have
+        written by hand; a playbook that says otherwise is a fact, and it
+        outranks any roadmap.
+
+  - type: input
+    id: module
+    attributes:
+      label: The module or plugin
+      description: Its full name.
+      placeholder: stephrobert.scaleway.instance_server_info
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Collection version
+      description: The output of `ansible-galaxy collection list stephrobert.scaleway`.
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: ansible
+    attributes:
+      label: ansible-core version
+      description: The first line of `ansible --version`.
+      placeholder: ansible [core 2.18.1]
+    validations:
+      required: true
+
+  - type: textarea
+    id: task
+    attributes:
+      label: The task
+      description: The smallest playbook that shows it. Redact identifiers, keep the shape.
+      render: yaml
+    validations:
+      required: true
+
+  - type: textarea
+    id: sortie
+    attributes:
+      label: What Ansible printed
+      description: The output, ideally with `-vvv`. Redact tokens; a token in an issue is a token to rotate.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: attendu
+    attributes:
+      label: What you expected instead
+      description: And, if you know it, what the API itself answers — `scw` or `curl` against the same resource settles most reports in one line.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: cible
+    attributes:
+      label: Against what
+      options:
+        - The real Scaleway API
+        - A local emulator (SCW_API_URL)
+        - Both
+    validations:
+      required: true
