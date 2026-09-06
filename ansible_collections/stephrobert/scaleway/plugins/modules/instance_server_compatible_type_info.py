@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_server_compatible_type_info
 short_description: Gather information about Scaleway Instance server compatible types
-version_added: 0.2.0
+version_added: 0.3.0
 description:
 - 'Get compatible commercial types that can be used to update the Instance. The compatibility
   of an Instance offer is based on:

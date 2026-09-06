@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_ip
 short_description: Manage a Scaleway Load Balancer IP
-version_added: 0.2.0
+version_added: 0.3.0
 description:
 - Update the reverse DNS of a Load Balancer flexible IP address.
 - The module reads the resource first and writes only the fields that differ, so a second

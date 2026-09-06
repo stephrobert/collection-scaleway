@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_server_info
 short_description: Gather information about Scaleway Instance servers
-version_added: 0.2.0
+version_added: 0.3.0
 description:
 - Get the details of a specified Instance.
 - List all Instances in a specified Availability Zone, e.g. `fr-par-1`.

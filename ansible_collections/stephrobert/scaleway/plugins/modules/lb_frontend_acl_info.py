@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_frontend_acl_info
 short_description: Gather information about Scaleway Load Balancer frontend ACLs
-version_added: 0.2.0
+version_added: 0.3.0
 description:
 - List the ACLs for a given frontend, specified by its frontend ID. The response is an array
   of ACL objects, each one representing an ACL that denies or allows traffic based on certain
