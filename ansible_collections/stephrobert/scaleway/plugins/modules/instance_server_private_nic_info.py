@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_server_private_nic_info
 short_description: Gather information about Scaleway Instance server private NICs
-version_added: 0.3.0
+version_added: 0.4.0
 description:
 - Get private NIC properties.
 - 'List all private NICs of a specified Instance.

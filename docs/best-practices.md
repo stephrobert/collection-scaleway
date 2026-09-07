@@ -53,14 +53,14 @@ URL alongside `Met`; they are marked `(URL required)` below.
 
 **`contribution`** · MUST · **Met** (URL required)
 
-    https://github.com/stephrobert/collection-scaleway/blob/0.3.0/CONTRIBUTING.md
+    https://github.com/stephrobert/collection-scaleway/blob/0.4.0/CONTRIBUTING.md
 
 > CONTRIBUTING.md describes what to run before pushing, what gets refused on
 > sight, and how a decision is recorded as an override carrying its reason.
 
 **`contribution_requirements`** · SHOULD · **Met** (URL required)
 
-    https://github.com/stephrobert/collection-scaleway/blob/0.3.0/CONTRIBUTING.md
+    https://github.com/stephrobert/collection-scaleway/blob/0.4.0/CONTRIBUTING.md
 
 > The same file states the requirements: no hand-edited generated file, a
 > falsification mutation for every new guard, and the language boundary between
@@ -78,7 +78,7 @@ URL alongside `Met`; they are marked `(URL required)` below.
 
 **`license_location`** · MUST · **Met** (URL required)
 
-    https://github.com/stephrobert/collection-scaleway/blob/0.3.0/LICENSE
+    https://github.com/stephrobert/collection-scaleway/blob/0.4.0/LICENSE
 
 ### Documentation
 
@@ -158,7 +158,7 @@ URL alongside `Met`; they are marked `(URL required)` below.
 
 **`release_notes`** · MUST · **Met** (URL required)
 
-    https://github.com/stephrobert/collection-scaleway/blob/0.3.0/ansible_collections/stephrobert/scaleway/CHANGELOG.rst
+    https://github.com/stephrobert/collection-scaleway/blob/0.4.0/ansible_collections/stephrobert/scaleway/CHANGELOG.rst
 
 > Composed by `antsibull-changelog` from fragments written with the change they
 > describe. The release gate refuses to publish while a fragment is still
@@ -178,7 +178,7 @@ URL alongside `Met`; they are marked `(URL required)` below.
 
 **`report_process`** · MUST · **Met** (URL required)
 
-    https://github.com/stephrobert/collection-scaleway/blob/0.3.0/CONTRIBUTING.md#issues
+    https://github.com/stephrobert/collection-scaleway/blob/0.4.0/CONTRIBUTING.md#issues
 
 **`report_tracker`** · SHOULD · **Met**
 
@@ -208,7 +208,7 @@ URL alongside `Met`; they are marked `(URL required)` below.
 
 **`vulnerability_report_process`** · MUST · **Met** (URL required)
 
-    https://github.com/stephrobert/collection-scaleway/blob/0.3.0/SECURITY.md
+    https://github.com/stephrobert/collection-scaleway/blob/0.4.0/SECURITY.md
 
 **`vulnerability_report_private`** · MUST · **Met** (URL required)
 

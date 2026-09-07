@@ -1,9 +1,0 @@
-minor_changes:
-  - The published archive is now signed without a key and carries a build
-    provenance attestation, both bound to the identity of the workflow that
-    produced it rather than to a secret. ``SECURITY.md`` publishes the two
-    commands that verify them, and the release workflow runs the first one on
-    the archive before publishing it.
-  - "``SECURITY.md`` now carries the direct link to the private advisory form.
-    It described the path in prose and held no link at all, which is also what
-    OpenSSF Scorecard reads: the check scored 4 out of 10."

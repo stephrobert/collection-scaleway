@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_placement_group_info
 short_description: Gather information about Scaleway Instance placement groups
-version_added: 0.3.0
+version_added: 0.4.0
 description:
 - Get the specified placement group.
 - List all placement groups in a specified Availability Zone.

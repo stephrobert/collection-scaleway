@@ -1,6 +1,0 @@
-trivial:
-  - "Counters published in the repository's own documentation are now derived
-    from the measurement, like the README's already were, and a check refuses a
-    counter written by hand. An audit found eight of them wrong, including
-    ``41 Day-2 candidates`` where the measurement says 40 and ``out of 46
-    modules`` where the collection ships 50."

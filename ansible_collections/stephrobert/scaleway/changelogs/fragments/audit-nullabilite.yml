@@ -1,8 +1,0 @@
----
-minor_changes:
-  - "The generator now audits which writable fields the contract declares as
-    clearable. ``mise run nullabilite`` names them, and the count is published
-    in a derived block of the runtime architecture page: a playbook cannot
-    currently clear such a field, because ``field: null`` and an absent
-    ``field`` produce the same request. The number sizes that work rather than
-    describing it."

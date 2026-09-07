@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_certificate
 short_description: Manage a Scaleway Load Balancer certificate
-version_added: 0.3.0
+version_added: 0.4.0
 description:
 - Update the name of a particular SSL/TLS certificate, specified by its certificate ID.
 - 'The module reads the resource first and writes the whole body, because this operation replaces

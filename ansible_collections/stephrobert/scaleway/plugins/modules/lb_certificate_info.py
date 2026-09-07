@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_certificate_info
 short_description: Gather information about Scaleway Load Balancer certificates
-version_added: 0.3.0
+version_added: 0.4.0
 description:
 - Get information for a particular SSL/TLS certificate, specified by its certificate ID. The
   response returns full details of the certificate, including its type, main domain name,

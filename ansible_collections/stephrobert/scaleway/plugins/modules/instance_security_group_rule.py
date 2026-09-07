@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_security_group_rule
 short_description: Manage a Scaleway Instance security group rule
-version_added: 0.3.0
+version_added: 0.4.0
 description:
 - Update the properties of a rule from a specified security group.
 - The module reads the resource first and writes only the fields that differ, so a second
