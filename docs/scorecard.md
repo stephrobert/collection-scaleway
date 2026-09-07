@@ -111,7 +111,7 @@ been the same mistake as the estimate table above.
 
 Only two things move it: enrolling in OSS-Fuzz, or deploying ClusterFuzzLite.
 The second is deployed, in `.clusterfuzzlite/`, and runs on every pull request
-and every Tuesday.
+and every Tuesday, with a corpus pruning run every Wednesday.
 
 **It was not deployed for the score.** The parser reads a document nobody here
 controls: `specs/scaleway/` is versioned, but its content comes from Scaleway's
@@ -204,7 +204,12 @@ answers are true, not for the score.
   having observed the real traffic breaks CI without proving anything. The move
   to `block` will be based on the `audit` readings, once there are some.
 * **A corpus that is not just the cases somebody thought of.** ClusterFuzzLite
-  is deployed, and its corpus starts from mutations of the versioned contract.
+  is deployed, and its corpus starts empty: no seed corpus is shipped, and the
+  mutations of the versioned contract belong to `mise run fuzz:smoke`, which
+  runs offline and seeds nothing. The Tuesday batch run stores the corpus it
+  builds as a workflow artifact, later runs download it, and the Wednesday run
+  prunes it. Whether that corpus grows from one campaign to the next is what
+  the `cifuzz-corpus-fuzz_parser` artifact shows, and nothing else does.
   Counting the 74 operations themselves as a corpus would be counting the cases
   the tests already cover; what the fuzzer is for is the shapes nobody wrote
   down, and twelve of those turned out to exist.
