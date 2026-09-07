@@ -160,6 +160,13 @@ MODULE = ManageModule(
         body_params=("tags", "protected", "secret_token", "email_config", "webhook_config"),
     ),
     managed_params=("tags", "protected", "secret_token", "email_config", "webhook_config"),
+    comparisons=(
+        ("email_config", "mapping"),
+        ("protected", "scalar"),
+        ("secret_token", "scalar"),
+        ("tags", "ordered_list"),
+        ("webhook_config", "mapping"),
+    ),
     secret_params=("secret_token",),
 )
 

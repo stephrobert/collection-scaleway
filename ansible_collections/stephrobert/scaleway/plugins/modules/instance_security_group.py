@@ -311,6 +311,17 @@ MODULE = ManageModule(
         "outbound_default_policy",
         "stateful",
     ),
+    comparisons=(
+        ("description", "scalar"),
+        ("enable_default_security", "scalar"),
+        ("inbound_default_policy", "scalar"),
+        ("name", "scalar"),
+        ("organization_default", "scalar"),
+        ("outbound_default_policy", "scalar"),
+        ("project_default", "scalar"),
+        ("stateful", "scalar"),
+        ("tags", "ordered_list"),
+    ),
 )
 
 

@@ -220,6 +220,11 @@ MODULE = ManageModule(
         payload_field="volume",
     ),
     managed_params=("name", "tags", "size"),
+    comparisons=(
+        ("name", "scalar"),
+        ("size", "scalar"),
+        ("tags", "ordered_list"),
+    ),
 )
 
 

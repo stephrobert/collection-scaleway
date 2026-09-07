@@ -238,6 +238,7 @@ def _generate(plan: ProductPlan, arguments: argparse.Namespace) -> int:
             written=[spec.name for spec in specs],
             skipped=skipped,
             limits=limits,
+            comparisons=plan.comparison_strategies(specs),
         ),
         encoding="utf-8",
     )

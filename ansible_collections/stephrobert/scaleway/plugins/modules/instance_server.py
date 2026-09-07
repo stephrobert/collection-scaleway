@@ -467,6 +467,22 @@ MODULE = ManageModule(
         "commercial_type",
         "admin_password_encryption_ssh_key_id",
     ),
+    comparisons=(
+        ("admin_password_encryption_ssh_key_id", "scalar"),
+        ("boot_type", "scalar"),
+        ("commercial_type", "scalar"),
+        ("dynamic_ip_required", "scalar"),
+        ("enable_ipv6", "scalar"),
+        ("name", "scalar"),
+        ("placement_group", "scalar"),
+        ("private_nics", "ordered_list"),
+        ("protected", "scalar"),
+        ("public_ips", "ordered_list"),
+        ("routed_ip_enabled", "scalar"),
+        ("security_group", "mapping"),
+        ("tags", "ordered_list"),
+        ("volumes", "mapping"),
+    ),
 )
 
 

@@ -280,6 +280,12 @@ MODULE = ManageModule(
         body_params=("name", "description", "tags", "ssl_compatibility_level"),
     ),
     managed_params=("name", "description", "tags", "ssl_compatibility_level"),
+    comparisons=(
+        ("description", "scalar"),
+        ("name", "scalar"),
+        ("ssl_compatibility_level", "scalar"),
+        ("tags", "ordered_list"),
+    ),
 )
 
 

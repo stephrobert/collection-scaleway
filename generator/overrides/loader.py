@@ -20,6 +20,11 @@ from typing import Any
 
 import yaml
 
+from generator.ansible.comparison import (
+    PAR_DECISION_HUMAINE,
+    ComparisonStrategy,
+    depuis_le_nom,
+)
 from generator.ir.enums import GenerationMode, OperationKind
 from generator.ir.models import ApiService
 
@@ -65,7 +70,16 @@ class OverrideError(ValueError):
 
 #: Champs qu'un override de paramètre peut porter.
 _PARAMETER_FIELDS: frozenset[str] = frozenset(
-    {"choices", "required", "expose", "csv", "reason", "description", "example"}
+    {
+        "choices",
+        "required",
+        "expose",
+        "csv",
+        "reason",
+        "description",
+        "example",
+        "comparison",
+    }
 )
 
 #: Champs qu'un bloc `wait` peut porter.
@@ -110,6 +124,14 @@ class ParameterOverride:
     #: renvoie à un point d'API pour connaître les valeurs, il n'en déclare
     #: aucune, et un exemple qui en inventerait une serait copiable et faux.
     example: Any = None
+    #: Comment ce champ se compare à ce que l'API rend, quand le type ne le dit
+    #: pas.
+    #:
+    #: Le contrat ne déclare ni `uniqueItems` ni le moindre mot sur l'ordre :
+    #: mesuré, aucun tableau des deux documents n'en porte. Poser `set` sur un
+    #: champ est donc une **décision**, prise parce que quelqu'un a observé
+    #: l'API réordonner, et elle porte sa raison comme les autres.
+    comparison: ComparisonStrategy | None = None
     reason: str | None = None
 
 
@@ -414,7 +436,25 @@ def _parse_parameters(key: str, raw: Any, path: Path) -> dict[str, ParameterOver
         if choices is not None and not isinstance(choices, list):
             raise OverrideError(f"{path} : {key}.parameters.{nom}.choices doit être une liste")
 
-        arbitrages = ("choices", "required", "expose", "csv")
+        comparison = declaration.get("comparison")
+        if comparison is not None:
+            if not isinstance(comparison, str):
+                raise OverrideError(
+                    f"{path} : {key}.parameters.{nom}.comparison doit être une chaîne"
+                )
+            try:
+                comparison = depuis_le_nom(comparison)
+            except ValueError as erreur:
+                raise OverrideError(f"{path} : {key}.parameters.{nom} : {erreur}") from None
+            if comparison not in PAR_DECISION_HUMAINE:
+                connues = ", ".join(sorted(strategie.value for strategie in PAR_DECISION_HUMAINE))
+                raise OverrideError(
+                    f"{path} : {key}.parameters.{nom}.comparison vaut "
+                    f"`{comparison.value}`, que le type du paramètre décide déjà. "
+                    f"Un override ne pose que ce qu'aucun type ne peut décider : {connues}."
+                )
+
+        arbitrages = ("choices", "required", "expose", "csv", "comparison")
         decide = any(declaration.get(champ) is not None for champ in arbitrages)
         if decide and not declaration.get("reason"):
             raise OverrideError(
@@ -443,6 +483,7 @@ def _parse_parameters(key: str, raw: Any, path: Path) -> dict[str, ParameterOver
             csv=declaration.get("csv"),
             description=declaration.get("description"),
             example=declaration.get("example"),
+            comparison=comparison,
             reason=declaration.get("reason"),
         )
     return parametres

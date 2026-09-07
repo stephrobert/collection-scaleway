@@ -238,6 +238,13 @@ class ManageModule:
     #: Champs du corps de l'écriture, dans l'ordre du contrat. Ce sont les seuls
     #: que le module gère : le reste de la ressource ne le concerne pas.
     managed_params: tuple[str, ...] = ()
+    #: Comment chaque champ géré se compare à ce que l'API rend.
+    #:
+    #: Le générateur la calcule : le type décide ce qu'il peut, un override
+    #: décide le reste. Un champ absent de la table se compare strictement,
+    #: parce que c'est le comportement le plus prudent et parce qu'un module
+    #: d'une version antérieure n'en porte pas.
+    comparisons: tuple[tuple[str, str], ...] = ()
     #: Ceux de ces champs qui portent un secret. **Ils ne se comparent pas** :
     #: l'API ne les rend jamais, donc les comparer reviendrait à comparer une
     #: valeur à `None` et à conclure « différent » à chaque exécution, ce qui
@@ -854,6 +861,74 @@ def _valeur_courante(ressource: dict[str, Any], nom: str) -> Any:
     return None
 
 
+def _sans_ordre(valeur: Any) -> Any:
+    """Rend une liste comparable sans son ordre, et sans perdre les doublons.
+
+    Un vrai `set` dirait que `[a, a, b]` et `[a, b]` sont la même chose, ce qui
+    est faux d'une liste de tags : l'un en porte deux, l'autre un. Le tri
+    conserve les multiplicités.
+
+    Les éléments peuvent ne pas être triables entre eux, un tableau de
+    dictionnaires par exemple : le tri porte alors sur leur représentation, qui
+    est stable et suffit à comparer deux collections.
+    """
+    if not isinstance(valeur, (list, tuple)):
+        return valeur
+    return sorted(valeur, key=repr)
+
+
+def _cles_demandees(attendu: Any, observe: Any) -> Any:
+    """Ne garde de l'observé que les clés que la demande porte.
+
+    L'API enrichit : une requête pose `{"uri": ...}` et la réponse rend
+    `{"uri": ..., "id": ..., "created_at": ...}`. Comparer les deux entiers
+    conclut « différent » à chaque exécution sur des champs que personne n'a
+    demandés.
+    """
+    if not isinstance(attendu, dict) or not isinstance(observe, dict):
+        return observe
+    return {cle: valeur for cle, valeur in observe.items() if cle in attendu}
+
+
+#: Comment comparer, par nom de stratégie. Le générateur pose le nom, le
+#: runtime applique. La table est **fermée** : un nom absent fait échouer le
+#: module, parce que retomber en silence sur l'égalité stricte reproduirait
+#: exactement le défaut qu'on corrige, en le rendant invisible.
+_COMPARAISONS: dict[str, Any] = {
+    "scalar": lambda attendu, observe: attendu == observe,
+    "ordered_list": lambda attendu, observe: list(attendu or []) == list(observe or []),
+    "set": lambda attendu, observe: _sans_ordre(attendu or []) == _sans_ordre(observe or []),
+    "mapping": lambda attendu, observe: attendu == observe,
+    "normalized_string": lambda attendu, observe: (
+        str(attendu).strip().casefold() == str(observe).strip().casefold()
+        if attendu is not None and observe is not None
+        else attendu == observe
+    ),
+    "object_id": lambda attendu, observe: attendu == observe,
+    "normalized_object": lambda attendu, observe: attendu == _cles_demandees(attendu, observe),
+}
+
+
+def _identique(strategie: str, attendu: Any, observe: Any) -> bool:
+    """Le champ est-il déjà dans l'état demandé ?
+
+    Une stratégie inconnue lève : le générateur et le runtime évoluent
+    ensemble, et un module qui demanderait une comparaison que ce runtime ne
+    sait pas faire doit le dire. Le repli silencieux sur l'égalité stricte
+    donnerait un module qui croit comparer autrement, ce qui est le défaut
+    d'origine rendu invisible.
+    """
+    comparer = _COMPARAISONS.get(strategie)
+    if comparer is None:
+        connues = ", ".join(sorted(_COMPARAISONS))
+        raise ValueError(
+            f"stratégie de comparaison inconnue de ce runtime : {strategie!r}. "
+            f"Connues : {connues}. Le module a probablement été produit par un "
+            "générateur plus récent que `module_utils`."
+        )
+    return bool(comparer(attendu, observe))
+
+
 def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
     """Amène une ressource existante à l'état que le playbook décrit.
 
@@ -875,10 +950,13 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
     après l'écriture : l'API normalise, complète, et parfois refuse en silence.
     Ce que le module rend est ce que l'API dit, pas ce qu'on lui a demandé.
 
-    Une limite, dite plutôt que masquée : la comparaison est stricte. Un champ
-    que l'API réordonne ou normalise fera rendre `changed` à chaque exécution.
-    Le cas ne se corrige pas en triant au hasard, il se corrige par un override
-    quand il se présente, et il se voit tout de suite.
+    **Comparer comme le champ le demande.** L'égalité stricte rendait `changed`
+    à chaque exécution sur un champ que l'API réordonne ou normalise, et un
+    module qui rend `changed` à chaque fois n'est pas idempotent quoi qu'il
+    affiche. La stratégie vient du générateur, qui la tient du type ou d'un
+    override : rien ne se trie au hasard ici, et une stratégie inconnue de ce
+    runtime le fait échouer plutôt que retomber en silence sur l'égalité
+    stricte.
     """
     api = ScalewayApi(module)
 
@@ -908,8 +986,11 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
     # puis retirée : elle ne changeait le résultat dans aucun cas atteignable,
     # et une garde qu'aucune mutation ne fait mordre est un commentaire. Ce qui
     # reste, et qui compte, est que la valeur ne fuit pas dans le `diff`.
+    strategies = dict(spec.comparisons)
     ecarts = {
-        nom: valeur for nom, valeur in demande.items() if _valeur_courante(courant, nom) != valeur
+        nom: valeur
+        for nom, valeur in demande.items()
+        if not _identique(strategies.get(nom, "scalar"), valeur, _valeur_courante(courant, nom))
     }
 
     champ = spec.read_operation.payload_field or "resource"

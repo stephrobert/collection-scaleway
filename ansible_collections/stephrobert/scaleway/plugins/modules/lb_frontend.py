@@ -277,6 +277,17 @@ MODULE = ManageModule(
         "connection_rate_limit",
         "enable_access_logs",
     ),
+    comparisons=(
+        ("backend_id", "scalar"),
+        ("certificate_id", "scalar"),
+        ("certificate_ids", "ordered_list"),
+        ("connection_rate_limit", "scalar"),
+        ("enable_access_logs", "scalar"),
+        ("enable_http3", "scalar"),
+        ("inbound_port", "scalar"),
+        ("name", "scalar"),
+        ("timeout_client", "scalar"),
+    ),
 )
 
 

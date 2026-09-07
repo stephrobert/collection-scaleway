@@ -170,6 +170,11 @@ MODULE = ManageModule(
         body_params=("name", "email_config", "webhook_config"),
     ),
     managed_params=("name", "email_config", "webhook_config"),
+    comparisons=(
+        ("email_config", "mapping"),
+        ("name", "scalar"),
+        ("webhook_config", "mapping"),
+    ),
 )
 
 

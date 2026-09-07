@@ -221,6 +221,12 @@ MODULE = ManageModule(
         payload_field="placement_group",
     ),
     managed_params=("name", "tags", "policy_mode", "policy_type"),
+    comparisons=(
+        ("name", "scalar"),
+        ("policy_mode", "scalar"),
+        ("policy_type", "scalar"),
+        ("tags", "ordered_list"),
+    ),
 )
 
 

@@ -176,6 +176,10 @@ MODULE = ManageModule(
         body_params=("backend_id", "match"),
     ),
     managed_params=("backend_id", "match"),
+    comparisons=(
+        ("backend_id", "scalar"),
+        ("match", "mapping"),
+    ),
 )
 
 

@@ -193,6 +193,11 @@ MODULE = ManageModule(
         body_params=("reverse", "lb_id", "tags"),
     ),
     managed_params=("reverse", "lb_id", "tags"),
+    comparisons=(
+        ("lb_id", "scalar"),
+        ("reverse", "scalar"),
+        ("tags", "ordered_list"),
+    ),
 )
 
 

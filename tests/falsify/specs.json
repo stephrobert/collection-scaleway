@@ -620,7 +620,7 @@
       "name": "csv-sans-raison-accepte",
       "why": "Changer la forme sous laquelle un utilisateur écrit un filtre est un arbitrage, pas une correction. Sans le refus, un `csv: true` posé sans raison passerait, et personne ne saurait dans six mois pourquoi ce paramètre diverge du contrat.",
       "file": "generator/overrides/loader.py",
-      "find": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\")",
+      "find": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\", \"comparison\")",
       "replace": "        arbitrages = (\"choices\", \"required\", \"expose\")",
       "test": "tests/unit/generator/test_overrides.py::test_un_parametre_csv_sans_raison_est_refuse"
     },
@@ -644,7 +644,7 @@
       "name": "gestion-ecrit-tout-le-corps",
       "why": "Un module de gestion qui envoie tous ses paramètres au lieu de la seule différence rend `changed` à chaque exécution et écrase les champs qu'un autre playbook gère.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "    ecarts = {\n        nom: valeur for nom, valeur in demande.items() if _valeur_courante(courant, nom) != valeur\n    }",
+      "find": "    ecarts = {\n        nom: valeur\n        for nom, valeur in demande.items()\n        if not _identique(strategies.get(nom, \"scalar\"), valeur, _valeur_courante(courant, nom))\n    }",
       "replace": "    ecarts = dict(demande)",
       "test": "tests/unit/collection/test_runtime.py::test_une_ressource_deja_conforme_ne_declenche_aucune_ecriture"
     },
@@ -1455,6 +1455,46 @@
       "find": "    _compter_les_contraintes(document, contraintes)",
       "replace": "    pass",
       "test": "tests/unit/generator/test_contraintes.py::test_le_document_est_compte_pour_ce_quil_porte"
+    },
+    {
+      "name": "comparaison-toujours-stricte",
+      "why": "Le runtime comparait par égalité stricte et le disait lui-même : un champ que l'API réordonne fait rendre `changed` à chaque exécution. Le module n'est alors pas idempotent quoi qu'affiche `changed`, et il est inutilisable dans un handler.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        if not _identique(strategies.get(nom, \"scalar\"), valeur, _valeur_courante(courant, nom))",
+      "replace": "        if _valeur_courante(courant, nom) != valeur",
+      "test": "tests/unit/collection/test_runtime.py::test_des_tags_reordonnes_par_lapi_ne_declenchent_aucune_ecriture"
+    },
+    {
+      "name": "strategie-inconnue-repliee-en-silence",
+      "why": "Retomber en silence sur l'égalité stricte donnerait un module qui croit comparer autrement : c'est le défaut d'origine, rendu invisible. Le générateur et le runtime évoluent ensemble, et un module produit par un générateur plus récent doit le dire.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    comparer = _COMPARAISONS.get(strategie)",
+      "replace": "    comparer = _COMPARAISONS.get(strategie, _COMPARAISONS[\"scalar\"])",
+      "test": "tests/unit/collection/test_comparaison.py::test_une_strategie_inconnue_fait_echouer_le_module"
+    },
+    {
+      "name": "doublon-absorbe-par-la-comparaison-densemble",
+      "why": "Un vrai `set` dirait que `[a, a, b]` vaut `[a, b]`, et c'est faux : l'un porte deux tags, l'autre un. Une comparaison qui absorbe un doublon annonce `ok` sur un état que le module n'a pas écrit.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    return sorted(valeur, key=repr)",
+      "replace": "    return sorted(set(map(repr, valeur)))",
+      "test": "tests/unit/collection/test_comparaison.py::test_un_doublon_nest_pas_absorbe"
+    },
+    {
+      "name": "strategie-devinee-au-lieu-detre-posee",
+      "why": "Le contrat ne dit ni l'ordre ni l'unicité d'un tableau : mesuré, aucun n'en porte `uniqueItems` et aucune description ne parle d'ordre. Adopter `set` par défaut ferait taire un `changed` qui a peut-être raison, et un module qui tait un changement réel est pire qu'un module qui en annonce un de trop.",
+      "file": "generator/ansible/comparison.py",
+      "find": "    ApiType.ARRAY: ComparisonStrategy.ORDERED_LIST,",
+      "replace": "    ApiType.ARRAY: ComparisonStrategy.SET,",
+      "test": "tests/unit/generator/test_comparaison_modele.py::test_un_tableau_reste_compare_dans_lordre"
+    },
+    {
+      "name": "override-de-comparaison-sans-raison",
+      "why": "Poser `set` sur un champ est une décision, prise parce que quelqu'un a observé l'API réordonner. Sans `reason`, personne ne peut savoir si l'observation a eu lieu.",
+      "file": "generator/overrides/loader.py",
+      "find": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\", \"comparison\")",
+      "replace": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\")",
+      "test": "tests/unit/generator/test_comparaison_modele.py::test_un_override_de_comparaison_exige_sa_raison"
     }
   ]
 }
