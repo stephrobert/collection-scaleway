@@ -465,12 +465,13 @@ depends = [
   "fuzz:smoke",
   "fuzz:verrou",
   "chiffres:check",
+  "histoire",
 ]
 
 [tasks.qualifier]
 description = "Rejouer la CI en local, et nommer ce qui n'est pas rejouable"
 # **GitHub n'est pas une zone de qualification.** Une pull request rouge coûte
-# le runner, la relecture et le budget d'API du dépôt — ce dernier a déjà fait
+# le runner, la relecture et le budget d'API du dépôt. Ce dernier a déjà fait
 # échouer CodeQL, OSV-Scanner et la revue de dépendances en même temps, sur une
 # limite atteinte parce qu'on s'en servait de boucle d'essai.
 #
@@ -483,6 +484,18 @@ run = "python scripts/qualifier.py"
 [tasks."qualifier:rapide"]
 description = "La même porte, réduite à ce qui tient en moins d'une minute"
 run = "python scripts/qualifier.py --rapide"
+
+[tasks.histoire]
+description = "Refuser dans le code un nombre qui compte des choses du dépôt"
+# **La règle du nombre dérivé ne valait que pour les documents publiés.** Le
+# code portait les mêmes compteurs faux, et rien ne les faisait rougir : un
+# compte de tests que la mesure démentait, un compte de modules inférieur à ce
+# que la collection publie, deux copies d'un même tableau qui ne disaient plus
+# la même chose.
+#
+# Un nombre vrai se prouve par une assertion, un golden ou un bloc dérivé ; un
+# nombre historique va dans `docs/adr/`, qui porte sa date.
+run = "python scripts/histoire.py"
 
 [tasks.clean]
 description = "Supprimer les artefacts d'exécution"

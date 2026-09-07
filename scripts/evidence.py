@@ -4,11 +4,9 @@
 audit de la 0.3.0 a trouvé quatre divergences, toutes dans des documents écrits
 à la main :
 
-| fichier | disait | la mesure disait |
-|---|---|---|
-| `docs/architecture/generator.md` | 41 Day-2, 40 AUTO, 97,6 %, 14 IGNORE | 40, 39, 97,5 %, 15 |
-| `docs/architecture/runtime.md` | modules joués sur **46** | 50 |
-| `docs/best-practices.md` | 575 tests, 149 mutations | 577, 151 |
+Le relevé de ces écarts, avec ses nombres et sa date, vit dans ADR-007. Il
+était recopié ici et dans `scripts/chiffres.py`, et les deux copies ne disaient
+déjà plus la même chose.
 
 Le projet dit « ne pas mentir, mesurer ». La règle doit valoir partout, ou elle
 ne vaut nulle part.

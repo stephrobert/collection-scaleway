@@ -30,8 +30,9 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLAYBOOK = REPO_ROOT / "examples" / "playbooks" / "modules.yml"
 
-# Les quatre tâches qui construisent le recensement, nommées comme dans le
-# playbook. Une tâche renommée fait rougir ce test plutôt que de le vider.
+# Les tâches qui construisent le recensement, nommées comme dans le playbook.
+# La liste ci-dessous les porte toutes : une tâche renommée fait rougir ce test
+# plutôt que de le vider.
 TACHES = (
     "Les réécritures identiques, recensées par leur registre",
     "Chaque réécriture, avec ce que son module a rendu",

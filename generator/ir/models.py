@@ -111,9 +111,10 @@ class ApiField:
 class ApiObject:
     """Une ressource rendue par l'API, avec ses champs.
 
-    Rangée une fois par schéma plutôt que recopiée sur chaque opération : les
-    74 opérations d'Instance v1 ne renvoient que quinze ressources distinctes,
-    et l'IR resterait illisible en diff autrement.
+    Rangée une fois par schéma plutôt que recopiée sur chaque opération : un
+    produit compte bien plus d'opérations que de ressources distinctes, et l'IR
+    resterait illisible en diff autrement. Le golden porte les comptes du jour,
+    et rougit quand ils bougent.
     """
 
     name: str

@@ -22,6 +22,8 @@ The boundary that settles every design ambiguity:
   guide, and Ansible's trap around strict mode.
 - [The Scaleway contracts](architecture/scaleway-contracts.md): the source, its
   measured limits, and how it is watched.
+- [Decision records](adr/index.md): what was decided, when, and what it costs.
+  History lives here so the code can say the invariant and nothing else.
 
 ```{toctree}
 :caption: Understand
@@ -30,6 +32,20 @@ The boundary that settles every design ambiguity:
 architecture/generator
 architecture/scaleway-contracts
 architecture/runtime
+```
+
+```{toctree}
+:caption: Decisions
+:maxdepth: 1
+
+adr/index
+adr/001-no-operation-is-unknown-in-silence
+adr/002-day-2-only
+adr/003-a-put-reads-before-it-writes
+adr/004-no-sanity-run-without-a-target
+adr/005-generated-documentation-behind-a-gate
+adr/006-the-emulator-is-a-proof-not-the-proof
+adr/007-measured-numbers-live-in-derived-blocks
 ```
 
 ```{toctree}

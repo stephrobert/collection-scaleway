@@ -1,10 +1,11 @@
 """Les nombres publiés dans le README, dérivés plutôt que recopiés.
 
-Le README annonçait 366 tests unitaires et 46 mutations. Mesuré au même
-instant : 420 tests et 73 mutations. Le message d'un commit annonçait 373 pour
-376. Trois occurrences du même défaut, et il n'a rien d'anecdotique dans un
-dépôt dont la thèse est qu'on mesure au lieu de supposer : **un nombre recopié
-à la main vieillit en silence, et se lit exactement comme une mesure.**
+Le README annonçait un compte de tests et de mutations que la mesure
+démentait au même instant, et le message d'un commit un autre encore. ADR-007
+relève ces écarts avec leurs nombres et leur date. Le défaut n'a rien
+d'anecdotique dans un dépôt dont la thèse est qu'on mesure au lieu de supposer :
+**un nombre recopié à la main vieillit en silence, et se lit exactement comme
+une mesure.**
 
 Ce script produit le bloc entre les deux marqueurs du README depuis les
 sources qui font foi. Deux modes, et la CI se sert du second :
@@ -94,9 +95,10 @@ def _rapport(produit: str, version: str) -> dict[str, Any]:
 def _modules_ecrits() -> tuple[int, int]:
     """Modules écrits et modules du plan, sommés sur **tous** les produits.
 
-    **Ce compteur n'a longtemps lu qu'`instance.v1`**, et annonçait donc « 25
-    modules produits sur 30 au plan » sous une liste de 46 lignes. Pire, le
-    contrôle qui existe pour empêcher un compteur périmé le déclarait conforme :
+    **Ce compteur n'a longtemps lu qu'`instance.v1`**, et annonçait donc le
+    compte d'un seul produit sous une liste qui les parcourait tous (ADR-007).
+    Pire, le contrôle qui existe pour empêcher un compteur périmé le déclarait
+    conforme :
     il comparait le bloc à ce que ce script produit, et ce script produisait le
     mauvais nombre.
 
@@ -167,8 +169,8 @@ def _lignes_de_modules() -> list[str]:
     """Les modules livrés, avec leur `short_description`, lue dans le fichier.
 
     Recopier cette liste à la main était le même défaut que celui qui a fait
-    annoncer 366 tests pour 420 : elle est restée à deux modules pendant que la
-    collection en produisait seize.
+    annoncer un compte de tests démenti par la mesure (ADR-007) : elle est
+    restée à deux modules pendant que la collection en produisait bien plus.
 
     La description vient du module lui-même, donc du contrat : ce sont les mots
     qu'un utilisateur lira dans `ansible-doc`, pas une glose écrite à côté.
@@ -338,7 +340,7 @@ def bloc() -> str:
             f"({_pourcent_anglais(appeles, ecrits)}), which is not the same as played",
             # **Ce qu'une page publiée vaut, et pas seulement combien il y en
             # a.** Le bloc comptait les modules écrits ; il ne disait rien de ce
-            # qu'un lecteur y trouve. Les 15 options sans description et les 18
+            # qu'un lecteur y trouve. Les options sans description et les
             # exemples en `<zone>` étaient invisibles d'ici, et une page Galaxy
             # est publiée pour toujours.
             f"  {qualite.modules} published pages: "
@@ -544,7 +546,8 @@ def bloc_image() -> str:
 def bloc_nombre_de_modules() -> str:
     """La phrase du README racine qui compte les modules.
 
-    Elle disait 46 à vingt lignes d'un bloc dérivé qui en annonçait 50.
+    Elle contredisait, à quelques lignes de distance, le bloc dérivé qui
+    compte les mêmes modules (ADR-007).
     """
     ecrits, _ = _modules_ecrits()
     return (

@@ -116,8 +116,8 @@ def test_une_taille_de_page_ecrite_autrement_reste_de_la_pagination(
     Instance pagine avec `per_page`, le Load Balancer avec `page_size`. Une
     règle qui n'en connaît qu'une ne déclare pas l'opération paginée : ses
     paramètres de pagination deviennent des options du module, et la liste rend
-    sa **première page en silence**. Onze opérations de `lb.v1` étaient dans ce
-    cas.
+    sa **première page en silence**. Les listes de `lb.v1` étaient toutes dans
+    ce cas.
     """
     gizmos = widget_service.operation("ListWidgetGizmos")
     assert gizmos is not None

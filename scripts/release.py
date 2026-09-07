@@ -18,8 +18,8 @@ Quatre refus, et chacun a coûté quelque chose à quelqu'un ailleurs :
    non versionnées ne se reproduit pas ;
 4. **le changelog ne doit rien laisser en attente.** Les fragments décrivent ce
    que la version apporte ; ceux qui restent décrivent une version qui ne sort
-   pas. Mesuré sur ce dépôt : douze fragments accumulés sous une `0.1.0`
-   composée quand la collection portait un module.
+   pas. C'est arrivé ici : des fragments accumulés sous une `0.1.0` composée
+   quand la collection portait un seul module.
 
 Ce script ne publie pas et ne parle à personne. Il dit si on peut.
 """

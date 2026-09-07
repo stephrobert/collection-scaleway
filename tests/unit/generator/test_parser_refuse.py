@@ -135,9 +135,10 @@ def test_une_reference_vers_un_non_schema_est_refusee() -> None:
 def test_une_cle_declaree_sans_valeur_ne_fait_pas_planter(ou: str, valeur: Any) -> None:
     """En YAML, une clé vide vaut `None`, et le défaut d'un `.get` n'en protège pas.
 
-    C'est la moitié des douze défauts trouvés. `noeud.get("x", {})` protège de
-    la clé **absente**, jamais de la clé déclarée sans rien dessous, et un
-    document écrit à la main produit la seconde sans effort.
+    C'est la famille la plus nombreuse de ce que le premier passage de fuzzing
+    a trouvé. `noeud.get("x", {})` protège de la clé **absente**, jamais de la
+    clé déclarée sans rien dessous, et un document écrit à la main produit la
+    seconde sans effort.
     """
     document = _contrat()
     operation = document["paths"]["/widget/v1/things"]["get"]

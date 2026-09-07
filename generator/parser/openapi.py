@@ -582,9 +582,11 @@ def _est_une_enveloppe(schema_name: str | None) -> bool:
     """Une enveloppe est un schéma de réponse, pas une ressource.
 
     Scaleway nomme ses enveloppes par le suffixe `Response`, et **seulement**
-    elles. Mesuré sur le contrat vendorisé : 52 réponses 200 portant un corps,
-    49 en `...Response`, et trois ressources rendues telles quelles, `File`,
-    `PrivateNIC` et `ServerCompatibleTypes`.
+    elles. Mesuré sur le contrat vendorisé : presque toutes les réponses 200
+    portant un corps sont en `...Response`, et les exceptions sont des
+    ressources rendues telles quelles, `File`, `PrivateNIC` et
+    `ServerCompatibleTypes`. Les nommer vaut mieux que les compter : le compte
+    change au premier produit ajouté, la liste dit lesquelles regarder.
 
     Le nom est le seul signal fiable. On pourrait croire qu'un tableau dont les
     éléments sont une référence désigne une liste, mais une ressource porte
@@ -700,9 +702,9 @@ def _parse_pagination(
     porte d'à côté.
 
     Mesuré : Instance pagine avec `per_page`, le Load Balancer avec
-    `page_size`. Onze opérations de `lb.v1` étaient dans ce cas, toutes des
-    listes. L'issue #27 avait nommé la construction avant qu'un contrat ne la
-    porte ; c'est le second produit qui l'a rendue réelle.
+    `page_size`, et les listes de `lb.v1` étaient toutes dans ce cas. L'issue
+    #27 avait nommé la construction avant qu'un contrat ne la porte ; c'est le
+    second produit qui l'a rendue réelle.
 
     L'ordre d'essai est fixe et non alphabétique : `per_page` d'abord parce
     qu'un contrat qui déclarerait les deux est plus probablement un contrat

@@ -182,9 +182,11 @@ def argument_spec_entry(parameter: ApiParameter) -> dict[str, object]:
         entry["elements"] = element
     # Un `default` porté par un enum du contrat n'est pas un défaut de l'API :
     # c'est la valeur zéro du protobuf dont le document OpenAPI est la
-    # projection. Mesuré sur instance.v1 : 18 enums sur 18 déclarent leur
-    # *première* valeur en `default`, et aucun paramètre non-enum n'en porte
-    # aucun. Le recopier ferait envoyer `state=running` à chaque appel de
+    # projection. Sur instance.v1, **tous** les enums déclarent leur *première*
+    # valeur en `default`, et aucun paramètre non-enum n'en porte : c'est ce que
+    # mesure `test_un_enum_du_contrat_porte_toujours_son_premier_choix_en_defaut`,
+    # et c'est là que le compte vit. Le recopier ferait envoyer
+    # `state=running` à chaque appel de
     # `instance_server_info`, et les serveurs arrêtés disparaîtraient d'une
     # liste qui se présente comme complète.
     if parameter.default is not None and parameter.type is not ApiType.ENUM:

@@ -239,7 +239,7 @@ def test_une_region_sans_ipam_nest_pas_une_panne(monkeypatch) -> None:
 
 
 def test_lindex_reseau_nest_paye_que_par_les_produits_qui_le_joignent() -> None:
-    """Douze appels étaient émis quels que soient les produits demandés.
+    """L'index réseau partait quels que soient les produits demandés.
 
     Pour un inventaire qui ne demande qu'Apple Silicon, aucune carte réseau
     privée n'existe : le coût était payé pour personne.

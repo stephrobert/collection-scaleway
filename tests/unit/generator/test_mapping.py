@@ -144,11 +144,15 @@ def test_un_parametre_requis_le_reste() -> None:
 
 
 def test_un_default_denum_du_contrat_nest_pas_un_default_ansible() -> None:
-    """Mesuré : 18 enums sur 18 déclarent leur première valeur en `default`.
+    """Le `default` d'un enum du contrat n'est pas un défaut de l'API.
 
     C'est la valeur zéro du protobuf dont le document OpenAPI est la
-    projection, pas un choix de l'API. La recopier ferait envoyer
-    `state=running` à chaque liste, et les serveurs arrêtés disparaîtraient.
+    projection. La recopier ferait envoyer `state=running` à chaque liste, et
+    les serveurs arrêtés disparaîtraient.
+
+    Que **tous** les enums du contrat réel soient dans ce cas est mesuré par
+    `test_un_default_denum_est_toujours_le_premier_choix`, sur Instance : ici
+    on éprouve la fonction, là-bas la propriété.
     """
     entree = argument_spec_entry(
         _parameter("state", ApiType.ENUM, enum_values=("running", "stopped"), default="running")

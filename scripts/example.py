@@ -400,7 +400,7 @@ def _valeur(brut: Any) -> Any:
 def controler_sortie_internet(bastion_ip: str) -> None:
     """Les machines peuvent-elles joindre l'internet, avant de leur demander d'installer.
 
-    Sans cette sonde, l'absence de sortie se manifeste dix tâches plus loin par
+    Sans cette sonde, l'absence de sortie se manifeste bien plus loin par
     « Failed to update apt cache after 5 retries », qui désigne le dépôt de
     paquets, le miroir, ou le DNS. Trois choses innocentes. La cause se mesure
     en six secondes depuis le bastion, et une cause nommée vaut mieux qu'un
@@ -573,7 +573,7 @@ def main(argv: list[str]) -> int:
         if lancer(residu).returncode != 0:
             raise ExempleError("la référence de résidu n'a pas pu être prise")
 
-    # Le journal d'exécution. Il s'accumule sur les trois playbooks, donc il
+    # Le journal d'exécution. Il s'accumule sur tous les playbooks, donc il
     # part d'une page blanche : un journal de la veille ferait passer un module
     # non joué pour un module éprouvé, et c'est précisément le mensonge que
     # l'artefact existe pour empêcher.
@@ -618,8 +618,8 @@ def main(argv: list[str]) -> int:
             "image_doree": sorties.get("image_doree", {}).get("value", ""),
         }
 
-        # Les seize modules parlent à l'API et n'ont besoin d'aucune machine
-        # démarrée : ils tournent donc sur **les trois cibles**, avec la même
+        # Les modules recensés parlent à l'API et n'ont besoin d'aucune
+        # machine démarrée : ils tournent donc sur **toutes les cibles**, avec la même
         # stack et les mêmes assertions. C'est ce qui fait de l'exercice un test
         # différentiel de l'émulateur, et ce qui a produit feint#648, feint#650
         # et feint#651. Un écart entre les deux exécutions est un défaut de

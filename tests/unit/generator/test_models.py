@@ -615,9 +615,9 @@ def test_une_action_sans_enum_de_corps_nexpose_pas_doption_action() -> None:
     """`MigrateLb` migre, et n'a pas à le dire une seconde fois.
 
     Le modèle exigeait un enum de corps, parce qu'il avait été écrit pour
-    `ServerAction`, où un point d'entrée porte quatre actions. Trois opérations
-    des deux contrats font **une** chose que leur chemin nomme, et n'en portent
-    donc aucun.
+    `ServerAction`, où un point d'entrée porte plusieurs actions. D'autres
+    opérations des deux contrats font **une** chose que leur chemin nomme, et
+    n'en portent donc aucun.
     """
     taille = ApiParameter(
         name="type", type=ApiType.STRING, required=True, location=ParameterLocation.BODY

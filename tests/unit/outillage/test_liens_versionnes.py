@@ -70,7 +70,7 @@ def test_le_bloc_derive_publie_la_qualite_documentaire(
 ) -> None:
     """Un chiffre qui ne sort nulle part est un chiffre que personne ne surveille.
 
-    Les 15 options sans description et les 18 exemples en `<zone>` étaient
+    Les options sans description et les exemples en `<zone>` étaient
     invisibles depuis le README, qui comptait pourtant les modules, les tests et
     les mutations.
 

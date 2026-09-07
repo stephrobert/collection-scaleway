@@ -207,9 +207,10 @@ def providers_for(client: Any, products: tuple[str, ...]) -> tuple[Any, ...]:
 def needs_network_index(products: tuple[str, ...]) -> bool:
     """Faut-il payer l'index réseau pour les produits demandés ?
 
-    Douze appels d'API étaient émis quels que soient les produits, y compris
-    pour un inventaire qui ne demandait qu'Apple Silicon et n'avait donc
-    aucune carte réseau privée à joindre. Le coût était payé pour personne.
+    L'index partait quels que soient les produits demandés, y compris pour un
+    inventaire qui ne demandait qu'Apple Silicon et n'avait donc aucune carte
+    réseau privée à joindre. Le coût était payé pour personne, et le test qui
+    mesure cette fonction compte les appels épargnés.
 
     La question est posée aux providers : le cœur ne connaît aucun produit, et
     trancher ici ramènerait la connaissance qu'on vient d'en sortir.

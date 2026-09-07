@@ -76,7 +76,7 @@ def test_les_taches_dexemple_se_nomment_comme_la_page(instance_plan, collection)
     """« Update a Scaleway instance server » venait du nom du module.
 
     La phrase courte de la même page dit « Manage a Scaleway Instance server » :
-    deux façons de nommer la même ressource, à trois lignes d'écart.
+    deux façons de nommer la même ressource, à quelques lignes d'écart.
     """
     specs = _specs(instance_plan, collection)
     assert specs["instance_server"].examples[0].name == "Update a Scaleway Instance server"

@@ -1,7 +1,8 @@
 """Le parser lit un document que ce dépôt ne contrôle pas.
 
 `specs/scaleway/` est versionné, mais son contenu vient du portail de Scaleway,
-qui a ajouté 453 méthodes et en a retiré 26 en douze mois. Le parser traduit ce
+qui ajoute et retire des méthodes de SDK sans demander l'avis de ce dépôt
+(ADR-001). Le parser traduit ce
 document en IR, et il le fait sur des structures imbriquées : `oneOf`, `$ref`,
 `items`, `enum`, des enveloppes de réponse. Chacune de ces branches suppose une
 forme, et une forme supposée est une forme qui peut manquer.

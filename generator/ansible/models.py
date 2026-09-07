@@ -584,9 +584,11 @@ def _build_manage_module(
     unitaire de la même ressource : sans elle, il ne peut pas savoir s'il change
     quelque chose, et `changed` deviendrait un mensonge poli.
 
-    Trois modules du plan n'ont pas cette lecture, et ce n'est pas un hasard :
-    ce sont des remplacements complets d'une sous-collection ou d'un sous-objet,
-    `UpdatePlacementGroupServers`, `UpdateHealthCheck`, `SetAcls`. La frontière
+    Quelques opérations du plan n'ont pas cette lecture, et ce n'est pas un
+    hasard : ce sont des remplacements complets d'une sous-collection ou d'un
+    sous-objet, `UpdatePlacementGroupServers`, `UpdateHealthCheck`, `SetAcls`.
+    Les nommer vaut mieux que les compter, le compte changeant au premier
+    produit ajouté. La frontière
     du projet les écarte de toute façon ; le refus est explicite plutôt que
     silencieux.
     """
@@ -785,9 +787,9 @@ def _manage_examples(
 
     **Les valeurs viennent de `_example_value` comme partout ailleurs.** Cette
     fonction les fabriquait, `f"<{option.name}>"`, et c'est ce qui publiait
-    `zone: <zone>` sur dix-sept modules alors que le contrat porte les dix
-    valeurs de l'enum, et `backend_id: <backend_id>` alors que le repli des
-    identifiants existe depuis le premier module.
+    `zone: <zone>` alors que le contrat porte les valeurs de l'enum, et
+    `backend_id: <backend_id>` alors que le repli des identifiants existe depuis
+    le premier module.
     """
     par_nom = {option.name: option for option in options}
     requis = {option.name: _example_value(option, name) for option in options if option.required}
@@ -963,8 +965,8 @@ def _resource_effective(operation: ApiOperation, overrides: OverrideSet | None) 
     **Chercher dans l'IR une ressource nommée par un override ne trouve rien.**
     Le plan corrige la ressource déduite quand le chemin la nomme mal, et cette
     correction ne redescend pas dans `service.operations`. Mesuré sur
-    `lb_load_balancer` : l'override renomme `lb` en `load_balancer` sur les
-    trois opérations, et la lecture unitaire devenait introuvable parce qu'elle
+    `lb_load_balancer` : l'override renomme `lb` en `load_balancer` sur toutes
+    ses opérations, et la lecture unitaire devenait introuvable parce qu'elle
     était cherchée sous le nouveau nom dans un IR qui porte l'ancien.
     """
     override = overrides.get(operation.key) if overrides else None
@@ -1629,9 +1631,10 @@ def _returns(
 
     # **Un module rend toujours quelque chose, donc il le documente toujours.**
     # Quand le contrat ne nomme aucun champ porteur, le runtime rend le corps
-    # entier sous `result`, et le `RETURN` restait vide : quatre modules
-    # publiaient `{}` en documentant leur retour, alors qu'ils rendaient bien
-    # une valeur. Un lecteur ne pouvait pas savoir quoi enregistrer, et
+    # entier sous `result`, et le `RETURN` restait vide : les modules dont le
+    # contrat ne nomme aucun champ porteur publiaient `{}` en documentant leur
+    # retour, alors qu'ils rendaient bien une valeur. Un lecteur ne pouvait pas
+    # savoir quoi enregistrer, et
     # `ansible-test sanity` ne dit rien d'un `RETURN` vide.
     #
     # `result` n'est pas un choix arbitraire : c'est le nom que
@@ -1654,9 +1657,10 @@ def _returns(
                     returned="success",
                     type="dict",
                     # **Le corps entier est la ressource, donc ses champs sont
-                    # ceux du schéma.** Quatre modules d'information passent
-                    # par ce repli, dont `lb_acl_info` : leur `GetAcl` répond
-                    # par la ressource elle-même plutôt que par une enveloppe.
+                    # ceux du schéma.** Les modules d'information qui passent
+                    # par ce repli, `lb_acl_info` en tête, ont un `GetAcl` qui
+                    # répond par la ressource elle-même plutôt que par une
+                    # enveloppe.
                     contains=_contains(service, source.payload_schema, overrides),
                 )
             )
@@ -1733,11 +1737,12 @@ def _examples(
 
 #: Phrases du contrat qui décrivent la requête HTTP, et que le module dément.
 #:
-#: Quatre opérations d'écriture du Load Balancer portent « Note that the request
+#: Les opérations d'écriture du Load Balancer portent « Note that the request
 #: type is PUT and not PATCH. You must set all parameters. » C'est vrai de l'API
 #: et faux du module : il lit la ressource avant d'écrire et remplit lui-même
-#: les champs qu'on ne lui donne pas. La phrase que le générateur ajoute juste
-#: après le dit déjà, donc publier les deux publie une contradiction.
+#: les champs qu'on ne lui donne pas — c'est ADR-003. La phrase que le
+#: générateur ajoute juste après le dit déjà, donc publier les deux publie une
+#: contradiction.
 #:
 #: C'est un nettoyage, au sens où la documentation du module peut normaliser une
 #: description du contrat ; ce n'en est pas une réécriture : rien n'est ajouté à

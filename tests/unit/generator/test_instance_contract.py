@@ -23,8 +23,39 @@ GOLDEN = FIXTURES / "instance" / "expected_ir.json"
 
 
 def test_le_contrat_instance_porte_toutes_ses_operations(instance_service: ApiService) -> None:
-    """74 opérations mesurées sur le contrat versionné, pas un nombre supposé."""
+    """Mesuré sur le contrat versionné, pas supposé.
+
+    Le compte vit dans l'assertion, qui rougit quand l'API bouge, et non dans
+    la phrase, qui vieillirait sans rien faire rougir.
+    """
     assert len(instance_service.operations) == 74
+
+
+def test_un_default_denum_est_toujours_le_premier_choix(instance_service: ApiService) -> None:
+    """Et aucun paramètre non-enum ne porte de `default`.
+
+    C'est ce qui autorise `argument_spec_entry` à ne jamais recopier le
+    `default` d'un enum : ce n'est pas un défaut de l'API, c'est la valeur zéro
+    du protobuf dont le document OpenAPI est la projection. Le recopier ferait
+    envoyer `state=running` à chaque liste, et les serveurs arrêtés
+    disparaîtraient d'une réponse qui se présente comme complète.
+
+    Le générateur portait cette mesure en commentaire. Un commentaire ne rougit
+    pas le jour où Scaleway publie un enum dont le `default` est un vrai choix.
+    """
+    for operation in instance_service.operations:
+        for parameter in operation.parameters:
+            if parameter.type is ApiType.ENUM:
+                assert parameter.default in (None, parameter.enum_values[0]), (
+                    f"{operation.operation_id}.{parameter.name} : `default` "
+                    f"{parameter.default!r} n'est pas le premier choix "
+                    f"{parameter.enum_values[:1]}"
+                )
+            else:
+                assert parameter.default is None, (
+                    f"{operation.operation_id}.{parameter.name} porte un `default` "
+                    f"sans être un enum : le repli du générateur ne vaut plus."
+                )
 
 
 def test_aucune_operation_nest_laissee_sans_classification(instance_plan: ProductPlan) -> None:
