@@ -273,6 +273,15 @@ MODULE = ManageModule(
         "dest_port_to",
         "position",
     ),
+    comparisons=(
+        ("action", "scalar"),
+        ("dest_port_from", "scalar"),
+        ("dest_port_to", "scalar"),
+        ("direction", "scalar"),
+        ("ip_range", "scalar"),
+        ("position", "scalar"),
+        ("protocol", "scalar"),
+    ),
 )
 
 

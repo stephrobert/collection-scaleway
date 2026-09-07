@@ -213,6 +213,10 @@ MODULE = ManageModule(
         payload_field="snapshot",
     ),
     managed_params=("name", "tags"),
+    comparisons=(
+        ("name", "scalar"),
+        ("tags", "ordered_list"),
+    ),
 )
 
 

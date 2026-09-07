@@ -225,6 +225,12 @@ MODULE = ManageModule(
         payload_field="ip",
     ),
     managed_params=("reverse", "type", "tags", "server"),
+    comparisons=(
+        ("reverse", "scalar"),
+        ("server", "scalar"),
+        ("tags", "ordered_list"),
+        ("type", "scalar"),
+    ),
 )
 
 

@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from generator.ansible.collection import Collection
+from generator.ansible.comparison import strategie_par_defaut
 from generator.ansible.mapping import (
     COMMON_PARAMETERS,
     UnmappedType,
@@ -278,6 +279,13 @@ class AnsibleModuleSpec:
     wait_states: tuple[tuple[str, str], ...] = ()
     #: Ce que le contrat ne dit pas, remonté par le rapport de génération.
     limits: tuple[str, ...] = ()
+    #: Comment chaque paramètre géré se compare à ce que l'API rend.
+    #:
+    #: Le type décide ce qu'il peut, un override décide le reste, et rien ne se
+    #: devine : le contrat ne dit ni l'ordre ni l'unicité d'un tableau, donc
+    #: `SET` n'arrive jamais tout seul. La liste est triée pour que la
+    #: génération reste déterministe.
+    comparisons: tuple[tuple[str, str], ...] = ()
     #: Les groupes d'options dont une seule peut être fournie, `x-one-of`.
     #:
     #: Le contrat les déclare champ par champ ; l'IR les regroupe ; ici ils
@@ -610,6 +618,38 @@ def _build_action_module(
     )
 
 
+def _comparaisons(
+    operation: ApiOperation,
+    geres: tuple[str, ...],
+    override: OperationOverride | None,
+) -> tuple[tuple[str, str], ...]:
+    """La stratégie de comparaison de chaque paramètre géré.
+
+    **Le type décide ce qu'il peut, un override décide le reste.** Un tableau
+    reste comparé dans l'ordre tant que personne n'a observé l'API le
+    réordonner : adopter `set` par défaut ferait taire un `changed` qui a
+    peut-être raison, et un module qui tait un changement réel est pire qu'un
+    module qui en annonce un de trop.
+
+    Un paramètre géré que l'opération ne déclare pas ne peut pas arriver, le
+    plan les tirant de la même source ; s'il arrivait, il tomberait sur
+    l'égalité stricte, qui est le comportement le plus prudent.
+    """
+    poses = {
+        nom: restriction.comparison
+        for nom, restriction in (override.parameters if override else {}).items()
+        if restriction.comparison is not None
+    }
+    decidees: list[tuple[str, str]] = []
+    for nom in geres:
+        parametre = operation.parameter(nom)
+        strategie = poses.get(nom) or strategie_par_defaut(
+            parametre.type if parametre else ApiType.STRING
+        )
+        decidees.append((nom, strategie.value))
+    return tuple(sorted(decidees))
+
+
 def _build_manage_module(
     name: str,
     plans: tuple[OperationPlan, ...],
@@ -728,6 +768,7 @@ def _build_manage_module(
         managed_params=geres,
         secret_params=secrets,
         limits=limits,
+        comparisons=_comparaisons(item.operation, geres, override),
         mutually_exclusive=_exclusions((item.operation,)),
     )
 

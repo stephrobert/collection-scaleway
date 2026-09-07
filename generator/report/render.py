@@ -232,6 +232,7 @@ def to_generation_markdown(
     written: Sequence[str],
     skipped: Sequence[tuple[str, str]],
     limits: Sequence[str],
+    comparisons: dict[str, int] | None = None,
 ) -> str:
     """Ce que la génération a produit, écarté, et ce que le contrat lui a caché.
 
@@ -291,6 +292,25 @@ def to_generation_markdown(
         for raison, noms in sorted(groupes.items()):
             liste = ", ".join(f"`{nom}`" for nom in sorted(noms))
             lines.append(f"| {raison} ({len(noms)}) | {liste} |")
+
+    if comparisons:
+        lines += [
+            "",
+            "## Comment les modules de gestion comparent",
+            "",
+            "Un module de gestion n'écrit que ce qui diffère, et « diffère » n'a pas",
+            "le même sens pour un nom et pour une liste de tags. Le type décide ce",
+            "qu'il peut ; le reste vient d'un override, avec sa raison.",
+            "",
+            "`ordered_list` est un **repli**, pas une décision : le contrat ne dit",
+            "ni l'ordre ni l'unicité d'un tableau. Un paramètre qui y tombe et que",
+            "l'API réordonne rendra `changed` à chaque exécution, et c'est ce compte",
+            "qui rend la dette visible.",
+            "",
+            "| stratégie | paramètres |",
+            "|---|---|",
+        ]
+        lines += [f"| `{nom}` | {compte} |" for nom, compte in sorted(comparisons.items())]
 
     if limits:
         lines += [

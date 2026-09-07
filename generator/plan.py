@@ -113,6 +113,21 @@ class ProductPlan:
             ),
         }
 
+    def comparison_strategies(self, specs: Sequence[object]) -> dict[str, int]:
+        """Combien de paramètres gérés relèvent de chaque stratégie.
+
+        Le compte se prend sur les **modules construits**, pas sur le plan : la
+        stratégie est une propriété du modèle Ansible, et seuls les modules de
+        gestion comparent quoi que ce soit. Le prendre sur le plan compterait
+        des paramètres d'opérations qu'aucun module ne porte, ce qui donnerait
+        un nombre juste et sans rapport avec ce qui tourne.
+        """
+        comptes: dict[str, int] = {}
+        for spec in specs:
+            for _, strategie in getattr(spec, "comparisons", ()):
+                comptes[strategie] = comptes.get(strategie, 0) + 1
+        return comptes
+
     def found_constraints(self) -> tuple[tuple[str, int], ...]:
         """Les mots-clés de contrainte que le document porte vraiment."""
         return tuple((mot, compte) for mot, compte in self.service.constraint_keywords if compte)

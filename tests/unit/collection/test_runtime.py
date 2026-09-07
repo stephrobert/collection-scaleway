@@ -731,6 +731,56 @@ def _spec_gestion(runtime: Any) -> Any:
     )
 
 
+def test_des_tags_reordonnes_par_lapi_ne_declenchent_aucune_ecriture(
+    runtime: Any, monkeypatch: Any
+) -> None:
+    """Le cas d'école de l'issue, joué de bout en bout.
+
+    L'API rend les mêmes tags dans un autre ordre. En égalité stricte, le
+    module conclut « différent », réécrit, et rend `changed` : à chaque
+    exécution, indéfiniment. Le module n'est alors pas idempotent quoi
+    qu'affiche `changed`, et il est inutilisable dans un handler.
+    """
+    api = _ApiGestionFactice([{"id": "c1", "name": "web", "tags": ["web", "production"]}])
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
+    module = _ModuleFactice(chose_id="c1", name="web", tags=["production", "web"])
+    spec = dataclasses.replace(
+        _spec_gestion(runtime), comparisons=(("name", "scalar"), ("tags", "set"))
+    )
+
+    with pytest.raises(SystemExit):
+        runtime.run_manage_module(module, spec)
+
+    assert api.ecritures == [], "les mêmes tags dans un autre ordre ne sont pas un changement"
+    assert module.resultat is not None
+    assert module.resultat["changed"] is False
+
+
+def test_en_egalite_stricte_les_memes_tags_reordonnes_font_ecrire(
+    runtime: Any, monkeypatch: Any
+) -> None:
+    """Le contre-exemple, et il décrit le comportement d'avant.
+
+    Sans lui, le test précédent passerait aussi sur un module qui n'écrirait
+    jamais rien.
+    """
+    api = _ApiGestionFactice(
+        [
+            {"id": "c1", "name": "web", "tags": ["web", "production"]},
+            {"id": "c1", "name": "web", "tags": ["production", "web"]},
+        ]
+    )
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
+    module = _ModuleFactice(chose_id="c1", name="web", tags=["production", "web"])
+
+    with pytest.raises(SystemExit):
+        runtime.run_manage_module(module, _spec_gestion(runtime))
+
+    assert api.ecritures == [{"tags": ["production", "web"]}]
+    assert module.resultat is not None
+    assert module.resultat["changed"] is True
+
+
 def test_une_ressource_deja_conforme_ne_declenche_aucune_ecriture(
     runtime: Any, monkeypatch: Any
 ) -> None:

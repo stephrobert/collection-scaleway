@@ -248,6 +248,13 @@ MODULE = ManageModule(
         payload_field="image",
     ),
     managed_params=("name", "arch", "extra_volumes", "tags", "public"),
+    comparisons=(
+        ("arch", "scalar"),
+        ("extra_volumes", "mapping"),
+        ("name", "scalar"),
+        ("public", "scalar"),
+        ("tags", "ordered_list"),
+    ),
 )
 
 

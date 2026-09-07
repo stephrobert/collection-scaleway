@@ -214,6 +214,13 @@ MODULE = ManageModule(
         body_params=("name", "action", "match", "index", "description"),
     ),
     managed_params=("name", "action", "match", "index", "description"),
+    comparisons=(
+        ("action", "mapping"),
+        ("description", "scalar"),
+        ("index", "scalar"),
+        ("match", "mapping"),
+        ("name", "scalar"),
+    ),
 )
 
 

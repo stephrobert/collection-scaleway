@@ -473,6 +473,27 @@ MODULE = ManageModule(
         "max_connections",
         "timeout_queue",
     ),
+    comparisons=(
+        ("failover_host", "scalar"),
+        ("forward_port", "scalar"),
+        ("forward_port_algorithm", "scalar"),
+        ("forward_protocol", "scalar"),
+        ("ignore_ssl_server_verify", "scalar"),
+        ("max_connections", "scalar"),
+        ("max_retries", "scalar"),
+        ("name", "scalar"),
+        ("on_marked_down_action", "scalar"),
+        ("proxy_protocol", "scalar"),
+        ("redispatch_attempt_count", "scalar"),
+        ("send_proxy_v2", "scalar"),
+        ("ssl_bridging", "scalar"),
+        ("sticky_sessions", "scalar"),
+        ("sticky_sessions_cookie_name", "scalar"),
+        ("timeout_connect", "scalar"),
+        ("timeout_queue", "scalar"),
+        ("timeout_server", "scalar"),
+        ("timeout_tunnel", "scalar"),
+    ),
 )
 
 

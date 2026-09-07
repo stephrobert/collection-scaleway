@@ -198,6 +198,9 @@ MODULE = ManageModule(
         body_params=("tags",),
     ),
     managed_params=("tags",),
+    comparisons=(
+        ("tags", "ordered_list"),
+    ),
 )
 
 

@@ -47,6 +47,7 @@ adr/005-generated-documentation-behind-a-gate
 adr/006-the-emulator-is-a-proof-not-the-proof
 adr/007-measured-numbers-live-in-derived-blocks
 adr/008-a-constraint-is-translated-or-named
+adr/009-how-a-managed-field-is-compared
 ```
 
 ```{toctree}

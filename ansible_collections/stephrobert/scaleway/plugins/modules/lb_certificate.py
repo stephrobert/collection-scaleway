@@ -206,6 +206,9 @@ MODULE = ManageModule(
         body_params=("name",),
     ),
     managed_params=("name",),
+    comparisons=(
+        ("name", "scalar"),
+    ),
 )
 
 
