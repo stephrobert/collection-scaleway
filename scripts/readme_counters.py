@@ -512,40 +512,6 @@ def bloc_runtime_etat() -> str:
     )
 
 
-def bloc_ecart_cibles() -> str:
-    """Ce que chaque cible a réellement joué, lu dans les artefacts de run.
-
-    Le document annonçait « 28 sur 46 » et « 39 sur 46 », un dénominateur figé
-    à une époque où la collection portait 46 modules. Elle en porte davantage,
-    et les deux fractions étaient donc fausses par leur bas.
-    """
-    # **La frontière de langue passe ici.** `example_coverage.py` écrit sa
-    # sortie en français parce qu'elle va au terminal ; ce bloc-ci est publié
-    # dans `docs/`, donc en anglais. Traduire les deux valeurs de résidu à la
-    # sortie est ce qui garde une seule mesure et deux publics, plutôt que deux
-    # mesures qui divergeraient.
-    residus = {
-        "aucun": "none",
-        "sans objet (émulateur)": "not applicable (emulator)",
-    }
-    exemple = mesurer_exemple()
-    ecrits, _ = _modules_ecrits()
-    lignes = ["```text"]
-    for cible, run in sorted((exemple.get("runs") or {}).items()):
-        residu = run["residu"]
-        lignes.append(
-            f"{cible:10s} {len(run['modules_joues'])} modules played out of {ecrits} · "
-            f"{run['idempotence_prouvee']} idempotences proven · "
-            f"residue: {residus.get(residu, residu)}"
-        )
-    if len(lignes) == 1:
-        # « Aucun run enregistré » et non « 0 module joué » : rien n'a été
-        # mesuré n'est pas rien n'a marché.
-        lignes.append("no run recorded yet")
-    lignes.append("```")
-    return "\n".join(lignes)
-
-
 def bloc_tests_badge() -> str:
     """La phrase du questionnaire OpenSSF qui compte les tests."""
     return (
@@ -594,7 +560,6 @@ NOMMES = {
     "image": lambda: bloc_image(),
     "classification": lambda: bloc_classification(),
     "runtime-etat": lambda: bloc_runtime_etat(),
-    "ecart-cibles": lambda: bloc_ecart_cibles(),
     "tests-badge": lambda: bloc_tests_badge(),
     "modules": lambda: bloc_nombre_de_modules(),
 }
@@ -608,7 +573,6 @@ BLOCS_NOMMES: tuple[tuple[str, Path], ...] = (
     ("image", README_COLLECTION),
     ("classification", ROOT / "docs" / "architecture" / "generator.md"),
     ("runtime-etat", ROOT / "docs" / "architecture" / "runtime.md"),
-    ("ecart-cibles", ROOT / "docs" / "architecture" / "runtime.md"),
     ("tests-badge", ROOT / "docs" / "best-practices.md"),
     ("modules", README),
 )

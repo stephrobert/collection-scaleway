@@ -291,16 +291,20 @@ measures a moving target.
 An unmounted route receives **501 `not_emulated`**, with a message pointing at
 `/_feint/routes`. That is an honest answer: nothing can pass for a success.
 
-The gap is measured rather than felt. The example stack plays the same
-playbook against both targets and keeps an artefact of each run:
+The gap is measured rather than felt: the example stack plays the same playbook
+against both targets and keeps an artefact of each run, saying how many modules
+each one actually exercised and how many idempotences it proved.
 
-<!-- compteurs:ecart-cibles:début, produits par scripts/readme_counters.py -->
-```text
-emulateur  32 modules played out of 50 · 10 idempotences proven · residue: not applicable (emulator)
-machines   32 modules played out of 50 · 10 idempotences proven · residue: not applicable (emulator)
-reel       44 modules played out of 50 · 13 idempotences proven · residue: none
+Those numbers are **not** published here, on purpose: they depend on a run,
+and a derived block has to be computable offline. `mise run coverage:example`
+publishes them from the artefacts each run leaves behind, and says "no run
+recorded" rather than "0 %" when there is none — nothing was measured is not
+nothing worked.
+
+```bash
+mise run coverage:example
 ```
-<!-- compteurs:ecart-cibles:fin -->
+
 
 Some modules therefore run against the real cloud and not here, and they are
 listed by name rather than summarised. `mise run coverage:example` publishes
