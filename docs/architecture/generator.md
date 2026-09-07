@@ -127,11 +127,13 @@ it is work set aside. The report counts them separately so the gap stays
 visible. With no Day-2 operation, coverage is `null` and not `0.0`: a ratio
 with no denominator is undefined, not zero.
 
-Measured on Instance v1: **41 Day-2 candidates, 40 AUTO, 1 MANUAL, coverage
-97.6%**, out of 74 operations discovered, of which 19 LIFECYCLE and 14 IGNORE.
+<!-- compteurs:classification:début, produits par scripts/readme_counters.py -->
+Measured on Instance v1: **40 Day-2 candidates, 39 AUTO, 1 MANUAL, coverage 97.5%**, out of 74 operations discovered, of which 19 LIFECYCLE and 15 IGNORE.
+<!-- compteurs:classification:fin -->
 
-That figure does not say "the product is 97.6% covered". It says that 40 of the
-41 operations *retained as Day-2* are **classified for automatic generation**.
+That figure does not say the product is covered to that percentage. It says
+that the operations *retained as Day-2*, minus the one written by hand, are
+**classified for automatic generation**.
 Any published sentence about coverage names its denominator.
 
 Nor does it say that a module carries them. "Generatable" implied that, and it
