@@ -1,0 +1,11 @@
+---
+bugfixes:
+  - The published archive is now checked against every module it carries.
+    The check interrogated a single "representative" module, so a module the
+    installed collection could not document passed unnoticed among the other
+    forty-nine.
+  - The archive check no longer assumes how many plugins the collection ships.
+    It discovered exactly one inventory plugin and refused any other count;
+    it now interrogates every plugin of every known type, and refuses a
+    ``plugins/`` directory it does not know how to handle rather than
+    silently skipping it.

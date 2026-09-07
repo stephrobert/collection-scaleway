@@ -114,15 +114,31 @@ def check_contents(archive: Path) -> tuple[str, ...]:
     return contenu
 
 
-def check_installed(collections_path: Path, collection: Collection, module: str) -> None:
-    """Interroge le module depuis la collection installée.
+def check_installed(collections_path: Path, collection: Collection) -> None:
+    """Interroge **tous** les modules depuis la collection installée.
 
-    `ansible-doc` charge la collection comme Ansible le fera, et rend la
-    documentation du module. C'est la seule preuve que l'archive sert.
+    `ansible-doc` charge la collection comme Ansible le fera. C'est la seule
+    preuve que l'archive sert, et elle ne vaut que pour ce qu'on interroge :
+    ce contrôle portait sur un « module représentatif », donc sur un cinquantième
+    du paquet. Un module cassé parmi les quarante-neuf autres passait.
+
+    Les noms partent en **un seul appel** : `ansible-doc` en accepte plusieurs,
+    et cinquante processus coûteraient une minute là où un en coûte deux
+    secondes.
     """
-    fqcn = collection.module_fqcn(module)
+    noms = sorted(
+        chemin.stem
+        for chemin in (collection.path / "plugins" / "modules").glob("*.py")
+        if not chemin.stem.startswith("_")
+    )
+    if not noms:
+        raise PackageError(
+            "aucun module à interroger : un contrôle qui n'examine rien rend "
+            "vert sur n'importe quoi."
+        )
+    fqcns = [collection.module_fqcn(nom) for nom in noms]
     result = subprocess.run(
-        [executable("ansible-doc"), "--json", fqcn],
+        [executable("ansible-doc"), "--json", *fqcns],
         env={**os.environ, "ANSIBLE_COLLECTIONS_PATH": str(collections_path)},
         capture_output=True,
         text=True,
@@ -130,21 +146,86 @@ def check_installed(collections_path: Path, collection: Collection, module: str)
     )
     if result.returncode != 0:
         raise PackageError(
-            f"`ansible-doc {fqcn}` a échoué depuis l'archive installée :\n{result.stderr}"
+            f"`ansible-doc` a échoué sur les {len(fqcns)} modules de l'archive "
+            f"installée :\n{result.stderr}"
         )
 
     payload = json.loads(result.stdout or "{}")
-    documentation = payload.get(fqcn, {}).get("doc", {})
-    options = documentation.get("options", {})
-    if "zone" not in options:
-        raise PackageError(f"{fqcn} installé ne documente pas ses options : {sorted(options)}")
-    courte = documentation.get("short_description")
-    print(f"  {fqcn} : {len(options)} option(s), short_description « {courte} »")
+    muets: list[str] = []
+    sans_options: list[str] = []
+    for fqcn in fqcns:
+        documentation = payload.get(fqcn, {}).get("doc", {})
+        if not documentation.get("short_description"):
+            muets.append(fqcn)
+        elif not documentation.get("options"):
+            sans_options.append(fqcn)
+    if muets:
+        raise PackageError(
+            f"{len(muets)} module(s) que l'archive installée ne documente pas : {muets[:5]}"
+        )
+    if sans_options:
+        raise PackageError(
+            f"{len(sans_options)} module(s) installé(s) sans aucune option : "
+            f"{sans_options[:5]}. Tous en portent au moins une, `zone` ou `region`."
+        )
+    print(f"  {len(fqcns)} module(s) interrogé(s) depuis l'archive installée, tous documentés")
 
 
-#: Ce qu'un utilisateur écrit dans son fichier d'inventaire. Si l'archive
-#: n'expose pas ces options, le plugin est présent et inutilisable.
-INVENTORY_OPTIONS = ("plugin", "products", "hostnames", "address_priority", "group_by")
+#: Les répertoires de `plugins/` qu'`ansible-doc` sait interroger, et le type
+#: qu'il attend pour chacun.
+#:
+#: La table est **exhaustive par décision** : un répertoire absent d'ici et de
+#: `PLUGINS_NON_INTERROGEABLES` fait échouer le contrôle. Une découverte qui
+#: ignorerait ce qu'elle ne connaît pas laisserait un plugin entier hors de la
+#: preuve, et personne ne s'en apercevrait.
+TYPES_DE_PLUGINS: dict[str, str] = {
+    "inventory": "inventory",
+    "lookup": "lookup",
+    "filter": "filter",
+    "test": "test",
+    "connection": "connection",
+    "callback": "callback",
+    "become": "become",
+    "cache": "cache",
+    "shell": "shell",
+    "strategy": "strategy",
+    "vars": "vars",
+}
+
+#: Les répertoires de `plugins/` qu'`ansible-doc` ne sait pas interroger, et
+#: qui ne sont donc pas une omission.
+#:
+#: `modules` a son propre contrôle, qui les interroge tous. `module_utils` est
+#: du code partagé sans documentation propre ; `doc_fragments` est de la
+#: documentation que les modules incorporent, et `ansible-doc` la rend déjà
+#: fondue dans la leur — c'est là qu'elle se vérifie.
+PLUGINS_NON_INTERROGEABLES = frozenset({"modules", "module_utils", "doc_fragments", "action"})
+
+#: Ce qu'un utilisateur écrit dans son fichier de configuration, par type de
+#: plugin. Si l'archive n'expose pas ces options, le plugin est présent et
+#: inutilisable.
+OPTIONS_ATTENDUES: dict[str, tuple[str, ...]] = {
+    "inventory": ("plugin", "products", "hostnames", "address_priority", "group_by"),
+}
+
+
+def check_types_de_plugins(collection: Collection) -> None:
+    """Refuse un répertoire de `plugins/` que ce contrôle ne sait pas traiter.
+
+    C'est ce qui empêche la découverte d'être une passoire : le jour où un
+    `lookup/` apparaît, il est interrogé ; le jour où un répertoire inconnu
+    apparaît, le contrôle le dit au lieu de l'ignorer.
+    """
+    racine = collection.path / "plugins"
+    presents = {d.name for d in racine.iterdir() if d.is_dir() and not d.name.startswith("_")}
+    inconnus = sorted(presents - set(TYPES_DE_PLUGINS) - PLUGINS_NON_INTERROGEABLES)
+    if inconnus:
+        raise PackageError(
+            f"répertoire(s) de plugins que ce contrôle ne sait pas traiter : {inconnus}. "
+            "Les ajouter à `TYPES_DE_PLUGINS` s'ils s'interrogent, à "
+            "`PLUGINS_NON_INTERROGEABLES` sinon. Un répertoire ignoré est un "
+            "plugin hors de la preuve."
+        )
 
 
 def check_inventory_plugin(collections_path: Path, collection: Collection) -> None:
@@ -156,42 +237,49 @@ def check_inventory_plugin(collections_path: Path, collection: Collection) -> No
     charge le plugin comme Ansible le fera, et une option manquante dit que
     l'archive porte le fichier sans porter le plugin.
     """
-    # **Le nom du plugin se lit sur le disque.** Il était écrit `scaleway` en
-    # dur, et le renommer en `compute` a fait interroger un plugin qui n'existe
-    # plus : `ansible-doc` a répondu, l'archive était bonne, et le contrôle a
-    # accusé le paquet. C'est le quatrième endroit aujourd'hui où un nom
-    # recopié survit à son renommage, et le seul que `mise run check` ne
-    # regarde pas, parce que `package` n'en fait pas partie.
-    inventaire = collection.path / "plugins" / "inventory"
-    plugins = sorted(f.stem for f in inventaire.glob("*.py") if not f.stem.startswith("_"))
-    if len(plugins) != 1:
-        raise PackageError(
-            f"{len(plugins)} plugin(s) d'inventaire dans {inventaire} : ce contrôle en "
-            f"interroge un, et ne sait pas lequel choisir ({plugins})."
-        )
-    fqcn = f"{collection.fqcn}.{plugins[0]}"
-    result = subprocess.run(
-        [executable("ansible-doc"), "-t", "inventory", "--json", fqcn],
-        env={**os.environ, "ANSIBLE_COLLECTIONS_PATH": str(collections_path)},
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        raise PackageError(
-            f"`ansible-doc -t inventory {fqcn}` a échoué depuis l'archive installée :"
-            f"\n{result.stderr}"
-        )
-
-    payload = json.loads(result.stdout or "{}")
-    options = payload.get(fqcn, {}).get("doc", {}).get("options", {})
-    manquantes = [nom for nom in INVENTORY_OPTIONS if nom not in options]
-    if manquantes:
-        raise PackageError(
-            f"{fqcn} installé ne documente pas {manquantes} : le plugin est dans "
-            f"l'archive, mais Ansible n'en voit pas la configuration"
-        )
-    print(f"  {fqcn} : plugin d'inventaire chargé, {len(options)} option(s)")
+    # **Le nom du plugin se lit sur le disque, et sa cardinalité ne se suppose
+    # pas.** Le nom était écrit `scaleway` en dur, et le renommer en `compute` a
+    # fait interroger un plugin qui n'existe plus. Le contrôle a ensuite refusé
+    # d'en voir deux, ce qui marchait tant qu'il n'y en avait qu'un : c'est la
+    # même hypothèse, déplacée du nom vers le nombre.
+    for type_ansible, repertoire in sorted(TYPES_DE_PLUGINS.items()):
+        dossier = collection.path / "plugins" / repertoire
+        if not dossier.is_dir():
+            continue
+        plugins = sorted(f.stem for f in dossier.glob("*.py") if not f.stem.startswith("_"))
+        # **Un répertoire présent et vide est un plugin qui a disparu.** Le
+        # contrôle précédent refusait « 0 plugin » parce qu'il en interrogeait
+        # exactement un ; celui-ci en interroge autant qu'il en trouve, et
+        # trouverait zéro sans rien dire. L'intention se garde, sa forme change.
+        if not plugins:
+            raise PackageError(
+                f"{dossier.relative_to(collection.path)} existe et ne porte aucun plugin : "
+                "un plugin qui disparaît ne doit pas passer pour un paquet correct."
+            )
+        for nom in plugins:
+            fqcn = f"{collection.fqcn}.{nom}"
+            result = subprocess.run(
+                [executable("ansible-doc"), "-t", type_ansible, "--json", fqcn],
+                env={**os.environ, "ANSIBLE_COLLECTIONS_PATH": str(collections_path)},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode != 0:
+                raise PackageError(
+                    f"`ansible-doc -t {type_ansible} {fqcn}` a échoué depuis l'archive "
+                    f"installée :\n{result.stderr}"
+                )
+            payload = json.loads(result.stdout or "{}")
+            options = payload.get(fqcn, {}).get("doc", {}).get("options", {})
+            attendues = OPTIONS_ATTENDUES.get(type_ansible, ())
+            manquantes = [attendue for attendue in attendues if attendue not in options]
+            if manquantes:
+                raise PackageError(
+                    f"{fqcn} installé ne documente pas {manquantes} : le plugin est dans "
+                    f"l'archive, mais Ansible n'en voit pas la configuration"
+                )
+            print(f"  {fqcn} : plugin {type_ansible} chargé, {len(options)} option(s)")
 
 
 def check_playbooks(collections_path: Path, collection: Collection) -> None:
@@ -272,7 +360,8 @@ def main(argv: list[str]) -> int:
         raise PackageError("l'archive ne s'installe pas")
 
     print(f"installée dans {installation}")
-    check_installed(installation, collection, "instance_server_info")
+    check_types_de_plugins(collection)
+    check_installed(installation, collection)
     check_inventory_plugin(installation, collection)
     check_playbooks(installation, collection)
 
