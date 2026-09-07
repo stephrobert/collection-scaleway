@@ -8,6 +8,21 @@ exercised end to end against a local emulator and against a real Scaleway
 account.
 <!-- compteurs:runtime-etat:fin -->
 
+## What a module cannot say: "clear this field"
+
+<!-- compteurs:effacables:début, produits par scripts/readme_counters.py -->
+The contract marks **40 writable fields** as clearable, across 14 modules.
+The runtime builds its request from the values that are not `None`, so
+`field: null` and an absent `field` produce the same request: a playbook
+cannot clear one, and the module reports `ok` without having cleared
+anything. `mise run nullabilite` names them one by one.
+<!-- compteurs:effacables:fin -->
+
+This is a named debt, not an oversight. The IR carries the fact since
+[ADR-008](../adr/008-a-constraint-is-translated-or-named.md); telling `null`
+apart from absent needs a clear/reset semantics the contract does not describe,
+and the number above is what sizes that work. Issue #114 carries it.
+
 ## How the roles are split
 
 ```text
