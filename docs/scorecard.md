@@ -87,8 +87,7 @@ applies to**:
 ```bash
 gh release download 0.4.0 --repo stephrobert/collection-scaleway
 cosign verify-blob \
-  --signature stephrobert-scaleway-0.4.0.tar.gz.sig \
-  --certificate stephrobert-scaleway-0.4.0.tar.gz.pem \
+  --bundle stephrobert-scaleway-0.4.0.tar.gz.cosign.bundle \
   --certificate-identity-regexp '^https://github.com/stephrobert/collection-scaleway/.github/workflows/release.yml@refs/tags/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   stephrobert-scaleway-0.4.0.tar.gz
