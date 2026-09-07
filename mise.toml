@@ -354,6 +354,15 @@ description = "Ce que la documentation publiée vaut, et ce qui la rend impublia
 depends = ["generate"]
 run = "python scripts/docs_quality.py --check"
 
+[tasks."fuzz:verrou"]
+description = "Le fuzzer installe par empreinte, et la même version que la CI"
+# **Le fuzzer construit son image loin d'ici.** Il installait son lecteur YAML
+# avec la version du verrou et sans son empreinte : une version dit *quoi*, une
+# empreinte dit *quel octet*, et c'était le seul endroit du dépôt où une
+# dépendance s'installait sans. L'épingler crée un second verrou, donc une
+# seconde chose qui dérive : ce contrôle est ce qui l'empêche.
+run = "python scripts/verrou_fuzz.py"
+
 [tasks."fuzz:smoke"]
 description = "Rejouer le harnais de fuzzing sur des mutations du contrat réel"
 # **Il prouve que le harnais marche, pas qu'il trouve.** Trouver demande du
@@ -454,6 +463,7 @@ depends = [
   # aller-retour. Une pull request doit la passer comme le reste.
   "docs:quality",
   "fuzz:smoke",
+  "fuzz:verrou",
   "chiffres:check",
 ]
 

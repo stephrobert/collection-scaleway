@@ -1326,6 +1326,38 @@
       "find": "    if muets:",
       "replace": "    if muets and False:",
       "test": "tests/unit/outillage/test_paquet.py::test_un_module_que_larchive_ne_documente_pas_est_refuse"
+    },
+    {
+      "name": "fuzzer-qui-retarde-dune-version",
+      "why": "Le fuzzer installe son lecteur YAML depuis son propre verrou. `mise run lock` fait monter PyYAML, le verrou du fuzzer garde l'ancien, et rien ne rougit : le fuzzer continue de trouver des défauts, dans un lecteur que le dépôt n'emploie plus.",
+      "file": "scripts/verrou_fuzz.py",
+      "find": "        if version != attendue:",
+      "replace": "        if version != attendue and False:",
+      "test": "tests/unit/outillage/test_verrou_fuzz.py::test_le_fuzzer_qui_retarde_dune_version_est_refuse"
+    },
+    {
+      "name": "empreinte-du-fuzzer-etrangere-au-verrou",
+      "why": "Même version, autre octet : c'est précisément ce que l'empreinte dit, et ce que la version seule ne voit pas.",
+      "file": "scripts/verrou_fuzz.py",
+      "find": "        elif empreintes and empreintes != siennes:",
+      "replace": "        elif empreintes and empreintes != siennes and False:",
+      "test": "tests/unit/outillage/test_verrou_fuzz.py::test_une_empreinte_qui_ne_vient_pas_du_verrou_est_refusee"
+    },
+    {
+      "name": "paquet-du-fuzzer-sans-empreinte",
+      "why": "Le défaut d'origine, signalé par Scorecard sur `.clusterfuzzlite/build.sh` : une version épinglée dit quoi, une empreinte dit quel octet.",
+      "file": "scripts/verrou_fuzz.py",
+      "find": "        if not empreintes:",
+      "replace": "        if not empreintes and False:",
+      "test": "tests/unit/outillage/test_verrou_fuzz.py::test_un_paquet_sans_empreinte_est_refuse"
+    },
+    {
+      "name": "image-du-fuzzer-installee-sans-empreinte",
+      "why": "Le verrou du fuzzer peut rester impeccable pendant qu'un `pip install` écrit à côté dans le script d'image ramène une dépendance non épinglée. C'est le défaut signalé, et il se réintroduirait sans que rien ne rougisse.",
+      "file": "scripts/verrou_fuzz.py",
+      "find": "        if \"--require-hashes\" not in nu:",
+      "replace": "        if \"--require-hashes\" not in nu and False:",
+      "test": "tests/unit/outillage/test_verrou_fuzz.py::test_une_installation_sans_empreinte_dans_limage_est_refusee"
     }
   ]
 }
