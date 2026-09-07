@@ -5,8 +5,8 @@ what already exists.
 
 [![ci](https://github.com/stephrobert/collection-scaleway/actions/workflows/ci.yml/badge.svg)](https://github.com/stephrobert/collection-scaleway/actions/workflows/ci.yml)
 [![Ansible Galaxy](https://img.shields.io/badge/galaxy-stephrobert.scaleway-660198?logo=ansible&logoColor=white)](https://galaxy.ansible.com/ui/repo/published/stephrobert/scaleway/)
-[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/stephrobert/collection-scaleway?label=OpenSSF%20Scorecard)](https://github.com/stephrobert/collection-scaleway/blob/0.3.0/docs/scorecard.md)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/stephrobert/collection-scaleway/blob/0.3.0/LICENSE)
+[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/stephrobert/collection-scaleway?label=OpenSSF%20Scorecard)](https://github.com/stephrobert/collection-scaleway/blob/0.4.0/docs/scorecard.md)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/stephrobert/collection-scaleway/blob/0.4.0/LICENSE)
 
 > Terraform provisions resources. Ansible operates existing resources.
 
@@ -211,7 +211,7 @@ ignores the source.
 
 The full guide, covering how `ansible_host` is chosen per private network, name
 collisions, and Ansible's trap around strict mode:
-[docs/guides/dynamic-inventory.md](https://github.com/stephrobert/collection-scaleway/blob/0.3.0/docs/guides/dynamic-inventory.md).
+[docs/guides/dynamic-inventory.md](https://github.com/stephrobert/collection-scaleway/blob/0.4.0/docs/guides/dynamic-inventory.md).
 
 ## Shipped playbooks
 
@@ -233,9 +233,9 @@ every version, carrying this collection and the Scaleway SDK:
 
 <!-- compteurs:image:début, produits par scripts/readme_counters.py -->
 ```bash
-podman pull ghcr.io/stephrobert/collection-scaleway/ee:0.3.0
+podman pull ghcr.io/stephrobert/collection-scaleway/ee:0.4.0
 ansible-navigator run playbook.yml \
-  --execution-environment-image ghcr.io/stephrobert/collection-scaleway/ee:0.3.0
+  --execution-environment-image ghcr.io/stephrobert/collection-scaleway/ee:0.4.0
 ```
 <!-- compteurs:image:fin -->
 
@@ -248,7 +248,7 @@ build provenance attestation, verified the same way as the archive.
 <!-- compteurs:compatibilite:début, produits par scripts/readme_counters.py -->
 | collection | `ansible-core` | Python | Scaleway SDK |
 |---|---|---|---|
-| 0.3.x | 2.17, 2.18, 2.19, 2.20 | >= 3.12 | >= 2.9.0 |
+| 0.4.x | 2.17, 2.18, 2.19, 2.20 | >= 3.12 | >= 2.9.0 |
 <!-- compteurs:compatibilite:fin -->
 
 All four `ansible-core` versions are tested by CI on every change. A version
@@ -260,8 +260,8 @@ This collection follows **semantic versioning**, which Ansible requires of
 collections:
 
 <!-- compteurs:versionnement:début, produits par scripts/readme_counters.py -->
-* **patch** (`0.3.1`): bug fixes only;
-* **minor** (`0.4.0`): backward-compatible features and new modules;
+* **patch** (`0.4.1`): bug fixes only;
+* **minor** (`0.5.0`): backward-compatible features and new modules;
 * **major** (`1.0.0`): may contain breaking changes.
 <!-- compteurs:versionnement:fin -->
 

@@ -1,8 +1,0 @@
----
-minor_changes:
-  - "``mise run admission`` gives a product a verdict before it enters the
-    index: OpenAPI syntactic coverage, semantic constraints, clearable fields,
-    Day-2 classification, write completeness, comparison strategies and
-    documentary coverage. It runs in ``mise run check`` over every indexed
-    product, so adding a refused one turns the gate red. Not every stage blocks;
-    the others publish the number that is the price of admission."

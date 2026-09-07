@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_backend
 short_description: Manage a Scaleway Load Balancer backend
-version_added: 0.3.0
+version_added: 0.4.0
 description:
 - Update a backend of a given Load Balancer, specified by its backend ID.
 - 'The module reads the resource first and writes the whole body, because this operation replaces

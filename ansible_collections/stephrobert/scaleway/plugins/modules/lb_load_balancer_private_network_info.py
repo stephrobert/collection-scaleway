@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_load_balancer_private_network_info
 short_description: Gather information about Scaleway Load Balancer private networks
-version_added: 0.3.0
+version_added: 0.4.0
 description:
 - List the Private Networks attached to a given Load Balancer, specified by its Load Balancer
   ID. The response is an array of Private Network objects, giving information including the

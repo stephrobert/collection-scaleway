@@ -328,3 +328,156 @@ releases:
       - champs-de-retour.yml
       - resume.yml
     release_date: '2026-09-06'
+  0.4.0:
+    changes:
+      bugfixes:
+        - 'A restated field description kept the abbreviation in lowercase. ``ips_count``
+          read ``Count of ips.`` on a page whose short description already said ``Instance
+          IPs``: the acronym table was applied to the schema name and not to the field
+          name.'
+        - 'Managing modules no longer ignore an explicit ``null`` on a field the contract
+          declares clearable. ``description: null`` used to produce the same request
+          as an omitted ``description``, and the module reported ``ok`` with the description
+          still there. The module now fails before reading anything, names the field,
+          and says to omit the option to leave the value unchanged. Clearing a field
+          is still not supported.'
+        - 'The ``diff`` of a management module read its two sides differently. The
+          ``before`` went through the projection that reconciles a written ``backend_id``
+          with a read ``backend: {id: ...}``; the ``after`` read the key directly
+          and found nothing. On ``lb_frontend`` a user saw ``after: {backend_id: null}``
+          while the API had returned ``backend.id``. The module worked and the diff
+          lied, which is worse than a module that fails.'
+        - The archive check no longer assumes how many plugins the collection ships.
+          It discovered exactly one inventory plugin and refused any other count;
+          it now interrogates every plugin of every known type, and refuses a ``plugins/``
+          directory it does not know how to handle rather than silently skipping it.
+        - 'The parser now refuses a malformed contract instead of crashing on it.
+          A fuzzer found twelve real defects on its first pass, all of the same family:
+          a shape assumed without being checked. What made them expensive was where
+          they surfaced - a non-textual ``operationId`` travelled through the whole
+          parse and came out at the final sort, on a ``TypeError`` naming neither
+          the operation nor the file.'
+        - The published archive is now checked against every module it carries. The
+          check interrogated a single "representative" module, so a module the installed
+          collection could not document passed unnoticed among the other forty-nine.
+        - lb_subscriber - the module accepted ``email_config`` and ``webhook_config``
+          together, which the API rejects with a 400. The contract marks them with
+          a shared ``x-one-of`` group, and the module now declares them mutually exclusive,
+          so the error arrives from Ansible before any request is sent.
+      minor_changes:
+        - A parameter can be excluded from that verification through an override carrying
+          its reason, for an API that applies a field asynchronously. None is excluded
+          today.
+        - An execution environment image is published with every version, at ``ghcr.io/stephrobert/collection-scaleway/ee``.
+          It carries the collection and the Scaleway SDK, so a playbook run in AWX,
+          ``ansible-navigator`` or a CI runner no longer needs one built by hand.
+          There is no ``latest`` tag, on purpose - a moving reference makes it impossible
+          to say afterwards what was run - and the image is signed without a key and
+          carries a build provenance attestation, verified the same way as the archive.
+        - 'Managing modules no longer compare with strict equality alone. Each managed
+          parameter now carries a comparison strategy: the contract type decides what
+          it can (``scalar``, ``ordered_list`` for an array, ``mapping`` for an object),
+          and an override decides the rest with its reason (``set``, ``normalized_string``,
+          ``object_id``, ``normalized_object``). A field the API reorders or normalises
+          no longer reports ``changed`` on every run.'
+        - Managing modules now verify what the write produced. After the second read,
+          every field the playbook asked for is compared with what the API returns,
+          using the same comparison strategy as the outbound decision. A divergence
+          fails the module with ``failed_postconditions`` naming the field, the requested
+          value and the observed one, and ``changed`` stays true because the resource
+          did move.
+        - 'Options for clearable fields of managing modules are now published as ``type:
+          raw`` with the marker ``__unchanged__`` as their default: it is the only
+          public mechanism by which Ansible lets a module tell an explicit ``null``
+          from an omitted option, measured on every ``ansible-core`` the collection
+          supports. The option description states the API type, and the runtime re-validates
+          provided values against it, so a playbook sees no difference in conversions
+          or error messages.'
+        - The generation summary publishes how many managed parameters fall under
+          each comparison strategy, so the ``ordered_list`` fallback stays visible.
+        - 'The generator now audits which writable fields the contract declares as
+          clearable. ``mise run nullabilite`` names them, and the count is published
+          in a derived block of the runtime architecture page: a playbook cannot currently
+          clear such a field, because ``field: null`` and an absent ``field`` produce
+          the same request. The number sizes that work rather than describing it.'
+        - 'The generator now carries the constraints the contract declares. ``x-one-of``
+          becomes ``mutually_exclusive``; a clearable field (``oneOf: [X, null]``
+          or ``type: [X, "null"]``) is recorded and counted. Constraint keywords the
+          contract does not carry are measured rather than assumed, and the coverage
+          report publishes all three numbers.'
+        - The parser is fuzzed by ClusterFuzzLite on every pull request and for ten
+          minutes every Tuesday, and a smoke harness replays it offline in ``mise
+          run check``. One proves the harness finds; the other proves it works.
+        - The published archive is now signed without a key and carries a build provenance
+          attestation, both bound to the identity of the workflow that produced it
+          rather than to a secret. ``SECURITY.md`` publishes the two commands that
+          verify them, and the release workflow runs the first one on the archive
+          before publishing it.
+        - '``SECURITY.md`` now carries the direct link to the private advisory form.
+          It described the path in prose and held no link at all, which is also what
+          OpenSSF Scorecard reads: the check scored 4 out of 10.'
+        - '``mise run admission`` gives a product a verdict before it enters the index:
+          OpenAPI syntactic coverage, semantic constraints, clearable fields, Day-2
+          classification, write completeness, comparison strategies and documentary
+          coverage. It runs in ``mise run check`` over every indexed product, so adding
+          a refused one turns the gate red. Not every stage blocks; the others publish
+          the number that is the price of admission.'
+      release_summary: 'This release is about what the modules claim, rather than
+        about how many
+
+        there are.
+
+
+        A managing module used to compare with strict equality, announce ``changed``
+
+        without looking at what it had just read back, and silently drop a
+
+        ``description: null`` a playbook had explicitly asked for. Each of those
+
+        reports success on a state that was never reached. All three are fixed, and
+
+        each fix is measured rather than asserted: comparison strategies come from
+
+        the contract type or from an override carrying its reason, postconditions
+        are
+
+        verified with the same comparison as the outbound decision, and an explicit
+
+        ``null`` now fails the module instead of disappearing.
+
+
+        The generator also stopped losing what the contract says. ``x-one-of`` becomes
+
+        a real ``mutually_exclusive`` constraint, which fixes a shipped module that
+
+        accepted two options the API rejects together; clearable fields are carried
+        by
+
+        the IR and counted; and constraint keywords the contract does not declare
+        are
+
+        measured absent rather than assumed so.
+
+
+        Adding a product is no longer a matter of the tests passing. ``mise run
+
+        admission`` gives it a verdict, and publishes the price it enters with.
+
+        '
+    fragments:
+      - 000-resume.yml
+      - acronymes-reformulation.yml
+      - audit-nullabilite.yml
+      - chiffres-derives.yml
+      - contraintes-du-contrat.yml
+      - couverture-du-parser-precise.yml
+      - diff-symetrique.yml
+      - environnement-dexecution.yml
+      - null-explicite-refuse.yml
+      - paquet-tous-les-modules.yml
+      - parser-refuse.yml
+      - porte-dadmission.yml
+      - postconditions.yml
+      - signature-des-archives.yml
+      - strategie-de-comparaison.yml
+    release_date: '2026-09-07'

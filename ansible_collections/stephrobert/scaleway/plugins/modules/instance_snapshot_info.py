@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_snapshot_info
 short_description: Gather information about Scaleway Instance snapshots
-version_added: 0.3.0
+version_added: 0.4.0
 description:
 - Get details of a snapshot with the specified ID.
 - List all snapshots of an Organization in a specified Availability Zone.

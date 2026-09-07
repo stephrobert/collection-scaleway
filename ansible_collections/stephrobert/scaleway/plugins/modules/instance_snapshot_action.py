@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_snapshot_action
 short_description: Perform an action on a Scaleway Instance snapshot
-version_added: 0.3.0
+version_added: 0.4.0
 description:
 - Export a snapshot to a specified Object Storage bucket in the same region.
 author:

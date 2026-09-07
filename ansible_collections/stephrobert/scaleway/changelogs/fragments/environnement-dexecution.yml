@@ -1,8 +1,0 @@
-minor_changes:
-  - An execution environment image is published with every version, at
-    ``ghcr.io/stephrobert/collection-scaleway/ee``. It carries the collection
-    and the Scaleway SDK, so a playbook run in AWX, ``ansible-navigator`` or a
-    CI runner no longer needs one built by hand. There is no ``latest`` tag, on
-    purpose - a moving reference makes it impossible to say afterwards what was
-    run - and the image is signed without a key and carries a build provenance
-    attestation, verified the same way as the archive.
