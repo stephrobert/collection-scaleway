@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_frontend_info
 short_description: Gather information about Scaleway Load Balancer frontends
-version_added: 0.4.0
+version_added: 0.1.0
 description:
 - Get the full details of a given frontend, specified by its frontend ID. The response contains
   the frontend's full configuration parameters including the backend it is attached to, the
@@ -100,6 +100,7 @@ result:
     as is.'
   returned: when I(frontend_id) is provided
   type: dict
+  version_added: 0.4.0
   contains:
     id:
       description:

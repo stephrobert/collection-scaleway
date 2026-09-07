@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_server_user_data_info
 short_description: Gather information about Scaleway Instance server user data
-version_added: 0.4.0
+version_added: 0.1.0
 description:
 - Get the content of a user data with the specified key on an Instance.
 - List all user data keys registered on a specified Instance.
@@ -80,6 +80,7 @@ result:
     as is.'
   returned: when I(key) is provided
   type: dict
+  version_added: 0.4.0
   contains:
     name:
       description:

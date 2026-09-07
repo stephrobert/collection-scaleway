@@ -39,3 +39,4 @@ Code says the **current** invariant. This directory says what happened.
 | [ADR-010](010-postconditions-are-checked-not-announced.md) | After writing, what was asked is compared with what is observed, and a gap fails the module |
 | [ADR-011](011-a-product-is-admitted-not-merely-added.md) | A product passes a gate before entering the index, and enters with its price known |
 | [ADR-012](012-an-explicit-null-is-refused-never-ignored.md) | An explicit `null` on a clearable field fails the module, and never passes for an omitted option |
+| [ADR-013](013-when-a-module-appeared-is-recorded-not-computed.md) | When a module, option or return appeared is read from a journal, never from the current version |

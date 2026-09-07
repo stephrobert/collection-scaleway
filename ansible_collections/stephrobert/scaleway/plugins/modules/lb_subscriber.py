@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_subscriber
 short_description: Manage a Scaleway Load Balancer subscriber
-version_added: 0.4.0
+version_added: 0.1.0
 description:
 - Update the parameters of a given subscriber (e.g. name, webhook configuration, email configuration),
   specified by its subscriber ID.

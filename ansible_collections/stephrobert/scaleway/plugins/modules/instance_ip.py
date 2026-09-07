@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_ip
 short_description: Manage a Scaleway Instance IP
-version_added: 0.4.0
+version_added: 0.1.0
 description:
 - Update a flexible IP in the specified zone with the specified ID.
 - The module reads the resource first and writes only the fields that differ, so a second

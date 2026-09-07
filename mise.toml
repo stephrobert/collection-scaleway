@@ -469,6 +469,7 @@ depends = [
   "typographie",
   "nullabilite",
   "admission",
+  "introductions",
 ]
 
 [tasks.qualifier]
@@ -523,6 +524,18 @@ description = "Les champs que le contrat dit effaçables et qu'un module ne sait
 # Il ne refuse rien : compter n'est pas refuser, et transformer ce compte en
 # porte bloquerait la collection sur une limite connue et documentée.
 run = "python scripts/nullabilite.py"
+
+[tasks.introductions]
+description = "Le journal des apparitions dit-il encore la vérité sur ce qui est publié ?"
+# **Une date d'apparition est un fait, pas un calcul (ADR-013).** Le journal la
+# porte, et deux façons de le désynchroniser demandent un contrôle : une version
+# en préparation restée sur le numéro déjà publié, et un nom qu'aucun bloc ne
+# date.
+#
+# Il refuse étroitement, et publie le reste : refuser un module non encore daté
+# bloquerait un produit entre son écriture et sa publication, et une porte qu'on
+# ne peut pas franchir est une porte qu'on désactive.
+run = "python scripts/introductions.py"
 
 [tasks.hooks]
 description = "Installer les crochets git qui refusent avant la poussée ce que la CI refuse après"

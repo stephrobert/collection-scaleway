@@ -1743,6 +1743,78 @@
       "find": "        if option.default is not None:\n            raise ConflictingOption(",
       "replace": "        if option.default is not None and False:\n            raise ConflictingOption(",
       "test": "tests/unit/generator/test_effacables.py::test_un_champ_effacable_avec_un_defaut_du_contrat_est_refuse"
+    },
+    {
+      "name": "version-added-depuis-la-collection",
+      "why": "C'est le défaut de la 0.4.0 : la date publiée était celle de la génération, pas celle de l'apparition, et chaque module réannonçait la version du jour (ADR-013).",
+      "file": "generator/ansible/models.py",
+      "find": "        version_added=journal.module(name),\n        short_description=_short_description(service, resource),",
+      "replace": "        version_added=collection.version,\n        short_description=_short_description(service, resource),",
+      "test": "tests/unit/generator/test_introductions.py::test_le_modele_date_un_module_depuis_le_journal_et_non_depuis_la_collection"
+    },
+    {
+      "name": "generation-sans-journal-des-apparitions",
+      "why": "Un `build_module_specs` appelé sans journal laisse tous les tests unitaires verts et republie la version du jour sur chaque page.",
+      "file": "generator/cli.py",
+      "find": "        introductions=load_introductions(),",
+      "replace": "        introductions=None,",
+      "test": "tests/unit/generator/test_introductions.py::test_la_generation_par_le_cli_lit_le_journal"
+    },
+    {
+      "name": "journal-redate-un-module",
+      "why": "Un nom présent dans deux blocs est une apparition redatée : c'est l'invariant qu'une release ne change jamais un `version_added` existant.",
+      "file": "generator/ansible/introductions.py",
+      "find": "        if nom in modules:",
+      "replace": "        if nom in modules and False:",
+      "test": "tests/unit/generator/test_introductions.py::test_le_journal_refuse_un_module_date_deux_fois"
+    },
+    {
+      "name": "journal-cle-de-bloc-inconnue",
+      "why": "Une faute de frappe sur `retours` produirait un journal silencieusement inerte, exactement comme un override dont le champ n'existe pas.",
+      "file": "generator/ansible/introductions.py",
+      "find": "    inconnues = sorted(set(bloc) - _BLOCK_KEYS)\n    if inconnues:",
+      "replace": "    inconnues = sorted(set(bloc) - _BLOCK_KEYS)\n    if inconnues and False:",
+      "test": "tests/unit/generator/test_introductions.py::test_le_journal_refuse_une_cle_de_bloc_inconnue"
+    },
+    {
+      "name": "journal-membre-orphelin",
+      "why": "Une option datée sur un module que le journal ne connaît pas ne date rien, et une faute de frappe la produirait.",
+      "file": "generator/ansible/introductions.py",
+      "find": "    if orphelins:",
+      "replace": "    if orphelins and False:",
+      "test": "tests/unit/generator/test_introductions.py::test_le_journal_refuse_un_membre_date_sur_un_module_absent"
+    },
+    {
+      "name": "preparation-deja-publiee-admise",
+      "why": "Une version en préparation restée sur le numéro déjà publié signale une release partie sans que le journal soit figé. Sans ce refus, le figeage suivant redaterait des noms déjà datés.",
+      "file": "scripts/introductions.py",
+      "find": "    if _rang(journal.en_preparation) <= _rang(collection.version):",
+      "replace": "    if _rang(journal.en_preparation) <= _rang(collection.version) and False:",
+      "test": "tests/unit/outillage/test_introductions_controle.py::test_une_version_en_preparation_deja_publiee_est_refusee"
+    },
+    {
+      "name": "preparation-en-desaccord-avec-les-fragments",
+      "why": "Un module neuf daté d'une version que les fragments ne produiront pas publie une date qui ne sortira jamais, et une page Galaxy est publiée pour toujours.",
+      "file": "scripts/introductions.py",
+      "find": "    if attendu is not None and attendu != journal.en_preparation and attente:",
+      "replace": "    if attendu is not None and attendu != journal.en_preparation and attente and False:",
+      "test": "tests/unit/outillage/test_introductions_controle.py::test_une_version_en_preparation_qui_contredit_les_fragments_est_refusee"
+    },
+    {
+      "name": "derive-du-disque-confondue-avec-lindex",
+      "why": "Retenir toute ligne de `git status` compte un fichier régénéré puis indexé comme une dérive : le crochet refuse alors le commit qui porte la régénération qu'il réclame, et la seule issue est de le contourner.",
+      "file": "scripts/check_generated.py",
+      "find": "    return [ligne for ligne in lignes.splitlines() if ligne and ligne[1] != \" \"]",
+      "replace": "    return [ligne for ligne in lignes.splitlines() if ligne]",
+      "test": "tests/unit/outillage/test_check_generated.py::test_un_fichier_regenere_puis_indexe_nest_pas_une_derive"
+    },
+    {
+      "name": "fichier-non-suivi-ignore-par-le-controle",
+      "why": "Un module produit et jamais commité est exactement ce que `git diff --exit-code` ne voit pas, et la raison d'être de ce script. Ignorer la colonne `?` le rendrait aveugle à ce seul cas.",
+      "file": "scripts/check_generated.py",
+      "find": "    return [ligne for ligne in lignes.splitlines() if ligne and ligne[1] != \" \"]",
+      "replace": "    return [ligne for ligne in lignes.splitlines() if ligne and ligne[1] not in \" ?\"]",
+      "test": "tests/unit/outillage/test_check_generated.py::test_un_fichier_non_suivi_reste_une_derive"
     }
   ]
 }
