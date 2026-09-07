@@ -25,6 +25,8 @@ from typing import Any
 
 import yaml
 
+from generator.source.base import VendoredSpecSource
+
 ROOT = Path(__file__).resolve().parents[1]
 SPEC_ROOT = ROOT / "specs" / "scaleway"
 
@@ -140,14 +142,14 @@ def main(argv: list[str]) -> int:
         mesurer(argv[1], argv[2])
         return 0
 
-    index = SPEC_ROOT / "products.txt"
-    for ligne in index.read_text(encoding="utf-8").splitlines():
-        ligne = ligne.strip()
-        if not ligne or ligne.startswith("#"):
-            continue
-        champs = ligne.split()
-        produit = champs[1] if len(champs) == 3 else champs[0]
-        mesurer(produit, champs[-1])
+    # **Les contrats générés, lus par la même source que le rapport.** Ce
+    # script relisait `products.txt` à la main, et lisait `ipam v1 suivi`
+    # comme `<slug> <produit> <version>` : il cherchait `v1.suivi.yml`, le
+    # disait absent sur la sortie d'erreur, et sortait en 0. Un contrat suivi
+    # n'est pas mesuré, parce qu'aucun module ne le porte ; un contrat généré
+    # qui manquerait doit se voir, pas se confondre avec ce bruit.
+    for produit, version in VendoredSpecSource(root=SPEC_ROOT).available():
+        mesurer(produit, version)
     return 0
 
 
