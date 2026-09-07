@@ -22,15 +22,16 @@
 # pour ce qu'il décrit vraiment — l'environnement de développement et la cible
 # de mypy.
 racine="$SRC/collection-scaleway"
-pyyaml=$(grep -m1 '^pyyaml==' "$racine/requirements-dev.lock" | cut -d' ' -f1)
-if [ -z "$pyyaml" ]; then
-  echo "pyyaml introuvable dans requirements-dev.lock" >&2
-  exit 1
-fi
+verrou="$racine/.clusterfuzzlite/requirements.txt"
 
-# La version de PyYAML est tirée du verrou plutôt qu'écrite ici : un fuzzer qui
-# lirait le YAML avec une autre version ne mesurerait pas le même code que la CI.
-pip3 install --no-cache-dir "$pyyaml"
+# **Épinglé par empreinte, pas seulement par version.** Une version dit *quoi*,
+# une empreinte dit *quel octet* : c'est ce que `--require-hashes` impose, et
+# c'était le seul endroit du dépôt où une dépendance s'installait sans.
+#
+# Le verrou du fuzzer est tenu par un contrôle qui exige qu'il concorde avec
+# `requirements-dev.lock`, version et empreintes. Un fuzzer qui lirait le YAML
+# avec une autre version que la CI ne mesurerait pas le même code.
+pip3 install --no-cache-dir --require-hashes -r "$verrou"
 
 for cible in "$racine"/tests/fuzz/fuzz_*.py; do
   compile_python_fuzzer "$cible" --paths "$racine"

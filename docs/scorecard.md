@@ -13,11 +13,14 @@ spends its time hunting elsewhere.
 
 ## The measured state
 
-**6.1 on 6 September 2026**, read from the public API rather than estimated:
+**7.0 on 7 September 2026**, read from the public API rather than estimated:
 
 ```bash
 curl -s https://api.securityscorecards.dev/projects/github.com/stephrobert/collection-scaleway
 ```
+
+Every number below is what that call returned. Nothing in this table is a
+target, and no cell carries an arrow towards one.
 
 | check | score | what holds it, or what is missing |
 |---|---|---|
@@ -25,20 +28,20 @@ curl -s https://api.securityscorecards.dev/projects/github.com/stephrobert/colle
 | CI-Tests | 10 | every pull request runs `mise run check` |
 | Dangerous-Workflow | 10 | no `pull_request_target`, no interpolation inside a `run:` |
 | Dependency-Update-Tool | 10 | `.github/dependabot.yml`, pip and github-actions |
+| Fuzzing | 10 | ClusterFuzzLite on pull requests and weekly, see below |
 | License | 10 | `LICENSE` at the root, GPL-3.0-or-later |
-| Pinned-Dependencies | 10 | every action pinned by SHA, Python dependencies locked with hashes |
+| Packaging | 10 | an execution environment image published on every tag, see below |
 | SAST | 10 | CodeQL, plus four workflow scanners acting as a gate |
+| Security-Policy | 10 | it held no link and no address; both were added |
 | Token-Permissions | 10 | `permissions: {}` on every workflow, minimum per job |
 | Vulnerabilities | 10 | OSV-Scanner on pull requests and weekly |
-| Security-Policy | 4 → 10 | it held no link and no address; both were added |
+| Pinned-Dependencies | 9 | one `pip install` without hashes, see below |
 | Branch-Protection | 4 | one maintainer, so the bypass is described rather than removed |
 | Contributors | 3 | one contributor |
-| Signed-Releases | 0 → 10 | the archive was published unsigned; it now carries a signature, a certificate and a provenance bundle |
 | CII-Best-Practices | 0 | the project is not registered on bestpractices.dev |
 | Code-Review | 0 | one maintainer |
 | Maintained | 0 | see below |
-| Fuzzing | 0 | see below |
-| Packaging | -1 | see below |
+| Signed-Releases | 0 | the workflow signs, and no release has been cut since, see below |
 
 **Where the previous estimate was wrong, and it matters.** This page used to
 carry a table of *expected* scores read from the files. Four of them were wrong:
@@ -47,12 +50,39 @@ carry a table of *expected* scores read from the files. Four of them were wrong:
 like a measurement is exactly what this repository refuses everywhere else, and
 it survived here for four days.
 
+**And it happened again, in the other direction.** The table above replaces one
+that carried `Pinned-Dependencies | 10`. The API said 9, and the detail was
+right: the fuzzer's build script installed its YAML reader with the version from
+the lock and without its hash. A code-scanning alert said so; the table did not,
+because the number had been written from the files rather than read from the
+call the page tells the reader to make.
+
+### Landed since this scan, and deliberately not written into the table above
+
+Writing a fix into a column headed *measured* is how the previous version of
+this page went wrong. Two changes are on `main` and will be read by the next
+weekly scan:
+
+* **Pinned-Dependencies.** `.clusterfuzzlite/build.sh` now installs from
+  `.clusterfuzzlite/requirements.txt` with `--require-hashes`. A version says
+  *what*, a hash says *which bytes*. That file is a second lock, so a second
+  thing that drifts: `mise run fuzz:verrou` refuses it when its version or its
+  hashes stop matching `requirements-dev.lock`, and four mutations prove the
+  refusal bites.
+* **Signed-Releases.** The check reads the archives of the published releases.
+  0.2.0 and 0.3.0 were published before the release workflow signed anything,
+  and no release has been cut since it did — hence 0, correctly. 0.4.0 will be
+  the first signed one, and the number is worth re-reading then rather than
+  announcing now.
+
 ### Signed-Releases: what is signed, and how to check it
 
 The tag was signed from the first release; the **archive** was not, and that is
-what this check reads. Since 0.4.0 the release workflow signs the archive
-without a key and attests its build provenance, both bound to the identity of
-the workflow that produced it rather than to a secret:
+what this check reads. The release workflow now signs the archive without a key
+and attests its build provenance, both bound to the identity of the workflow
+that produced it rather than to a secret. 0.2.0 and 0.3.0 predate it, so the
+check reads 0 and is right to; **0.4.0 will be the first release this recipe
+applies to**:
 
 ```bash
 gh release download 0.4.0 --repo stephrobert/collection-scaleway
@@ -80,16 +110,33 @@ Go fuzzing, Haskell, JavaScript and Erlang, and not Python. Measured on
 been the same mistake as the estimate table above.
 
 Only two things move it: enrolling in OSS-Fuzz, or deploying ClusterFuzzLite.
-Both are real work on a parser that reads structured input, and neither is done.
+The second is deployed, in `.clusterfuzzlite/`, and runs on every pull request
+and every Tuesday.
 
-### Packaging: -1 is "not detected", not "badly done"
+**It was not deployed for the score.** The parser reads a document nobody here
+controls: `specs/scaleway/` is versioned, but its content comes from Scaleway's
+portal, which added 453 SDK methods and removed 26 in twelve months. The harness
+found **twelve real defects on its first pass**, all of the same shape — a YAML
+key declared with no value, a `$ref` that is not a string, a `type` that is an
+object. None was theoretical, and each is now a named refusal with a test.
+
+`mise run fuzz:smoke` replays the harness on mutations of the real contract in a
+few seconds. It proves the harness works, not that it finds: finding costs
+machine time, and that is what the scheduled run is for. A harness that only ever
+runs inside the OSS-Fuzz container is a harness nobody rereads.
+
+### Packaging: it read -1, which is "not detected", not "badly done"
 
 The collection is published on Ansible Galaxy on every version tag. Scorecard
 does not know Galaxy: it looks for a publishing workflow among the ecosystems it
-supports. The honest way to score here is not to game the detector but to
+supports. The honest way to score here was not to game the detector but to
 publish something it recognises **and that users want** — an execution
-environment image, which the collection's `meta/` already describes. It is not
-done.
+environment image, which the collection's `meta/` already described.
+
+`Containerfile` builds it on `awx-ee`, pinned by digest, and the release workflow
+publishes it to `ghcr.io/stephrobert/collection-scaleway/ee:<tag>`, signs it **by
+digest** and attests its provenance. Signing a tag would bless whatever the tag
+points at later. Two tags and no `latest`, for the same reason.
 
 ### Maintained: 0 on a repository committed to daily
 
@@ -156,8 +203,8 @@ answers are true, not for the score.
 * **`egress-policy: audit` and not `block`.** An allowlist written without
   having observed the real traffic breaks CI without proving anything. The move
   to `block` will be based on the `audit` readings, once there are some.
-* **Fuzzing, in the sense Scorecard means it.** The generator reads OpenAPI
-  contracts, which is structured input and a reasonable subject. Property-based
-  tests cover the translating functions; neither OSS-Fuzz nor ClusterFuzzLite is
-  deployed, and counting the 74 operations of the versioned contract as a corpus
-  would be counting the cases somebody already thought of.
+* **A corpus that is not just the cases somebody thought of.** ClusterFuzzLite
+  is deployed, and its corpus starts from mutations of the versioned contract.
+  Counting the 74 operations themselves as a corpus would be counting the cases
+  the tests already cover; what the fuzzer is for is the shapes nobody wrote
+  down, and twelve of those turned out to exist.
