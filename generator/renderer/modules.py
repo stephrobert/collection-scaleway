@@ -219,6 +219,8 @@ def _manage_module_literal(spec: AnsibleModuleSpec) -> str:
     lines.append(f"    update_operation={_operation_literal(spec.update_operation, indent=4)},")
     lines.append(f"    managed_params={python_literal(spec.managed_params, indent=4)},")
     lines.append(f"    comparisons={python_literal(spec.comparisons, indent=4)},")
+    if spec.unverified_params:
+        lines.append(f"    unverified_params={python_literal(spec.unverified_params, indent=4)},")
     if spec.secret_params:
         lines.append(f"    secret_params={python_literal(spec.secret_params, indent=4)},")
     lines.append(")")

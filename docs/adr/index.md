@@ -36,3 +36,4 @@ Code says the **current** invariant. This directory says what happened.
 | [ADR-007](007-measured-numbers-live-in-derived-blocks.md) | A measured number is derived, an assertion, or dated history, never a sentence |
 | [ADR-008](008-a-constraint-is-translated-or-named.md) | A contract constraint is translated, or counted, or measured absent, never guessed |
 | [ADR-009](009-how-a-managed-field-is-compared.md) | The type decides the comparison it can, an override decides the rest, nothing is guessed |
+| [ADR-010](010-postconditions-are-checked-not-announced.md) | After writing, what was asked is compared with what is observed, and a gap fails the module |

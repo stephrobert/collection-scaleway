@@ -279,6 +279,9 @@ class AnsibleModuleSpec:
     wait_states: tuple[tuple[str, str], ...] = ()
     #: Ce que le contrat ne dit pas, remonté par le rapport de génération.
     limits: tuple[str, ...] = ()
+    #: Champs que la vérification d'après écriture ne regarde pas, posés par
+    #: un override avec sa raison.
+    unverified_params: tuple[str, ...] = ()
     #: Comment chaque paramètre géré se compare à ce que l'API rend.
     #:
     #: Le type décide ce qu'il peut, un override décide le reste, et rien ne se
@@ -769,6 +772,13 @@ def _build_manage_module(
         secret_params=secrets,
         limits=limits,
         comparisons=_comparaisons(item.operation, geres, override),
+        unverified_params=tuple(
+            nom
+            for nom in geres
+            if override is not None
+            and nom in override.parameters
+            and override.parameters[nom].postcondition is False
+        ),
         mutually_exclusive=_exclusions((item.operation,)),
     )
 

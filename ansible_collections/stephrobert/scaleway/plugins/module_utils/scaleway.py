@@ -245,6 +245,14 @@ class ManageModule:
     #: parce que c'est le comportement le plus prudent et parce qu'un module
     #: d'une version antérieure n'en porte pas.
     comparisons: tuple[tuple[str, str], ...] = ()
+    #: Champs que la vérification d'après écriture ne regarde pas.
+    #:
+    #: Ils viennent d'un override, avec sa raison, et le cas prévu est une API
+    #: qui applique un champ de façon différée. Vérifier un tel champ
+    #: échouerait sur un délai plutôt que sur une erreur, ce qui ferait
+    #: échouer un playbook correct. La liste est vide aujourd'hui : rien de tel
+    #: n'a été observé, et le mécanisme existe pour le jour où ça arrivera.
+    unverified_params: tuple[str, ...] = ()
     #: Ceux de ces champs qui portent un secret. **Ils ne se comparent pas** :
     #: l'API ne les rend jamais, donc les comparer reviendrait à comparer une
     #: valeur à `None` et à conclure « différent » à chaque exécution, ce qui
@@ -929,6 +937,44 @@ def _identique(strategie: str, attendu: Any, observe: Any) -> bool:
     return bool(comparer(attendu, observe))
 
 
+def _postconditions_non_tenues(
+    spec: "ManageModule",
+    demande: dict[str, Any],
+    observe: dict[str, Any],
+    strategies: dict[str, str],
+) -> dict[str, dict[str, Any]]:
+    """Ce que le playbook a demandé et que la relecture ne montre pas.
+
+    **Découvrir l'écart maintenant plutôt qu'au playbook suivant.** L'API
+    normalise, complète, et parfois refuse en silence : un champ qu'elle n'a pas
+    appliqué ressort à l'exécution d'après en `changed=true`, indéfiniment, et
+    personne ne relie ce symptôme à sa cause.
+
+    La comparaison est **la même qu'à l'aller**. Comparer en ensemble pour
+    décider d'écrire puis strictement pour vérifier ferait échouer sur un ordre
+    que la première comparaison avait justement accepté.
+
+    Deux familles de champs sortent de la vérification, et chacune pour une
+    raison qui n'est pas la même :
+
+    * les **secrets**, que l'API ne rend jamais. Les vérifier reviendrait à
+      comparer une valeur à `None`, ce qui ressemble à une mesure et n'en est
+      pas une ;
+    * ceux qu'un **override** écarte, avec sa raison. Le cas prévu est un champ
+      que l'API applique de façon différée : échouer dessus ferait échouer un
+      playbook correct sur un délai.
+    """
+    hors_mesure = set(spec.secret_params) | set(spec.unverified_params)
+    ecarts: dict[str, dict[str, Any]] = {}
+    for nom, attendu in demande.items():
+        if nom in hors_mesure:
+            continue
+        obtenu = _valeur_courante(observe, nom)
+        if not _identique(strategies.get(nom, "scalar"), attendu, obtenu):
+            ecarts[nom] = {"requested": attendu, "observed": obtenu}
+    return ecarts
+
+
 def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
     """Amène une ressource existante à l'état que le playbook décrit.
 
@@ -949,6 +995,12 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
     **Rendre l'état observé, pas celui qu'on a envoyé.** La ressource est relue
     après l'écriture : l'API normalise, complète, et parfois refuse en silence.
     Ce que le module rend est ce que l'API dit, pas ce qu'on lui a demandé.
+
+    **Et le vérifier.** Relire sans regarder ce qu'on a relu laissait passer un
+    champ que l'API n'a pas appliqué : il ressortait au playbook suivant en
+    `changed=true`, indéfiniment, et personne ne reliait ce symptôme à sa
+    cause. Un écart fait échouer le module en nommant le champ, le demandé et
+    l'observé, et `changed` reste vrai parce que la ressource, elle, a bougé.
 
     **Comparer comme le champ le demande.** L'égalité stricte rendait `changed`
     à chaque exécution sur un champ que l'API réordonne ou normalise, et un
@@ -1073,6 +1125,26 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
         apres = api.fetch_one(spec.read_operation)
     except ScalewayApiError as error:
         module.fail_json(msg=error.message, **error.details())
+        return
+
+    non_tenues = _postconditions_non_tenues(spec, demande, apres, strategies)
+    if non_tenues:
+        # **`changed` reste vrai, et c'est le point délicat.** L'API a accepté
+        # l'écriture : la ressource a bougé. Un échec qui tairait `changed`
+        # ferait croire à un playbook rejoué qu'il n'a rien fait, alors que la
+        # machine, elle, a changé.
+        module.fail_json(
+            msg=(
+                f"{len(non_tenues)} champ(s) écrit(s) que la relecture ne montre pas : "
+                f"{', '.join(sorted(non_tenues))}. L'API a accepté la requête et rend "
+                "autre chose : la valeur a pu être normalisée, ignorée, ou refusée en "
+                "silence."
+            ),
+            changed=True,
+            failed_postconditions=non_tenues,
+            diff={"before": avant, "after": _cote_du_diff(apres, ecarts)},
+            **{champ: apres},
+        )
         return
 
     module.exit_json(
