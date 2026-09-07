@@ -84,7 +84,7 @@ EXAMPLES = r"""
   stephrobert.scaleway.instance_ip_info:
     zone: fr-par-1
   register: result
-- name: Filter Scaleway Instance Ips by tags
+- name: Filter Scaleway Instance IPs by tags
   stephrobert.scaleway.instance_ip_info:
     zone: fr-par-1
     tags:

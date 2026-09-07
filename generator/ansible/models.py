@@ -855,7 +855,14 @@ def _pluriel(phrase: str) -> str:
     """
     mots = phrase.replace("_", " ").split(" ")
     dernier = pluralize(mots[-1])
-    if mots[-1][:1].isupper():
+    # **Un sigle garde ses capitales au pluriel.** `pluralize("IP")` rend
+    # `ips`, et ne recapitaliser que l'initiale publiait « Instance Ips » dans
+    # un exemple, sous une phrase courte qui disait « Instance IPs » par la
+    # table des sigles. Deux mécanismes pour un même mot, deux casses sur la
+    # même page.
+    if dernier in ACRONYMES:
+        dernier = ACRONYMES[dernier]
+    elif mots[-1][:1].isupper():
         dernier = dernier[:1].upper() + dernier[1:]
     return " ".join([*mots[:-1], dernier])
 

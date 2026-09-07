@@ -1623,6 +1623,14 @@
       "find": "        commande=(\"mise\", \"run\", \"docs:site\"),",
       "replace": "        commande=(\"mise\", \"run\", \"docs:site\", \"docs:examples\"),",
       "test": "tests/unit/outillage/test_qualifier.py::test_aucune_commande_mise_ne_nomme_deux_taches"
+    },
+    {
+      "name": "sigle-pluriel-decapitalise",
+      "why": "Une page qui écrit « Instance IPs » puis « Instance Ips » se lit comme une page que personne n'a relue.",
+      "file": "generator/ansible/models.py",
+      "find": "    if dernier in ACRONYMES:\n        dernier = ACRONYMES[dernier]\n",
+      "replace": "    if dernier in ACRONYMES and False:\n        dernier = ACRONYMES[dernier]\n",
+      "test": "tests/unit/generator/test_models.py::test_un_sigle_garde_ses_capitales_au_pluriel"
     }
   ]
 }

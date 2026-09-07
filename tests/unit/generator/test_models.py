@@ -352,6 +352,29 @@ def test_un_module_demande_et_impossible_fait_echouer() -> None:
         build_module_specs(_plan_a_deux_listes(), COLLECTION, only=("demo_thing_info",))
 
 
+# --- les sigles au pluriel -------------------------------------------------
+
+
+def test_un_sigle_garde_ses_capitales_au_pluriel(instance_plan: ProductPlan) -> None:
+    """La phrase courte disait « Instance IPs », l'exemple « Instance Ips ».
+
+    Deux mécanismes pour un même mot, deux casses sur la même page publiée.
+    """
+    spec = _spec(instance_plan, "instance_ip_info")
+    noms = [exemple.name for exemple in spec.examples]
+
+    assert spec.short_description.endswith("Instance IPs")
+    assert any(nom.endswith("Instance IPs by tags") for nom in noms), noms
+    assert not any("Ips" in nom for nom in noms)
+
+
+def test_un_mot_ordinaire_se_pluralise_comme_avant(instance_plan: ProductPlan) -> None:
+    """Le contre-exemple : « Instance servers » ne devient pas un sigle."""
+    spec = _spec(instance_plan, "instance_server_info")
+
+    assert any(nom.endswith("Instance servers by tags") for nom in (e.name for e in spec.examples))
+
+
 # --- ce qu'un module d'action expose, et ce qu'il refuse -------------------
 
 

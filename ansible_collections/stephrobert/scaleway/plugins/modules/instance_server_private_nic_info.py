@@ -78,7 +78,7 @@ EXAMPLES = r"""
     zone: fr-par-1
     server_id: 11111111-2222-3333-4444-555555555555
   register: result
-- name: Filter Scaleway Instance server private Nics by tags
+- name: Filter Scaleway Instance server private NICs by tags
   stephrobert.scaleway.instance_server_private_nic_info:
     zone: fr-par-1
     server_id: 11111111-2222-3333-4444-555555555555
