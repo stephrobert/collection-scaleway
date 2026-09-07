@@ -468,6 +468,7 @@ depends = [
   "histoire",
   "typographie",
   "nullabilite",
+  "admission",
 ]
 
 [tasks.qualifier]
@@ -498,6 +499,19 @@ description = "Refuser dans le code un nombre qui compte des choses du dépôt"
 # Un nombre vrai se prouve par une assertion, un golden ou un bloc dérivé ; un
 # nombre historique va dans `docs/adr/`, qui porte sa date.
 run = "python scripts/histoire.py"
+
+[tasks.admission]
+description = "Le verdict d'admission d'un produit, et le prix qu'il coûte"
+# **« Les tests passent » n'est pas une réponse à « est-il sûr d'ajouter RDB ? ».**
+# Les tests passent aussi sur un produit dont le parser ignore la moitié des
+# constructions, dont personne n'a lu les pages, et dont la moitié des
+# opérations sortent en UNKNOWN.
+#
+# Toutes les étapes ne bloquent pas, et c'est délibéré : une porte qui refuserait
+# sur chaque mesure refuserait les deux produits déjà livrés, donc personne ne la
+# lancerait. Les bloquantes sont celles dont l'échec produit un module faux ; les
+# autres publient un nombre, qui est le prix d'admission et non un défaut.
+run = "python scripts/admission.py --tous"
 
 [tasks.nullabilite]
 description = "Les champs que le contrat dit effaçables et qu'un module ne sait pas effacer"

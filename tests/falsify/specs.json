@@ -1567,6 +1567,62 @@
       "find": "    return sorted(\n        trouves, key=lambda champ: (champ.produit, champ.module, champ.operation, champ.champ)\n    )",
       "replace": "    return trouves",
       "test": "tests/unit/outillage/test_nullabilite.py::test_le_releve_est_trie"
+    },
+    {
+      "name": "porte-dadmission-qui-nexamine-rien",
+      "why": "Une porte qui n'examine aucun produit les admet tous. C'est le vert sur zéro fichier examiné, appliqué à la décision la plus coûteuse du dépôt : ajouter un contrat.",
+      "file": "scripts/admission.py",
+      "find": "    if not cibles:",
+      "replace": "    if not cibles and False:",
+      "test": "tests/unit/outillage/test_admission.py::test_une_porte_qui_nexamine_rien_echoue"
+    },
+    {
+      "name": "module-ecarte-avec-sa-raison-refuse",
+      "why": "Écarté avec sa raison n'est pas manquant, et c'est toute la doctrine du dépôt. Une porte qui les confond punit précisément le comportement qu'elle est censée encourager. La première version refusait `instance_server_user_data`, sur un produit livré.",
+      "file": "scripts/admission.py",
+      "find": "    excuses = {nom for nom, raison in ecartes if raison}",
+      "replace": "    excuses: set[str] = set()",
+      "test": "tests/unit/outillage/test_admission.py::test_un_module_de_gestion_ecarte_avec_sa_raison_passe"
+    },
+    {
+      "name": "module-disparu-sans-raison-admis",
+      "why": "Un module de gestion prévu qui disparaît en silence est indiscernable d'un module oublié, et c'est la règle 1 du dépôt appliquée à la génération.",
+      "file": "scripts/admission.py",
+      "find": "    manquants = sorted(attendus - ecrits - excuses)",
+      "replace": "    manquants: list[str] = []",
+      "test": "tests/unit/outillage/test_admission.py::test_un_module_de_gestion_disparu_sans_raison_refuse_le_produit"
+    },
+    {
+      "name": "parametre-gere-sans-strategie-admis",
+      "why": "Un paramètre géré sans stratégie serait comparé strictement sans que personne l'ait décidé. C'est la différence entre un repli posé et compté, et un repli subi que rien ne montre.",
+      "file": "scripts/admission.py",
+      "find": "        if nom not in dict(getattr(spec, \"comparisons\", ()))",
+      "replace": "        if False",
+      "test": "tests/unit/outillage/test_admission.py::test_un_parametre_gere_sans_strategie_refuse_le_produit"
+    },
+    {
+      "name": "contrainte-tue-admise",
+      "why": "Une contrainte trouvée dans le document et ni traduite ni nommée produit un module qui accepte ce que l'API refuse, et le défaut ne se voit qu'au premier playbook.",
+      "file": "scripts/admission.py",
+      "find": "        if mot not in CONTRAINTES_TRADUITES",
+      "replace": "        if False",
+      "test": "tests/unit/outillage/test_admission.py::test_une_contrainte_trouvee_et_tue_refuse_le_produit"
+    },
+    {
+      "name": "champs-effacables-transformes-en-refus",
+      "why": "La limite est connue, documentée, chiffrée, et #114 la porte. Une porte qui refuserait dessus bloquerait la collection entière sur un travail déjà planifié, donc personne ne la lancerait, et elle cesserait de mesurer quoi que ce soit.",
+      "file": "scripts/admission.py",
+      "find": "        nom=\"champs effaçables\",\n        bloquante=False,",
+      "replace": "        nom=\"champs effaçables\",\n        bloquante=True,",
+      "test": "tests/unit/outillage/test_admission.py::test_les_champs_effacables_se_paient_sans_interdire"
+    },
+    {
+      "name": "etape-de-qualification-qui-nomme-deux-taches",
+      "why": "`mise run a b` n'en lance qu'une : il passe `b` en argument à `a`, qui l'ignore. L'étape « Archive » nommait plusieurs tâches et n'en lançait qu'une, et rendait vert. Un vert partiel ressemble trait pour trait à un vert complet, et c'est le défaut que cette porte existe pour empêcher, dans la porte elle-même.",
+      "file": "scripts/qualifier.py",
+      "find": "        commande=(\"mise\", \"run\", \"docs:site\"),",
+      "replace": "        commande=(\"mise\", \"run\", \"docs:site\", \"docs:examples\"),",
+      "test": "tests/unit/outillage/test_qualifier.py::test_aucune_commande_mise_ne_nomme_deux_taches"
     }
   ]
 }
