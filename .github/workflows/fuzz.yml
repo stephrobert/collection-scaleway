@@ -14,10 +14,38 @@
 name: fuzz
 
 on:
+  # **Le job le plus cher du dépôt, déclenché sur ce qu'il éprouve.** Il
+  # construit une image et compile les fuzzers : une dizaine de minutes, et une
+  # part du budget d'API que `GITHUB_TOKEN` compte par heure et par dépôt. Il
+  # n'a rien à dire d'un changement de documentation.
+  #
+  # Le filtrer est possible **parce qu'il n'est pas exigé par la protection de
+  # branche**. Un contrôle exigé qui ne se déclenche pas ne rend jamais son
+  # verdict, et la pull request reste bloquée pour toujours : ne pas filtrer
+  # ceux qui le sont.
+  #
+  # La liste est recopiée au lieu d'être ancrée : GitHub Actions n'interprète
+  # pas les ancres YAML, et le fichier serait refusé.
+  #
+  # Le cron hebdomadaire reste la couverture de ce que ce filtre laisse passer.
   pull_request:
     branches: [main]
+    paths:
+      - "generator/parser/**"
+      - "generator/ir/**"
+      - "generator/source/**"
+      - "tests/fuzz/**"
+      - ".clusterfuzzlite/**"
+      - ".github/workflows/fuzz.yml"
   push:
     branches: [main]
+    paths:
+      - "generator/parser/**"
+      - "generator/ir/**"
+      - "generator/source/**"
+      - "tests/fuzz/**"
+      - ".clusterfuzzlite/**"
+      - ".github/workflows/fuzz.yml"
   schedule:
     - cron: "35 4 * * 2"
 

@@ -457,6 +457,23 @@ depends = [
   "chiffres:check",
 ]
 
+[tasks.qualifier]
+description = "Rejouer la CI en local, et nommer ce qui n'est pas rejouable"
+# **GitHub n'est pas une zone de qualification.** Une pull request rouge coûte
+# le runner, la relecture et le budget d'API du dépôt — ce dernier a déjà fait
+# échouer CodeQL, OSV-Scanner et la revue de dépendances en même temps, sur une
+# limite atteinte parce qu'on s'en servait de boucle d'essai.
+#
+# `check` reste la porte courte, celle qu'on lance à chaque changement. Celle-ci
+# est la porte d'avant-poussée : elle joue en plus le sanity, l'intégration, la
+# plateforme d'exemple, les deux images en conteneur et les scanners de
+# workflows, et elle **nomme** ce qu'aucune commande locale ne rejoue.
+run = "python scripts/qualifier.py"
+
+[tasks."qualifier:rapide"]
+description = "La même porte, réduite à ce qui tient en moins d'une minute"
+run = "python scripts/qualifier.py --rapide"
+
 [tasks.clean]
 description = "Supprimer les artefacts d'exécution"
 # Le motif est quoté et passé à `find` : un glob non quoté sans correspondance
