@@ -93,10 +93,25 @@ ETAPES: tuple[Etape, ...] = (
         job="Plateforme d'exemple",
         commande=("mise", "run", "example"),
     ),
+    # **Une commande, une tâche.** `mise run a b c` n'en lance qu'une : il passe
+    # `b` et `c` en arguments à `a`, qui les ignore. L'étape rendait vert en
+    # ayant mesuré une part de ce qu'elle nommait, ce qui est le défaut
+    # que cette porte existe pour empêcher. `test_qualifier` le refuse
+    # désormais, parce qu'il se réintroduirait au prochain ajout.
     Etape(
-        nom="site de documentation et playbooks cités",
+        nom="site de documentation",
         job="Archive",
-        commande=("mise", "run", "docs:site", "docs:examples", "check:worktree"),
+        commande=("mise", "run", "docs:site"),
+    ),
+    Etape(
+        nom="playbooks cités dans la documentation",
+        job="Archive",
+        commande=("mise", "run", "docs:examples"),
+    ),
+    Etape(
+        nom="arbre de travail propre après les builds",
+        job="Archive",
+        commande=("mise", "run", "check:worktree"),
     ),
     Etape(
         nom="actionlint, zizmor, poutine",

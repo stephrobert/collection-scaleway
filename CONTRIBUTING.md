@@ -53,6 +53,7 @@ you touched:
 | anything a reader sees | `mise run docs:quality` | the published page still explains itself |
 | a module, a plugin, an inventory option | `python scripts/example.py machines`, then `reel` | it works on real machines, and on the real cloud |
 | the contracts | `mise run sync:api` then `mise run check` | the API has not moved under the generator |
+| adding a product | `mise run admission` | the product passes the gate, and you can name the price it enters with |
 | a workflow, an action, `.github/` | `mise run security` | actionlint, zizmor and poutine accept the pipeline |
 | `pyproject.toml` | `mise run lock`, read the diff | which dependency really appears, and under which hash |
 

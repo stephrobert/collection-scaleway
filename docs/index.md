@@ -49,6 +49,7 @@ adr/007-measured-numbers-live-in-derived-blocks
 adr/008-a-constraint-is-translated-or-named
 adr/009-how-a-managed-field-is-compared
 adr/010-postconditions-are-checked-not-announced
+adr/011-a-product-is-admitted-not-merely-added
 ```
 
 ```{toctree}

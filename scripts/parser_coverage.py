@@ -69,11 +69,17 @@ def _compte_mot_clef(contrat: dict[str, Any], mots: set[str]) -> int:
     return compte
 
 
-def mesurer(produit: str, version: str) -> None:
+def relever(produit: str, version: str) -> tuple[int, list[tuple[str, int, str]]]:
+    """Les constructions OpenAPI d'un contrat, comptées et qualifiées.
+
+    **Mesurer et imprimer sont deux choses.** La fonction imprimait, et la
+    porte d'admission a besoin des nombres : les lui faire relire dans une
+    sortie texte ferait un second lecteur du même calcul, et les deux
+    divergeraient au premier changement de mise en forme.
+    """
     chemin = SPEC_ROOT / f"{produit}.{version}.yml"
     if not chemin.is_file():
-        print(f"  {chemin.relative_to(ROOT)} absent", file=sys.stderr)
-        return
+        raise FileNotFoundError(f"{chemin.relative_to(ROOT)} absent")
     contrat = yaml.safe_load(chemin.read_text(encoding="utf-8"))
     operations = _operations(contrat)
 
@@ -97,7 +103,6 @@ def mesurer(produit: str, version: str) -> None:
             if isinstance(p, dict) and p.get("name") in tailles:
                 tailles[p["name"]] += 1
 
-    print(f"\n=== {produit} {version} : {len(operations)} opérations")
     lignes = [
         ("paramètres au niveau du chemin", parametres_de_chemin, "non géré"),
         ("$ref hors components.schemas", _compte_refs_hors_schemas(contrat), "non géré"),
@@ -113,6 +118,18 @@ def mesurer(produit: str, version: str) -> None:
         ("pagination per_page", tailles["per_page"], "reconnue"),
         ("pagination page_size", tailles["page_size"], "reconnue"),
     ]
+    return len(operations), lignes
+
+
+def mesurer(produit: str, version: str) -> None:
+    """La même mesure, imprimée."""
+    try:
+        combien_doperations, lignes = relever(produit, version)
+    except FileNotFoundError as absent:
+        print(f"  {absent}", file=sys.stderr)
+        return
+
+    print(f"\n=== {produit} {version} : {combien_doperations} opérations")
     for nom, combien, etat in lignes:
         marque = "  " if combien == 0 else "! "
         print(f"  {marque}{nom:34s} {combien:4d}   {etat}")
