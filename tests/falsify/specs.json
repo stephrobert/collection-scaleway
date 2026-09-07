@@ -1631,6 +1631,14 @@
       "find": "    if dernier in ACRONYMES:\n        dernier = ACRONYMES[dernier]\n",
       "replace": "    if dernier in ACRONYMES and False:\n        dernier = ACRONYMES[dernier]\n",
       "test": "tests/unit/generator/test_models.py::test_un_sigle_garde_ses_capitales_au_pluriel"
+    },
+    {
+      "name": "override-de-parametre-orphelin",
+      "why": "Une faute de frappe dans `parameters` produirait un override silencieusement inerte, ce que la règle 2 du dépôt interdit.",
+      "file": "generator/overrides/loader.py",
+      "find": "                if nom not in connus:\n",
+      "replace": "                if nom not in connus and False:\n",
+      "test": "tests/unit/generator/test_overrides.py::test_un_override_de_parametre_qui_ne_designe_rien_est_orphelin"
     }
   ]
 }

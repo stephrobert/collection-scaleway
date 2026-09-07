@@ -112,6 +112,52 @@ operations:
     assert plan.orphan_overrides == ("widget.v1.Widget.DisparuDepuis",)
 
 
+def test_un_override_de_parametre_qui_ne_designe_rien_est_orphelin(
+    tmp_path: Path, widget_service: ApiService
+) -> None:
+    """Une faute de frappe dans `parameters` produisait un override inerte.
+
+    Toutes les lectures d'`override.parameters` sont des recherches par nom :
+    `tgas: {comparison: set}` ne changeait rien, ne rougissait nulle part, et
+    la règle 2 du dépôt n'était tenue que pour la clé de l'opération.
+    """
+    _write(
+        tmp_path,
+        """
+operations:
+  widget.v1.Widget.UpdateWidget:
+    parameters:
+      tgas:
+        comparison: set
+        reason: faute de frappe volontaire, pour le test
+""",
+    )
+    plan = plan_service(widget_service, load_overrides("widget", root=tmp_path))
+    assert plan.orphan_overrides == (
+        "widget.v1.Widget.UpdateWidget.parameters.tgas : aucun paramètre de ce nom sur l'opération",
+    )
+
+
+def test_un_override_de_parametre_qui_designe_un_parametre_nest_pas_orphelin(
+    tmp_path: Path, widget_service: ApiService
+) -> None:
+    """Le contre-exemple, sans lequel le test précédent passerait aussi sur un
+    contrôle qui déclarerait tout orphelin."""
+    _write(
+        tmp_path,
+        """
+operations:
+  widget.v1.Widget.UpdateWidget:
+    parameters:
+      tags:
+        comparison: set
+        reason: les tags sont un ensemble
+""",
+    )
+    plan = plan_service(widget_service, load_overrides("widget", root=tmp_path))
+    assert plan.orphan_overrides == ()
+
+
 def test_manual_reste_hors_de_la_couverture_automatique(
     tmp_path: Path, widget_service: ApiService
 ) -> None:

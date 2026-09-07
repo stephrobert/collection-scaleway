@@ -220,7 +220,12 @@ class OverrideSet:
         * **la description ne comble plus rien.** Scaleway a documenté le champ,
           donc c'est sa phrase qui sort, et celle qu'on avait écrite pour
           combler le trou n'est plus lue par personne. La laisser reviendrait à
-          maintenir un texte mort qu'une relecture croirait publié.
+          maintenir un texte mort qu'une relecture croirait publié ;
+        * **un override de paramètre nomme un paramètre que l'opération n'a
+          pas.** Toutes ses lectures sont des recherches par nom : une faute de
+          frappe dans `parameters` ne changeait rien, et rien ne le disait. La
+          règle 2 du dépôt promet le contraire, et elle n'était tenue que pour
+          la clé de l'opération et les champs d'un retour.
 
         Les deux sortent par le même canal, donc `report --strict` sort en 2
         dans les deux cas. C'est ce qui rend la dérive visible, et ça ne se
@@ -238,10 +243,16 @@ class OverrideSet:
                 inertes.append(
                     f"{cle} : description d'override devenue inutile, le contrat en porte une"
                 )
+            connus = {parameter.name for parameter in operation.parameters}
             documentes = {
                 parameter.name for parameter in operation.parameters if parameter.description
             }
             for nom, restriction in override.parameters.items():
+                if nom not in connus:
+                    inertes.append(
+                        f"{cle}.parameters.{nom} : aucun paramètre de ce nom sur l'opération"
+                    )
+                    continue
                 if restriction.description and nom in documentes:
                     inertes.append(
                         f"{cle}.parameters.{nom} : description d'override devenue "
