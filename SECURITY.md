@@ -71,7 +71,7 @@ publier autrement.
 | ce qui est signé | comment le vérifier |
 |---|---|
 | le tag de version | `git verify-tag 0.3.0` |
-| l'archive publiée | `cosign verify-blob` avec la signature et le certificat joints à la release |
+| l'archive publiée | `cosign verify-blob --bundle <archive>.cosign.bundle`, le bundle étant joint à la release |
 | la provenance de la construction | `gh attestation verify <archive> --repo stephrobert/collection-scaleway` |
 
 La signature est **sans clé** : elle lie l'archive à l'identité du workflow qui

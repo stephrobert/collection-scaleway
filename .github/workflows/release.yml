@@ -128,13 +128,21 @@ jobs:
       - name: Installer Cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
+      # **Un bundle, et non une signature et un certificat séparés.**
+      # `--output-signature` et `--output-certificate` sont dépréciés : avec le
+      # format de bundle, devenu le défaut, cosign les ignore puis échoue faute
+      # de `--bundle`. C'est ce qui a arrêté la première exécution de release de
+      # la 0.4.0, sur `create bundle file: open : no such file or directory`.
+      #
+      # Le bundle porte la signature, le certificat et l'entrée de transparence
+      # dans un seul fichier, ce qui rend aussi la recette de vérification plus
+      # courte à publier.
       - name: Signer l'archive, sans clé
         run: |
           set -euo pipefail
           archive=$(ls build/dist/*.tar.gz)
           cosign sign-blob --yes \
-            --output-signature "${archive}.sig" \
-            --output-certificate "${archive}.pem" \
+            --bundle "${archive}.cosign.bundle" \
             "$archive"
 
       - name: Attester la provenance de la construction
@@ -165,8 +173,7 @@ jobs:
           set -euo pipefail
           archive=$(ls build/dist/*.tar.gz)
           cosign verify-blob \
-            --signature "${archive}.sig" \
-            --certificate "${archive}.pem" \
+            --bundle "${archive}.cosign.bundle" \
             --certificate-identity-regexp "^${SERVEUR}/${DEPOT}/.github/workflows/release.yml@refs/tags/" \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             "$archive"
@@ -230,7 +237,7 @@ jobs:
         run: |
           archive=$(ls build/dist/*.tar.gz)
           gh release create "$TAG" \
-            "$archive" "${archive}.sig" "${archive}.pem" "${archive}.intoto.jsonl" \
+            "$archive" "${archive}.cosign.bundle" "${archive}.intoto.jsonl" \
             --title "$TAG" \
             --notes "Publiée sur Ansible Galaxy : https://galaxy.ansible.com/ui/repo/published/stephrobert/scaleway/" \
             --verify-tag
