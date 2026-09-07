@@ -1,0 +1,546 @@
+# Le journal des apparitions : quand chaque module, option et valeur de retour
+# est entré dans la collection.
+#
+# **C'est un fait historique, pas une propriété du contrat.** Le générateur ne
+# peut pas le déduire : il doit s'en souvenir. Sans ce fichier, `version_added`
+# valait la version courante de la collection, et chaque génération réécrivait
+# l'histoire de tous les modules.
+#
+# Ce fichier est un **journal**, et sa forme porte son invariant : on ajoute un
+# bloc, on ne touche jamais aux précédents. Un nom qui apparaîtrait dans deux
+# blocs serait une apparition redatée, et le chargeur refuse le fichier dans ce
+# cas. La règle n'est donc pas une consigne écrite dans un commentaire : elle
+# est mesurée.
+#
+# **Il est exhaustif, et pas seulement fait d'exceptions.** Chaque option et
+# chaque valeur de retour y porte son nom, même quand elle est née avec son
+# module. Un journal réduit aux exceptions ne saurait pas distinguer une option
+# ajoutée hier d'une option présente depuis toujours : la nouvelle hériterait
+# en silence de la date de son module, ce qui est exactement le défaut corrigé
+# ici.
+#
+# **D'où viennent les valeurs ci-dessous.** Elles ne sont pas estimées : elles
+# sont lues dans les tags publiés, en cherchant pour chaque nom le premier tag
+# qui le porte. ADR-013 porte cette mesure, avec sa date et ses comptes.
+#
+# **Ce que le générateur en fait.** Un module publie toujours son
+# `version_added`. Une option ou une valeur de retour ne publie le sien que
+# s'il diffère de celui de son module : sinon `antsibull-docs` répéterait le
+# même badge sur chaque ligne d'une page, ce qui n'apprend rien.
+
+# La version en préparation, celle qu'un nom encore absent du journal reçoit.
+#
+# Elle se pose à la main, et `scripts/introductions.py` la compare à ce que les
+# fragments de changelog impliquent : un module neuf stampé `0.5.0` dans une
+# version qui sortira en `1.0.0` publierait une date fausse dès son premier
+# jour.
+en_preparation: "0.5.0"
+
+apparitions:
+
+  "0.1.0":
+    modules:
+      - instance_dashboard_info
+      - instance_image
+      - instance_image_info
+      - instance_ip
+      - instance_ip_action
+      - instance_ip_info
+      - instance_placement_group
+      - instance_placement_group_info
+      - instance_placement_group_server_info
+      - instance_security_group
+      - instance_security_group_info
+      - instance_security_group_rule
+      - instance_security_group_rule_info
+      - instance_server
+      - instance_server_action
+      - instance_server_compatible_type_info
+      - instance_server_info
+      - instance_server_private_nic
+      - instance_server_private_nic_info
+      - instance_server_type_availability_info
+      - instance_server_type_info
+      - instance_server_user_data_info
+      - instance_snapshot
+      - instance_snapshot_action
+      - instance_snapshot_info
+      - instance_volume
+      - instance_volume_info
+      - instance_volume_type_info
+      - lb_acl
+      - lb_acl_info
+      - lb_backend
+      - lb_backend_info
+      - lb_backend_stat_info
+      - lb_certificate
+      - lb_certificate_info
+      - lb_frontend
+      - lb_frontend_acl_info
+      - lb_frontend_info
+      - lb_ip
+      - lb_ip_info
+      - lb_load_balancer
+      - lb_load_balancer_action
+      - lb_load_balancer_info
+      - lb_load_balancer_private_network_info
+      - lb_load_balancer_stat_info
+      - lb_load_balancer_type_info
+      - lb_route
+      - lb_route_info
+      - lb_subscriber
+      - lb_subscriber_info
+    options:
+      instance_dashboard_info:
+        - organization
+        - project
+        - zone
+      instance_image:
+        - arch
+        - extra_volumes
+        - image_id
+        - name
+        - public
+        - tags
+        - zone
+      instance_image_info:
+        - arch
+        - image_id
+        - name
+        - organization
+        - project
+        - public
+        - tags
+        - zone
+      instance_ip:
+        - ip
+        - reverse
+        - server
+        - tags
+        - type
+        - zone
+      instance_ip_action:
+        - ip_id
+        - zone
+      instance_ip_info:
+        - ip
+        - name
+        - organization
+        - project
+        - tags
+        - type
+        - zone
+      instance_placement_group:
+        - name
+        - placement_group_id
+        - policy_mode
+        - policy_type
+        - tags
+        - zone
+      instance_placement_group_info:
+        - name
+        - organization
+        - placement_group_id
+        - project
+        - tags
+        - zone
+      instance_placement_group_server_info:
+        - placement_group_id
+        - zone
+      instance_security_group:
+        - description
+        - enable_default_security
+        - inbound_default_policy
+        - name
+        - organization_default
+        - outbound_default_policy
+        - project_default
+        - security_group_id
+        - stateful
+        - tags
+        - zone
+      instance_security_group_info:
+        - name
+        - organization
+        - project
+        - project_default
+        - security_group_id
+        - tags
+        - zone
+      instance_security_group_rule:
+        - action
+        - dest_port_from
+        - dest_port_to
+        - direction
+        - ip_range
+        - position
+        - protocol
+        - security_group_id
+        - security_group_rule_id
+        - zone
+      instance_security_group_rule_info:
+        - security_group_id
+        - security_group_rule_id
+        - zone
+      instance_server:
+        - admin_password_encryption_ssh_key_id
+        - boot_type
+        - commercial_type
+        - dynamic_ip_required
+        - enable_ipv6
+        - name
+        - placement_group
+        - private_nics
+        - protected
+        - public_ips
+        - routed_ip_enabled
+        - security_group
+        - server_id
+        - tags
+        - volumes
+        - zone
+      instance_server_action:
+        - action
+        - server_id
+        - zone
+      instance_server_compatible_type_info:
+        - server_id
+        - zone
+      instance_server_info:
+        - commercial_type
+        - name
+        - order
+        - organization
+        - private_ip
+        - private_network
+        - private_networks
+        - private_nic_mac_address
+        - project
+        - server_id
+        - servers
+        - state
+        - tags
+        - with_ip
+        - without_ip
+        - zone
+      instance_server_private_nic:
+        - private_nic_id
+        - server_id
+        - tags
+        - zone
+      instance_server_private_nic_info:
+        - private_nic_id
+        - server_id
+        - tags
+        - zone
+      instance_server_type_availability_info:
+        - zone
+      instance_server_type_info:
+        - zone
+      instance_server_user_data_info:
+        - key
+        - server_id
+        - zone
+      instance_snapshot:
+        - name
+        - snapshot_id
+        - tags
+        - zone
+      instance_snapshot_action:
+        - bucket
+        - key
+        - snapshot_id
+        - zone
+      instance_snapshot_info:
+        - base_volume_id
+        - name
+        - organization
+        - project
+        - snapshot_id
+        - tags
+        - zone
+      instance_volume:
+        - name
+        - size
+        - tags
+        - volume_id
+        - zone
+      instance_volume_info:
+        - name
+        - organization
+        - project
+        - tags
+        - volume_id
+        - volume_type
+        - zone
+      instance_volume_type_info:
+        - zone
+      lb_acl:
+        - acl_id
+        - action
+        - description
+        - index
+        - match
+        - name
+        - zone
+      lb_acl_info:
+        - acl_id
+        - zone
+      lb_backend:
+        - backend_id
+        - failover_host
+        - forward_port
+        - forward_port_algorithm
+        - forward_protocol
+        - ignore_ssl_server_verify
+        - max_connections
+        - max_retries
+        - name
+        - on_marked_down_action
+        - proxy_protocol
+        - redispatch_attempt_count
+        - send_proxy_v2
+        - ssl_bridging
+        - sticky_sessions
+        - sticky_sessions_cookie_name
+        - timeout_connect
+        - timeout_queue
+        - timeout_server
+        - timeout_tunnel
+        - zone
+      lb_backend_info:
+        - backend_id
+        - lb_id
+        - name
+        - order_by
+        - zone
+      lb_backend_stat_info:
+        - backend_id
+        - lb_id
+        - zone
+      lb_certificate:
+        - certificate_id
+        - name
+        - zone
+      lb_certificate_info:
+        - certificate_id
+        - lb_id
+        - name
+        - order_by
+        - zone
+      lb_frontend:
+        - backend_id
+        - certificate_id
+        - certificate_ids
+        - connection_rate_limit
+        - enable_access_logs
+        - enable_http3
+        - frontend_id
+        - inbound_port
+        - name
+        - timeout_client
+        - zone
+      lb_frontend_acl_info:
+        - frontend_id
+        - name
+        - order_by
+        - zone
+      lb_frontend_info:
+        - frontend_id
+        - lb_id
+        - name
+        - order_by
+        - zone
+      lb_ip:
+        - ip_id
+        - lb_id
+        - reverse
+        - tags
+        - zone
+      lb_ip_info:
+        - ip_address
+        - ip_id
+        - ip_type
+        - tags
+        - zone
+      lb_load_balancer:
+        - description
+        - lb_id
+        - name
+        - ssl_compatibility_level
+        - tags
+        - zone
+      lb_load_balancer_action:
+        - lb_id
+        - type
+        - zone
+      lb_load_balancer_info:
+        - lb_id
+        - lb_ids
+        - name
+        - order_by
+        - tags
+        - zone
+      lb_load_balancer_private_network_info:
+        - lb_id
+        - order_by
+        - zone
+      lb_load_balancer_stat_info:
+        - backend_id
+        - lb_id
+        - zone
+      lb_load_balancer_type_info:
+        - zone
+      lb_route:
+        - backend_id
+        - match
+        - route_id
+        - zone
+      lb_route_info:
+        - frontend_id
+        - order_by
+        - route_id
+        - zone
+      lb_subscriber:
+        - email_config
+        - name
+        - subscriber_id
+        - webhook_config
+        - zone
+      lb_subscriber_info:
+        - name
+        - order_by
+        - subscriber_id
+        - zone
+    retours:
+      instance_dashboard_info:
+        - dashboard
+      instance_image:
+        - image
+      instance_image_info:
+        - image
+        - images
+      instance_ip:
+        - ip
+      instance_ip_action:
+        - action
+      instance_ip_info:
+        - ip
+        - ips
+      instance_placement_group:
+        - placement_group
+      instance_placement_group_info:
+        - placement_group
+        - placement_groups
+      instance_placement_group_server_info:
+        - servers
+      instance_security_group:
+        - security_group
+      instance_security_group_info:
+        - security_group
+        - security_groups
+      instance_security_group_rule:
+        - rule
+      instance_security_group_rule_info:
+        - rule
+        - rules
+      instance_server:
+        - server
+      instance_server_action:
+        - action
+        - state
+        - task
+      instance_server_compatible_type_info:
+        - result
+      instance_server_info:
+        - server
+        - servers
+      instance_server_private_nic:
+        - private_nic
+      instance_server_private_nic_info:
+        - private_nic
+        - private_nics
+      instance_server_type_availability_info:
+        - result
+      instance_server_type_info:
+        - result
+      instance_server_user_data_info:
+        - user_data
+      instance_snapshot:
+        - snapshot
+      instance_snapshot_action:
+        - action
+        - task
+      instance_snapshot_info:
+        - snapshot
+        - snapshots
+      instance_volume:
+        - volume
+      instance_volume_info:
+        - volume
+        - volumes
+      instance_volume_type_info:
+        - result
+      lb_acl:
+        - resource
+      lb_acl_info:
+        - result
+      lb_backend:
+        - resource
+      lb_backend_info:
+        - backends
+      lb_backend_stat_info:
+        - backend_servers_stats
+      lb_certificate:
+        - resource
+      lb_certificate_info:
+        - certificates
+      lb_frontend:
+        - resource
+      lb_frontend_acl_info:
+        - acls
+      lb_frontend_info:
+        - frontends
+      lb_ip:
+        - resource
+      lb_ip_info:
+        - ips
+      lb_load_balancer:
+        - resource
+      lb_load_balancer_action:
+        - action
+      lb_load_balancer_info:
+        - lbs
+      lb_load_balancer_private_network_info:
+        - private_network
+      lb_load_balancer_stat_info:
+        - result
+      lb_load_balancer_type_info:
+        - lb_types
+      lb_route:
+        - resource
+      lb_route_info:
+        - routes
+      lb_subscriber:
+        - resource
+      lb_subscriber_info:
+        - subscribers
+
+  "0.4.0":
+    retours:
+      instance_server_user_data_info:
+        - result
+      lb_backend_info:
+        - result
+      lb_certificate_info:
+        - result
+      lb_frontend_info:
+        - result
+      lb_ip_info:
+        - result
+      lb_load_balancer_info:
+        - result
+      lb_route_info:
+        - result
+      lb_subscriber_info:
+        - result

@@ -127,6 +127,23 @@ def composer(version: str) -> None:
         raise VersionError("`antsibull-changelog release` a échoué")
 
 
+def figer_les_apparitions(version: str) -> None:
+    """Date sous `version` tout ce que le journal des apparitions ne connaît pas.
+
+    **C'est ici que ça se fige, et pas ailleurs.** Un module écrit pendant le
+    cycle porte la version en préparation ; s'il n'est pas inscrit au moment de
+    publier, le cycle suivant lui donnera une date qui n'est plus la sienne
+    (ADR-013). Le figeage appartient donc à la commande qui pose le numéro.
+    """
+    resultat = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "introductions.py"), "--enregistrer", version],
+        cwd=ROOT,
+        check=False,
+    )
+    if resultat.returncode != 0:
+        raise VersionError("le journal des apparitions n'a pas pu être figé")
+
+
 def main(argv: list[str]) -> int:
     parseur = argparse.ArgumentParser(description=__doc__)
     groupe = parseur.add_mutually_exclusive_group(required=True)
@@ -162,6 +179,7 @@ def main(argv: list[str]) -> int:
     try:
         ecrire_version(collection.path, cible)
         composer(cible)
+        figer_les_apparitions(cible)
     except VersionError as erreur:
         print(f"erreur : {erreur}", file=sys.stderr)
         return 1

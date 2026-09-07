@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_security_group_rule_info
 short_description: Gather information about Scaleway Instance security group rules
-version_added: 0.4.0
+version_added: 0.1.0
 description:
 - Get details of a security group rule with the specified ID.
 - List the rules of the a specified security group ID.

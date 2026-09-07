@@ -31,6 +31,7 @@ from typing import Any
 
 from generator.ansible.collection import Collection
 from generator.ansible.comparison import strategie_par_defaut
+from generator.ansible.introductions import Introductions
 from generator.ansible.mapping import (
     COMMON_PARAMETERS,
     UNCHANGED,
@@ -128,7 +129,14 @@ class AnsibleOption:
             entry["no_log"] = self.no_log
         return entry
 
-    def to_documentation(self) -> dict[str, Any]:
+    def to_documentation(self, *, version_added: str | None = None) -> dict[str, Any]:
+        """La description publiée de l'option.
+
+        `version_added` n'est posé que lorsque l'option est **postérieure** à
+        son module : le journal des apparitions le décide, et rend `None` quand
+        les deux dates coïncident. Répéter la date du module sur chacune de ses
+        options ferait publier le même badge partout sans rien apprendre.
+        """
         entry: dict[str, Any] = {"description": list(self.description), "type": self.type}
         if self.required:
             entry["required"] = True
@@ -138,6 +146,8 @@ class AnsibleOption:
             entry["choices"] = list(self.choices)
         if self.elements:
             entry["elements"] = self.elements
+        if version_added:
+            entry["version_added"] = version_added
         return entry
 
 
@@ -213,7 +223,13 @@ class ReturnValue:
     #: dire ce qu'on y trouve : il fallait appeler le module pour l'apprendre.
     contains: tuple[ReturnField, ...] = ()
 
-    def to_documentation(self) -> dict[str, Any]:
+    def to_documentation(self, *, version_added: str | None = None) -> dict[str, Any]:
+        """La description publiée de la clé de retour.
+
+        Même règle que pour une option : la date n'est posée que si la clé est
+        postérieure à son module. C'est le cas des `result` ajoutés **à côté**
+        de la clé existante, et non à sa place (ADR-013).
+        """
         entry: dict[str, Any] = {
             "description": list(self.description),
             "returned": self.returned,
@@ -221,6 +237,8 @@ class ReturnValue:
         }
         if self.elements:
             entry["elements"] = self.elements
+        if version_added:
+            entry["version_added"] = version_added
         if self.contains:
             entry["contains"] = {champ.name: champ.to_documentation() for champ in self.contains}
         return entry
@@ -255,6 +273,13 @@ class AnsibleModuleSpec:
     name: str
     kind: OperationKind
     collection: Collection
+    #: La version de la collection où ce module est **apparu**, lue dans le
+    #: journal des apparitions.
+    #:
+    #: Obligatoire, et sans repli : une valeur qui retomberait sur la version
+    #: courante de la collection redaterait tous les modules à chaque
+    #: génération, ce qui est exactement ce que la 0.4.0 a publié (ADR-013).
+    version_added: str
     short_description: str
     description: tuple[str, ...]
     options: tuple[AnsibleOption, ...]
@@ -306,6 +331,15 @@ class AnsibleModuleSpec:
     #: nommant une option absente ferait échouer Ansible au chargement, sur
     #: tous les appels du module, y compris ceux qui n'y touchent pas.
     mutually_exclusive: tuple[tuple[str, ...], ...] = ()
+    #: Les options apparues **après** le module, avec leur version.
+    #:
+    #: Vide tant qu'aucune option n'est ajoutée à un module existant. Le champ
+    #: existe pour que celle-là trouve où se dater, plutôt que d'hériter en
+    #: silence de la date de son module.
+    option_versions: tuple[tuple[str, str], ...] = ()
+    #: Les valeurs de retour apparues après le module. Le journal des
+    #: apparitions en date déjà (ADR-013).
+    return_versions: tuple[tuple[str, str], ...] = ()
 
     @property
     def waitable(self) -> bool:
@@ -340,13 +374,17 @@ class AnsibleModuleSpec:
 
     def documentation(self) -> dict[str, Any]:
         """Le bloc `DOCUMENTATION`, construit depuis les mêmes options."""
+        versions = dict(self.option_versions)
         return {
             "module": self.name,
             "short_description": self.short_description,
-            "version_added": self.collection.version,
+            "version_added": self.version_added,
             "description": list(self.description),
             "author": list(self.collection.authors),
-            "options": {option.name: option.to_documentation() for option in self.options},
+            "options": {
+                option.name: option.to_documentation(version_added=versions.get(option.name))
+                for option in self.options
+            },
             "extends_documentation_fragment": self.doc_fragments(),
         }
 
@@ -358,7 +396,11 @@ class AnsibleModuleSpec:
         return fragments
 
     def return_documentation(self) -> dict[str, Any]:
-        return {value.name: value.to_documentation() for value in self.returns}
+        versions = dict(self.return_versions)
+        return {
+            value.name: value.to_documentation(version_added=versions.get(value.name))
+            for value in self.returns
+        }
 
     def examples_documentation(self) -> list[dict[str, Any]]:
         return [example.to_documentation() for example in self.examples]
@@ -421,12 +463,20 @@ def build_module_specs(
     collection: Collection,
     *,
     only: tuple[str, ...] = (),
+    introductions: Introductions | None = None,
 ) -> tuple[tuple[AnsibleModuleSpec, ...], tuple[tuple[str, str], ...]]:
     """Construit les modèles des modules d'un plan.
 
     Rend deux choses, et jamais une seule : les modules construits, et ceux qui
     ne l'ont pas été **avec leur raison**. Un module qui disparaît en silence
     d'une génération est exactement ce que ce projet refuse.
+
+    `introductions` porte l'histoire publiée : quand chaque module, option et
+    valeur de retour est entré dans la collection. Sans journal, on retombe sur
+    « tout est neuf dans la version courante », qui est vrai pour un contrat de
+    laboratoire sans passé et faux pour la vraie collection. C'est
+    `generator/cli.py` qui charge le vrai journal, et un test le prouve : sans
+    lui, chaque module réannoncerait la version du jour (ADR-013).
 
     `only` restreint la production à des modules nommés. Ce n'est pas un filtre
     de confort : l'étape 2 du projet ne produit qu'un module, et la liste est
@@ -437,6 +487,7 @@ def build_module_specs(
     sortir, ou faire échouer la commande. Ce qu'on n'a pas demandé se lit dans
     le rapport, jamais dans le silence.
     """
+    journal = introductions or Introductions.sans_journal(collection.version)
     specs: list[AnsibleModuleSpec] = []
     skipped: list[tuple[str, str]] = []
 
@@ -449,7 +500,16 @@ def build_module_specs(
             skipped.append((name, "non demandé : `--module` restreint cette production"))
             continue
         try:
-            specs.append(build_module_spec(name, plans, plan.service, collection, plan.overrides))
+            specs.append(
+                build_module_spec(
+                    name,
+                    plans,
+                    plan.service,
+                    collection,
+                    plan.overrides,
+                    introductions=journal,
+                )
+            )
         except (ModuleModelError, UnmappedType) as error:
             # `UnmappedType` rejoint les erreurs de modèle, et c'est une
             # correction plutôt qu'un élargissement. Un type que le contrat ne
@@ -478,8 +538,11 @@ def build_module_spec(
     service: ApiService,
     collection: Collection,
     overrides: OverrideSet | None = None,
+    *,
+    introductions: Introductions | None = None,
 ) -> AnsibleModuleSpec:
     """Construit le modèle d'un module à partir de ses opérations."""
+    journal = introductions or Introductions.sans_journal(collection.version)
     kinds = {item.kind for item in plans}
     if len(kinds) != 1:
         raise AmbiguousModule(f"{name} : classes mélangées {sorted(k.value for k in kinds)}")
@@ -488,10 +551,10 @@ def build_module_spec(
         raise UnsupportedKind(f"classe {kind.value.upper()} : aucun renderer à ce stade")
 
     if kind is OperationKind.ACTION:
-        return _build_action_module(name, plans, service, collection, overrides)
+        return _build_action_module(name, plans, service, collection, overrides, journal)
 
     if kind is OperationKind.MANAGE:
-        return _build_manage_module(name, plans, service, collection, overrides)
+        return _build_manage_module(name, plans, service, collection, overrides, journal)
 
     getters = [item for item in plans if not _is_list(item.operation)]
     listers = [item for item in plans if _is_list(item.operation)]
@@ -518,15 +581,17 @@ def build_module_spec(
         operations, ("zone", "region", selector or ""), override_get, override_list
     )
     resource = plans[0].resource
+    retours = _returns(get_operation, list_operation, selector, service, overrides)
 
     return AnsibleModuleSpec(
         name=name,
         kind=kind,
         collection=collection,
+        version_added=journal.module(name),
         short_description=_short_description(service, resource),
         description=_description(get_operation, list_operation),
         options=options,
-        returns=_returns(get_operation, list_operation, selector, service, overrides),
+        returns=retours,
         examples=_examples(
             name,
             collection,
@@ -541,7 +606,29 @@ def build_module_spec(
         selector=selector,
         limits=limits,
         mutually_exclusive=_exclusions(tuple(operations)),
+        option_versions=_versions_options(journal, name, options),
+        return_versions=_versions_retours(journal, name, retours),
     )
+
+
+def _versions_options(
+    journal: Introductions, module: str, options: tuple[AnsibleOption, ...]
+) -> tuple[tuple[str, str], ...]:
+    """Les options que le journal date **après** leur module, et elles seules.
+
+    Le journal rend `None` quand les deux dates coïncident : ce filtre ne
+    décide donc rien, il retire ce qui n'apprend rien à la page.
+    """
+    dates = ((option.name, journal.option(module, option.name)) for option in options)
+    return tuple((nom, version) for nom, version in dates if version)
+
+
+def _versions_retours(
+    journal: Introductions, module: str, returns: tuple[ReturnValue, ...]
+) -> tuple[tuple[str, str], ...]:
+    """Les valeurs de retour datées après leur module."""
+    dates = ((valeur.name, journal.retour(module, valeur.name)) for valeur in returns)
+    return tuple((nom, version) for nom, version in dates if version)
 
 
 def _exclusions(operations: tuple[ApiOperation, ...]) -> tuple[tuple[str, ...], ...]:
@@ -562,6 +649,7 @@ def _build_action_module(
     service: ApiService,
     collection: Collection,
     overrides: OverrideSet | None,
+    journal: Introductions,
 ) -> AnsibleModuleSpec:
     """Construit le modèle d'un module d'action.
 
@@ -607,16 +695,19 @@ def _build_action_module(
     )
     resource = item.resource
 
+    retours = _action_returns(
+        action_operation, parametre, state_field, wait_states, choix, service, overrides
+    )
+
     return AnsibleModuleSpec(
         name=name,
         kind=item.kind,
         collection=collection,
+        version_added=journal.module(name),
         short_description=_action_short_description(service, resource),
         description=_action_description(action_operation, choix),
         options=options,
-        returns=_action_returns(
-            action_operation, parametre, state_field, wait_states, choix, service, overrides
-        ),
+        returns=retours,
         examples=_action_examples(name, collection, options, parametre, action_operation),
         get_operation=None,
         list_operation=None,
@@ -628,6 +719,8 @@ def _build_action_module(
         wait_states=wait_states,
         limits=limits,
         mutually_exclusive=_exclusions((item.operation,)),
+        option_versions=_versions_options(journal, name, options),
+        return_versions=_versions_retours(journal, name, retours),
     )
 
 
@@ -669,6 +762,7 @@ def _build_manage_module(
     service: ApiService,
     collection: Collection,
     overrides: OverrideSet | None,
+    journal: Introductions,
 ) -> AnsibleModuleSpec:
     """Construit le modèle d'un module de gestion.
 
@@ -747,10 +841,21 @@ def _build_manage_module(
         )
 
     champ = read_operation.payload_field or "resource"
+    retours = (
+        ReturnValue(
+            name=champ,
+            description=(read_operation.documentation_line or UNDOCUMENTED,),
+            returned="success",
+            type="dict",
+            contains=_contains(service, read_operation.payload_schema, overrides),
+        ),
+    )
+
     return AnsibleModuleSpec(
         name=name,
         kind=item.kind,
         collection=collection,
+        version_added=journal.module(name),
         short_description=f"Manage a Scaleway {_libelle(service, item.resource)}",
         description=(
             _sans_la_couche_http(update_operation.documentation_line or "") or UNDOCUMENTED,
@@ -763,15 +868,7 @@ def _build_manage_module(
                 "fields that differ, so a second run reports no change."
             ),
         ),
-        returns=(
-            ReturnValue(
-                name=champ,
-                description=(read_operation.documentation_line or UNDOCUMENTED,),
-                returned="success",
-                type="dict",
-                contains=_contains(service, read_operation.payload_schema, overrides),
-            ),
-        ),
+        returns=retours,
         examples=_manage_examples(
             name, collection, options, geres, _libelle(service, item.resource)
         ),
@@ -794,6 +891,8 @@ def _build_manage_module(
             and override.parameters[nom].postcondition is False
         ),
         mutually_exclusive=_exclusions((item.operation,)),
+        option_versions=_versions_options(journal, name, options),
+        return_versions=_versions_retours(journal, name, retours),
     )
 
 

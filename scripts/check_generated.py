@@ -9,6 +9,14 @@ suivi* : un module tout neuf, produit et jamais commité, laisserait la
 commande verte. Ce script regarde les deux : ce qui a changé, et ce qui est
 apparu.
 
+**Ce qui est déjà indexé n'est pas une dérive.** Un fichier régénéré puis
+`git add`é a exactement le contenu que le générateur produit : c'est la
+situation que ce contrôle demande d'atteindre, pas celle qu'il doit refuser.
+Confondre les deux rendait le crochet de pré-commit auto-contradictoire, en
+refusant le commit qui porte la régénération qu'il réclamait. On regarde donc
+la **deuxième** colonne de `git status --porcelain`, celle de la copie de
+travail, plus les fichiers non suivis.
+
     python scripts/check_generated.py tests/fixtures ansible_collections
 """
 
@@ -24,6 +32,19 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PATHS: tuple[str, ...] = ("tests/fixtures", "ansible_collections")
 
 
+def derives(lignes: str) -> list[str]:
+    """Les lignes de `git status --porcelain` qui disent une vraie dérive.
+
+    Le format donne deux colonnes : l'index, puis la copie de travail. Seule la
+    seconde décide. Un fichier indexé et identique au disque porte `M ` ; il a
+    le contenu que le générateur produit, et le retenir ferait échouer le commit
+    qui le porte. Un fichier non suivi porte `??`, donc `?` en seconde colonne,
+    et reste une dérive : un module produit et jamais commité est exactement le
+    cas que `git diff --exit-code` ne voit pas.
+    """
+    return [ligne for ligne in lignes.splitlines() if ligne and ligne[1] != " "]
+
+
 def modified(paths: tuple[str, ...]) -> str:
     """Ce que git voit de différent, fichiers non suivis compris."""
     result = subprocess.run(
@@ -33,7 +54,7 @@ def modified(paths: tuple[str, ...]) -> str:
         text=True,
         check=True,
     )
-    return result.stdout.strip()
+    return "\n".join(derives(result.stdout))
 
 
 def main(argv: list[str]) -> int:

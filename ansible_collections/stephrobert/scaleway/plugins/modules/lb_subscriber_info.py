@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_subscriber_info
 short_description: Gather information about Scaleway Load Balancer subscribers
-version_added: 0.4.0
+version_added: 0.1.0
 description:
 - Retrieve information about an existing subscriber, specified by its subscriber ID. Its full
   details, including name and email/webhook configuration, are returned in the response object.
@@ -94,6 +94,7 @@ result:
     as is.'
   returned: when I(subscriber_id) is provided
   type: dict
+  version_added: 0.4.0
   contains:
     id:
       description:

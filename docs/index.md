@@ -51,6 +51,7 @@ adr/009-how-a-managed-field-is-compared
 adr/010-postconditions-are-checked-not-announced
 adr/011-a-product-is-admitted-not-merely-added
 adr/012-an-explicit-null-is-refused-never-ignored
+adr/013-when-a-module-appeared-is-recorded-not-computed
 ```
 
 ```{toctree}

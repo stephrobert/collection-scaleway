@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_load_balancer
 short_description: Manage a Scaleway Load Balancer
-version_added: 0.4.0
+version_added: 0.1.0
 description:
 - Update the parameters of an existing Load Balancer, specified by its Load Balancer ID.
 - 'The module reads the resource first and writes the whole body, because this operation replaces

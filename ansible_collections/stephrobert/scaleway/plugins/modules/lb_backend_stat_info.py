@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_backend_stat_info
 short_description: Gather information about Scaleway Load Balancer backend stats
-version_added: 0.4.0
+version_added: 0.1.0
 description:
 - List information about your backend servers, including their state and the result of their
   last health check.

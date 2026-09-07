@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_ip_info
 short_description: Gather information about Scaleway Load Balancer IPs
-version_added: 0.4.0
+version_added: 0.1.0
 description:
 - Retrieve the full details of a Load Balancer flexible IP address.
 - List the Load Balancer flexible IP addresses held in the account (filtered by Organization
@@ -95,6 +95,7 @@ result:
     as is.'
   returned: when I(ip_id) is provided
   type: dict
+  version_added: 0.4.0
   contains:
     id:
       description:

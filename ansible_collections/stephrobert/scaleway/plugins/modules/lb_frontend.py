@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_frontend
 short_description: Manage a Scaleway Load Balancer frontend
-version_added: 0.4.0
+version_added: 0.1.0
 description:
 - Update a given frontend, specified by its frontend ID. You can update configuration parameters
   including its name and the port it listens on.

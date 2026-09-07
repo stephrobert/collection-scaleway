@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: lb_backend_info
 short_description: Gather information about Scaleway Load Balancer backends
-version_added: 0.4.0
+version_added: 0.1.0
 description:
 - Get the full details of a given backend, specified by its backend ID. The response contains
   the backend's full configuration parameters including protocol, port and forwarding algorithm.
@@ -98,6 +98,7 @@ result:
     as is.'
   returned: when I(backend_id) is provided
   type: dict
+  version_added: 0.4.0
   contains:
     id:
       description:

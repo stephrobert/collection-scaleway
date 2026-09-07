@@ -15,7 +15,7 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 module: instance_server_private_nic
 short_description: Manage a Scaleway Instance server private NIC
-version_added: 0.4.0
+version_added: 0.1.0
 description:
 - Update one or more parameter(s) of a specified private NIC.
 - The module reads the resource first and writes only the fields that differ, so a second

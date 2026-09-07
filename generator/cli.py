@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 from generator.ansible.collection import CollectionError, load_collection
+from generator.ansible.introductions import IntroductionsError, load_introductions
 from generator.ansible.models import ModuleModelError, build_module_specs
 from generator.overrides.loader import DEFAULT_OVERRIDES_ROOT, OverrideError
 from generator.parser.openapi import ParseError, parse_document
@@ -143,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
     if arguments.command == "generate":
         try:
             return _generate(plan, arguments)
-        except (CollectionError, ModuleModelError) as error:
+        except (CollectionError, IntroductionsError, ModuleModelError) as error:
             print(f"erreur : {error}", file=sys.stderr)
             return EXIT_ERROR
 
@@ -192,7 +193,15 @@ def _generate(plan: ProductPlan, arguments: argparse.Namespace) -> int:
     """
     collection = load_collection(arguments.collection_root)
     output_dir = arguments.output_dir or collection.modules_dir
-    specs, skipped = build_module_specs(plan, collection, only=tuple(arguments.modules))
+    # Le journal des apparitions, et pas la version courante de la collection :
+    # sans lui, chaque génération redate tous les modules du jour où elle
+    # tourne, et une page Galaxy est publiée pour toujours (ADR-013).
+    specs, skipped = build_module_specs(
+        plan,
+        collection,
+        only=tuple(arguments.modules),
+        introductions=load_introductions(),
+    )
     written = write_modules(
         specs,
         output_dir,

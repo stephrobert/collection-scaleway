@@ -40,10 +40,21 @@ mise run check            # everything, one last time
 git diff                  # read it
 ```
 
-`version:bump` writes the number into `galaxy.yml` and makes
-`antsibull-changelog` absorb the pending fragments. `readme` matters more than
-it looks: the documentation links published next to the version are derived from
-it, so skipping this step ships links pointing at the previous release.
+`version:bump` writes the number into `galaxy.yml`, makes
+`antsibull-changelog` absorb the pending fragments, and **freezes the appearance
+journal**: every module, option and return value not yet dated is recorded under
+the version being cut, and the version in preparation moves on (ADR-013). This
+belongs to the command that sets the number, because a module written during the
+cycle and left undated would be dated by the *next* cycle, which is no longer
+its own.
+
+`readme` matters more than it looks: the documentation links published next to
+the version are derived from it, so skipping this step ships links pointing at
+the previous release.
+
+Read the journal's diff along with the rest. It is the list of what this release
+adds, in the words a published page will use, and it is written once: a date
+recorded here is never changed again.
 
 ```bash
 git switch -c release/0.2.0
