@@ -100,7 +100,7 @@ files = ["generator", "scripts"]
 # dépôt mais une **cible de construction** pour ClusterFuzzLite, qui compile
 # chaque `fuzz_*.py` comme un programme autonome. `scripts/fuzz_smoke.py`
 # l'importe pour le rejouer hors ligne ; `mypy_path` lui dit où le trouver, sans
-# l'ajouter à `files` — il y serait alors vu sous deux noms de module, celui du
+# l'ajouter à `files` : il y serait alors vu sous deux noms de module, celui du
 # chemin et celui de l'import, et mypy refuse.
 mypy_path = "tests/fuzz"
 

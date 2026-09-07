@@ -785,7 +785,7 @@ def test_le_diff_lit_ses_deux_cotes_de_la_meme_facon(runtime: Any, monkeypatch: 
         after:  {backend_id: null}
 
     alors que l'API avait parfaitement rendu `backend.id = xyz`. Le module
-    marchait, et le diff mentait — ce qui est pire qu'un module qui échoue,
+    marchait, et le diff mentait, ce qui est pire qu'un module qui échoue,
     parce que rien ne le signale.
     """
     spec = runtime.ManageModule(

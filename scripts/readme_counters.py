@@ -55,7 +55,7 @@ FIN = "<!-- compteurs:fin -->"
 #:
 #: Le mécanisme n'en acceptait qu'un par fichier, et c'est cette limite qui a
 #: fait écrire à la main la table de compatibilité, les exemples de
-#: versionnement et un compte de modules — trois nombres qu'un audit de la
+#: versionnement et un compte de modules, trois nombres qu'un audit de la
 #: 0.2.0 publiée a trouvés faux.
 def _marqueurs(nom: str) -> tuple[str, str]:
     return (

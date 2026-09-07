@@ -46,7 +46,7 @@ def main(argv: list[str]) -> int:
     print("ce que git enregistre diffère de ce qui est sur le disque :", file=sys.stderr)
     print(drift, file=sys.stderr)
     print(
-        "\nUn fichier généré : relire le diff, puis commiter la régénération — "
+        "\nUn fichier généré : relire le diff, puis commiter la régénération, "
         "un golden rafraîchi sans être lu annule tout le mécanisme.\n"
         "Un artefact de build : l'ajouter au .gitignore, il n'a rien à faire ici.",
         file=sys.stderr,

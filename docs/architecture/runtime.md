@@ -298,7 +298,7 @@ each one actually exercised and how many idempotences it proved.
 Those numbers are **not** published here, on purpose: they depend on a run,
 and a derived block has to be computable offline. `mise run coverage:example`
 publishes them from the artefacts each run leaves behind, and says "no run
-recorded" rather than "0 %" when there is none — nothing was measured is not
+recorded" rather than "0 %" when there is none: nothing was measured is not
 nothing worked.
 
 ```bash

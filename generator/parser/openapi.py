@@ -622,7 +622,7 @@ def _parse_response(
     # ne s'applique qu'à une clé **absente** : un `content:` sans rien dessous
     # rend `None`, et la chaîne d'appels sortait en `AttributeError` au lieu de
     # conclure que la réponse n'a pas de schéma. Trouvé par le fuzzer du parser,
-    # sur une mutation qui met un champ à `null` — ce qu'un document YAML écrit
+    # sur une mutation qui met un champ à `null`, ce qu'un document YAML écrit
     # à la main produit sans effort.
     schema = _mapping(_mapping(_mapping(success).get("content")).get("application/json")).get(
         "schema"
@@ -825,8 +825,8 @@ def _first_paragraph(text: Any) -> str | None:
     non comme une erreur fatale. Le type était annoté `str | None` et supposé
     tel : un fuzzer du parser a produit un document où ce champ portait un
     objet, et le parser sortait en `AttributeError` au lieu de refuser
-    proprement. Une description n'est pas porteuse — le rapport compte déjà les
-    paramètres qui n'en ont pas, et c'est là que le trou se voit — donc faire
+    proprement. Une description n'est pas porteuse : le rapport compte déjà les
+    paramètres qui n'en ont pas, et c'est là que le trou se voit, donc faire
     tomber le parsing d'un produit entier pour elle coûterait plus que ce que
     ça protège.
     """

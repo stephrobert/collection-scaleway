@@ -8,7 +8,7 @@ la taille de la collection au jour où elles ont été écrites.
 
 **Un seul plugin d'inventaire.** Le contrôle refusait explicitement d'en voir
 deux. C'est la même hypothèse que le nom écrit en dur, déplacée du nom vers le
-nombre — et le nom écrit en dur avait déjà coûté un diagnostic.
+nombre, et le nom écrit en dur avait déjà coûté un diagnostic.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ def test_un_repertoire_de_plugins_inconnu_est_refuse(tmp_path: Path) -> None:
     """Une découverte qui ignore ce qu'elle ne connaît pas est une passoire.
 
     Le jour où un `lookup/` apparaît, il doit être interrogé. Le jour où un
-    répertoire que ce contrôle ne sait pas traiter apparaît, il doit le dire —
+    répertoire que ce contrôle ne sait pas traiter apparaît, il doit le dire :
     un plugin ignoré est un plugin hors de la preuve, et personne ne s'en
     apercevrait.
     """
@@ -75,7 +75,7 @@ def test_un_module_que_larchive_ne_documente_pas_est_refuse(
     C'est le fond du défaut : le contrôle interrogeait un « module
     représentatif », et un module cassé parmi les quarante-neuf autres passait.
     Ici, `ansible-doc` répond pour les deux modules, et le second ne porte
-    aucune `short_description` — le paquet doit être refusé, et le module
+    aucune `short_description` : le paquet doit être refusé, et le module
     nommé.
     """
     modules = tmp_path / "plugins" / "modules"

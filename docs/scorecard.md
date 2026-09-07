@@ -71,7 +71,7 @@ weekly scan:
   refusal bites.
 * **Signed-Releases.** The check reads the archives of the published releases.
   0.2.0 and 0.3.0 were published before the release workflow signed anything,
-  and no release has been cut since it did — hence 0, correctly. 0.4.0 will be
+  and no release has been cut since it did, hence 0, correctly. 0.4.0 will be
   the first signed one, and the number is worth re-reading then rather than
   announcing now.
 
@@ -116,7 +116,7 @@ and every Tuesday.
 **It was not deployed for the score.** The parser reads a document nobody here
 controls: `specs/scaleway/` is versioned, but its content comes from Scaleway's
 portal, which added 453 SDK methods and removed 26 in twelve months. The harness
-found **twelve real defects on its first pass**, all of the same shape — a YAML
+found **twelve real defects on its first pass**, all of the same shape: a YAML
 key declared with no value, a `$ref` that is not a string, a `type` that is an
 object. None was theoretical, and each is now a named refusal with a test.
 
@@ -130,7 +130,7 @@ runs inside the OSS-Fuzz container is a harness nobody rereads.
 The collection is published on Ansible Galaxy on every version tag. Scorecard
 does not know Galaxy: it looks for a publishing workflow among the ecosystems it
 supports. The honest way to score here was not to game the detector but to
-publish something it recognises **and that users want** — an execution
+publish something it recognises **and that users want**, namely an execution
 environment image, which the collection's `meta/` already described.
 
 `Containerfile` builds it on `awx-ee`, pinned by digest, and the release workflow

@@ -6,7 +6,7 @@
 #
 # **`--add-data "generator:generator"`** copiait l'arbre comme des *données* :
 # PyInstaller ne trace alors aucun import, et le binaire échouait au démarrage
-# sur `ModuleNotFoundError: No module named 'json'` — il n'embarquait même pas
+# sur `ModuleNotFoundError: No module named 'json'`, et il n'embarquait même pas
 # la bibliothèque standard.
 #
 # **`pip install .`** butait sur le plancher du projet : l'image de base
@@ -19,7 +19,7 @@
 # Mesuré avant de l'écrire : aucun module de `generator/` n'emploie de grammaire
 # postérieure à 3.11, vérifié en les compilant tous avec
 # `ast.parse(..., feature_version=(3, 11))`. Le plancher du dépôt reste 3.12
-# pour ce qu'il décrit vraiment — l'environnement de développement et la cible
+# pour ce qu'il décrit vraiment : l'environnement de développement et la cible
 # de mypy.
 racine="$SRC/collection-scaleway"
 verrou="$racine/.clusterfuzzlite/requirements.txt"

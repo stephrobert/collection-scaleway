@@ -198,7 +198,7 @@ TYPES_DE_PLUGINS: dict[str, str] = {
 #: `modules` a son propre contrôle, qui les interroge tous. `module_utils` est
 #: du code partagé sans documentation propre ; `doc_fragments` est de la
 #: documentation que les modules incorporent, et `ansible-doc` la rend déjà
-#: fondue dans la leur — c'est là qu'elle se vérifie.
+#: fondue dans la leur, et c'est là qu'elle se vérifie.
 PLUGINS_NON_INTERROGEABLES = frozenset({"modules", "module_utils", "doc_fragments", "action"})
 
 #: Ce qu'un utilisateur écrit dans son fichier de configuration, par type de

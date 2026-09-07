@@ -8,7 +8,7 @@ technical API into a coherent Ansible interface.
 
 So a change that edits a file under `ansible_collections/` by hand is almost
 always the wrong change. `mise run check:generated` regenerates everything and
-fails on `git diff`, so the edit would not survive anyway — but the point is not
+fails on `git diff`, so the edit would not survive anyway, but the point is not
 the check. The point is that fifty modules share one fix, and a hand edit fixes
 one.
 
@@ -37,7 +37,7 @@ with it.
 
 `qualifier` replays `check`, `ansible-test sanity`, the integration run, the
 example platform, both container images and the workflow scanners, and it
-**names** what no local command can replay — CodeQL, the dependency review,
+**names** what no local command can replay: CodeQL, the dependency review,
 TruffleHog, Scorecard. A gate that stayed quiet about its own gaps would be the
 green-on-nothing this repository is built against.
 
@@ -98,7 +98,7 @@ lb.v1.Acl.UpdateAcl:
         `allow`, `deny` et `redirect`, et son défaut est `allow`.
 ```
 
-The loader refuses a decision without a `reason`, and refuses an unknown field —
+The loader refuses a decision without a `reason`, and refuses an unknown field,
 a typo would otherwise produce a silently inert override. It also refuses a key
 declared twice: YAML keeps the last one without a word, and that once erased a
 `resource` decision and renamed a published module with nothing turning red.
@@ -124,7 +124,7 @@ Terraform provisions resources. Ansible operates existing resources.
 An operation that creates, deletes or links resources has no place in this
 collection, even when the generator can produce it. That is the boundary that
 settles every design ambiguity, and it is why `AttachServerVolume`,
-`AddBackendServers` and every `Set*` replacement is excluded — each with its
+`AddBackendServers` and every `Set*` replacement is excluded, each with its
 reason, in `generator/overrides/`.
 
 **No operation ever disappears.** One that no rule settles is `UNKNOWN` and
@@ -147,12 +147,15 @@ Commit messages are in French. They say what changed and **why**, and they name
 what was measured. The repository's history is the design record: a subject line
 of "fix" tells a future reader nothing.
 
-Everything published is in English — both READMEs, `docs/`, `galaxy.yml`,
+Everything published is in English: both READMEs, `docs/`, `galaxy.yml`,
 changelog fragments, and whatever `DOCUMENTATION`, `EXAMPLES` and `RETURN`
 carry. Code, comments, docstrings, test names, override reasons and program
 output are in French, with the accents. The full table is in `CLAUDE.md`.
 
-Never use an em dash, in either language.
+Never use an em dash, in either language. `mise run typographie` refuses one,
+and does not offer a replacement: the punctuation an em dash stands in for
+depends on what the aside does, and a single substitution would put the same
+mark everywhere and produce wrong sentences.
 
 ## AI-assisted contributions
 

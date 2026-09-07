@@ -465,7 +465,7 @@ def test_deux_plugins_dinventaire_sont_interroges_tous_les_deux(
     """Le contrôle refusait d'en voir deux, ce qui tenait tant qu'il y en avait un.
 
     C'est la même hypothèse que le nom écrit en dur, déplacée du nom vers le
-    nombre — et le nom écrit en dur avait déjà coûté un diagnostic. Les deux
+    nombre, et le nom écrit en dur avait déjà coûté un diagnostic. Les deux
     sont désormais interrogés, et un plugin muet fait échouer le paquet quel que
     soit son rang.
     """

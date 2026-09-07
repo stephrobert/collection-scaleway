@@ -7,7 +7,7 @@
 # suppose une forme.
 #
 # Ce n'est pas une hypothèse : le harnais de `tests/fuzz/` a trouvé **douze**
-# défauts réels au premier passage, tous du même genre — une clé YAML déclarée
+# défauts réels au premier passage, tous du même genre : une clé YAML déclarée
 # sans valeur, un `$ref` qui n'est pas une chaîne, un `type` qui est un objet.
 # Aucun n'était théorique.
 FROM gcr.io/oss-fuzz-base/base-builder-python@sha256:6b2b3a7e4a2da50de47f94925cffbe34747e1aae4f33d7f07ba6c681dd648b23
