@@ -1647,6 +1647,22 @@
       "find": "        get_operation is not None\n        and not get_operation.payload_field\n        and list_operation is not None\n",
       "replace": "        get_operation is not None\n        and not get_operation.payload_field\n        and False\n        and list_operation is not None\n",
       "test": "tests/unit/generator/test_models.py::test_un_get_sans_champ_porteur_documente_la_cle_result"
+    },
+    {
+      "name": "oneof-traduit-confondu-avec-lunion",
+      "why": "Une union de formes comptée comme un type optionnel cache la seule construction dont la présence dans un contrat neuf serait une mauvaise nouvelle : celle qui produit un UNKNOWN.",
+      "file": "scripts/parser_coverage.py",
+      "find": "                if len(utiles) == 1:\n                    optionnels += 1",
+      "replace": "                if len(utiles) == 1 or True:\n                    optionnels += 1",
+      "test": "tests/unit/outillage/test_parser_coverage.py::test_une_union_reelle_est_comptee_a_part_et_le_parser_la_signale"
+    },
+    {
+      "name": "prix-dadmission-sur-une-construction-traduite",
+      "why": "Une porte qui ferait payer ce que le parser traduit publierait un prix qui n'existe pas, et masquerait celui qui existe.",
+      "file": "scripts/admission.py",
+      "find": "    non_gerees = [nom for nom, compte, etat in lignes if compte and etat.startswith(\"non\")]",
+      "replace": "    non_gerees = [nom for nom, compte, etat in lignes if compte and (etat.startswith(\"non\") or True)]",
+      "test": "tests/unit/outillage/test_parser_coverage.py::test_la_porte_ne_fait_pas_payer_une_construction_que_le_parser_traduit"
     }
   ]
 }

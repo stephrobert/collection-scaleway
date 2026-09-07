@@ -1,0 +1,7 @@
+trivial:
+  - "The parser coverage report no longer files ``oneOf: [T, null]`` under
+    ``allOf / oneOf / anyOf, unhandled``. The parser translates that form and
+    carries its nullability; only a real union of shapes is unhandled, and it
+    is now counted on its own line, as is ``x-one-of``, which becomes
+    ``mutually_exclusive``. The admission gate stops charging the Load Balancer
+    for a construct the parser handles."
