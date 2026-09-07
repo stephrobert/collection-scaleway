@@ -1482,21 +1482,24 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Scaleway Object Storage bucket website to be served as failover if all backend servers are down, e.g. failover-website.s3-website.fr-par.scw.cloud."
+          "description": "Scaleway Object Storage bucket website to be served as failover if all backend servers are down, e.g. failover-website.s3-website.fr-par.scw.cloud.",
+          "nullable": true
         },
         {
           "name": "ssl_bridging",
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "Defines whether to enable SSL bridging between the Load Balancer and backend servers."
+          "description": "Defines whether to enable SSL bridging between the Load Balancer and backend servers.",
+          "nullable": true
         },
         {
           "name": "ignore_ssl_server_verify",
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "Defines whether the server certificate verification should be ignored."
+          "description": "Defines whether the server certificate verification should be ignored.",
+          "nullable": true
         },
         {
           "name": "redispatch_attempt_count",
@@ -1504,7 +1507,8 @@
           "required": false,
           "location": "body",
           "description": "Whether to use another backend server on each attempt.",
-          "format": "int32"
+          "format": "int32",
+          "nullable": true
         },
         {
           "name": "max_retries",
@@ -1512,7 +1516,8 @@
           "required": false,
           "location": "body",
           "description": "Number of retries when a backend server connection failed.",
-          "format": "int32"
+          "format": "int32",
+          "nullable": true
         },
         {
           "name": "max_connections",
@@ -1520,14 +1525,16 @@
           "required": false,
           "location": "body",
           "description": "Maximum number of connections allowed per backend server.",
-          "format": "int32"
+          "format": "int32",
+          "nullable": true
         },
         {
           "name": "timeout_queue",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Maximum time for a request to be left pending in queue when `max_connections` is reached. (in seconds)"
+          "description": "Maximum time for a request to be left pending in queue when `max_connections` is reached. (in seconds)",
+          "nullable": true
         }
       ],
       "response": {
@@ -1587,7 +1594,9 @@
           "required": false,
           "location": "body",
           "description": "Object to define a new Let's Encrypt certificate to be generated.",
-          "ref": "scaleway.lb.v1.CreateCertificateRequest.LetsencryptConfig"
+          "ref": "scaleway.lb.v1.CreateCertificateRequest.LetsencryptConfig",
+          "nullable": true,
+          "one_of_group": "type"
         },
         {
           "name": "custom_certificate",
@@ -1595,8 +1604,16 @@
           "required": false,
           "location": "body",
           "description": "Object to define an existing custom certificate to be imported.",
-          "ref": "scaleway.lb.v1.CreateCertificateRequest.CustomCertificate"
+          "ref": "scaleway.lb.v1.CreateCertificateRequest.CustomCertificate",
+          "nullable": true,
+          "one_of_group": "type"
         }
+      ],
+      "mutually_exclusive": [
+        [
+          "letsencrypt",
+          "custom_certificate"
+        ]
       ],
       "response": {
         "schema": "scaleway.lb.v1.Certificate",
@@ -1677,7 +1694,8 @@
           "required": false,
           "location": "body",
           "description": "Certificate ID, deprecated in favor of certificate_ids array.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true
         },
         {
           "name": "certificate_ids",
@@ -1699,7 +1717,8 @@
           "required": false,
           "location": "body",
           "description": "Rate limit for new connections established on this frontend. Use 0 value to disable, else value is connections per second.",
-          "format": "uint32"
+          "format": "uint32",
+          "nullable": true
         },
         {
           "name": "enable_access_logs",
@@ -1752,21 +1771,26 @@
           "required": false,
           "location": "body",
           "description": "Organization ID of the Organization where the IP address should be created.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "project_id",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Project ID of the Project where the IP address should be created."
+          "description": "Project ID of the Project where the IP address should be created.",
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "reverse",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Reverse DNS (domain name) for the IP address."
+          "description": "Reverse DNS (domain name) for the IP address.",
+          "nullable": true
         },
         {
           "name": "is_ipv6",
@@ -1783,6 +1807,12 @@
           "description": "List of tags for the IP.",
           "item_type": "string"
         }
+      ],
+      "mutually_exclusive": [
+        [
+          "organization_id",
+          "project_id"
+        ]
       ],
       "response": {
         "schema": "scaleway.lb.v1.Ip",
@@ -1827,14 +1857,18 @@
           "required": false,
           "location": "body",
           "description": "Scaleway Organization to create the Load Balancer in.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "project_id",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Scaleway Project to create the Load Balancer in."
+          "description": "Scaleway Project to create the Load Balancer in.",
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "name",
@@ -1856,21 +1890,24 @@
           "required": false,
           "location": "body",
           "description": "ID of an existing flexible IP address to attach to the Load Balancer.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true
         },
         {
           "name": "assign_flexible_ip",
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "Defines whether to automatically assign a flexible public IP to the Load Balancer. Default value is `true` (assign)."
+          "description": "Defines whether to automatically assign a flexible public IP to the Load Balancer. Default value is `true` (assign).",
+          "nullable": true
         },
         {
           "name": "assign_flexible_ipv6",
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "Defines whether to automatically assign a flexible public IPv6 to the Load Balancer. Default value is `false` (do not assign)."
+          "description": "Defines whether to automatically assign a flexible public IPv6 to the Load Balancer. Default value is `false` (do not assign).",
+          "nullable": true
         },
         {
           "name": "ip_ids",
@@ -1911,6 +1948,12 @@
           "default": "ssl_compatibility_level_unknown",
           "ref": "scaleway.lb.v1.SSLCompatibilityLevel"
         }
+      ],
+      "mutually_exclusive": [
+        [
+          "organization_id",
+          "project_id"
+        ]
       ],
       "response": {
         "schema": "scaleway.lb.v1.Lb",
@@ -2022,7 +2065,9 @@
           "required": false,
           "location": "body",
           "description": "Email address configuration.",
-          "ref": "scaleway.lb.v1.Subscriber.EmailConfig"
+          "ref": "scaleway.lb.v1.Subscriber.EmailConfig",
+          "nullable": true,
+          "one_of_group": "config"
         },
         {
           "name": "webhook_config",
@@ -2030,7 +2075,9 @@
           "required": false,
           "location": "body",
           "description": "WebHook URI configuration.",
-          "ref": "scaleway.lb.v1.Subscriber.WebhookConfig"
+          "ref": "scaleway.lb.v1.Subscriber.WebhookConfig",
+          "nullable": true,
+          "one_of_group": "config"
         },
         {
           "name": "organization_id",
@@ -2038,15 +2085,29 @@
           "required": false,
           "location": "body",
           "description": "Organization ID to create the subscriber in.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "project_id",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Project ID to create the subscriber in."
+          "description": "Project ID to create the subscriber in.",
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         }
+      ],
+      "mutually_exclusive": [
+        [
+          "organization_id",
+          "project_id"
+        ],
+        [
+          "email_config",
+          "webhook_config"
+        ]
       ],
       "response": {
         "schema": "scaleway.lb.v1.Subscriber",
@@ -4214,7 +4275,8 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "ACL description."
+          "description": "ACL description.",
+          "nullable": true
         }
       ],
       "response": {
@@ -4393,21 +4455,24 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Scaleway Object Storage bucket website to be served as failover if all backend servers are down, e.g. failover-website.s3-website.fr-par.scw.cloud."
+          "description": "Scaleway Object Storage bucket website to be served as failover if all backend servers are down, e.g. failover-website.s3-website.fr-par.scw.cloud.",
+          "nullable": true
         },
         {
           "name": "ssl_bridging",
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "Defines whether to enable SSL bridging between the Load Balancer and backend servers."
+          "description": "Defines whether to enable SSL bridging between the Load Balancer and backend servers.",
+          "nullable": true
         },
         {
           "name": "ignore_ssl_server_verify",
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "Defines whether the server certificate verification should be ignored."
+          "description": "Defines whether the server certificate verification should be ignored.",
+          "nullable": true
         },
         {
           "name": "redispatch_attempt_count",
@@ -4415,7 +4480,8 @@
           "required": false,
           "location": "body",
           "description": "Whether to use another backend server on each attempt.",
-          "format": "int32"
+          "format": "int32",
+          "nullable": true
         },
         {
           "name": "max_retries",
@@ -4423,7 +4489,8 @@
           "required": false,
           "location": "body",
           "description": "Number of retries when a backend server connection failed.",
-          "format": "int32"
+          "format": "int32",
+          "nullable": true
         },
         {
           "name": "max_connections",
@@ -4431,14 +4498,16 @@
           "required": false,
           "location": "body",
           "description": "Maximum number of connections allowed per backend server.",
-          "format": "int32"
+          "format": "int32",
+          "nullable": true
         },
         {
           "name": "timeout_queue",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Maximum time for a request to be left pending in queue when `max_connections` is reached. (in seconds)"
+          "description": "Maximum time for a request to be left pending in queue when `max_connections` is reached. (in seconds)",
+          "nullable": true
         }
       ],
       "response": {
@@ -4572,7 +4641,8 @@
           "required": false,
           "location": "body",
           "description": "Certificate ID, deprecated in favor of certificate_ids array.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true
         },
         {
           "name": "certificate_ids",
@@ -4594,14 +4664,16 @@
           "required": false,
           "location": "body",
           "description": "Rate limit for new connections established on this frontend. Use 0 value to disable, else value is connections per second.",
-          "format": "uint32"
+          "format": "uint32",
+          "nullable": true
         },
         {
           "name": "enable_access_logs",
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "Defines whether to enable access logs on the frontend."
+          "description": "Defines whether to enable access logs on the frontend.",
+          "nullable": true
         }
       ],
       "response": {
@@ -4691,7 +4763,9 @@
           "required": false,
           "location": "body",
           "description": "Object to configure a basic TCP health check.",
-          "ref": "scaleway.lb.v1.HealthCheck.TcpConfig"
+          "ref": "scaleway.lb.v1.HealthCheck.TcpConfig",
+          "nullable": true,
+          "one_of_group": "Config"
         },
         {
           "name": "mysql_config",
@@ -4699,7 +4773,9 @@
           "required": false,
           "location": "body",
           "description": "Object to configure a MySQL health check. The check requires MySQL >=3.22 or <9.0. For older or newer versions, use a TCP health check.",
-          "ref": "scaleway.lb.v1.HealthCheck.MysqlConfig"
+          "ref": "scaleway.lb.v1.HealthCheck.MysqlConfig",
+          "nullable": true,
+          "one_of_group": "Config"
         },
         {
           "name": "pgsql_config",
@@ -4707,7 +4783,9 @@
           "required": false,
           "location": "body",
           "description": "Object to configure a PostgreSQL health check.",
-          "ref": "scaleway.lb.v1.HealthCheck.PgsqlConfig"
+          "ref": "scaleway.lb.v1.HealthCheck.PgsqlConfig",
+          "nullable": true,
+          "one_of_group": "Config"
         },
         {
           "name": "ldap_config",
@@ -4715,7 +4793,9 @@
           "required": false,
           "location": "body",
           "description": "Object to configure an LDAP health check. The response is analyzed to find the LDAPv3 response message.",
-          "ref": "scaleway.lb.v1.HealthCheck.LdapConfig"
+          "ref": "scaleway.lb.v1.HealthCheck.LdapConfig",
+          "nullable": true,
+          "one_of_group": "Config"
         },
         {
           "name": "redis_config",
@@ -4723,7 +4803,9 @@
           "required": false,
           "location": "body",
           "description": "Object to configure a Redis health check. The response is analyzed to find the +PONG response message.",
-          "ref": "scaleway.lb.v1.HealthCheck.RedisConfig"
+          "ref": "scaleway.lb.v1.HealthCheck.RedisConfig",
+          "nullable": true,
+          "one_of_group": "Config"
         },
         {
           "name": "http_config",
@@ -4731,7 +4813,9 @@
           "required": false,
           "location": "body",
           "description": "Object to configure an HTTP health check.",
-          "ref": "scaleway.lb.v1.HealthCheck.HttpConfig"
+          "ref": "scaleway.lb.v1.HealthCheck.HttpConfig",
+          "nullable": true,
+          "one_of_group": "Config"
         },
         {
           "name": "https_config",
@@ -4739,15 +4823,29 @@
           "required": false,
           "location": "body",
           "description": "Object to configure an HTTPS health check.",
-          "ref": "scaleway.lb.v1.HealthCheck.HttpsConfig"
+          "ref": "scaleway.lb.v1.HealthCheck.HttpsConfig",
+          "nullable": true,
+          "one_of_group": "Config"
         },
         {
           "name": "transient_check_delay",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Time to wait between two consecutive health checks when a backend server is in a transient state (going UP or DOWN). (in seconds)"
+          "description": "Time to wait between two consecutive health checks when a backend server is in a transient state (going UP or DOWN). (in seconds)",
+          "nullable": true
         }
+      ],
+      "mutually_exclusive": [
+        [
+          "tcp_config",
+          "mysql_config",
+          "pgsql_config",
+          "ldap_config",
+          "redis_config",
+          "http_config",
+          "https_config"
+        ]
       ],
       "response": {
         "schema": "scaleway.lb.v1.HealthCheck",
@@ -4798,14 +4896,16 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Reverse DNS (domain name) for the IP address."
+          "description": "Reverse DNS (domain name) for the IP address.",
+          "nullable": true
         },
         {
           "name": "lb_id",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "ID of the server on which to attach the flexible IP."
+          "description": "ID of the server on which to attach the flexible IP.",
+          "nullable": true
         },
         {
           "name": "tags",
@@ -5015,7 +5115,9 @@
           "required": false,
           "location": "body",
           "description": "Email address configuration.",
-          "ref": "scaleway.lb.v1.Subscriber.EmailConfig"
+          "ref": "scaleway.lb.v1.Subscriber.EmailConfig",
+          "nullable": true,
+          "one_of_group": "config"
         },
         {
           "name": "webhook_config",
@@ -5023,8 +5125,16 @@
           "required": false,
           "location": "body",
           "description": "Webhook URI configuration.",
-          "ref": "scaleway.lb.v1.Subscriber.WebhookConfig"
+          "ref": "scaleway.lb.v1.Subscriber.WebhookConfig",
+          "nullable": true,
+          "one_of_group": "config"
         }
+      ],
+      "mutually_exclusive": [
+        [
+          "email_config",
+          "webhook_config"
+        ]
       ],
       "response": {
         "schema": "scaleway.lb.v1.Subscriber",

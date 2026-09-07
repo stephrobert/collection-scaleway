@@ -1487,14 +1487,18 @@
           "required": false,
           "location": "body",
           "description": "Organization ID of the image.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "project",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Project ID of the image."
+          "description": "Project ID of the image.",
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "tags",
@@ -1509,8 +1513,15 @@
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "True to create a public image."
+          "description": "True to create a public image.",
+          "nullable": true
         }
+      ],
+      "mutually_exclusive": [
+        [
+          "organization",
+          "project"
+        ]
       ]
     },
     {
@@ -1553,14 +1564,18 @@
           "required": false,
           "location": "body",
           "description": "Organization ID in which the IP is reserved.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "project",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Project ID in which the IP is reserved."
+          "description": "Project ID in which the IP is reserved.",
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "tags",
@@ -1575,7 +1590,8 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "UUID of the Instance you want to attach the IP to."
+          "description": "UUID of the Instance you want to attach the IP to.",
+          "nullable": true
         },
         {
           "name": "type",
@@ -1592,6 +1608,12 @@
           "default": "unknown_iptype",
           "ref": "scaleway.instance.v1.IpType"
         }
+      ],
+      "mutually_exclusive": [
+        [
+          "organization",
+          "project"
+        ]
       ]
     },
     {
@@ -1641,14 +1663,18 @@
           "required": false,
           "location": "body",
           "description": "Organization ID of the placement group.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "project",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Project ID of the placement group."
+          "description": "Project ID of the placement group.",
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "tags",
@@ -1686,6 +1712,12 @@
           "default": "max_availability",
           "ref": "scaleway.instance.v1.PlacementGroup.PolicyType"
         }
+      ],
+      "mutually_exclusive": [
+        [
+          "organization",
+          "project"
+        ]
       ]
     },
     {
@@ -1808,14 +1840,18 @@
           "required": false,
           "location": "body",
           "description": "Organization ID the security group belongs to.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "project",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Project ID the security group belong to."
+          "description": "Project ID the security group belong to.",
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "tags",
@@ -1831,14 +1867,18 @@
           "required": false,
           "location": "body",
           "description": "Defines whether this security group becomes the default security group for new Instances.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true,
+          "one_of_group": "DefaultIdentifier"
         },
         {
           "name": "project_default",
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "Whether this security group becomes the default security group for new Instances."
+          "description": "Whether this security group becomes the default security group for new Instances.",
+          "nullable": true,
+          "one_of_group": "DefaultIdentifier"
         },
         {
           "name": "stateful",
@@ -1882,8 +1922,19 @@
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "True to block SMTP on IPv4 and IPv6. This feature is read only, please open a support ticket if you need to make it configurable."
+          "description": "True to block SMTP on IPv4 and IPv6. This feature is read only, please open a support ticket if you need to make it configurable.",
+          "nullable": true
         }
+      ],
+      "mutually_exclusive": [
+        [
+          "organization_default",
+          "project_default"
+        ],
+        [
+          "organization",
+          "project"
+        ]
       ]
     },
     {
@@ -1984,7 +2035,8 @@
           "required": false,
           "location": "body",
           "description": "Beginning of the range of ports to apply this rule to (inclusive).",
-          "format": "uint32"
+          "format": "uint32",
+          "nullable": true
         },
         {
           "name": "dest_port_to",
@@ -1992,7 +2044,8 @@
           "required": false,
           "location": "body",
           "description": "End of the range of ports to apply this rule to (inclusive).",
-          "format": "uint32"
+          "format": "uint32",
+          "nullable": true
         },
         {
           "name": "position",
@@ -2057,7 +2110,8 @@
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "Define if a dynamic IPv4 is required for the Instance.\nBy default, `dynamic_ip_required` is true, a dynamic ip is attached to the instance (if no flexible ip is already attached)."
+          "description": "Define if a dynamic IPv4 is required for the Instance.\nBy default, `dynamic_ip_required` is true, a dynamic ip is attached to the instance (if no flexible ip is already attached).",
+          "nullable": true
         },
         {
           "name": "routed_ip_enabled",
@@ -2065,7 +2119,8 @@
           "required": false,
           "location": "body",
           "description": "If true, configure the Instance so it uses the new routed IP mode.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true
         },
         {
           "name": "commercial_type",
@@ -2079,7 +2134,8 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Instance image ID or label.\nWhen an image label is used, it will be converted to the latest image available on the Marketplace.\nBy default, the selected local image will be the `instance_sbs` local image.\nIf an `l_ssd` volume is specified in the volumes argument, an `instance_local` local image will be selected instead."
+          "description": "Instance image ID or label.\nWhen an image label is used, it will be converted to the latest image available on the Marketplace.\nBy default, the selected local image will be the `instance_sbs` local image.\nIf an `l_ssd` volume is specified in the volumes argument, an `instance_local` local image will be selected instead.",
+          "nullable": true
         },
         {
           "name": "volumes",
@@ -2102,7 +2158,8 @@
           "required": false,
           "location": "body",
           "description": "ID of the reserved IP to attach to the Instance.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true
         },
         {
           "name": "public_ips",
@@ -2132,14 +2189,18 @@
           "required": false,
           "location": "body",
           "description": "Instance Organization ID.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "project",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Instance Project ID."
+          "description": "Instance Project ID.",
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "tags",
@@ -2154,21 +2215,24 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Security group ID."
+          "description": "Security group ID.",
+          "nullable": true
         },
         {
           "name": "placement_group",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Placement group ID if Instance must be part of a placement group."
+          "description": "Placement group ID if Instance must be part of a placement group.",
+          "nullable": true
         },
         {
           "name": "admin_password_encryption_ssh_key_id",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "UUID of the SSH RSA key that will be used to encrypt the initial admin password for OS requiring it. Mandatory for Windows OS.\nThe public_key value of this key is used to encrypt the admin password."
+          "description": "UUID of the SSH RSA key that will be used to encrypt the initial admin password for OS requiring it. Mandatory for Windows OS.\nThe public_key value of this key is used to encrypt the admin password.",
+          "nullable": true
         },
         {
           "name": "protected",
@@ -2177,6 +2241,12 @@
           "location": "body",
           "description": "True to activate server protection option."
         }
+      ],
+      "mutually_exclusive": [
+        [
+          "organization",
+          "project"
+        ]
       ]
     },
     {
@@ -2225,7 +2295,8 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "UUID of the volume."
+          "description": "UUID of the volume.",
+          "nullable": true
         },
         {
           "name": "tags",
@@ -2240,14 +2311,18 @@
           "required": false,
           "location": "body",
           "description": "Organization ID of the snapshot.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "project",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Project ID of the snapshot."
+          "description": "Project ID of the snapshot.",
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "volume_type",
@@ -2270,14 +2345,16 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Bucket name for snapshot imports."
+          "description": "Bucket name for snapshot imports.",
+          "nullable": true
         },
         {
           "name": "key",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Object key for snapshot imports."
+          "description": "Object key for snapshot imports.",
+          "nullable": true
         },
         {
           "name": "size",
@@ -2285,8 +2362,15 @@
           "required": false,
           "location": "body",
           "description": "Imported snapshot size, must be a multiple of 512. (in bytes)",
-          "format": "uint64"
+          "format": "uint64",
+          "nullable": true
         }
+      ],
+      "mutually_exclusive": [
+        [
+          "organization",
+          "project"
+        ]
       ]
     },
     {
@@ -2336,14 +2420,18 @@
           "required": false,
           "location": "body",
           "description": "Volume Organization ID.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "project",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Volume Project ID."
+          "description": "Volume Project ID.",
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
         },
         {
           "name": "tags",
@@ -2377,15 +2465,29 @@
           "required": false,
           "location": "body",
           "description": "Volume disk size, must be a multiple of 512. (in bytes)",
-          "format": "uint64"
+          "format": "uint64",
+          "nullable": true,
+          "one_of_group": "from"
         },
         {
           "name": "base_snapshot",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "ID of the snapshot on which this volume will be based."
+          "description": "ID of the snapshot on which this volume will be based.",
+          "nullable": true,
+          "one_of_group": "from"
         }
+      ],
+      "mutually_exclusive": [
+        [
+          "organization",
+          "project"
+        ],
+        [
+          "size",
+          "base_snapshot"
+        ]
       ]
     },
     {
@@ -4981,7 +5083,8 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Name of the backup you want to create.\nName of the backup you want to create.\nThis field should only be specified when performing a backup action."
+          "description": "Name of the backup you want to create.\nName of the backup you want to create.\nThis field should only be specified when performing a backup action.",
+          "nullable": true
         },
         {
           "name": "volumes",
@@ -4995,7 +5098,8 @@
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "Disable IPv6 on the Instance (true by default).\nDisable IPv6 on the Instance while performing migration to routed IPs.\nThis field should only be specified when performing a enable_routed_ip action."
+          "description": "Disable IPv6 on the Instance (true by default).\nDisable IPv6 on the Instance while performing migration to routed IPs.\nThis field should only be specified when performing a enable_routed_ip action.",
+          "nullable": true
         }
       ],
       "response": {
@@ -5071,7 +5175,8 @@
           "required": false,
           "location": "body",
           "description": "(RFC 3339 format)",
-          "format": "date-time"
+          "format": "date-time",
+          "nullable": true
         },
         {
           "name": "modification_date",
@@ -5079,7 +5184,8 @@
           "required": false,
           "location": "body",
           "description": "(RFC 3339 format)",
-          "format": "date-time"
+          "format": "date-time",
+          "nullable": true
         },
         {
           "name": "default_bootscript",
@@ -5370,7 +5476,8 @@
           "required": false,
           "location": "body",
           "description": "Creation date of the security group (will be ignored). (RFC 3339 format)",
-          "format": "date-time"
+          "format": "date-time",
+          "nullable": true
         },
         {
           "name": "modification_date",
@@ -5378,7 +5485,8 @@
           "required": false,
           "location": "body",
           "description": "Modification date of the security group (will be ignored). (RFC 3339 format)",
-          "format": "date-time"
+          "format": "date-time",
+          "nullable": true
         },
         {
           "name": "description",
@@ -5832,7 +5940,8 @@
           "required": false,
           "location": "body",
           "description": "(RFC 3339 format)",
-          "format": "date-time"
+          "format": "date-time",
+          "nullable": true
         },
         {
           "name": "modification_date",
@@ -5840,7 +5949,8 @@
           "required": false,
           "location": "body",
           "description": "(RFC 3339 format)",
-          "format": "date-time"
+          "format": "date-time",
+          "nullable": true
         },
         {
           "name": "project",
@@ -5957,7 +6067,8 @@
           "required": false,
           "location": "body",
           "description": "Volume creation date. (RFC 3339 format)",
-          "format": "date-time"
+          "format": "date-time",
+          "nullable": true
         },
         {
           "name": "modification_date",
@@ -5965,7 +6076,8 @@
           "required": false,
           "location": "body",
           "description": "Volume modification date. (RFC 3339 format)",
-          "format": "date-time"
+          "format": "date-time",
+          "nullable": true
         },
         {
           "name": "organization",
@@ -6062,7 +6174,8 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Name of the image."
+          "description": "Name of the image.",
+          "nullable": true
         },
         {
           "name": "arch",
@@ -6099,7 +6212,8 @@
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "True to set the image as public."
+          "description": "True to set the image as public.",
+          "nullable": true
         }
       ],
       "response": {
@@ -6154,7 +6268,8 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Reverse domain name."
+          "description": "Reverse domain name.",
+          "nullable": true
         },
         {
           "name": "type",
@@ -6238,7 +6353,8 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Name of the placement group."
+          "description": "Name of the placement group.",
+          "nullable": true
         },
         {
           "name": "tags",
@@ -6446,21 +6562,24 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Name of the security group."
+          "description": "Name of the security group.",
+          "nullable": true
         },
         {
           "name": "description",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Description of the security group."
+          "description": "Description of the security group.",
+          "nullable": true
         },
         {
           "name": "enable_default_security",
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "True to block SMTP on IPv4 and IPv6. This feature is read only, please open a support ticket if you need to make it configurable."
+          "description": "True to block SMTP on IPv4 and IPv6. This feature is read only, please open a support ticket if you need to make it configurable.",
+          "nullable": true
         },
         {
           "name": "inbound_default_policy",
@@ -6490,14 +6609,16 @@
           "required": false,
           "location": "body",
           "description": "Please use project_default instead.",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true
         },
         {
           "name": "project_default",
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "True use this security group for future Instances created in this project."
+          "description": "True use this security group for future Instances created in this project.",
+          "nullable": true
         },
         {
           "name": "outbound_default_policy",
@@ -6519,7 +6640,8 @@
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "True to set the security group as stateful."
+          "description": "True to set the security group as stateful.",
+          "nullable": true
         }
       ],
       "response": {
@@ -6628,7 +6750,8 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Range of IP addresses these rules apply to. (IP network)"
+          "description": "Range of IP addresses these rules apply to. (IP network)",
+          "nullable": true
         },
         {
           "name": "dest_port_from",
@@ -6636,7 +6759,8 @@
           "required": false,
           "location": "body",
           "description": "Beginning of the range of ports this rule applies to (inclusive). If 0 is provided, unset the parameter.",
-          "format": "uint32"
+          "format": "uint32",
+          "nullable": true
         },
         {
           "name": "dest_port_to",
@@ -6644,7 +6768,8 @@
           "required": false,
           "location": "body",
           "description": "End of the range of ports this rule applies to (inclusive). If 0 is provided, unset the parameter.",
-          "format": "uint32"
+          "format": "uint32",
+          "nullable": true
         },
         {
           "name": "position",
@@ -6652,7 +6777,8 @@
           "required": false,
           "location": "body",
           "description": "Position of this rule in the security group rules list.",
-          "format": "uint32"
+          "format": "uint32",
+          "nullable": true
         }
       ],
       "response": {
@@ -6707,7 +6833,8 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Name of the Instance."
+          "description": "Name of the Instance.",
+          "nullable": true
         },
         {
           "name": "boot_type",
@@ -6749,7 +6876,8 @@
           "required": false,
           "location": "body",
           "description": "True to configure the instance so it uses the new routed IP mode (once this is set to True you cannot set it back to False).",
-          "deprecated": true
+          "deprecated": true,
+          "nullable": true
         },
         {
           "name": "public_ips",
@@ -6771,7 +6899,8 @@
           "type": "boolean",
           "required": false,
           "location": "body",
-          "description": "True to activate server protection option."
+          "description": "True to activate server protection option.",
+          "nullable": true
         },
         {
           "name": "security_group",
@@ -6785,7 +6914,8 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Placement group ID if Instance must be part of a placement group."
+          "description": "Placement group ID if Instance must be part of a placement group.",
+          "nullable": true
         },
         {
           "name": "private_nics",
@@ -6799,14 +6929,16 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Set the commercial_type for this Instance.\nWarning: This field has some restrictions:\n- Cannot be changed if the Instance is not in `stopped` state.\n- Cannot be changed if the Instance is in a placement group.\n- Cannot be changed from/to a Windows offer to/from a Linux offer.\n- Local storage requirements of the target commercial_types must be fulfilled (i.e. if an Instance has 80GB of local storage, it can be changed into a GP1-XS, which has a maximum of 150GB, but it cannot be changed into a DEV1-S, which has only 20GB)."
+          "description": "Set the commercial_type for this Instance.\nWarning: This field has some restrictions:\n- Cannot be changed if the Instance is not in `stopped` state.\n- Cannot be changed if the Instance is in a placement group.\n- Cannot be changed from/to a Windows offer to/from a Linux offer.\n- Local storage requirements of the target commercial_types must be fulfilled (i.e. if an Instance has 80GB of local storage, it can be changed into a GP1-XS, which has a maximum of 150GB, but it cannot be changed into a DEV1-S, which has only 20GB).",
+          "nullable": true
         },
         {
           "name": "admin_password_encryption_ssh_key_id",
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "UUID of the SSH RSA key that will be used to encrypt the initial admin password for OS requiring it. Mandatory for Windows OS.\nThe public_key value of this key is used to encrypt the admin password. When set to an empty string, reset this value and admin_password_encrypted_value to an empty string so a new password may be generated."
+          "description": "UUID of the SSH RSA key that will be used to encrypt the initial admin password for OS requiring it. Mandatory for Windows OS.\nThe public_key value of this key is used to encrypt the admin password. When set to an empty string, reset this value and admin_password_encrypted_value to an empty string so a new password may be generated.",
+          "nullable": true
         }
       ],
       "response": {
@@ -6861,7 +6993,8 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Name of the snapshot."
+          "description": "Name of the snapshot.",
+          "nullable": true
         },
         {
           "name": "tags",
@@ -6923,7 +7056,8 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Volume name."
+          "description": "Volume name.",
+          "nullable": true
         },
         {
           "name": "tags",
@@ -6938,7 +7072,8 @@
           "required": false,
           "location": "body",
           "description": "Volume disk size, must be a multiple of 512. (in bytes)",
-          "format": "uint64"
+          "format": "uint64",
+          "nullable": true
         }
       ],
       "response": {

@@ -53,6 +53,10 @@ options:
     - Tags of the widget.
     type: list
     elements: str
+  webhook_config:
+    description:
+    - Webhook URI configuration.
+    type: dict
 extends_documentation_fragment:
 - lab.widget.scaleway
 """
@@ -129,6 +133,7 @@ MODULE_ARGUMENT_SPEC = {
     "protected": {"type": "bool"},
     "secret_token": {"type": "str", "no_log": True},
     "tags": {"type": "list", "elements": "str"},
+    "webhook_config": {"type": "dict"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -152,15 +157,25 @@ MODULE = ManageModule(
         path="/widget/v1/zones/{zone}/widgets/{widget_id}",
         path_params=("zone", "widget_id"),
         query_params=(),
-        body_params=("tags", "protected", "secret_token", "email_config"),
+        body_params=("tags", "protected", "secret_token", "email_config", "webhook_config"),
     ),
-    managed_params=("tags", "protected", "secret_token", "email_config"),
+    managed_params=("tags", "protected", "secret_token", "email_config", "webhook_config"),
     secret_params=("secret_token",),
 )
 
 
+#: Ce que l'API interdit d'utiliser ensemble, déclaré par le contrat.
+MUTUALLY_EXCLUSIVE = [
+    ["email_config", "webhook_config"],
+]
+
+
 def main() -> None:
-    module = AnsibleModule(argument_spec=ARGUMENT_SPEC, supports_check_mode=True)
+    module = AnsibleModule(
+        argument_spec=ARGUMENT_SPEC,
+        supports_check_mode=True,
+        mutually_exclusive=MUTUALLY_EXCLUSIVE,
+    )
     run_manage_module(module, MODULE)
 
 

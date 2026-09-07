@@ -61,6 +61,19 @@ class ApiParameter:
     format: str | None = None
     #: Nom du schéma référencé quand le paramètre porte une structure imbriquée.
     ref: str | None = None
+    #: Le contrat écrit le champ `oneOf: [X, null]`, donc effaçable.
+    #:
+    #: Ce n'est pas la même chose qu'un champ absent, et le générateur ne sait
+    #: pas encore les distinguer : la demande d'un module de gestion se
+    #: construit depuis les valeurs non nulles, donc `description: null` et
+    #: `description` absent produisent la même requête. Le fait est porté ici
+    #: pour être compté avant d'être traité.
+    nullable: bool = False
+    #: Nom du groupe `x-one-of` auquel le paramètre appartient, s'il y en a un.
+    #:
+    #: Scaleway marque ainsi les champs dont un seul peut être fourni. Le
+    #: regroupement se lit sur l'opération, `mutually_exclusive`.
+    one_of_group: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return _compact(
@@ -77,6 +90,8 @@ class ApiParameter:
                 "deprecated": self.deprecated or None,
                 "format": self.format,
                 "ref": self.ref,
+                "nullable": self.nullable or None,
+                "one_of_group": self.one_of_group,
             }
         )
 
@@ -210,6 +225,25 @@ class ApiOperation:
         return None
 
     @property
+    def mutually_exclusive(self) -> tuple[tuple[str, ...], ...]:
+        """Les groupes de paramètres dont un seul peut être fourni.
+
+        Le contrat les marque champ par champ, par un `x-one-of` qui nomme le
+        groupe. Les regrouper n'est pas une décision, c'est le même fait rangé
+        autrement : le parser traduit, il ne décide pas.
+
+        Un groupe d'un seul membre n'exclut rien et n'est pas rendu. Le cas
+        existe : un corps de requête peut ne reprendre qu'un champ d'un groupe
+        déclaré sur le schéma complet, et un `mutually_exclusive` à un élément
+        ferait refuser Ansible au chargement.
+        """
+        groupes: dict[str, list[str]] = {}
+        for parameter in self.parameters:
+            if parameter.one_of_group:
+                groupes.setdefault(parameter.one_of_group, []).append(parameter.name)
+        return tuple(tuple(membres) for _, membres in sorted(groupes.items()) if len(membres) > 1)
+
+    @property
     def scope_parameter(self) -> str | None:
         """Nom du paramètre portant la zone ou la région, s'il y en a un."""
         if self.scope is Scope.GLOBAL:
@@ -232,6 +266,7 @@ class ApiOperation:
                 "deprecated": self.deprecated or None,
                 "tags": list(self.tags) or None,
                 "parameters": [p.to_dict() for p in self.parameters] or None,
+                "mutually_exclusive": [list(groupe) for groupe in self.mutually_exclusive] or None,
                 "response": self.response.to_dict() if self.response else None,
                 "pagination": self.pagination.to_dict() if self.pagination else None,
             }
@@ -259,6 +294,14 @@ class ApiService:
     #: différemment n'y est pas, parce qu'aucune des deux phrases ne vaut pour
     #: l'autre ressource.
     glossary: tuple[tuple[str, str], ...] = ()
+    #: Mots-clés de contrainte comptés dans le document, y compris à zéro.
+    #:
+    #: **Une absence mesurée n'est pas une absence déclarée.** Affirmer « le
+    #: contrat ne porte pas de bornes » sans avoir regardé resterait vrai à
+    #: l'écran et faux dans le document le jour où Scaleway en ajoute une, et le
+    #: paramètre passerait sans contrainte. Le compte est fait au parsing, une
+    #: fois, sur le document réel.
+    constraint_keywords: tuple[tuple[str, int], ...] = ()
     #: Anomalies rencontrées au parsing, remontées telles quelles dans le rapport.
     warnings: tuple[str, ...] = field(default=(), compare=False)
 

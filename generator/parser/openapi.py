@@ -78,6 +78,56 @@ class ParseError(ValueError):
     """Le document n'a pas la forme qu'un contrat Scaleway doit avoir."""
 
 
+#: Les mots-clés de contrainte cherchés dans le document, traduits ou non.
+#:
+#: La liste est celle qu'OpenAPI définit, plus l'extension `x-one-of` que
+#: Scaleway ajoute. Elle est **fermée par décision** : un mot-clé qui n'y est
+#: pas n'est pas cherché, et le rapport ne prétend donc rien à son sujet.
+CONTRAINTES_CHERCHEES: tuple[str, ...] = (
+    "x-one-of",
+    "nullable",
+    "minimum",
+    "maximum",
+    "exclusiveMinimum",
+    "exclusiveMaximum",
+    "minLength",
+    "maxLength",
+    "pattern",
+    "minItems",
+    "maxItems",
+    "uniqueItems",
+    "readOnly",
+    "writeOnly",
+    "multipleOf",
+)
+
+#: Ce que le générateur sait faire d'une contrainte trouvée.
+#:
+#: `x-one-of` devient un `mutually_exclusive`. La nullabilité est portée par
+#: l'IR et comptée, sans être encore traduite : un champ effaçable et un champ
+#: absent produisent la même requête, et distinguer les deux demande une
+#: sémantique d'effacement que le contrat ne décrit pas.
+CONTRAINTES_TRADUITES: frozenset[str] = frozenset({"x-one-of"})
+
+
+def _compter_les_contraintes(noeud: Any, comptes: dict[str, int]) -> None:
+    """Compte les mots-clés de contrainte dans tout le document.
+
+    Le parcours est brut et volontairement : une contrainte peut vivre sur un
+    paramètre, sur une propriété de schéma, sous un `items` ou dans une branche
+    de `oneOf`, et un parcours qui ne regarderait que les endroits attendus
+    manquerait précisément ceux auxquels personne n'a pensé.
+    """
+    if isinstance(noeud, dict):
+        for cle, valeur in noeud.items():
+            if cle in comptes:
+                comptes[cle] += 1
+            _compter_les_contraintes(valeur, comptes)
+    elif isinstance(noeud, list):
+        for valeur in noeud:
+            _compter_les_contraintes(valeur, comptes)
+
+
 def parse_document(spec: SpecDocument) -> ApiService:
     """Construit l'IR d'un produit à partir de son document OpenAPI."""
     document = spec.document
@@ -86,6 +136,15 @@ def parse_document(spec: SpecDocument) -> ApiService:
 
     schemas: dict[str, Any] = _mapping(_mapping(document).get("components")).get("schemas", {})
     warnings: list[str] = []
+
+    contraintes = dict.fromkeys(CONTRAINTES_CHERCHEES, 0)
+    _compter_les_contraintes(document, contraintes)
+    for mot, compte in sorted(contraintes.items()):
+        if compte and mot not in CONTRAINTES_TRADUITES:
+            warnings.append(
+                f"contrainte `{mot}` déclarée {compte} fois dans le contrat et "
+                "non traduite en contrainte d'`argument_spec`"
+            )
     enums: dict[str, ApiEnum] = {}
     operations: list[ApiOperation] = []
 
@@ -144,6 +203,7 @@ def parse_document(spec: SpecDocument) -> ApiService:
         enums=tuple(sorted(enums.values(), key=lambda enum: enum.name)),
         objects=objects,
         glossary=glossary,
+        constraint_keywords=tuple(sorted(contraintes.items())),
         warnings=tuple(sorted(set(warnings))),
     )
 
@@ -368,6 +428,8 @@ def _parse_parameter(
         deprecated=bool(schema.get("deprecated") or declared.get("deprecated")),
         format=schema.get("format"),
         ref=resolved.ref,
+        nullable=resolved.nullable,
+        one_of_group=_groupe_dexclusion(schema) or _groupe_dexclusion(declared),
     )
 
 
@@ -422,6 +484,8 @@ def _parse_body(
                 deprecated=bool(property_schema.get("deprecated")),
                 format=property_schema.get("format"),
                 ref=resolved.ref,
+                nullable=resolved.nullable,
+                one_of_group=_groupe_dexclusion(property_schema),
             )
         )
     return parameters
@@ -430,7 +494,7 @@ def _parse_body(
 class _ResolvedType:
     """Résultat de la lecture d'un schéma de paramètre."""
 
-    __slots__ = ("default", "enum_name", "enum_values", "item_type", "ref", "type")
+    __slots__ = ("default", "enum_name", "enum_values", "item_type", "nullable", "ref", "type")
 
     def __init__(
         self,
@@ -440,6 +504,7 @@ class _ResolvedType:
         item_type: ApiType | None = None,
         default: object | None = None,
         ref: str | None = None,
+        nullable: bool = False,
     ) -> None:
         self.type = type
         self.enum_name = enum_name
@@ -447,6 +512,25 @@ class _ResolvedType:
         self.item_type = item_type
         self.default = default
         self.ref = ref
+        self.nullable = nullable
+
+
+def _groupe_dexclusion(schema: Any) -> str | None:
+    """Le groupe `x-one-of` déclaré sur un champ, s'il y en a un.
+
+    Scaleway marque ainsi les champs dont un seul peut être fourni :
+    `email_config` et `webhook_config` d'un abonné portent tous deux
+    `x-one-of: config`. Sans ce marqueur, le module généré accepte les deux et
+    l'API répond 400, ce qui est invisible jusqu'au premier playbook.
+
+    Un marqueur qui n'est pas une chaîne est ignoré plutôt que recopié : la clé
+    est une extension, personne ne la valide en amont, et un objet glissé là
+    produirait un `mutually_exclusive` illisible par Ansible.
+    """
+    if not isinstance(schema, dict):
+        return None
+    groupe = schema.get("x-one-of")
+    return groupe if isinstance(groupe, str) and groupe else None
 
 
 def _resolve_type(
@@ -463,15 +547,19 @@ def _resolve_type(
         return _ResolvedType(ApiType.UNKNOWN)
 
     # **`oneOf: [X, null]` est la façon dont Scaleway écrit « optionnel ».**
-    # Ce n'est pas une union de formes alternatives : c'est un X, ou rien. Les
-    # 24 occurrences du contrat du Load Balancer ont toutes exactement cette
+    # Ce n'est pas une union de formes alternatives : c'est un X, ou rien. Sur
+    # le contrat du Load Balancer, toutes les occurrences ont exactement cette
     # forme, et pas une n'est une vraie union. Les traiter comme un type non
     # traité écartait un module Day-2 entier, `lb_subscriber`.
     #
+    # **La branche `null` est conservée, elle ne se réduit pas à son autre
+    # moitié.** Un champ effaçable et un champ absent ne sont pas la même
+    # demande, et le générateur ne sait pas encore les distinguer : le fait est
+    # porté pour être compté avant d'être traité.
+    #
     # La mutuelle exclusion, elle, n'est **pas** portée par le `oneOf` mais par
-    # le marqueur frère `x-one-of`, qui nomme le groupe auquel le champ
-    # appartient. Le parser ne la traduit pas encore : elle deviendra un
-    # `mutually_exclusive` dans l'argument_spec, et c'est un travail à part.
+    # le marqueur frère `x-one-of`, lu par l'appelant : c'est une propriété du
+    # champ dans son schéma, pas de son type.
     branches = schema.get("oneOf")
     if isinstance(branches, list):
         utiles = [
@@ -479,13 +567,23 @@ def _resolve_type(
             for branche in branches
             if isinstance(branche, dict) and branche.get("type") != "null"
         ]
+        nullable = len(utiles) < len(branches)
         if len(utiles) == 1:
-            return _resolve_type(
+            resolu = _resolve_type(
                 schema=utiles[0],
                 schemas=schemas,
                 enums=enums,
                 warnings=warnings,
                 context=context,
+            )
+            return _ResolvedType(
+                resolu.type,
+                enum_name=resolu.enum_name,
+                enum_values=resolu.enum_values,
+                item_type=resolu.item_type,
+                default=resolu.default,
+                ref=resolu.ref,
+                nullable=nullable,
             )
         warnings.append(
             f"{context} : `oneOf` à {len(utiles)} branches non nulles, union non traduite"
@@ -522,9 +620,13 @@ def _resolve_type(
         return _ResolvedType(resolved.type, item_type=resolved.item_type, ref=target_name)
 
     raw_type = schema.get("type")
+    nullable_par_le_type = False
     if isinstance(raw_type, list):
-        # OpenAPI 3.1 écrit un champ optionnel `["string", "null"]`.
+        # OpenAPI 3.1 écrit un champ optionnel `["string", "null"]`. C'est le
+        # même fait que le `oneOf: [X, null]`, écrit dans l'autre forme
+        # autorisée : il se conserve pareil.
         candidates = [entry for entry in raw_type if entry != "null"]
+        nullable_par_le_type = len(candidates) < len(raw_type)
         raw_type = candidates[0] if candidates else None
     if raw_type is not None and not isinstance(raw_type, str):
         # **Un `type` qui n'est ni une chaîne ni une liste de chaînes.** Le
@@ -572,7 +674,11 @@ def _resolve_type(
         return _ResolvedType(ApiType.ARRAY, item_type=resolved_item.type)
 
     if raw_type in _SCALAR_TYPES:
-        return _ResolvedType(_SCALAR_TYPES[raw_type], default=schema.get("default"))
+        return _ResolvedType(
+            _SCALAR_TYPES[raw_type],
+            default=schema.get("default"),
+            nullable=nullable_par_le_type,
+        )
 
     warnings.append(f"{context} : type OpenAPI non traité ({raw_type!r})")
     return _ResolvedType(ApiType.UNKNOWN)

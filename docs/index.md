@@ -46,6 +46,7 @@ adr/004-no-sanity-run-without-a-target
 adr/005-generated-documentation-behind-a-gate
 adr/006-the-emulator-is-a-proof-not-the-proof
 adr/007-measured-numbers-live-in-derived-blocks
+adr/008-a-constraint-is-translated-or-named
 ```
 
 ```{toctree}
