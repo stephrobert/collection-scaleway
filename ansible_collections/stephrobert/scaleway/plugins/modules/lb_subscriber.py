@@ -47,7 +47,12 @@ options:
   email_config:
     description:
     - Email address configuration.
-    type: dict
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is dict.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   name:
     description:
     - Subscriber name.
@@ -56,7 +61,12 @@ options:
   webhook_config:
     description:
     - Webhook URI configuration.
-    type: dict
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is dict.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
 """
@@ -142,9 +152,9 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "subscriber_id": {"type": "str", "required": True},
-    "email_config": {"type": "dict"},
+    "email_config": {"type": "raw", "default": "__unchanged__"},
     "name": {"type": "str", "required": True},
-    "webhook_config": {"type": "dict"},
+    "webhook_config": {"type": "raw", "default": "__unchanged__"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -174,6 +184,10 @@ MODULE = ManageModule(
         ("email_config", "mapping"),
         ("name", "scalar"),
         ("webhook_config", "mapping"),
+    ),
+    nullable_params=(
+        ("email_config", {"type": "dict"}),
+        ("webhook_config", {"type": "dict"}),
     ),
 )
 

@@ -44,8 +44,8 @@
       "name": "tableau-sans-items",
       "why": "Deviner le type des éléments effacerait la différence entre « c'est une chaîne » et « personne ne sait ».",
       "file": "generator/parser/openapi.py",
-      "find": "            return _ResolvedType(ApiType.ARRAY, item_type=None)",
-      "replace": "            return _ResolvedType(ApiType.ARRAY, item_type=ApiType.STRING)",
+      "find": "            return _ResolvedType(ApiType.ARRAY, item_type=None, nullable=nullable_par_le_type)",
+      "replace": "            return _ResolvedType(\n                ApiType.ARRAY, item_type=ApiType.STRING, nullable=nullable_par_le_type\n            )",
       "test": "tests/unit/generator/test_parser.py::test_un_tableau_sans_items_est_signale_et_non_devine"
     },
     {
@@ -1623,6 +1623,126 @@
       "find": "        commande=(\"mise\", \"run\", \"docs:site\"),",
       "replace": "        commande=(\"mise\", \"run\", \"docs:site\", \"docs:examples\"),",
       "test": "tests/unit/outillage/test_qualifier.py::test_aucune_commande_mise_ne_nomme_deux_taches"
+    },
+    {
+      "name": "sigle-pluriel-decapitalise",
+      "why": "Une page qui écrit « Instance IPs » puis « Instance Ips » se lit comme une page que personne n'a relue.",
+      "file": "generator/ansible/models.py",
+      "find": "    if dernier in ACRONYMES:\n        dernier = ACRONYMES[dernier]\n",
+      "replace": "    if dernier in ACRONYMES and False:\n        dernier = ACRONYMES[dernier]\n",
+      "test": "tests/unit/generator/test_models.py::test_un_sigle_garde_ses_capitales_au_pluriel"
+    },
+    {
+      "name": "override-de-parametre-orphelin",
+      "why": "Une faute de frappe dans `parameters` produirait un override silencieusement inerte, ce que la règle 2 du dépôt interdit.",
+      "file": "generator/overrides/loader.py",
+      "find": "                if nom not in connus:\n",
+      "replace": "                if nom not in connus and False:\n",
+      "test": "tests/unit/generator/test_overrides.py::test_un_override_de_parametre_qui_ne_designe_rien_est_orphelin"
+    },
+    {
+      "name": "retour-du-get-sans-champ-porteur-non-documente",
+      "why": "Un module qui rend une clé que sa page ne nomme pas ne se comprend pas depuis sa seule page Galaxy.",
+      "file": "generator/ansible/models.py",
+      "find": "        get_operation is not None\n        and not get_operation.payload_field\n        and list_operation is not None\n",
+      "replace": "        get_operation is not None\n        and not get_operation.payload_field\n        and False\n        and list_operation is not None\n",
+      "test": "tests/unit/generator/test_models.py::test_un_get_sans_champ_porteur_documente_la_cle_result"
+    },
+    {
+      "name": "oneof-traduit-confondu-avec-lunion",
+      "why": "Une union de formes comptée comme un type optionnel cache la seule construction dont la présence dans un contrat neuf serait une mauvaise nouvelle : celle qui produit un UNKNOWN.",
+      "file": "scripts/parser_coverage.py",
+      "find": "                if len(utiles) == 1:\n                    optionnels += 1",
+      "replace": "                if len(utiles) == 1 or True:\n                    optionnels += 1",
+      "test": "tests/unit/outillage/test_parser_coverage.py::test_une_union_reelle_est_comptee_a_part_et_le_parser_la_signale"
+    },
+    {
+      "name": "prix-dadmission-sur-une-construction-traduite",
+      "why": "Une porte qui ferait payer ce que le parser traduit publierait un prix qui n'existe pas, et masquerait celui qui existe.",
+      "file": "scripts/admission.py",
+      "find": "    non_gerees = [nom for nom, compte, etat in lignes if compte and etat.startswith(\"non\")]",
+      "replace": "    non_gerees = [nom for nom, compte, etat in lignes if compte and (etat.startswith(\"non\") or True)]",
+      "test": "tests/unit/outillage/test_parser_coverage.py::test_la_porte_ne_fait_pas_payer_une_construction_que_le_parser_traduit"
+    },
+    {
+      "name": "nullabilite-perdue-derriere-un-ref",
+      "why": "Un champ effaçable écrit par référence sortait non effaçable, et le compte publié le manquait.",
+      "file": "generator/parser/openapi.py",
+      "find": "            resolved.type, item_type=resolved.item_type, ref=target_name, nullable=resolved.nullable\n",
+      "replace": "            resolved.type, item_type=resolved.item_type, ref=target_name, nullable=False\n",
+      "test": "tests/unit/generator/test_parser.py::test_une_reference_vers_un_type_effacable_reste_effacable"
+    },
+    {
+      "name": "nullabilite-perdue-sur-un-tableau",
+      "why": "Chaque tableau de tags écrit `[array, null]` manquait au compte des champs effaçables.",
+      "file": "generator/parser/openapi.py",
+      "find": "            return _ResolvedType(ApiType.ARRAY, item_type=None, nullable=nullable_par_le_type)\n",
+      "replace": "            return _ResolvedType(ApiType.ARRAY, item_type=None, nullable=False)\n",
+      "test": "tests/unit/generator/test_parser.py::test_un_tableau_effacable_reste_effacable"
+    },
+    {
+      "name": "nullabilite-perdue-sur-un-tableau-avec-elements",
+      "why": "La branche avec `items` est l'autre moitié du même défaut, et le laboratoire ne l'exerce pas.",
+      "file": "generator/parser/openapi.py",
+      "find": "            ApiType.ARRAY, item_type=resolved_item.type, nullable=nullable_par_le_type\n",
+      "replace": "            ApiType.ARRAY, item_type=resolved_item.type, nullable=False\n",
+      "test": "tests/unit/generator/test_parser.py::test_un_tableau_effacable_avec_ses_elements_reste_effacable"
+    },
+    {
+      "name": "null-explicite-ignore",
+      "why": "Sans le refus, `description: null` disparaît avant la lecture et le module rend `ok` sur une description toujours là : un faux succès.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    nuls = explicit_nulls(spec, module.params)\n    if nuls:",
+      "replace": "    nuls = explicit_nulls(spec, module.params)\n    if nuls and False:",
+      "test": "tests/unit/collection/test_null_explicite.py::test_un_null_explicite_sur_un_champ_effacable_fait_echouer_sans_rien_lire"
+    },
+    {
+      "name": "refus-du-null-sans-egard-a-ce-qui-seffacera",
+      "why": "Un refus écrit en dur sur tout champ effaçable refuserait aussi le `null` qu'un runtime saura un jour exécuter.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        if nom not in clearable and nom in params and params[nom] is None",
+      "replace": "        if nom in params and params[nom] is None",
+      "test": "tests/unit/collection/test_null_explicite.py::test_un_null_sur_un_champ_que_le_runtime_sait_effacer_nest_pas_refuse"
+    },
+    {
+      "name": "valeur-effacable-non-revalidee",
+      "why": "`raw` laisse passer une chaîne là où l'API attend un booléen : sans revalidation, `stateful: \"no\"` partirait tel quel.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        module.params[nom] = resultat.validated_parameters[nom]",
+      "replace": "        module.params[nom] = valeur",
+      "test": "tests/unit/collection/test_null_explicite.py::test_une_valeur_fournie_sur_un_champ_effacable_garde_son_type"
+    },
+    {
+      "name": "marqueur-domission-non-retire",
+      "why": "Un marqueur qui resterait dans les paramètres serait envoyé à l'API comme une valeur, et publié dans `invocation`.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        if isinstance(valeur, str) and valeur == UNCHANGED:",
+      "replace": "        if isinstance(valeur, str) and valeur == UNCHANGED and False:",
+      "test": "tests/unit/collection/test_null_explicite.py::test_un_champ_effacable_omis_porte_le_marqueur_et_nest_pas_gere"
+    },
+    {
+      "name": "champ-effacable-non-marque",
+      "why": "Sans le marqueur, Ansible rend `None` pour l'option omise comme pour l'option à `null`, et le refus ne peut rien voir.",
+      "file": "generator/ansible/models.py",
+      "find": "        if option.name not in geres or parametre is None or not parametre.nullable:",
+      "replace": "        if option.name not in geres or parametre is None or True:",
+      "test": "tests/unit/generator/test_effacables.py::test_un_champ_effacable_gere_est_expose_en_raw_avec_le_marqueur"
+    },
+    {
+      "name": "choix-laisses-sur-une-option-marquee",
+      "why": "Ansible vérifie le marqueur contre les choix : chaque appel où l'option est omise échouerait, mesuré.",
+      "file": "generator/ansible/models.py",
+      "find": "                choices=(),\n                elements=None,",
+      "replace": "                choices=option.choices,\n                elements=None,",
+      "test": "tests/unit/generator/test_effacables.py::test_les_choix_et_les_elements_quittent_loption_publiee_pour_le_runtime"
+    },
+    {
+      "name": "defaut-du-contrat-ecrase-par-le-marqueur",
+      "why": "Un défaut du contrat perdu en silence est pire qu'un refus.",
+      "file": "generator/ansible/models.py",
+      "find": "        if option.default is not None:\n            raise ConflictingOption(",
+      "replace": "        if option.default is not None and False:\n            raise ConflictingOption(",
+      "test": "tests/unit/generator/test_effacables.py::test_un_champ_effacable_avec_un_defaut_du_contrat_est_refuse"
     }
   ]
 }

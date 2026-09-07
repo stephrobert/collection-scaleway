@@ -1702,7 +1702,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "List of SSL/TLS certificate IDs to bind to the frontend."
+          "description": "List of SSL/TLS certificate IDs to bind to the frontend.",
+          "nullable": true
         },
         {
           "name": "enable_http3",
@@ -4649,7 +4650,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "List of SSL/TLS certificate IDs to bind to the frontend."
+          "description": "List of SSL/TLS certificate IDs to bind to the frontend.",
+          "nullable": true
         },
         {
           "name": "enable_http3",
@@ -4912,7 +4914,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "List of tags for the IP."
+          "description": "List of tags for the IP.",
+          "nullable": true
         }
       ],
       "response": {

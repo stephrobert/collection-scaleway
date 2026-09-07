@@ -16,8 +16,14 @@ one.
 
 ```bash
 mise run setup     # the toolchain, pinned
+mise run hooks     # git hooks that refuse before pushing what CI refuses after
 mise run check     # lint, types, tests, strict report, golden drift
 ```
+
+**Every hook mirrors a gate CI already holds.** A hook nothing doubles is a rule
+only the people who installed it obey; a gate with no hook is one everybody
+discovers after pushing. The fast ones run on commit, `mise run check` runs on
+push. `.pre-commit-config.yaml` says why each one is where it is.
 
 `check` is deterministic, offline, and takes under a minute. It needs no
 Scaleway account and no credentials.

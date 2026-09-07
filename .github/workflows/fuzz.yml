@@ -27,7 +27,10 @@ on:
   # La liste est recopiée au lieu d'être ancrée : GitHub Actions n'interprète
   # pas les ancres YAML, et le fichier serait refusé.
   #
-  # Le cron hebdomadaire reste la couverture de ce que ce filtre laisse passer.
+  # Le cron du mardi reste la couverture de ce que ce filtre laisse passer :
+  # une campagne `batch` de dix minutes, qui téléverse son corpus. Celui du
+  # mercredi l'élague (`prune`) : ClusterFuzzLite le dit obligatoire dès qu'on
+  # fuzze en `batch`, sans quoi le corpus grossit sans jamais se réduire.
   pull_request:
     branches: [main]
     paths:
@@ -48,6 +51,7 @@ on:
       - ".github/workflows/fuzz.yml"
   schedule:
     - cron: "35 4 * * 2"
+    - cron: "35 4 * * 3"
 
 permissions: {}
 
@@ -61,9 +65,24 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
-      # Le corpus et les plantages sont rangés dans une branche dédiée, ce qui
-      # est le mode « stockage dans le dépôt » de ClusterFuzzLite : sans lui,
-      # chaque exécution repart d'un corpus vide et ne cumule rien.
+      # **Le corpus vit dans les artefacts du workflow, pas dans une branche.**
+      # Sans `storage-repo`, ClusterFuzzLite range ce qu'il produit en artefacts
+      # GitHub Actions : la campagne `batch` téléverse le corpus sous
+      # `cifuzz-corpus-<cible>`, chaque exécution suivante télécharge le dernier
+      # artefact non expiré de ce nom, et l'élagage `prune` le remplace par sa
+      # version réduite. Le corpus tient donc d'une campagne à l'autre, dans la
+      # limite de rétention des artefacts du dépôt.
+      #
+      # C'est ce que le code de ClusterFuzzLite fait, lu dans `run_fuzzers.py`
+      # et `filestore/github_actions/`, et ce que le journal d'un run confirme :
+      # « Downloading corpus for fuzz_parser », puis « Could not find artifact:
+      # cifuzz-corpus-fuzz_parser » tant qu'aucune campagne `batch` n'a abouti.
+      # Cet artefact est la preuve que le corpus tient ; absent, il ne tient pas.
+      # La première version de ce commentaire décrivait un mode « stockage dans
+      # le dépôt » que le workflow n'a jamais configuré.
+      #
+      # `contents: read` suffit : les artefacts se téléversent avec le jeton
+      # d'exécution du runner, et se listent avec `GITHUB_TOKEN` tel quel.
       contents: read
     steps:
       - name: Durcir le runner
@@ -71,22 +90,29 @@ jobs:
         with:
           egress-policy: audit
 
+      # Le jeton sert ici aussi : sans lui, l'étape cherche une construction
+      # précédente parmi les artefacts avec des identifiants vides, et le
+      # journal porte un `401 Bad credentials` à chaque run, mesuré.
       - name: Construire les fuzzers
         id: build
         uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
         with:
           language: python
           sanitizer: address
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # **Une durée courte sur une pull request, et c'est délibéré.** Un fuzzer
       # qui immobilise la CI dix minutes à chaque poussée finit désactivé, et un
       # contrôle désactivé ne mesure plus rien. La passe longue est celle du
-      # mardi.
+      # mardi ; le mercredi n'en est pas une, il élague.
+      #
+      # Le mode se lit sur le cron qui a déclenché le run : `prune` le
+      # mercredi, `batch` le mardi, `code-change` sur tout le reste.
       - name: Fuzzer
         uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fuzz-seconds: ${{ github.event_name == 'schedule' && 600 || 120 }}
-          mode: ${{ github.event_name == 'schedule' && 'batch' || 'code-change' }}
+          mode: ${{ github.event.schedule == '35 4 * * 3' && 'prune' || github.event_name == 'schedule' && 'batch' || 'code-change' }}
           sanitizer: address
           output-sarif: true

@@ -61,12 +61,22 @@ options:
     description:
     - Beginning of the range of ports this rule applies to (inclusive). If 0 is provided,
       unset the parameter.
-    type: int
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is int.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   dest_port_to:
     description:
     - End of the range of ports this rule applies to (inclusive). If 0 is provided, unset
       the parameter.
-    type: int
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is int.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   direction:
     description:
     - Direction the rule applies to.
@@ -78,11 +88,21 @@ options:
   ip_range:
     description:
     - Range of IP addresses these rules apply to. (IP network)
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   position:
     description:
     - Position of this rule in the security group rules list.
-    type: int
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is int.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   protocol:
     description:
     - Protocol family this rule applies to.
@@ -218,14 +238,14 @@ MODULE_ARGUMENT_SPEC = {
         "type": "str",
         "choices": ["unknown_action", "accept", "drop"],
     },
-    "dest_port_from": {"type": "int"},
-    "dest_port_to": {"type": "int"},
+    "dest_port_from": {"type": "raw", "default": "__unchanged__"},
+    "dest_port_to": {"type": "raw", "default": "__unchanged__"},
     "direction": {
         "type": "str",
         "choices": ["unknown_direction", "inbound", "outbound"],
     },
-    "ip_range": {"type": "str"},
-    "position": {"type": "int"},
+    "ip_range": {"type": "raw", "default": "__unchanged__"},
+    "position": {"type": "raw", "default": "__unchanged__"},
     "protocol": {
         "type": "str",
         "choices": ["unknown_protocol", "TCP", "UDP", "ICMP", "ANY"],
@@ -281,6 +301,12 @@ MODULE = ManageModule(
         ("ip_range", "scalar"),
         ("position", "scalar"),
         ("protocol", "scalar"),
+    ),
+    nullable_params=(
+        ("dest_port_from", {"type": "int"}),
+        ("dest_port_to", {"type": "int"}),
+        ("ip_range", {"type": "str"}),
+        ("position", {"type": "int"}),
     ),
 )
 

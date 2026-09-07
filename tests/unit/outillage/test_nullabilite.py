@@ -8,8 +8,9 @@ description: null        # « efface la description »
 # description absente    # « n'y touche pas »
 ```
 
-Les deux produisent la même requête. Un playbook qui veut effacer ne le peut
-pas, et le module rend `ok` sans avoir rien effacé.
+Les deux produisaient la même requête, et le module rendait `ok` sans avoir
+rien effacé. Un module de gestion refuse désormais le `null` explicite
+(ADR-012) ; l'effacement, lui, attend #114, et ce relevé le chiffre.
 
 Ce relevé compte et nomme les champs concernés. Il ne refuse rien : compter
 n'est pas refuser, et une porte bloquerait la collection sur une limite connue.

@@ -1,0 +1,156 @@
+# Ce que la CI refusera, refusé avant de partir. Installation :
+# `mise run hooks`. Sur tout le dépôt : `pre-commit run --all-files`.
+#
+# **Chaque crochet reflète une porte que la CI tient déjà.** Un crochet qu'aucune
+# porte ne double est une règle que seuls ceux qui l'ont installé respectent ;
+# une porte sans crochet est une règle que tout le monde découvre après avoir
+# poussé. Les deux se corrigent ici.
+#
+# **Ce qui n'est pas copié de feint, et pourquoi.** feint verrouille ses messages
+# de commit par commitizen, parce que son numéro de version se déduit des
+# commits depuis le dernier tag. Ici il se déduit des **fragments de changelog**,
+# et les messages sont des phrases françaises : un crochet Conventional Commits
+# refuserait chaque commit de ce dépôt. Une configuration recopiée sans être
+# mesurée est exactement ce que ce dépôt reproche ailleurs.
+#
+# **Le critère de ce qui tient avant un commit : la seconde.** Mesuré :
+#
+#     lint 0,1 s · typecheck 0,2 s · typographie 0,1 s · histoire 0,2 s
+#     chiffres 0,1 s · changelog 0,5 s · artefacts générés 0,7 s · workflows 0,3 s
+#     readme:check 8,8 s
+#
+# Le dernier part donc en pré-poussée avec le reste. Un crochet qui fait
+# attendre à chaque commit enseigne le réflexe `--no-verify`, qui désactive
+# **tous** les autres en même temps : une porte dont le mode d'échec est « on
+# les éteint toutes » est pire que pas de porte.
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # Les golden sont des données, pas du code : un formateur qui les retouche
+      # fait mentir la mesure de dérive. Ils sont donc hors de portée de ces
+      # trois-là, comme ils le sont déjà de `ruff format`.
+      - id: trailing-whitespace
+        exclude: ^(tests/fixtures|specs|ansible_collections)/|\.md$
+      - id: end-of-file-fixer
+        exclude: ^(tests/fixtures|specs|ansible_collections)/
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+        exclude: ^(tests/fixtures|specs|ansible_collections)/
+      - id: check-yaml
+        # Les contrats vendorisés viennent du portail Scaleway : ils sont ce
+        # qu'ils sont, et les reformater ferait diverger le golden de sa source.
+        exclude: ^specs/
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-added-large-files
+        # Les contrats sont les gros fichiers d'ici, et c'est voulu :
+        # `instance.v1.yml` est la description entière d'une API.
+        args: ['--maxkb=2048']
+
+  # Le style et le format, sur **exactement** ce que `mise run lint` couvre.
+  #
+  # `generator`, `scripts` et `tests`, et rien d'autre. La première version de ce
+  # fichier lâchait `ruff --fix` sur tout le dépôt : il a retiré
+  # `# -*- coding: utf-8 -*-` de dix-sept fichiers de la collection, que
+  # `ansible-test sanity` juge et que `ruff` n'a pas à réécrire. Le dépôt tient
+  # déjà les golden hors de portée du formateur pour la même raison, et c'est
+  # écrit dans `pyproject.toml` : un artefact qu'un formateur peut modifier ne
+  # mesure plus rien.
+  #
+  # Un crochet qui couvre plus que la porte qu'il reflète n'est pas plus sûr :
+  # il refuse ce que la CI accepte, et il apprend à passer outre.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^(generator|scripts|tests)/
+      - id: ruff-format
+        files: ^(generator|scripts|tests)/
+
+  - repo: local
+    hooks:
+      # Les portes propres à ce dépôt. Chacune existe parce qu'un défaut est
+      # passé sans elle, et chacune tourne en moins d'une seconde.
+      - id: typecheck
+        name: mypy strict
+        language: system
+        entry: mise run typecheck
+        pass_filenames: false
+        files: \.py$
+
+      - id: typographie
+        name: aucun tiret cadratin
+        language: system
+        entry: mise run typographie
+        pass_filenames: false
+        always_run: true
+
+      - id: histoire
+        name: aucun nombre historique dans une phrase
+        language: system
+        entry: mise run histoire
+        pass_filenames: false
+        files: \.py$
+
+      - id: chiffres
+        name: aucun compteur publié hors d'un bloc dérivé
+        language: system
+        entry: mise run chiffres:check
+        pass_filenames: false
+        files: \.md$
+
+      - id: changelog
+        name: les fragments de changelog sont lisibles
+        language: system
+        entry: mise run lint:changelog
+        pass_filenames: false
+        files: ^ansible_collections/.*/changelogs/
+
+      # Un artefact généré commité à la main est un artefact que le générateur
+      # ne produit plus. Le contrôle porte sur ce que git enregistre, donc il
+      # ne peut pas passer sur un fichier modifié et non ajouté.
+      - id: artefacts-generes
+        name: les artefacts générés sont ceux que le générateur produit
+        language: system
+        entry: mise run check:generated
+        pass_filenames: false
+        files: ^(generator/|tests/fixtures/|ansible_collections/stephrobert/scaleway/plugins/)
+
+      - id: workflows
+        name: actionlint, zizmor, poutine
+        language: system
+        entry: mise run security
+        pass_filenames: false
+        files: ^\.github/
+
+      - id: shellcheck
+        name: shellcheck
+        language: system
+        entry: shellcheck --severity=style
+        types: [shell]
+
+      # **Sur la pré-poussée, et seulement celle-ci.** Les crochets ci-dessus
+      # portent sur ce qu'un commit touche ; celui-ci pose l'autre question, ce
+      # que l'ensemble vaut. Une branche peut être verte commit par commit et
+      # rouge d'un bloc, et c'est le cas d'une régénération oubliée ou d'une
+      # mutation dont l'ancre a bougé sous un correctif voisin.
+      #
+      # `check` et pas `qualifier` : le second construit deux images en
+      # conteneur et joue la plateforme d'exemple, donc plusieurs minutes et des
+      # binaires que tout le monde n'a pas. Comme crochet il échouerait sur un
+      # outil manquant plutôt que sur le code, et il enseignerait `--no-verify`.
+      # `qualifier` reste une étape délibérée, et `CLAUDE.md` dit quand elle est
+      # exigée.
+      - id: check
+        name: ce qu'une pull request doit passer
+        language: system
+        entry: mise run check
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

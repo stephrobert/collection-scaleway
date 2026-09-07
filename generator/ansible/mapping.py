@@ -75,6 +75,18 @@ COMMON_PARAMETERS: frozenset[str] = frozenset(
 )
 
 
+#: La valeur qu'une option effaçable porte quand le playbook l'omet.
+#:
+#: Ansible ne distingue pas une clé absente d'une clé à `null` : `module.params`
+#: porte `None` dans les deux cas. Le seul mécanisme public qui les sépare, sur
+#: chaque version d'ansible-core que la CI éprouve, est un défaut marqueur sur
+#: une option `raw` (ADR-012). Le runtime en porte une copie, et un test exige
+#: que les deux concordent : le générateur écrit le marqueur dans le module, le
+#: runtime le retire, et un désaccord ferait passer chaque option omise pour une
+#: valeur fournie.
+UNCHANGED = "__unchanged__"
+
+
 class UnmappedType(Exception):
     """Un type de l'IR n'a pas d'équivalent `argument_spec`."""
 

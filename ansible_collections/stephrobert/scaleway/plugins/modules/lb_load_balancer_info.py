@@ -96,6 +96,120 @@ EXAMPLES = r"""
 """
 
 RETURN = r"""
+result:
+  description:
+  - Retrieve information about an existing Load Balancer, specified by its Load Balancer ID.
+    Its full details, including name, status and IP address, are returned in the response
+    object.
+  - 'The API contract names no payload field for this operation: the response body is returned
+    as is.'
+  returned: when I(lb_id) is provided
+  type: dict
+  contains:
+    id:
+      description:
+      - Underlying Instance ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Load Balancer name.
+      returned: when the API returns it
+      type: str
+    description:
+      description:
+      - Load Balancer description.
+      returned: when the API returns it
+      type: str
+    status:
+      description:
+      - Load Balancer status.
+      returned: when the API returns it
+      type: str
+    instances:
+      description:
+      - List of underlying Instances.
+      returned: when the API returns it
+      type: list
+      elements: dict
+    organization_id:
+      description:
+      - Scaleway Organization ID.
+      returned: when the API returns it
+      type: str
+    project_id:
+      description:
+      - Scaleway Project ID.
+      returned: when the API returns it
+      type: str
+    ip:
+      description:
+      - List of IP addresses attached to the Load Balancer.
+      returned: when the API returns it
+      type: list
+      elements: dict
+    tags:
+      description:
+      - Load Balancer tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    frontend_count:
+      description:
+      - Number of frontends the Load Balancer has.
+      returned: when the API returns it
+      type: int
+    backend_count:
+      description:
+      - Number of backends the Load Balancer has.
+      returned: when the API returns it
+      type: int
+    type:
+      description:
+      - Load Balancer offer type.
+      returned: when the API returns it
+      type: str
+    subscriber:
+      description:
+      - Subscriber information.
+      returned: when the API returns it
+      type: dict
+    ssl_compatibility_level:
+      description:
+      - Determines the minimal SSL version which needs to be supported on client side.
+      returned: when the API returns it
+      type: str
+    created_at:
+      description:
+      - Date on which the Load Balancer was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date on which the Load Balancer was last updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    private_network_count:
+      description:
+      - Number of Private Networks attached to the Load Balancer.
+      returned: when the API returns it
+      type: int
+    route_count:
+      description:
+      - Number of routes configured on the Load Balancer.
+      returned: when the API returns it
+      type: int
+    region:
+      description:
+      - The region the Load Balancer is in.
+      - Deprecated by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - The zone the Load Balancer is in.
+      returned: when the API returns it
+      type: str
 lbs:
   description:
   - List all Load Balancers in the specified zone, for a Scaleway Organization or Scaleway

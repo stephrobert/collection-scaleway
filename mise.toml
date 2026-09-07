@@ -105,7 +105,7 @@ description = "Épingler une version d'ansible-core (ANSIBLE_CORE='>=2.17,<2.18'
 # entre apostrophes, et la chaîne partait littérale vers le résolveur. Défaut
 # latent depuis l'écriture de la tâche, que personne n'avait vu parce que la
 # matrice de CI échouait avant d'y arriver.
-run = 'uv pip install "ansible-core${ANSIBLE_CORE:->=2.17}"' 
+run = 'uv pip install "ansible-core${ANSIBLE_CORE:->=2.17}"'
 
 [tasks.security]
 description = "Juger les workflows : actionlint, zizmor, poutine"
@@ -523,6 +523,15 @@ description = "Les champs que le contrat dit effaçables et qu'un module ne sait
 # Il ne refuse rien : compter n'est pas refuser, et transformer ce compte en
 # porte bloquerait la collection sur une limite connue et documentée.
 run = "python scripts/nullabilite.py"
+
+[tasks.hooks]
+description = "Installer les crochets git qui refusent avant la poussée ce que la CI refuse après"
+# **Une seule commande documentée.** `pre-commit install` n'installe que le
+# crochet de pré-commit tant qu'on ne lui dit pas lesquels câbler : un crochet
+# de pré-poussée déclaré et jamais installé resterait dans le fichier à ne rien
+# faire sur toutes les machines. `default_install_hook_types` le dit dans la
+# configuration, et cette commande suffit.
+run = "pre-commit install"
 
 [tasks.typographie]
 description = "Refuser le tiret cadratin, que le dépôt interdit dans les deux langues"

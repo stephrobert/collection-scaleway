@@ -517,10 +517,10 @@ def bloc_runtime_etat() -> str:
 def bloc_effacables() -> str:
     """Combien de champs un module ne sait pas effacer, et sur combien de modules.
 
-    Le contrat marque un champ effaçable ; le runtime construit sa demande
-    depuis les valeurs non nulles, donc `champ: null` et `champ` absent
-    produisent la même requête. Un playbook qui veut effacer ne le peut pas, et
-    le module rend `ok` sans avoir rien effacé.
+    Le contrat marque un champ effaçable, et aucun module ne sait l'effacer.
+    Un module de gestion refuse désormais `champ: null` plutôt que de l'ignorer
+    (ADR-012) ; un playbook qui veut effacer ne le peut toujours pas, mais il
+    le sait.
 
     Le nombre est publié plutôt que décrit : c'est lui qui chiffre le travail
     restant, et une phrase sans nombre laisserait croire que la limite est
@@ -538,10 +538,10 @@ def bloc_effacables() -> str:
     return (
         f"The contract marks **{len(champs)} writable fields** as clearable, "
         f"across {modules} modules.\n"
-        "The runtime builds its request from the values that are not `None`, so\n"
-        "`field: null` and an absent `field` produce the same request: a playbook\n"
-        "cannot clear one, and the module reports `ok` without having cleared\n"
-        "anything. `mise run nullabilite` names them one by one."
+        "No module can clear one yet. A managing module that receives `field: null`\n"
+        "fails and names the field rather than reporting `ok` without having cleared\n"
+        "anything; omitting the field leaves it unchanged. `mise run nullabilite`\n"
+        "names them one by one."
     )
 
 

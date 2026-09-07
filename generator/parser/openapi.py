@@ -104,9 +104,9 @@ CONTRAINTES_CHERCHEES: tuple[str, ...] = (
 #: Ce que le générateur sait faire d'une contrainte trouvée.
 #:
 #: `x-one-of` devient un `mutually_exclusive`. La nullabilité est portée par
-#: l'IR et comptée, sans être encore traduite : un champ effaçable et un champ
-#: absent produisent la même requête, et distinguer les deux demande une
-#: sémantique d'effacement que le contrat ne décrit pas.
+#: l'IR et comptée, sans être traduite en effacement : un module de gestion
+#: refuse le `null` explicite au lieu de l'ignorer (ADR-012), et effacer
+#: demande une sémantique que le contrat ne décrit pas (#114).
 CONTRAINTES_TRADUITES: frozenset[str] = frozenset({"x-one-of"})
 
 
@@ -616,8 +616,17 @@ def _resolve_type(
                 enum_values=resolved.enum_values,
                 default=target.get("default"),
                 ref=target_name,
+                nullable=resolved.nullable,
             )
-        return _ResolvedType(resolved.type, item_type=resolved.item_type, ref=target_name)
+        # **La nullabilité traverse la référence.** Scaleway écrit un champ
+        # effaçable de trois façons, et la troisième est un `$ref` vers un
+        # enveloppeur protobuf, `google.protobuf.BoolValue: type: [boolean,
+        # "null"]`. La cible le dit ; ne pas le reporter faisait sortir le même
+        # `dest_port_from` effaçable dans une opération et pas dans l'autre,
+        # selon la façon dont le contrat l'écrit.
+        return _ResolvedType(
+            resolved.type, item_type=resolved.item_type, ref=target_name, nullable=resolved.nullable
+        )
 
     raw_type = schema.get("type")
     nullable_par_le_type = False
@@ -649,12 +658,21 @@ def _resolve_type(
             ApiType.ENUM,
             enum_values=tuple(str(value) for value in valeurs),
             default=schema.get("default"),
+            nullable=nullable_par_le_type,
         )
 
+    # `nullable_par_le_type` est reporté par **chaque** branche, pas seulement
+    # par la scalaire : `type: [array, "null"]` est la forme que le contrat
+    # emploie pour les tags, et la perdre ici comptait un champ effaçable de
+    # moins par tableau, sans qu'aucun avertissement le dise.
     if raw_type == "object":
         if schema.get("additionalProperties"):
-            return _ResolvedType(ApiType.MAP, default=schema.get("default"))
-        return _ResolvedType(ApiType.OBJECT, default=schema.get("default"))
+            return _ResolvedType(
+                ApiType.MAP, default=schema.get("default"), nullable=nullable_par_le_type
+            )
+        return _ResolvedType(
+            ApiType.OBJECT, default=schema.get("default"), nullable=nullable_par_le_type
+        )
 
     if raw_type == "array":
         items = schema.get("items")
@@ -663,7 +681,7 @@ def _resolve_type(
             # déclarent pas leurs éléments. Le type est inconnu, il ne se
             # devine pas.
             warnings.append(f"{context} : tableau sans `items`, type des éléments inconnu")
-            return _ResolvedType(ApiType.ARRAY, item_type=None)
+            return _ResolvedType(ApiType.ARRAY, item_type=None, nullable=nullable_par_le_type)
         resolved_item = _resolve_type(
             schema=_deref(items, schemas) if "$ref" in items else items,
             schemas=schemas,
@@ -671,7 +689,9 @@ def _resolve_type(
             warnings=warnings,
             context=f"{context}[]",
         )
-        return _ResolvedType(ApiType.ARRAY, item_type=resolved_item.type)
+        return _ResolvedType(
+            ApiType.ARRAY, item_type=resolved_item.type, nullable=nullable_par_le_type
+        )
 
     if raw_type in _SCALAR_TYPES:
         return _ResolvedType(

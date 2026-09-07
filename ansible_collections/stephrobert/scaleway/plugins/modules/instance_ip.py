@@ -47,16 +47,30 @@ options:
   reverse:
     description:
     - Reverse domain name.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   server:
     description:
     - Instance attached to the IP.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   tags:
     description:
     - An array of keywords you want to tag this IP with.
-    type: list
-    elements: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is list of str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   type:
     description:
     - Should have no effect.
@@ -191,9 +205,9 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "ip": {"type": "str", "required": True},
-    "reverse": {"type": "str"},
-    "server": {"type": "str"},
-    "tags": {"type": "list", "elements": "str"},
+    "reverse": {"type": "raw", "default": "__unchanged__"},
+    "server": {"type": "raw", "default": "__unchanged__"},
+    "tags": {"type": "raw", "default": "__unchanged__"},
     "type": {
         "type": "str",
         "choices": ["unknown_iptype", "routed_ipv4", "routed_ipv6"],
@@ -230,6 +244,11 @@ MODULE = ManageModule(
         ("server", "scalar"),
         ("tags", "ordered_list"),
         ("type", "scalar"),
+    ),
+    nullable_params=(
+        ("reverse", {"type": "str"}),
+        ("server", {"type": "str"}),
+        ("tags", {"type": "list", "elements": "str"}),
     ),
 )
 

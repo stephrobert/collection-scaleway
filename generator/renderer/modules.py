@@ -223,6 +223,8 @@ def _manage_module_literal(spec: AnsibleModuleSpec) -> str:
         lines.append(f"    unverified_params={python_literal(spec.unverified_params, indent=4)},")
     if spec.secret_params:
         lines.append(f"    secret_params={python_literal(spec.secret_params, indent=4)},")
+    if spec.nullable_params:
+        lines.append(f"    nullable_params={python_literal(spec.nullable_params, indent=4)},")
     lines.append(")")
     return "\n".join(lines)
 
@@ -372,9 +374,19 @@ def _inline_literal(value: Any) -> str | None:
         )
         return "{" + body + "}"
 
-    if not all(_is_scalar(item) for item in value):
+    # Un dictionnaire de scalaires reste sur la ligne de la séquence qui le
+    # porte : `("name", {"type": "str"})` se lit d'un coup, déplié sur quatre
+    # lignes il noie le nom sous sa forme.
+    morceaux: list[str] = []
+    for item in value:
+        if _is_scalar(item):
+            morceaux.append(_scalar_literal(item))
+            continue
+        if isinstance(item, dict) and item and all(_is_scalar(v) for v in item.values()):
+            morceaux.append(_inline_literal(item) or "")
+            continue
         return None
-    body = ", ".join(_scalar_literal(item) for item in value)
+    body = ", ".join(morceaux)
     if isinstance(value, tuple) and len(value) == 1:
         # Un tuple d'un seul élément garde sa virgule, sinon ce sont des
         # parenthèses autour d'une valeur.

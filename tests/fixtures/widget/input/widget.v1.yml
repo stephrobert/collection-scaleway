@@ -178,6 +178,14 @@ paths:
                 tags:
                   type: [array, "null"]
                   description: Tags of the widget.
+                # **Un champ que le contrat ne déclare pas effaçable.** Le
+                # laboratoire n'en portait plus aucun une fois la nullabilité
+                # lue derrière un `$ref` : le contre-exemple du refus de `null`
+                # n'existait plus, et un test sans contre-exemple passe aussi
+                # sur un générateur qui marquerait tout.
+                label:
+                  type: string
+                  description: Free-form label of the widget.
                 protected:
                   $ref: '#/components/schemas/google.protobuf.BoolValue'
                 secret_token:

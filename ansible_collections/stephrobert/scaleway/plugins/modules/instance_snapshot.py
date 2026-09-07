@@ -47,12 +47,21 @@ options:
   name:
     description:
     - Name of the snapshot.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   tags:
     description:
     - Tags of the snapshot.
-    type: list
-    elements: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is list of str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
 """
@@ -184,8 +193,8 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "snapshot_id": {"type": "str", "required": True},
-    "name": {"type": "str"},
-    "tags": {"type": "list", "elements": "str"},
+    "name": {"type": "raw", "default": "__unchanged__"},
+    "tags": {"type": "raw", "default": "__unchanged__"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -216,6 +225,10 @@ MODULE = ManageModule(
     comparisons=(
         ("name", "scalar"),
         ("tags", "ordered_list"),
+    ),
+    nullable_params=(
+        ("name", {"type": "str"}),
+        ("tags", {"type": "list", "elements": "str"}),
     ),
 )
 

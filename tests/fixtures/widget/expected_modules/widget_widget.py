@@ -39,24 +39,52 @@ options:
   email_config:
     description:
     - Email address configuration.
-    type: dict
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is dict.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
+  label:
+    description:
+    - Free-form label of the widget.
+    type: str
   protected:
     description:
     - Not documented by the Scaleway API contract.
-    type: bool
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is bool.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   secret_token:
     description:
     - Jeton de rotation.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   tags:
     description:
     - Tags of the widget.
-    type: list
-    elements: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is list of str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   webhook_config:
     description:
     - Webhook URI configuration.
-    type: dict
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is dict.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
 extends_documentation_fragment:
 - lab.widget.scaleway
 """
@@ -129,11 +157,12 @@ MODULE_ARGUMENT_SPEC = {
         "choices": ["fr-par-1", "nl-ams-1"],
     },
     "widget_id": {"type": "str", "required": True},
-    "email_config": {"type": "dict"},
-    "protected": {"type": "bool"},
-    "secret_token": {"type": "str", "no_log": True},
-    "tags": {"type": "list", "elements": "str"},
-    "webhook_config": {"type": "dict"},
+    "email_config": {"type": "raw", "default": "__unchanged__"},
+    "label": {"type": "str"},
+    "protected": {"type": "raw", "default": "__unchanged__"},
+    "secret_token": {"type": "raw", "default": "__unchanged__", "no_log": True},
+    "tags": {"type": "raw", "default": "__unchanged__"},
+    "webhook_config": {"type": "raw", "default": "__unchanged__"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -157,17 +186,25 @@ MODULE = ManageModule(
         path="/widget/v1/zones/{zone}/widgets/{widget_id}",
         path_params=("zone", "widget_id"),
         query_params=(),
-        body_params=("tags", "protected", "secret_token", "email_config", "webhook_config"),
+        body_params=("tags", "label", "protected", "secret_token", "email_config", "webhook_config"),
     ),
-    managed_params=("tags", "protected", "secret_token", "email_config", "webhook_config"),
+    managed_params=("tags", "label", "protected", "secret_token", "email_config", "webhook_config"),
     comparisons=(
         ("email_config", "mapping"),
+        ("label", "scalar"),
         ("protected", "scalar"),
         ("secret_token", "scalar"),
         ("tags", "ordered_list"),
         ("webhook_config", "mapping"),
     ),
     secret_params=("secret_token",),
+    nullable_params=(
+        ("email_config", {"type": "dict"}),
+        ("protected", {"type": "bool"}),
+        ("secret_token", {"type": "str"}),
+        ("tags", {"type": "list", "elements": "str"}),
+        ("webhook_config", {"type": "dict"}),
+    ),
 )
 
 

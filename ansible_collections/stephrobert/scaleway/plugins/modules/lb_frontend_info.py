@@ -91,6 +91,84 @@ EXAMPLES = r"""
 """
 
 RETURN = r"""
+result:
+  description:
+  - Get the full details of a given frontend, specified by its frontend ID. The response contains
+    the frontend's full configuration parameters including the backend it is attached to,
+    the port it listens on, and any certificates it has.
+  - 'The API contract names no payload field for this operation: the response body is returned
+    as is.'
+  returned: when I(frontend_id) is provided
+  type: dict
+  contains:
+    id:
+      description:
+      - Frontend ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Name of the frontend.
+      returned: when the API returns it
+      type: str
+    inbound_port:
+      description:
+      - Port the frontend listens on.
+      returned: when the API returns it
+      type: int
+    backend:
+      description:
+      - Backend object the frontend is attached to.
+      returned: when the API returns it
+      type: dict
+    lb:
+      description:
+      - Load Balancer object the frontend is attached to.
+      returned: when the API returns it
+      type: dict
+    timeout_client:
+      description:
+      - Maximum allowed inactivity time on the client side. (in milliseconds)
+      returned: when the API returns it
+      type: float
+    certificate:
+      description:
+      - Certificate, deprecated in favor of certificate_ids array.
+      - Deprecated by the Scaleway API contract.
+      returned: when the API returns it
+      type: dict
+    certificate_ids:
+      description:
+      - List of SSL/TLS certificate IDs to bind to the frontend.
+      returned: when the API returns it
+      type: list
+      elements: str
+    created_at:
+      description:
+      - Date on which the frontend was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date on which the frontend was last updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    enable_http3:
+      description:
+      - Defines whether to enable HTTP/3 protocol on the frontend.
+      returned: when the API returns it
+      type: bool
+    connection_rate_limit:
+      description:
+      - Rate limit for new connections established on this frontend. Use 0 value to disable,
+        else value is connections per second.
+      returned: when the API returns it
+      type: int
+    enable_access_logs:
+      description:
+      - Defines whether to enable access logs on the frontend.
+      returned: when the API returns it
+      type: bool
 frontends:
   description:
   - List all the frontends of a Load Balancer, specified by its Load Balancer ID. By default,

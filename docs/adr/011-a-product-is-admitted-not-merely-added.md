@@ -54,13 +54,24 @@ carried and published. A gate that confuses the two punishes exactly the
 behaviour this repository asks for, and it found that out on a shipped product
 the first time it ran.
 
-Both current products are admitted. Their price is two unhandled OpenAPI
-constructs each, and forty clearable fields between them.
+Both current products are admitted. Their price is the response codes the
+parser does not read, two for Instance and one for the Load Balancer, and forty
+clearable fields between them. The first version of this record said "two
+unhandled OpenAPI constructs each": the parser coverage report filed
+`oneOf: [T, null]`, which the parser translates, under the same "unhandled" line
+as a real union of shapes, and the gate charged the Load Balancer for it. Issue
+#120 separated the two counts, and the corrected price is the one above.
 
 The gate reuses the other measurements rather than recomputing them. Reading
 their printed output would make a second reader of the same calculation, and the
 two would diverge at the first formatting change; `parser_coverage` was split
 into a function that measures and one that prints, for that reason.
+
+**The clearable-field count of this record was an undercount.** The parser
+carried nullability only on a scalar written `type: [T, "null"]`: behind a
+`$ref` to a protobuf wrapper, and on `type: [array | object, "null"]`, the fact
+was dropped. The contracts declare 55 clearable body fields written by a
+module, and the measurement said forty until the parser carried them all.
 
 ## What this record does not decide
 

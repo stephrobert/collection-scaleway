@@ -117,7 +117,9 @@ class CallbackModule(CallbackBase):
         taches = list(anterieur.get("taches", [])) + self._taches
         faits = {**anterieur.get("faits", {}), **self._faits}
         self._destination.write_text(
-            json.dumps({"taches": taches, "faits": faits}, indent=2, ensure_ascii=False, sort_keys=True)
+            json.dumps(
+                {"taches": taches, "faits": faits}, indent=2, ensure_ascii=False, sort_keys=True
+            )
             + "\n",
             encoding="utf-8",
         )

@@ -26,13 +26,14 @@ Trois décisions valent d'être lues avant le code :
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from generator.ansible.collection import Collection
 from generator.ansible.comparison import strategie_par_defaut
 from generator.ansible.mapping import (
     COMMON_PARAMETERS,
+    UNCHANGED,
     UnmappedType,
     argument_spec_entry,
     no_log_de,
@@ -269,6 +270,15 @@ class AnsibleModuleSpec:
     managed_params: tuple[str, ...] = ()
     #: Ceux de ces champs qui portent un secret, et qui ne se comparent donc pas.
     secret_params: tuple[str, ...] = ()
+    #: Ceux que le contrat déclare effaçables, avec l'entrée d'`argument_spec`
+    #: de leur type réel.
+    #:
+    #: L'option publiée est `raw` avec `UNCHANGED` pour défaut : c'est ce qui
+    #: rend un `null` explicite visible du runtime, qui le refuse plutôt que de
+    #: l'ignorer (ADR-012). L'entrée réelle sert au runtime à revalider la
+    #: valeur fournie, pour que `raw` ne coûte au playbook ni conversion ni
+    #: contrôle de type.
+    nullable_params: tuple[tuple[str, dict[str, Any]], ...] = ()
     #: La lecture unitaire de la même ressource, pour attendre l'état visé.
     read_operation: OperationBinding | None = None
     #: Le paramètre qui porte l'action demandée.
@@ -725,6 +735,9 @@ def _build_manage_module(
             "y est signalé par le parser."
         )
 
+    effacables = _effacables(item.operation, options, geres)
+    options = _marquer_les_effacables(options, effacables)
+
     secrets = tuple(option.name for option in options if option.no_log and option.name in geres)
     if secrets:
         limits = (
@@ -770,6 +783,7 @@ def _build_manage_module(
         read_operation=read_operation,
         managed_params=geres,
         secret_params=secrets,
+        nullable_params=effacables,
         limits=limits,
         comparisons=_comparaisons(item.operation, geres, override),
         unverified_params=tuple(
@@ -781,6 +795,97 @@ def _build_manage_module(
         ),
         mutually_exclusive=_exclusions((item.operation,)),
     )
+
+
+def _effacables(
+    operation: ApiOperation, options: tuple[AnsibleOption, ...], geres: tuple[str, ...]
+) -> tuple[tuple[str, dict[str, Any]], ...]:
+    """Les champs gérés que le contrat déclare effaçables, avec leur entrée réelle.
+
+    L'entrée réelle est ce que le runtime revalidera : le type, ses éléments,
+    ses choix. Ni `required`, ni `no_log`, ni `default` : le premier n'a pas de
+    sens pour un champ qu'on peut omettre, le deuxième reste sur l'option
+    publiée, et le troisième est refusé plus bas.
+    """
+    par_nom = {parametre.name: parametre for parametre in operation.parameters}
+    trouves: list[tuple[str, dict[str, Any]]] = []
+    for option in options:
+        parametre = par_nom.get(option.name)
+        if option.name not in geres or parametre is None or not parametre.nullable:
+            continue
+        entree: dict[str, Any] = {"type": option.type}
+        if option.elements:
+            entree["elements"] = option.elements
+        if option.choices:
+            entree["choices"] = list(option.choices)
+        trouves.append((option.name, entree))
+    return tuple(trouves)
+
+
+def _marquer_les_effacables(
+    options: tuple[AnsibleOption, ...], effacables: tuple[tuple[str, dict[str, Any]], ...]
+) -> tuple[AnsibleOption, ...]:
+    """Expose chaque champ effaçable en `raw`, avec le marqueur pour défaut.
+
+    **C'est le seul mécanisme public qui distingue `null` d'une option omise**,
+    mesuré sur chaque version d'ansible-core que la CI éprouve (ADR-012). Un
+    `str` avec ce défaut échoue sur les versions anciennes ; un `fallback`
+    casse `mutually_exclusive`, parce qu'Ansible compte les clés présentes.
+
+    Le prix se paie sur la page : `type: raw` et le marqueur en défaut, que
+    `validate-modules` exige de publier tels quels. La description dit donc le
+    type réel, et ce que le marqueur veut dire. Les `choices` et `elements`
+    quittent l'option publiée : Ansible vérifierait le marqueur contre les
+    choix, et refuserait chaque appel où l'option est omise.
+
+    Un défaut du contrat sur un tel champ n'a pas de cas déclenchant, et le
+    marqueur l'écraserait : refusé plutôt que perdu en silence.
+    """
+    reelles = dict(effacables)
+    marquees: list[AnsibleOption] = []
+    for option in options:
+        entree = reelles.get(option.name)
+        if entree is None:
+            marquees.append(option)
+            continue
+        if option.default is not None:
+            raise ConflictingOption(
+                f"{option.name} : effaçable et porteur d'un défaut du contrat "
+                f"({option.default!r}), que le marqueur d'omission écraserait. "
+                "Cas non rencontré, à décider avant de générer."
+            )
+        marquees.append(
+            replace(
+                option,
+                type="raw",
+                default=UNCHANGED,
+                choices=(),
+                elements=None,
+                description=(*option.description, *_phrase_effacable(entree)),
+            )
+        )
+    return tuple(marquees)
+
+
+def _phrase_effacable(entree: dict[str, Any]) -> tuple[str, ...]:
+    """Ce que la page doit dire d'une option publiée en `raw` pour cette raison.
+
+    Publié, donc en anglais. Le lecteur voit `raw` et un défaut qui n'en est
+    pas un : sans ces phrases, la page perd le type et laisse croire à une
+    valeur par défaut.
+    """
+    type_reel = str(entree["type"])
+    if entree.get("elements"):
+        type_reel = f"{type_reel} of {entree['elements']}"
+    phrases = [
+        "Omit this option to keep the current value: the published default is only "
+        f"the marker of an omitted option, and the API type is {type_reel}.",
+        "An explicit null is refused, because clearing this field is not supported "
+        "by the module yet.",
+    ]
+    if entree.get("choices"):
+        phrases.append(f"Accepted values: {', '.join(str(c) for c in entree['choices'])}.")
+    return tuple(phrases)
 
 
 #: Mots qu'une ressource porte en abrégé, et leur forme publiée.
@@ -855,7 +960,14 @@ def _pluriel(phrase: str) -> str:
     """
     mots = phrase.replace("_", " ").split(" ")
     dernier = pluralize(mots[-1])
-    if mots[-1][:1].isupper():
+    # **Un sigle garde ses capitales au pluriel.** `pluralize("IP")` rend
+    # `ips`, et ne recapitaliser que l'initiale publiait « Instance Ips » dans
+    # un exemple, sous une phrase courte qui disait « Instance IPs » par la
+    # table des sigles. Deux mécanismes pour un même mot, deux casses sur la
+    # même page.
+    if dernier in ACRONYMES:
+        dernier = ACRONYMES[dernier]
+    elif mots[-1][:1].isupper():
         dernier = dernier[:1].upper() + dernier[1:]
     return " ".join([*mots[:-1], dernier])
 
@@ -1703,6 +1815,33 @@ def _returns(
             ReturnValue(
                 name=get_operation.payload_field,
                 description=(get_operation.documentation_line or UNDOCUMENTED,),
+                returned=f"when I({selector}) is provided" if selector else "success",
+                type="dict",
+                contains=_contains(service, get_operation.payload_schema, overrides),
+            )
+        )
+    # **Le GET sans champ porteur rend `result`, et la page doit le dire.**
+    # `run_info_module` rend `operation.payload_field or "result"` : quand le
+    # contrat ne nomme aucun champ pour la lecture unitaire mais en nomme un
+    # pour la liste, le module rend `result` avec l'identifiant fourni et
+    # `<liste>` sans lui. Seule la seconde clé était documentée, parce que le
+    # repli `result` plus bas ne joue que sur un `RETURN` entièrement vide.
+    # Un utilisateur qui fournissait l'identifiant enregistrait une clé que la
+    # page ne nommait pas.
+    if (
+        get_operation is not None
+        and not get_operation.payload_field
+        and list_operation is not None
+        and list_operation.payload_field
+    ):
+        values.append(
+            ReturnValue(
+                name="result",
+                description=(
+                    get_operation.documentation_line or UNDOCUMENTED,
+                    "The API contract names no payload field for this "
+                    "operation: the response body is returned as is.",
+                ),
                 returned=f"when I({selector}) is provided" if selector else "success",
                 type="dict",
                 contains=_contains(service, get_operation.payload_schema, overrides),

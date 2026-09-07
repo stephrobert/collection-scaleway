@@ -10,6 +10,14 @@ constructions n'apparaissaient jamais et la huitième, `page_size`, valait zéro
 Le Load Balancer l'emploie, et onze de ses listes rendaient leur première page
 en silence faute d'être reconnues comme paginées.
 
+**Ce qui est traduit n'est pas « non géré », et le rapport doit le dire.** Une
+preuve pessimiste est fausse au même titre qu'une preuve optimiste : elle fait
+payer un prix qui n'existe pas, et elle masque celui qui existe. `oneOf` se
+compte donc en deux lignes, selon ce que le parser en fait (ADR-008) : la forme
+`[T, null]` est traduite avec sa nullabilité, l'union de formes est signalée et
+ne l'est pas. `x-one-of` est traduit en `mutually_exclusive`, et compté comme
+tel.
+
     python scripts/parser_coverage.py            # tous les contrats versionnés
     python scripts/parser_coverage.py lb v1      # un seul
 
@@ -24,6 +32,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+from generator.source.base import VendoredSpecSource
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC_ROOT = ROOT / "specs" / "scaleway"
@@ -69,7 +79,46 @@ def _compte_mot_clef(contrat: dict[str, Any], mots: set[str]) -> int:
     return compte
 
 
-def relever(produit: str, version: str) -> tuple[int, list[tuple[str, int, str]]]:
+def _formes_de_oneof(contrat: dict[str, Any]) -> tuple[int, int]:
+    """Les `oneOf` du contrat, séparés selon ce que le parser en fait.
+
+    **Le critère est celui du parser, et c'est ce qui rend le compte vrai.**
+    Une seule branche non nulle est un type optionnel : le parser en tire le
+    type utile et porte la nullabilité (ADR-008). Tout autre nombre de branches
+    est une union de formes, que le parser signale par un avertissement et ne
+    traduit pas. Compter les deux sous une même ligne « non géré » sous-décrivait
+    le parser : la porte d'admission faisait payer un prix qui n'existait pas.
+
+    Une branche qui n'est pas un dictionnaire n'est pas une branche utile, comme
+    dans le parser : un compte qui s'en écarterait mesurerait autre chose que le
+    parseur, et les deux divergeraient au premier contrat malformé.
+    """
+    optionnels = 0
+    unions = 0
+    pile: list[Any] = [contrat]
+    while pile:
+        noeud = pile.pop()
+        if isinstance(noeud, dict):
+            branches = noeud.get("oneOf")
+            if isinstance(branches, list):
+                utiles = [
+                    branche
+                    for branche in branches
+                    if isinstance(branche, dict) and branche.get("type") != "null"
+                ]
+                if len(utiles) == 1:
+                    optionnels += 1
+                else:
+                    unions += 1
+            pile.extend(noeud.values())
+        elif isinstance(noeud, list):
+            pile.extend(noeud)
+    return optionnels, unions
+
+
+def relever(
+    produit: str, version: str, racine: Path = SPEC_ROOT
+) -> tuple[int, list[tuple[str, int, str]]]:
     """Les constructions OpenAPI d'un contrat, comptées et qualifiées.
 
     **Mesurer et imprimer sont deux choses.** La fonction imprimait, et la
@@ -77,10 +126,19 @@ def relever(produit: str, version: str) -> tuple[int, list[tuple[str, int, str]]
     sortie texte ferait un second lecteur du même calcul, et les deux
     divergeraient au premier changement de mise en forme.
     """
-    chemin = SPEC_ROOT / f"{produit}.{version}.yml"
+    chemin = racine / f"{produit}.{version}.yml"
     if not chemin.is_file():
         raise FileNotFoundError(f"{chemin.relative_to(ROOT)} absent")
-    contrat = yaml.safe_load(chemin.read_text(encoding="utf-8"))
+    return compter(yaml.safe_load(chemin.read_text(encoding="utf-8")))
+
+
+def compter(contrat: dict[str, Any]) -> tuple[int, list[tuple[str, int, str]]]:
+    """Les constructions d'un document déjà lu, comptées et qualifiées.
+
+    Séparé de la lecture du fichier pour qu'un test puisse construire le
+    document qui déclenche une ligne, plutôt que d'attendre qu'un contrat
+    versionné l'emploie.
+    """
     operations = _operations(contrat)
 
     parametres_de_chemin = sum(
@@ -103,14 +161,15 @@ def relever(produit: str, version: str) -> tuple[int, list[tuple[str, int, str]]
             if isinstance(p, dict) and p.get("name") in tailles:
                 tailles[p["name"]] += 1
 
+    oneof_optionnels, oneof_unions = _formes_de_oneof(contrat)
     lignes = [
         ("paramètres au niveau du chemin", parametres_de_chemin, "non géré"),
         ("$ref hors components.schemas", _compte_refs_hors_schemas(contrat), "non géré"),
-        (
-            "allOf / oneOf / anyOf",
-            _compte_mot_clef(contrat, {"allOf", "oneOf", "anyOf"}),
-            "non géré",
-        ),
+        ("allOf", _compte_mot_clef(contrat, {"allOf"}), "non géré"),
+        ("oneOf [T, null]", oneof_optionnels, "traduit, nullabilité portée"),
+        ("oneOf union réelle", oneof_unions, "non géré, signalé par le parser"),
+        ("anyOf", _compte_mot_clef(contrat, {"anyOf"}), "non géré"),
+        ("x-one-of", _compte_mot_clef(contrat, {"x-one-of"}), "traduit en mutually_exclusive"),
         ("style de sérialisation", styles, "non géré"),
         ("réponses 201", reponses_201, "non lues"),
         ("réponses 204", reponses_204, "non lues"),
@@ -140,14 +199,14 @@ def main(argv: list[str]) -> int:
         mesurer(argv[1], argv[2])
         return 0
 
-    index = SPEC_ROOT / "products.txt"
-    for ligne in index.read_text(encoding="utf-8").splitlines():
-        ligne = ligne.strip()
-        if not ligne or ligne.startswith("#"):
-            continue
-        champs = ligne.split()
-        produit = champs[1] if len(champs) == 3 else champs[0]
-        mesurer(produit, champs[-1])
+    # **Les contrats générés, lus par la même source que le rapport.** Ce
+    # script relisait `products.txt` à la main, et lisait `ipam v1 suivi`
+    # comme `<slug> <produit> <version>` : il cherchait `v1.suivi.yml`, le
+    # disait absent sur la sortie d'erreur, et sortait en 0. Un contrat suivi
+    # n'est pas mesuré, parce qu'aucun module ne le porte ; un contrat généré
+    # qui manquerait doit se voir, pas se confondre avec ce bruit.
+    for produit, version in VendoredSpecSource(root=SPEC_ROOT).available():
+        mesurer(produit, version)
     return 0
 
 
