@@ -75,6 +75,8 @@ def render_module(spec: AnsibleModuleSpec, *, source: str) -> str:
         argument_spec=python_literal(spec.argument_spec()),
         module_literal=_module_literal(spec),
         run_call=_run_call(spec),
+        exclusive_declaration=_exclusive_declaration(spec),
+        module_arguments=_module_arguments(spec),
     )
     if not rendered.endswith("\n"):
         rendered += "\n"
@@ -135,6 +137,40 @@ def _common_argument_specs(spec: AnsibleModuleSpec) -> list[str]:
     if spec.waitable:
         appels.append("scaleway_waitable_argument_spec()")
     return appels
+
+
+def _exclusive_declaration(spec: AnsibleModuleSpec) -> str:
+    """La constante des groupes exclusifs, ou rien quand il n'y en a pas.
+
+    Elle est nommée plutôt qu'écrite dans l'appel : un lecteur du module voit
+    d'un coup ce que l'API interdit d'utiliser ensemble, sans démonter un appel
+    de fonction.
+    """
+    groupes = spec.exclusion_groups()
+    if not groupes:
+        return ""
+    return (
+        "#: Ce que l'API interdit d'utiliser ensemble, déclaré par le contrat.\n"
+        f"MUTUALLY_EXCLUSIVE = {python_literal([list(groupe) for groupe in groupes])}\n"
+        "\n\n"
+    )
+
+
+def _module_arguments(spec: AnsibleModuleSpec) -> str:
+    """Les arguments d'`AnsibleModule`, sur une ligne ou sur plusieurs.
+
+    Un module sans contrainte garde la forme d'une ligne qu'il avait déjà : le
+    diff de génération ne montre alors que les modules réellement concernés,
+    et `mise run check:generated` reste lisible.
+    """
+    if not spec.exclusion_groups():
+        return "argument_spec=ARGUMENT_SPEC, supports_check_mode=True"
+    return (
+        "\n        argument_spec=ARGUMENT_SPEC,"
+        "\n        supports_check_mode=True,"
+        "\n        mutually_exclusive=MUTUALLY_EXCLUSIVE,"
+        "\n    "
+    )
 
 
 def _run_call(spec: AnsibleModuleSpec) -> str:

@@ -45,8 +45,8 @@ ARGUMENT_SPEC.update(MODULE_ARGUMENT_SPEC)
 MODULE = {{ module_literal }}
 
 
-def main() -> None:
-    module = AnsibleModule(argument_spec=ARGUMENT_SPEC, supports_check_mode=True)
+{{ exclusive_declaration }}def main() -> None:
+    module = AnsibleModule({{ module_arguments }})
     {{ run_call }}
 
 

@@ -278,6 +278,13 @@ class AnsibleModuleSpec:
     wait_states: tuple[tuple[str, str], ...] = ()
     #: Ce que le contrat ne dit pas, remonté par le rapport de génération.
     limits: tuple[str, ...] = ()
+    #: Les groupes d'options dont une seule peut être fournie, `x-one-of`.
+    #:
+    #: Le contrat les déclare champ par champ ; l'IR les regroupe ; ici ils
+    #: sont **filtrés sur les options que le module porte vraiment**. Un groupe
+    #: nommant une option absente ferait échouer Ansible au chargement, sur
+    #: tous les appels du module, y compris ceux qui n'y touchent pas.
+    mutually_exclusive: tuple[tuple[str, ...], ...] = ()
 
     @property
     def waitable(self) -> bool:
@@ -291,6 +298,24 @@ class AnsibleModuleSpec:
     def argument_spec(self) -> dict[str, dict[str, Any]]:
         """Les options propres au module. Les communes viennent du runtime."""
         return {option.name: option.to_argument_spec() for option in self.options}
+
+    def exclusion_groups(self) -> tuple[tuple[str, ...], ...]:
+        """Les groupes exclusifs, réduits aux options que ce module porte.
+
+        Le filtre n'est pas une précaution de style : Ansible refuse de charger
+        un module dont `mutually_exclusive` nomme une option absente de
+        l'`argument_spec`, et il le refuse pour **tous** ses appels. Une
+        contrainte mal posée casserait donc plus que ce qu'elle protège.
+
+        Un groupe réduit à un seul membre n'exclut plus rien et disparaît.
+        """
+        connues = {option.name for option in self.options}
+        retenus = []
+        for groupe in self.mutually_exclusive:
+            membres = tuple(nom for nom in groupe if nom in connues)
+            if len(membres) > 1:
+                retenus.append(membres)
+        return tuple(retenus)
 
     def documentation(self) -> dict[str, Any]:
         """Le bloc `DOCUMENTATION`, construit depuis les mêmes options."""
@@ -494,7 +519,20 @@ def build_module_spec(
         list_operation=list_operation,
         selector=selector,
         limits=limits,
+        mutually_exclusive=_exclusions(tuple(operations)),
     )
+
+
+def _exclusions(operations: tuple[ApiOperation, ...]) -> tuple[tuple[str, ...], ...]:
+    """Les groupes exclusifs de plusieurs opérations, dédoublonnés et triés.
+
+    Un module d'information sert le GET et le LIST : si les deux déclarent le
+    même groupe, il ne doit être posé qu'une fois. Le tri garde la génération
+    déterministe, deux opérations pouvant rendre leurs groupes dans un ordre
+    qui dépend du contrat.
+    """
+    trouves = {groupe for operation in operations for groupe in operation.mutually_exclusive}
+    return tuple(sorted(trouves))
 
 
 def _build_action_module(
@@ -568,6 +606,7 @@ def _build_action_module(
         state_field=state_field,
         wait_states=wait_states,
         limits=limits,
+        mutually_exclusive=_exclusions((item.operation,)),
     )
 
 
@@ -689,6 +728,7 @@ def _build_manage_module(
         managed_params=geres,
         secret_params=secrets,
         limits=limits,
+        mutually_exclusive=_exclusions((item.operation,)),
     )
 
 

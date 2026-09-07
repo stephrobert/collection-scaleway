@@ -173,8 +173,18 @@ MODULE = ManageModule(
 )
 
 
+#: Ce que l'API interdit d'utiliser ensemble, déclaré par le contrat.
+MUTUALLY_EXCLUSIVE = [
+    ["email_config", "webhook_config"],
+]
+
+
 def main() -> None:
-    module = AnsibleModule(argument_spec=ARGUMENT_SPEC, supports_check_mode=True)
+    module = AnsibleModule(
+        argument_spec=ARGUMENT_SPEC,
+        supports_check_mode=True,
+        mutually_exclusive=MUTUALLY_EXCLUSIVE,
+    )
     run_manage_module(module, MODULE)
 
 

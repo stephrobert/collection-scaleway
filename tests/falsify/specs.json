@@ -674,10 +674,10 @@
     },
     {
       "name": "oneof-optionnel-non-resolu",
-      "why": "`oneOf: [X, null]` est la façon dont Scaleway écrit « optionnel ». Le traiter comme un type non traité laisse 13 paramètres en UNKNOWN sur le Load Balancer et écarte un module Day-2 entier, faute de correspondance Ansible.",
+      "why": "`oneOf: [X, null]` est la façon dont Scaleway écrit « optionnel ». Le traiter comme un type non traité laisse des paramètres en UNKNOWN sur le Load Balancer et écarte un module Day-2 entier, faute de correspondance Ansible.",
       "file": "generator/parser/openapi.py",
-      "find": "        if len(utiles) == 1:\n            return _resolve_type(",
-      "replace": "        if len(utiles) == 1 and False:\n            return _resolve_type(",
+      "find": "        if len(utiles) == 1:\n            resolu = _resolve_type(",
+      "replace": "        if len(utiles) == 1 and False:\n            resolu = _resolve_type(",
       "test": "tests/unit/generator/test_parser.py::test_un_oneof_avec_null_est_un_champ_optionnel"
     },
     {
@@ -1415,6 +1415,46 @@
       "find": "    lus = connus if connus is not None else _parcourus()",
       "replace": "    lus = connus if connus is not None else []",
       "test": "tests/unit/outillage/test_typographie.py::test_hors_depot_le_controle_lit_le_disque"
+    },
+    {
+      "name": "groupe-dexclusion-du-contrat-perdu",
+      "why": "Le parser voyait `x-one-of` et le laissait tomber. `lb_subscriber` acceptait `email_config` et `webhook_config` ensemble, l'API répondait 400, et rien dans la chaîne ne le disait : ni la documentation, ni l'`argument_spec`, ni `ansible-test sanity`, qui n'a aucun moyen de le savoir.",
+      "file": "generator/parser/openapi.py",
+      "find": "    groupe = schema.get(\"x-one-of\")",
+      "replace": "    groupe = None",
+      "test": "tests/unit/generator/test_contraintes.py::test_le_groupe_dexclusion_du_contrat_est_conserve"
+    },
+    {
+      "name": "marqueur-dexclusion-non-textuel",
+      "why": "`x-one-of` est une extension que personne ne valide en amont. Un objet glissé là produirait un `mutually_exclusive` illisible par Ansible, donc un module qui ne se charge plus du tout, sur tous ses appels.",
+      "file": "generator/parser/openapi.py",
+      "find": "    return groupe if isinstance(groupe, str) and groupe else None",
+      "replace": "    return groupe",
+      "test": "tests/unit/generator/test_contraintes.py::test_un_marqueur_qui_nest_pas_un_nom_est_ignore"
+    },
+    {
+      "name": "champ-effacable-reduit-a-son-type",
+      "why": "Le parser réduisait `oneOf: [X, null]` à X et perdait que le champ est effaçable. Un champ effaçable et un champ absent ne sont pas la même demande, et le compte de ceux qui le sont est ce qui permettra de décider quoi en faire.",
+      "file": "generator/parser/openapi.py",
+      "find": "        nullable = len(utiles) < len(branches)",
+      "replace": "        nullable = False",
+      "test": "tests/unit/generator/test_contraintes.py::test_un_champ_effacable_est_signale_comme_tel"
+    },
+    {
+      "name": "groupe-dun-seul-membre-rendu",
+      "why": "Ansible refuse de charger un module dont `mutually_exclusive` ne porte qu'un élément, et il le refuse pour tous ses appels. Une contrainte mal posée casserait plus que ce qu'elle protège.",
+      "file": "generator/ir/models.py",
+      "find": "        return tuple(tuple(membres) for _, membres in sorted(groupes.items()) if len(membres) > 1)",
+      "replace": "        return tuple(tuple(membres) for _, membres in sorted(groupes.items()))",
+      "test": "tests/unit/generator/test_contraintes.py::test_un_groupe_dun_seul_membre_nexclut_rien"
+    },
+    {
+      "name": "absence-de-contrainte-declaree-au-lieu-detre-mesuree",
+      "why": "La première version rendait une liste écrite à la main. Elle affirmait « le contrat ne porte pas de bornes » sans avoir regardé le contrat : le jour où l'amont en ajoute une, la phrase reste vraie à l'écran et fausse dans le document, et le paramètre passe sans contrainte.",
+      "file": "generator/parser/openapi.py",
+      "find": "    _compter_les_contraintes(document, contraintes)",
+      "replace": "    pass",
+      "test": "tests/unit/generator/test_contraintes.py::test_le_document_est_compte_pour_ce_quil_porte"
     }
   ]
 }

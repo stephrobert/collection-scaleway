@@ -34,3 +34,4 @@ Code says the **current** invariant. This directory says what happened.
 | [ADR-005](005-generated-documentation-behind-a-gate.md) | Generated documentation is refused, not merely reported, when it is unusable |
 | [ADR-006](006-the-emulator-is-a-proof-not-the-proof.md) | The local emulator proves the shape of a run, never the real cloud |
 | [ADR-007](007-measured-numbers-live-in-derived-blocks.md) | A measured number is derived, an assertion, or dated history, never a sentence |
+| [ADR-008](008-a-constraint-is-translated-or-named.md) | A contract constraint is translated, or counted, or measured absent, never guessed |

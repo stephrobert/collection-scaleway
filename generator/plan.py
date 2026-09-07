@@ -91,6 +91,47 @@ class ProductPlan:
         )
         return automated / len(day2)
 
+    def constraints(self) -> dict[str, int]:
+        """Ce que l'IR porte, compté sur les opérations et non sur le document.
+
+        **Ce n'est pas le compte des mots-clés**, et confondre les deux a déjà
+        produit un rapport qui annonçait « nullable » à la fois comme porté et
+        comme absent. Les deux étaient vrais : le mot-clé `nullable:` d'OpenAPI
+        3.0 n'apparaît nulle part dans ces contrats, et le fait d'être effaçable
+        y est écrit dans la forme 3.1. Les clés nomment donc la sémantique, pas
+        le mot-clé, et `constraint_keywords` porte l'autre compte.
+        """
+        return {
+            "groupes mutuellement exclusifs": sum(
+                len(item.operation.mutually_exclusive) for item in self.operations
+            ),
+            "paramètres effaçables": sum(
+                1
+                for item in self.operations
+                for parametre in item.operation.parameters
+                if parametre.nullable
+            ),
+        }
+
+    def found_constraints(self) -> tuple[tuple[str, int], ...]:
+        """Les mots-clés de contrainte que le document porte vraiment."""
+        return tuple((mot, compte) for mot, compte in self.service.constraint_keywords if compte)
+
+    def absent_constraints(self) -> tuple[str, ...]:
+        """Les contraintes cherchées dans le contrat, et qu'il ne porte pas.
+
+        **Nommer une absence n'est pas du remplissage.** « Le contrat ne
+        déclare aucune borne » et « le générateur laisse tomber les bornes »
+        produisent le même module et ne sont pas la même phrase, et seule la
+        seconde est un défaut. Sans cette liste, un lecteur ne peut pas savoir
+        laquelle il a sous les yeux.
+
+        Le compte vient du parser, qui a lu le document. Une liste écrite ici à
+        la main resterait vraie à l'écran et fausse dans le contrat le jour où
+        Scaleway ajouterait la contrainte, et le paramètre passerait sans elle.
+        """
+        return tuple(mot for mot, compte in self.service.constraint_keywords if compte == 0)
+
     def built_coverage(self, written: Sequence[str]) -> float | None:
         """Part des opérations Day-2 qu'un module réellement écrit porte.
 

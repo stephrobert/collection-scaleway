@@ -69,6 +69,12 @@ def to_json(plan: ProductPlan) -> str:
         "unknown_operations": [item.operation.key for item in plan.unknown],
         "orphan_overrides": list(plan.orphan_overrides),
         "parser_warnings": list(plan.service.warnings),
+        # **Cherché et absent n'est pas perdu.** Les deux produisent le même
+        # module et ne sont pas la même phrase : seule la seconde est un
+        # défaut, et sans cette liste un lecteur ne sait pas laquelle il lit.
+        "constraints": plan.constraints(),
+        "constraint_keywords_found": dict(plan.found_constraints()),
+        "constraints_absent_from_contract": list(plan.absent_constraints()),
     }
     return json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
 
@@ -198,6 +204,21 @@ def to_text(plan: ProductPlan) -> str:
     if plan.orphan_overrides:
         lines += ["", f"{len(plan.orphan_overrides)} override(s) orphelin(s) :"]
         lines += [f"  {key}" for key in plan.orphan_overrides]
+
+    lines += ["", "Contraintes portées par l'IR, comptées sur les opérations :"]
+    lines += [f"  {nom:<32} {compte:>3}" for nom, compte in sorted(plan.constraints().items())]
+    trouvees = plan.found_constraints()
+    lines += ["", "Mots-clés de contrainte comptés dans le document :"]
+    lines += [f"  {mot:<32} {compte:>3}" for mot, compte in trouvees] if trouvees else ["  aucun"]
+    lines += [
+        "",
+        "Cherchés et absents du document, donc ni traduits ni perdus :",
+        "  " + ", ".join(plan.absent_constraints()),
+        "",
+        "  `nullable` y figure parce que ces contrats écrivent l'effaçabilité",
+        '  dans la forme d\'OpenAPI 3.1, `oneOf: [X, null]` ou `type: [X, "null"]`,',
+        "  que l'IR compte plus haut. Le mot-clé de la 3.0 n'y est pas.",
+    ]
 
     if service.warnings:
         lines += ["", f"{len(service.warnings)} limite(s) du contrat :"]
