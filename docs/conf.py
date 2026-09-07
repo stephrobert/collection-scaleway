@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Configuration du site de documentation.
 
 Ce fichier est versionné, mais **le site ne l'est pas** : `scripts/site.py`
