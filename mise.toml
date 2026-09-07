@@ -467,6 +467,7 @@ depends = [
   "chiffres:check",
   "histoire",
   "typographie",
+  "nullabilite",
 ]
 
 [tasks.qualifier]
@@ -497,6 +498,17 @@ description = "Refuser dans le code un nombre qui compte des choses du dépôt"
 # Un nombre vrai se prouve par une assertion, un golden ou un bloc dérivé ; un
 # nombre historique va dans `docs/adr/`, qui porte sa date.
 run = "python scripts/histoire.py"
+
+[tasks.nullabilite]
+description = "Les champs que le contrat dit effaçables et qu'un module ne sait pas effacer"
+# **Mesurer avant d'abstraire.** Une sémantique d'effacement se conçoit mal sans
+# savoir combien de champs la réclament, ni lesquels. Ce relevé les compte et
+# les nomme ; le nombre est publié dans un bloc dérivé de
+# `docs/architecture/runtime.md`, jamais dans un commentaire.
+#
+# Il ne refuse rien : compter n'est pas refuser, et transformer ce compte en
+# porte bloquerait la collection sur une limite connue et documentée.
+run = "python scripts/nullabilite.py"
 
 [tasks.typographie]
 description = "Refuser le tiret cadratin, que le dépôt interdit dans les deux langues"

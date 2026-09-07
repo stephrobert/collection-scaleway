@@ -1535,6 +1535,38 @@
       "find": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\", \"comparison\", \"postcondition\")",
       "replace": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\", \"comparison\")",
       "test": "tests/unit/generator/test_postcondition_override.py::test_ecarter_un_champ_exige_sa_raison"
+    },
+    {
+      "name": "champ-effacable-non-compte",
+      "why": "Le contrat marque un champ effaçable, et le runtime construit sa demande depuis les valeurs non nulles : `champ: null` et `champ` absent produisent la même requête. Un relevé qui ne les compte pas laisse la dette invisible, et personne ne chiffre le travail restant.",
+      "file": "scripts/nullabilite.py",
+      "find": "            if parametre.nullable and parametre.location is ParameterLocation.BODY:",
+      "replace": "            if False:",
+      "test": "tests/unit/outillage/test_nullabilite.py::test_un_champ_de_corps_effacable_est_compte"
+    },
+    {
+      "name": "champ-hors-corps-compte-comme-effacable",
+      "why": "Personne n'efface une zone ni un filtre de liste. Les compter gonflerait la dette d'un travail que personne n'a l'intention de faire, et rendrait le nombre inutilisable pour chiffrer quoi que ce soit.",
+      "file": "scripts/nullabilite.py",
+      "find": "            if parametre.nullable and parametre.location is ParameterLocation.BODY:",
+      "replace": "            if parametre.nullable:",
+      "test": "tests/unit/outillage/test_nullabilite.py::test_un_champ_hors_du_corps_ne_pose_pas_la_question"
+    },
+    {
+      "name": "champ-sans-module-compte-comme-effacable",
+      "why": "Un champ qu'aucun module n'écrit ne peut pas être effacé par un playbook. Le relevé chiffre le travail restant sur la collection livrée : un compte pris sur le contrat serait juste et sans rapport.",
+      "file": "scripts/nullabilite.py",
+      "find": "        if item.module is None:\n            continue",
+      "replace": "        if False:\n            continue",
+      "test": "tests/unit/outillage/test_nullabilite.py::test_une_operation_sans_module_nest_pas_comptee"
+    },
+    {
+      "name": "releve-des-effacables-non-trie",
+      "why": "Le relevé nourrit un bloc dérivé. Deux exécutions qui le rendraient dans deux ordres feraient rougir `readme:check` sans qu'aucun champ n'ait bougé, et le mécanisme de dérivation perdrait toute valeur.",
+      "file": "scripts/nullabilite.py",
+      "find": "    return sorted(\n        trouves, key=lambda champ: (champ.produit, champ.module, champ.operation, champ.champ)\n    )",
+      "replace": "    return trouves",
+      "test": "tests/unit/outillage/test_nullabilite.py::test_le_releve_est_trie"
     }
   ]
 }

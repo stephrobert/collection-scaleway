@@ -514,6 +514,37 @@ def bloc_runtime_etat() -> str:
     )
 
 
+def bloc_effacables() -> str:
+    """Combien de champs un module ne sait pas effacer, et sur combien de modules.
+
+    Le contrat marque un champ effaçable ; le runtime construit sa demande
+    depuis les valeurs non nulles, donc `champ: null` et `champ` absent
+    produisent la même requête. Un playbook qui veut effacer ne le peut pas, et
+    le module rend `ok` sans avoir rien effacé.
+
+    Le nombre est publié plutôt que décrit : c'est lui qui chiffre le travail
+    restant, et une phrase sans nombre laisserait croire que la limite est
+    anecdotique.
+    """
+    from nullabilite import auditer
+
+    champs = auditer()
+    modules = len({champ.module for champ in champs})
+    if not champs:
+        return (
+            "The contract marks no writable field as clearable on the products\n"
+            "generated today: the question does not arise."
+        )
+    return (
+        f"The contract marks **{len(champs)} writable fields** as clearable, "
+        f"across {modules} modules.\n"
+        "The runtime builds its request from the values that are not `None`, so\n"
+        "`field: null` and an absent `field` produce the same request: a playbook\n"
+        "cannot clear one, and the module reports `ok` without having cleared\n"
+        "anything. `mise run nullabilite` names them one by one."
+    )
+
+
 def bloc_tests_badge() -> str:
     """La phrase du questionnaire OpenSSF qui compte les tests."""
     return (
@@ -563,6 +594,7 @@ NOMMES = {
     "image": lambda: bloc_image(),
     "classification": lambda: bloc_classification(),
     "runtime-etat": lambda: bloc_runtime_etat(),
+    "effacables": lambda: bloc_effacables(),
     "tests-badge": lambda: bloc_tests_badge(),
     "modules": lambda: bloc_nombre_de_modules(),
 }
@@ -576,6 +608,7 @@ BLOCS_NOMMES: tuple[tuple[str, Path], ...] = (
     ("image", README_COLLECTION),
     ("classification", ROOT / "docs" / "architecture" / "generator.md"),
     ("runtime-etat", ROOT / "docs" / "architecture" / "runtime.md"),
+    ("effacables", ROOT / "docs" / "architecture" / "runtime.md"),
     ("tests-badge", ROOT / "docs" / "best-practices.md"),
     ("modules", README),
 )
