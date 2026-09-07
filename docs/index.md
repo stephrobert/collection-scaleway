@@ -48,6 +48,7 @@ adr/006-the-emulator-is-a-proof-not-the-proof
 adr/007-measured-numbers-live-in-derived-blocks
 adr/008-a-constraint-is-translated-or-named
 adr/009-how-a-managed-field-is-compared
+adr/010-postconditions-are-checked-not-announced
 ```
 
 ```{toctree}

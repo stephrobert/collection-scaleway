@@ -79,6 +79,7 @@ _PARAMETER_FIELDS: frozenset[str] = frozenset(
         "description",
         "example",
         "comparison",
+        "postcondition",
     }
 )
 
@@ -132,6 +133,12 @@ class ParameterOverride:
     #: champ est donc une **décision**, prise parce que quelqu'un a observé
     #: l'API réordonner, et elle porte sa raison comme les autres.
     comparison: ComparisonStrategy | None = None
+    #: Faux retire le champ de la vérification d'après écriture.
+    #:
+    #: Le cas prévu est une API qui applique le champ de façon différée : le
+    #: vérifier ferait échouer un playbook correct sur un délai plutôt que sur
+    #: une erreur. C'est une observation, donc une décision, donc une `reason`.
+    postcondition: bool | None = None
     reason: str | None = None
 
 
@@ -454,7 +461,19 @@ def _parse_parameters(key: str, raw: Any, path: Path) -> dict[str, ParameterOver
                     f"Un override ne pose que ce qu'aucun type ne peut décider : {connues}."
                 )
 
-        arbitrages = ("choices", "required", "expose", "csv", "comparison")
+        postcondition = declaration.get("postcondition")
+        if postcondition is not None and not isinstance(postcondition, bool):
+            raise OverrideError(
+                f"{path} : {key}.parameters.{nom}.postcondition doit être un booléen"
+            )
+        if postcondition is True:
+            raise OverrideError(
+                f"{path} : {key}.parameters.{nom}.postcondition vaut `true`, "
+                "qui est déjà le comportement. Un override écarte un champ de la "
+                "vérification, il ne l'y remet pas."
+            )
+
+        arbitrages = ("choices", "required", "expose", "csv", "comparison", "postcondition")
         decide = any(declaration.get(champ) is not None for champ in arbitrages)
         if decide and not declaration.get("reason"):
             raise OverrideError(
@@ -484,6 +503,7 @@ def _parse_parameters(key: str, raw: Any, path: Path) -> dict[str, ParameterOver
             description=declaration.get("description"),
             example=declaration.get("example"),
             comparison=comparison,
+            postcondition=postcondition,
             reason=declaration.get("reason"),
         )
     return parametres

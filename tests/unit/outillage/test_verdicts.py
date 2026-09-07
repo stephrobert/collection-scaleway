@@ -25,10 +25,20 @@ import docs
 from generator.ansible.collection import Collection, load_collection
 
 #: Ce que `feint env scaleway` écrit sur sa sortie standard, mesuré.
+#: L'adresse que ces tests emploient, posée par eux et jamais lue de l'ambiant.
+#:
+#: `integration.ENDPOINT` se calcule au chargement du module depuis `FEINT_ADDR`.
+#: Comparer une constante écrite ici à cette valeur revient à mesurer le shell :
+#: les deux coïncident tant que la variable n'est pas posée, et divergent dès
+#: qu'elle l'est. Le cas est arrivé, et le symptôme est sorti trois étages plus
+#: loin, dans le harnais de falsification.
+ADRESSE_DE_TEST = "127.0.0.1:4599"
+ENDPOINT_DE_TEST = f"http://{ADRESSE_DE_TEST}"
+
 EXPORTS_DE_LEMULATEUR = "\n".join(
     [
         "export SCW_ACCESS_KEY='SCWXXXXXXXXXXXXXXXXX'",
-        "export SCW_API_URL='http://127.0.0.1:4599'",
+        f"export SCW_API_URL='{ENDPOINT_DE_TEST}'",
         "export SCW_DEFAULT_ZONE='fr-par-1'",
     ]
 )
@@ -122,7 +132,7 @@ def test_le_scenario_amorce_plus_dune_page() -> None:
 def test_les_identifiants_viennent_de_lemulateur() -> None:
     """Les écrire ici créerait une seconde source de ce que feint accepte."""
     exports = integration.parse_exports(EXPORTS_DE_LEMULATEUR)
-    assert exports["SCW_API_URL"] == "http://127.0.0.1:4599"
+    assert exports["SCW_API_URL"] == ENDPOINT_DE_TEST
     assert exports["SCW_ACCESS_KEY"] == "SCWXXXXXXXXXXXXXXXXX"
     assert "'" not in exports["SCW_DEFAULT_ZONE"]
 
@@ -144,8 +154,15 @@ def test_un_environnement_sans_url_demulateur_arrete_le_scenario(
 
 
 def test_lenvironnement_complet_est_accepte(monkeypatch: pytest.MonkeyPatch) -> None:
+    """L'adresse vient du test, pas de l'environnement qui le lance.
+
+    Sans ce `setattr`, l'assertion compare une constante écrite ici à une valeur
+    calculée depuis `FEINT_ADDR` : elle mesure alors le shell.
+    """
+    monkeypatch.setattr(integration, "ENDPOINT", ENDPOINT_DE_TEST)
     monkeypatch.setattr(integration, "run", lambda *a, **k: _sortie(EXPORTS_DE_LEMULATEUR))
-    assert integration.client_environment("feint")["SCW_API_URL"] == integration.ENDPOINT
+
+    assert integration.client_environment("feint")["SCW_API_URL"] == ENDPOINT_DE_TEST
 
 
 def test_la_sonde_demulateur_utilise_le_verbe_qui_distingue(

@@ -620,8 +620,8 @@
       "name": "csv-sans-raison-accepte",
       "why": "Changer la forme sous laquelle un utilisateur écrit un filtre est un arbitrage, pas une correction. Sans le refus, un `csv: true` posé sans raison passerait, et personne ne saurait dans six mois pourquoi ce paramètre diverge du contrat.",
       "file": "generator/overrides/loader.py",
-      "find": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\", \"comparison\")",
-      "replace": "        arbitrages = (\"choices\", \"required\", \"expose\")",
+      "find": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\", \"comparison\", \"postcondition\")",
+      "replace": "        arbitrages = (\"choices\", \"required\", \"expose\", \"comparison\", \"postcondition\")",
       "test": "tests/unit/generator/test_overrides.py::test_un_parametre_csv_sans_raison_est_refuse"
     },
     {
@@ -1492,9 +1492,49 @@
       "name": "override-de-comparaison-sans-raison",
       "why": "Poser `set` sur un champ est une décision, prise parce que quelqu'un a observé l'API réordonner. Sans `reason`, personne ne peut savoir si l'observation a eu lieu.",
       "file": "generator/overrides/loader.py",
-      "find": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\", \"comparison\")",
-      "replace": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\")",
+      "find": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\", \"comparison\", \"postcondition\")",
+      "replace": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\", \"postcondition\")",
       "test": "tests/unit/generator/test_comparaison_modele.py::test_un_override_de_comparaison_exige_sa_raison"
+    },
+    {
+      "name": "postcondition-annoncee-sans-etre-verifiee",
+      "why": "Le module relisait la ressource après l'écriture, puis annonçait `changed=true` sans regarder ce qu'il avait relu. Une valeur que l'API n'applique pas ressortait au playbook suivant en `changed=true`, indéfiniment, et personne ne reliait ce symptôme à sa cause.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    non_tenues = _postconditions_non_tenues(spec, demande, apres, strategies)",
+      "replace": "    non_tenues = {}",
+      "test": "tests/unit/collection/test_postconditions.py::test_le_module_echoue_en_disant_changed"
+    },
+    {
+      "name": "echec-de-postcondition-qui-tait-changed",
+      "why": "L'API a accepté l'écriture : la ressource a bougé. Un échec qui tairait `changed` ferait croire à un playbook rejoué qu'il n'a rien fait, alors que la machine, elle, a changé.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "            changed=True,\n            failed_postconditions=non_tenues,",
+      "replace": "            changed=False,\n            failed_postconditions=non_tenues,",
+      "test": "tests/unit/collection/test_postconditions.py::test_le_module_echoue_en_disant_changed"
+    },
+    {
+      "name": "postcondition-verifiee-sur-un-secret",
+      "why": "L'API ne rend jamais un secret. Le vérifier reviendrait à comparer une valeur à `None` et à conclure « non tenu » à chaque exécution, ce qui ressemble à une mesure et n'en est pas une.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    hors_mesure = set(spec.secret_params) | set(spec.unverified_params)",
+      "replace": "    hors_mesure = set(spec.unverified_params)",
+      "test": "tests/unit/collection/test_postconditions.py::test_un_secret_nest_pas_verifie"
+    },
+    {
+      "name": "postcondition-comparee-autrement-qualler",
+      "why": "Comparer en ensemble pour décider d'écrire puis strictement pour vérifier ferait échouer sur un ordre que la première comparaison venait justement d'accepter.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        if not _identique(strategies.get(nom, \"scalar\"), attendu, obtenu):",
+      "replace": "        if attendu != obtenu:",
+      "test": "tests/unit/collection/test_postconditions.py::test_la_verification_emploie_la_meme_comparaison_que_laller"
+    },
+    {
+      "name": "exclusion-de-postcondition-sans-raison",
+      "why": "Écarter un champ de la vérification est une observation, donc une décision. Sans `reason`, personne ne peut savoir si l'observation a eu lieu, et l'échappatoire deviendrait le moyen commode de faire taire une vérification gênante.",
+      "file": "generator/overrides/loader.py",
+      "find": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\", \"comparison\", \"postcondition\")",
+      "replace": "        arbitrages = (\"choices\", \"required\", \"expose\", \"csv\", \"comparison\")",
+      "test": "tests/unit/generator/test_postcondition_override.py::test_ecarter_un_champ_exige_sa_raison"
     }
   ]
 }
