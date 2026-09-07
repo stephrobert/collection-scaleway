@@ -11,7 +11,7 @@ account.
 ## What a module cannot say: "clear this field"
 
 <!-- compteurs:effacables:début, produits par scripts/readme_counters.py -->
-The contract marks **40 writable fields** as clearable, across 14 modules.
+The contract marks **55 writable fields** as clearable, across 15 modules.
 The runtime builds its request from the values that are not `None`, so
 `field: null` and an absent `field` produce the same request: a playbook
 cannot clear one, and the module reports `ok` without having cleared

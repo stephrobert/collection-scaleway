@@ -44,8 +44,8 @@
       "name": "tableau-sans-items",
       "why": "Deviner le type des éléments effacerait la différence entre « c'est une chaîne » et « personne ne sait ».",
       "file": "generator/parser/openapi.py",
-      "find": "            return _ResolvedType(ApiType.ARRAY, item_type=None)",
-      "replace": "            return _ResolvedType(ApiType.ARRAY, item_type=ApiType.STRING)",
+      "find": "            return _ResolvedType(ApiType.ARRAY, item_type=None, nullable=nullable_par_le_type)",
+      "replace": "            return _ResolvedType(\n                ApiType.ARRAY, item_type=ApiType.STRING, nullable=nullable_par_le_type\n            )",
       "test": "tests/unit/generator/test_parser.py::test_un_tableau_sans_items_est_signale_et_non_devine"
     },
     {
@@ -1663,6 +1663,30 @@
       "find": "    non_gerees = [nom for nom, compte, etat in lignes if compte and etat.startswith(\"non\")]",
       "replace": "    non_gerees = [nom for nom, compte, etat in lignes if compte and (etat.startswith(\"non\") or True)]",
       "test": "tests/unit/outillage/test_parser_coverage.py::test_la_porte_ne_fait_pas_payer_une_construction_que_le_parser_traduit"
+    },
+    {
+      "name": "nullabilite-perdue-derriere-un-ref",
+      "why": "Un champ effaçable écrit par référence sortait non effaçable, et le compte publié le manquait.",
+      "file": "generator/parser/openapi.py",
+      "find": "            resolved.type, item_type=resolved.item_type, ref=target_name, nullable=resolved.nullable\n",
+      "replace": "            resolved.type, item_type=resolved.item_type, ref=target_name, nullable=False\n",
+      "test": "tests/unit/generator/test_parser.py::test_une_reference_vers_un_type_effacable_reste_effacable"
+    },
+    {
+      "name": "nullabilite-perdue-sur-un-tableau",
+      "why": "Chaque tableau de tags écrit `[array, null]` manquait au compte des champs effaçables.",
+      "file": "generator/parser/openapi.py",
+      "find": "            return _ResolvedType(ApiType.ARRAY, item_type=None, nullable=nullable_par_le_type)\n",
+      "replace": "            return _ResolvedType(ApiType.ARRAY, item_type=None, nullable=False)\n",
+      "test": "tests/unit/generator/test_parser.py::test_un_tableau_effacable_reste_effacable"
+    },
+    {
+      "name": "nullabilite-perdue-sur-un-tableau-avec-elements",
+      "why": "La branche avec `items` est l'autre moitié du même défaut, et le laboratoire ne l'exerce pas.",
+      "file": "generator/parser/openapi.py",
+      "find": "            ApiType.ARRAY, item_type=resolved_item.type, nullable=nullable_par_le_type\n",
+      "replace": "            ApiType.ARRAY, item_type=resolved_item.type, nullable=False\n",
+      "test": "tests/unit/generator/test_parser.py::test_un_tableau_effacable_avec_ses_elements_reste_effacable"
     }
   ]
 }

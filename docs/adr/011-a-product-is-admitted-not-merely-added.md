@@ -67,6 +67,12 @@ their printed output would make a second reader of the same calculation, and the
 two would diverge at the first formatting change; `parser_coverage` was split
 into a function that measures and one that prints, for that reason.
 
+**The clearable-field count of this record was an undercount.** The parser
+carried nullability only on a scalar written `type: [T, "null"]`: behind a
+`$ref` to a protobuf wrapper, and on `type: [array | object, "null"]`, the fact
+was dropped. The contracts declare 55 clearable body fields written by a
+module, and the measurement said forty until the parser carried them all.
+
 ## What this record does not decide
 
 Whether a product is worth adding at all. That is a judgement about users, and

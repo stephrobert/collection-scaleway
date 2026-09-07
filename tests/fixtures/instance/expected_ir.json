@@ -1364,7 +1364,8 @@
           "type": "boolean",
           "required": false,
           "location": "body",
-          "ref": "google.protobuf.BoolValue"
+          "ref": "google.protobuf.BoolValue",
+          "nullable": true
         }
       ],
       "response": {
@@ -2166,7 +2167,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "A list of reserved IP IDs to attach to the Instance."
+          "description": "A list of reserved IP IDs to attach to the Instance.",
+          "nullable": true
         },
         {
           "name": "boot_type",
@@ -2303,7 +2305,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "Tags of the snapshot."
+          "description": "Tags of the snapshot.",
+          "nullable": true
         },
         {
           "name": "organization",
@@ -3136,14 +3139,16 @@
           "type": "string",
           "required": false,
           "location": "query",
-          "ref": "google.protobuf.StringValue"
+          "ref": "google.protobuf.StringValue",
+          "nullable": true
         },
         {
           "name": "project",
           "type": "string",
           "required": false,
           "location": "query",
-          "ref": "google.protobuf.StringValue"
+          "ref": "google.protobuf.StringValue",
+          "nullable": true
         }
       ],
       "response": {
@@ -3886,7 +3891,8 @@
           "type": "string",
           "required": false,
           "location": "query",
-          "ref": "google.protobuf.StringValue"
+          "ref": "google.protobuf.StringValue",
+          "nullable": true
         },
         {
           "name": "per_page",
@@ -3900,42 +3906,48 @@
           "type": "integer",
           "required": false,
           "location": "query",
-          "ref": "google.protobuf.Int32Value"
+          "ref": "google.protobuf.Int32Value",
+          "nullable": true
         },
         {
           "name": "name",
           "type": "string",
           "required": false,
           "location": "query",
-          "ref": "google.protobuf.StringValue"
+          "ref": "google.protobuf.StringValue",
+          "nullable": true
         },
         {
           "name": "public",
           "type": "boolean",
           "required": false,
           "location": "query",
-          "ref": "google.protobuf.BoolValue"
+          "ref": "google.protobuf.BoolValue",
+          "nullable": true
         },
         {
           "name": "arch",
           "type": "string",
           "required": false,
           "location": "query",
-          "ref": "google.protobuf.StringValue"
+          "ref": "google.protobuf.StringValue",
+          "nullable": true
         },
         {
           "name": "project",
           "type": "string",
           "required": false,
           "location": "query",
-          "ref": "google.protobuf.StringValue"
+          "ref": "google.protobuf.StringValue",
+          "nullable": true
         },
         {
           "name": "tags",
           "type": "string",
           "required": false,
           "location": "query",
-          "ref": "google.protobuf.StringValue"
+          "ref": "google.protobuf.StringValue",
+          "nullable": true
         }
       ],
       "response": {
@@ -4702,7 +4714,8 @@
           "type": "integer",
           "required": false,
           "location": "query",
-          "ref": "google.protobuf.Int32Value"
+          "ref": "google.protobuf.Int32Value",
+          "nullable": true
         }
       ],
       "response": {
@@ -4964,7 +4977,8 @@
           "type": "integer",
           "required": false,
           "location": "query",
-          "ref": "google.protobuf.Int32Value"
+          "ref": "google.protobuf.Int32Value",
+          "nullable": true
         }
       ],
       "response": {
@@ -5251,7 +5265,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "ref": "scaleway.std.StringsValue"
+          "ref": "scaleway.std.StringsValue",
+          "nullable": true
         }
       ],
       "response": {
@@ -5349,7 +5364,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "ref": "scaleway.std.StringsValue"
+          "ref": "scaleway.std.StringsValue",
+          "nullable": true
         }
       ],
       "response": {
@@ -5468,7 +5484,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "Tags of the security group."
+          "description": "Tags of the security group.",
+          "nullable": true
         },
         {
           "name": "creation_date",
@@ -5691,14 +5708,16 @@
           "type": "integer",
           "required": false,
           "location": "body",
-          "ref": "google.protobuf.UInt32Value"
+          "ref": "google.protobuf.UInt32Value",
+          "nullable": true
         },
         {
           "name": "dest_port_to",
           "type": "integer",
           "required": false,
           "location": "body",
-          "ref": "google.protobuf.UInt32Value"
+          "ref": "google.protobuf.UInt32Value",
+          "nullable": true
         },
         {
           "name": "position",
@@ -5963,7 +5982,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "ref": "scaleway.std.StringsValue"
+          "ref": "scaleway.std.StringsValue",
+          "nullable": true
         }
       ],
       "response": {
@@ -6025,7 +6045,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "Tags of the volume."
+          "description": "Tags of the volume.",
+          "nullable": true
         },
         {
           "name": "export_uri",
@@ -6205,7 +6226,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "Tags of the image."
+          "description": "Tags of the image.",
+          "nullable": true
         },
         {
           "name": "public",
@@ -6291,14 +6313,16 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "An array of keywords you want to tag this IP with."
+          "description": "An array of keywords you want to tag this IP with.",
+          "nullable": true
         },
         {
           "name": "server",
           "type": "string",
           "required": false,
           "location": "body",
-          "ref": "scaleway.instance.v1.NullableStringValue"
+          "ref": "scaleway.instance.v1.NullableStringValue",
+          "nullable": true
         }
       ],
       "response": {
@@ -6361,7 +6385,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "Tags of the placement group."
+          "description": "Tags of the placement group.",
+          "nullable": true
         },
         {
           "name": "policy_mode",
@@ -6508,7 +6533,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "Tags used to select private NIC/s."
+          "description": "Tags used to select private NIC/s.",
+          "nullable": true
         }
       ],
       "response": {
@@ -6601,7 +6627,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "Tags of the security group."
+          "description": "Tags of the security group.",
+          "nullable": true
         },
         {
           "name": "organization_default",
@@ -6855,7 +6882,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "Tags of the Instance."
+          "description": "Tags of the Instance.",
+          "nullable": true
         },
         {
           "name": "volumes",
@@ -6868,7 +6896,8 @@
           "type": "boolean",
           "required": false,
           "location": "body",
-          "ref": "google.protobuf.BoolValue"
+          "ref": "google.protobuf.BoolValue",
+          "nullable": true
         },
         {
           "name": "routed_ip_enabled",
@@ -6884,7 +6913,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "A list of reserved IP IDs to attach to the Instance."
+          "description": "A list of reserved IP IDs to attach to the Instance.",
+          "nullable": true
         },
         {
           "name": "enable_ipv6",
@@ -6892,7 +6922,8 @@
           "required": false,
           "location": "body",
           "deprecated": true,
-          "ref": "google.protobuf.BoolValue"
+          "ref": "google.protobuf.BoolValue",
+          "nullable": true
         },
         {
           "name": "protected",
@@ -6922,7 +6953,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "Instance private NICs."
+          "description": "Instance private NICs.",
+          "nullable": true
         },
         {
           "name": "commercial_type",
@@ -7001,7 +7033,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "Tags of the snapshot."
+          "description": "Tags of the snapshot.",
+          "nullable": true
         }
       ],
       "response": {
@@ -7064,7 +7097,8 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "Tags of the volume."
+          "description": "Tags of the volume.",
+          "nullable": true
         },
         {
           "name": "size",

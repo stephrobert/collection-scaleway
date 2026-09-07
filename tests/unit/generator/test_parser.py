@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from generator.ir.enums import ApiType, ParameterLocation, Scope
@@ -106,6 +108,105 @@ def test_un_oneof_avec_null_est_un_champ_optionnel(widget_service: ApiService) -
     assert champ.type is ApiType.OBJECT
     assert champ.ref == "scaleway.widget.v1.Widget.EmailConfig"
     assert not [w for w in widget_service.warnings if "email_config" in w]
+
+
+def test_un_tableau_effacable_reste_effacable(widget_service: ApiService) -> None:
+    """`type: [array, "null"]` est la forme du contrat pour des tags effaçables.
+
+    Seule la branche scalaire reportait la nullabilité : un tableau, un objet
+    ou un enum écrit ainsi sortait non effaçable, et le compte publié des
+    champs effaçables manquait chaque tableau de tags des deux contrats.
+    """
+    operation = widget_service.operation("UpdateWidget")
+    assert operation is not None
+    tags = operation.parameter("tags")
+    assert tags is not None
+    assert tags.type is ApiType.ARRAY
+    assert tags.nullable is True
+
+
+def test_un_tableau_effacable_avec_ses_elements_reste_effacable() -> None:
+    """La même forme, avec `items` : c'est l'autre branche du parser.
+
+    Le laboratoire déclare ses tags sans `items`, donc il n'exerce que la
+    branche « tableau sans éléments ». Un document réduit exerce celle-ci, pour
+    que la nullabilité ne dépende pas de la présence d'`items`.
+    """
+    document = {
+        "openapi": "3.1.0",
+        "paths": {
+            "/widget/v1/zones/{zone}/widgets/{widget_id}": {
+                "patch": {
+                    "operationId": "UpdateWidget",
+                    "parameters": [
+                        {
+                            "name": "zone",
+                            "in": "path",
+                            "required": True,
+                            "schema": {"type": "string"},
+                        },
+                        {
+                            "name": "widget_id",
+                            "in": "path",
+                            "required": True,
+                            "schema": {"type": "string"},
+                        },
+                    ],
+                    "requestBody": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "tags": {
+                                            "type": ["array", "null"],
+                                            "items": {"type": "string"},
+                                        }
+                                    },
+                                }
+                            }
+                        }
+                    },
+                    "responses": {"200": {"description": "OK"}},
+                }
+            }
+        },
+    }
+    service = parse_document(
+        SpecDocument(product="widget", version="v1", path=Path("widget.v1.yml"), document=document)
+    )
+    operation = service.operation("UpdateWidget")
+    assert operation is not None
+    tags = operation.parameter("tags")
+    assert tags is not None
+    assert tags.item_type is ApiType.STRING
+    assert tags.nullable is True
+
+
+def test_une_reference_vers_un_type_effacable_reste_effacable(widget_service: ApiService) -> None:
+    """`$ref: google.protobuf.BoolValue`, dont la cible dit `[boolean, "null"]`.
+
+    La branche `$ref` recopiait le type et l'`item_type` de la cible, pas sa
+    nullabilité : le même champ sortait effaçable écrit en ligne et non
+    effaçable écrit par référence, dans le même contrat.
+    """
+    operation = widget_service.operation("UpdateWidget")
+    assert operation is not None
+    protected = operation.parameter("protected")
+    assert protected is not None
+    assert protected.type is ApiType.BOOLEAN
+    assert protected.ref == "google.protobuf.BoolValue"
+    assert protected.nullable is True
+
+
+def test_un_champ_non_effacable_le_reste(widget_service: ApiService) -> None:
+    """Le contre-exemple, sans lequel les deux tests précédents passeraient
+    aussi sur un parser qui dirait tout effaçable."""
+    operation = widget_service.operation("GetWidget")
+    assert operation is not None
+    identifiant = operation.parameter("widget_id")
+    assert identifiant is not None
+    assert identifiant.nullable is False
 
 
 def test_une_taille_de_page_ecrite_autrement_reste_de_la_pagination(
