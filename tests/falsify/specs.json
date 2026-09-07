@@ -888,12 +888,12 @@
       "test": "tests/unit/outillage/test_release.py::test_un_arbre_sale_est_refuse"
     },
     {
-      "name": "nom-du-plugin-recopie-dans-le-paquet",
-      "why": "Le contrôle de l'archive interrogeait le plugin d'inventaire sous un nom écrit en dur. Le renommer a fait interroger un plugin qui n'existe plus : le contrôle accusait l'archive, qui était bonne, et le défaut a voyagé jusqu'en CI parce que `package` n'était pas dans `mise run check`.",
+      "name": "plugins-du-paquet-ecrits-en-dur",
+      "why": "Le contrôle de l'archive interrogeait le plugin d'inventaire sous un nom écrit en dur. Le renommer a fait interroger un plugin qui n'existe plus : le contrôle accusait l'archive, qui était bonne, et le défaut a voyagé jusqu'en CI parce que `package` n'était pas dans `mise run check`. Il a ensuite refusé d'en voir deux, ce qui tenait tant qu'il n'y en avait qu'un : la même hypothèse, déplacée du nom vers le nombre. La mutation remet le nom en dur.",
       "file": "scripts/package.py",
-      "find": "    if len(plugins) != 1:",
-      "replace": "    if len(plugins) != 1 and False:",
-      "test": "tests/unit/outillage/test_verdicts.py::test_le_nom_du_plugin_dinventaire_se_lit_sur_le_disque"
+      "find": "        plugins = sorted(f.stem for f in dossier.glob(\"*.py\") if not f.stem.startswith(\"_\"))",
+      "replace": "        plugins = [\"scaleway\"]",
+      "test": "tests/unit/outillage/test_verdicts.py::test_deux_plugins_dinventaire_sont_interroges_tous_les_deux"
     },
     {
       "name": "repertoire-interdit-invisible",
@@ -1294,6 +1294,38 @@
       "find": "    (re.compile(r\"\\b\\d+\\s+unit tests\\b\", re.I), \"compteurs\"),",
       "replace": "    (re.compile(r\"\\b\\d+\\b\", re.I), \"compteurs\"),",
       "test": "tests/unit/outillage/test_chiffres.py::test_un_nombre_qui_nest_pas_une_mesure_passe"
+    },
+    {
+      "name": "repertoire-de-plugins-ignore",
+      "why": "Une découverte qui ignore un répertoire qu'elle ne connaît pas laisse un plugin entier hors de la preuve, et personne ne s'en aperçoit.",
+      "file": "scripts/package.py",
+      "find": "    if inconnus:",
+      "replace": "    if inconnus and False:",
+      "test": "tests/unit/outillage/test_paquet.py::test_un_repertoire_de_plugins_inconnu_est_refuse"
+    },
+    {
+      "name": "paquet-sans-module-accepte",
+      "why": "Zéro module interrogé est le vert qui a déjà menti ici : un `ansible-test sanity` vert sur zéro fichier examiné.",
+      "file": "scripts/package.py",
+      "find": "    if not noms:\n        raise PackageError(\n            \"aucun module",
+      "replace": "    if not noms and False:\n        raise PackageError(\n            \"aucun module",
+      "test": "tests/unit/outillage/test_paquet.py::test_un_paquet_sans_module_est_refuse"
+    },
+    {
+      "name": "plugin-disparu-non-signale",
+      "why": "Le contrôle interroge autant de plugins qu'il en trouve : sans cette garde, il en trouverait zéro et rendrait vert sur un paquet qui a perdu son plugin d'inventaire.",
+      "file": "scripts/package.py",
+      "find": "        if not plugins:\n            raise PackageError(",
+      "replace": "        if not plugins and False:\n            raise PackageError(",
+      "test": "tests/unit/outillage/test_verdicts.py::test_un_repertoire_de_plugins_vide_est_refuse"
+    },
+    {
+      "name": "module-muet-dans-larchive",
+      "why": "Interroger les cinquante modules ne prouve rien si le contrôle ne regarde pas ce qu'`ansible-doc` répond pour chacun. C'est tout l'objet du changement : un module cassé parmi les quarante-neuf autres passait, parce que le contrôle n'en interrogeait qu'un.",
+      "file": "scripts/package.py",
+      "find": "    if muets:",
+      "replace": "    if muets and False:",
+      "test": "tests/unit/outillage/test_paquet.py::test_un_module_que_larchive_ne_documente_pas_est_refuse"
     }
   ]
 }

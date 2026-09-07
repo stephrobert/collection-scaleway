@@ -47,11 +47,12 @@ def _collection_factice(racine: Path, plugins: tuple[str, ...] = ()) -> Collecti
     """
     chemin = racine / "ansible_collections" / "stephrobert" / "scaleway"
     chemin.mkdir(parents=True, exist_ok=True)
-    if plugins:
-        inventaire = chemin / "plugins" / "inventory"
-        inventaire.mkdir(parents=True, exist_ok=True)
-        for nom in plugins:
-            (inventaire / f"{nom}.py").write_text("", encoding="utf-8")
+    # Le répertoire est créé même sans plugin : une collection en porte un, et
+    # « présent et vide » est précisément le cas qu'un plugin disparu produit.
+    inventaire = chemin / "plugins" / "inventory"
+    inventaire.mkdir(parents=True, exist_ok=True)
+    for nom in plugins:
+        (inventaire / f"{nom}.py").write_text("", encoding="utf-8")
     return Collection(namespace="stephrobert", name="scaleway", version="0.0.0", path=chemin)
 
 
@@ -446,22 +447,46 @@ def test_un_plugin_dinventaire_sans_options_nest_pas_charge(
     assert "products" in str(erreur.value)
 
 
-def test_le_nom_du_plugin_dinventaire_se_lit_sur_le_disque(tmp_path: Path) -> None:
-    """Il était écrit en dur, et un renommage lui a survécu jusqu'en CI.
+def test_un_repertoire_de_plugins_vide_est_refuse(tmp_path: Path) -> None:
+    """Un plugin qui disparaît ne doit pas passer pour un paquet correct.
 
-    Le contrôle interrogeait `stephrobert.scaleway.scaleway` après que le plugin
-    fut devenu `compute` : `ansible-doc` répondait que la configuration était
-    introuvable, et le contrôle accusait l'archive, qui était bonne.
+    Ce test portait auparavant sur « 0 plugin », parce que le contrôle en
+    interrogeait exactement un et refusait tout autre compte. Il en interroge
+    désormais autant qu'il en trouve, et trouverait zéro sans rien dire :
+    l'intention se garde, sa forme change.
     """
-    with pytest.raises(package.PackageError, match="0 plugin"):
+    with pytest.raises(package.PackageError, match="aucun plugin"):
         package.check_inventory_plugin(tmp_path, _collection_factice(tmp_path))
 
 
-def test_deux_plugins_dinventaire_font_refuser_plutot_que_choisir(tmp_path: Path) -> None:
-    """Ce contrôle en interroge un, et deviner lequel mesurerait l'autre."""
+def test_deux_plugins_dinventaire_sont_interroges_tous_les_deux(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Le contrôle refusait d'en voir deux, ce qui tenait tant qu'il y en avait un.
+
+    C'est la même hypothèse que le nom écrit en dur, déplacée du nom vers le
+    nombre — et le nom écrit en dur avait déjà coûté un diagnostic. Les deux
+    sont désormais interrogés, et un plugin muet fait échouer le paquet quel que
+    soit son rang.
+    """
     collection = _collection_factice(tmp_path, plugins=("compute", "managed"))
-    with pytest.raises(package.PackageError, match="2 plugin"):
-        package.check_inventory_plugin(tmp_path, collection)
+    interroges: list[str] = []
+
+    def _ansible_doc(commande: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        fqcn = commande[-1]
+        interroges.append(fqcn)
+        options = {nom: {} for nom in package.OPTIONS_ATTENDUES["inventory"]}
+        return subprocess.CompletedProcess(
+            commande, 0, json.dumps({fqcn: {"doc": {"options": options}}}), ""
+        )
+
+    monkeypatch.setattr(package.subprocess, "run", _ansible_doc)
+    package.check_inventory_plugin(tmp_path, collection)
+
+    assert interroges == [
+        "stephrobert.scaleway.compute",
+        "stephrobert.scaleway.managed",
+    ], "les deux plugins doivent être interrogés, pas un seul"
 
 
 def test_un_plugin_dinventaire_complet_est_accepte(
@@ -471,7 +496,7 @@ def test_un_plugin_dinventaire_complet_est_accepte(
     documente = json.dumps(
         {
             "stephrobert.scaleway.compute": {
-                "doc": {"options": {nom: {} for nom in package.INVENTORY_OPTIONS}}
+                "doc": {"options": {nom: {} for nom in package.OPTIONS_ATTENDUES["inventory"]}}
             }
         }
     )
