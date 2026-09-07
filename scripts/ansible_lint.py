@@ -13,7 +13,7 @@ refusé quatre choses :
   part ici ;
 * deux indentations de liste dans `changelogs/config.yaml`.
 
-**La collection doit être atteignable**, sinon les trois playbooks livrés
+**La collection doit être atteignable**, sinon les playbooks livrés
 échouent en `syntax-check[unknown-module]` : le lint cherche
 `stephrobert.scaleway.instance_server_info` et ne trouve rien. C'est un faux
 négatif spectaculaire, trois refus fatals pour une variable d'environnement

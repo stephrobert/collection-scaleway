@@ -401,8 +401,8 @@ def test_le_serveur_allume_doit_se_retrouver_dans_son_groupe_detat(
 
 
 def test_un_inventaire_complet_est_accepte(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Le contre-exemple : sans lui, les trois tests ci-dessus passeraient aussi
-    sur une fonction qui refuserait tout."""
+    """Le contre-exemple : sans lui, les tests ci-dessus passeraient aussi sur
+    une fonction qui refuserait tout."""
     monkeypatch.setattr(integration, "inventory_graph", lambda _env: _graphe(machines=2))
     integration.check_inventory({}, 2, "uuid-1")
 
@@ -616,8 +616,8 @@ def test_un_site_sans_page_de_mesure_est_un_echec(site_isole: Path) -> None:
 
 
 def test_un_site_complet_est_accepte(site_isole: Path) -> None:
-    """Le contre-exemple, sans lequel les trois tests ci-dessus passeraient
-    aussi sur une fonction qui refuserait tout."""
+    """Le contre-exemple, sans lequel les tests ci-dessus passeraient aussi
+    sur une fonction qui refuserait tout."""
     _site_factice(site_isole, modules=["a_info", "b_action"], pages=["a_info", "b_action"])
     paquets = tuple(nom for nom, _ in docsite.GENERATOR_PACKAGES)
     docsite.check_population(("instance.v1",), paquets)
@@ -666,7 +666,7 @@ def test_une_documentation_sans_exemple_est_un_echec(monkeypatch: pytest.MonkeyP
 def test_le_compteur_somme_tous_les_produits(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Le bloc disait 25 modules et en listait 46, et le contrôle passait.
+    """Le bloc comptait un produit et en listait plusieurs, et le contrôle passait.
 
     `_modules_ecrits` ne lisait que le compte rendu d'`instance.v1`, tandis que
     la liste parcourait le répertoire des modules. Deux sources pour un même

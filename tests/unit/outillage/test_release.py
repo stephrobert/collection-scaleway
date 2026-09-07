@@ -77,9 +77,9 @@ def test_des_fragments_en_attente_sont_refuses(
 ) -> None:
     """Ils décrivent ce que la version apporte, et resteraient dehors.
 
-    Mesuré sur ce dépôt : douze fragments accumulés sous une `0.1.0` composée
-    quand la collection portait **un** module, dont le correctif de pagination
-    qui rendait une première page en silence.
+    C'est arrivé ici : des fragments accumulés sous une `0.1.0` composée quand
+    la collection portait **un** module, dont le correctif de pagination qui
+    rendait une première page en silence.
     """
     _sans_bruit(monkeypatch, _Collection("0.1.0", tmp_path))
     monkeypatch.setattr(release, "fragments_en_attente", lambda _: ["pagination.yml"])
@@ -100,7 +100,7 @@ def test_une_version_qui_nest_pas_semver_est_refusee(
 def test_tout_en_ordre_ne_refuse_rien(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Le cas voisin, et il porte plus que les autres.
 
-    Une garde qui refuse tout ferait passer les cinq tests précédents, et
+    Une garde qui refuse tout ferait passer tous les tests précédents, et
     empêcherait toute publication sur un dépôt sain.
     """
     _sans_bruit(monkeypatch, _Collection("0.1.0", tmp_path))

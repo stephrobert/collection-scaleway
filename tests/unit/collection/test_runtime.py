@@ -987,7 +987,7 @@ def test_une_reference_qui_change_vraiment_est_ecrite(runtime: Any, monkeypatch:
 def test_un_put_recoit_tout_ce_quon_veut_garder(runtime: Any, monkeypatch: Any) -> None:
     """Un PUT remplace : lui envoyer la seule différence efface le reste.
 
-    Sept opérations du Load Balancer sont des PUT, et le contrat le dit dans sa
+    Les écritures du Load Balancer sont des PUT, et le contrat le dit dans sa
     propre description : « You must set all parameters ». Envoyer `{name: ...}`
     seul remettrait à zéro `timeout_client` et les certificats du frontend, en
     silence, ce qui est précisément ce que la doctrine refuse.

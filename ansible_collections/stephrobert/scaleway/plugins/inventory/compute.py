@@ -396,10 +396,11 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
         regions = settings.regions or self._regions(settings)
         report = discovery.DiscoveryReport()
 
-        # L'index réseau coûte trois appels par région et par projet, et il ne
-        # sert qu'aux produits qui portent des cartes réseau privées. Le payer
-        # pour un inventaire qui n'en demande aucun revenait à facturer douze
-        # appels à personne.
+        # L'index réseau coûte plusieurs appels par région et par projet, et
+        # il ne sert qu'aux produits qui portent des cartes réseau privées. Le
+        # payer pour un inventaire qui n'en demande aucun revient à facturer
+        # des appels à personne : `test_lindex_reseau_nest_paye_que_par_les_`
+        # `produits_qui_le_joignent` compte ceux qui partent vraiment.
         #
         # Le filtrage n'est volontairement pas plus fin que ça : couper aussi
         # quand `address_priority` ne cite que du public viderait en silence

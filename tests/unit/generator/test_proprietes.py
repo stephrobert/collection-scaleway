@@ -2,8 +2,8 @@
 
 Le générateur traduit : d'un contrat OpenAPI il tire des noms, des types et des
 phrases publiées. Les cas qu'un mainteneur pense à écrire sont un sous-ensemble
-de ceux que l'amont peut produire, et Scaleway a ajouté 453 méthodes en douze
-mois sans demander l'avis de ce dépôt.
+de ceux que l'amont peut produire, et Scaleway ajoute et retire des méthodes
+de SDK sans demander l'avis de ce dépôt (ADR-001).
 
 Ces tests énoncent donc des **propriétés** plutôt que des exemples, et laissent
 Hypothesis chercher le contre-exemple. Ce qu'il apporte en plus d'une boucle

@@ -1,11 +1,4 @@
 {
-  "_comment": [
-    "Mutations déclarées à côté des gardes qu'elles neutralisent.",
-    "Chaque entrée neutralise une condition en gardant tous les noms évalués :",
-    "une mutation qui supprime le terme casserait l'import, tous les tests",
-    "rougiraient, et ça ressemblerait exactement à une garde prouvée.",
-    "Lancer : python scripts/falsify.py"
-  ],
   "mutations": [
     {
       "name": "no_log",
@@ -1358,6 +1351,46 @@
       "find": "        if \"--require-hashes\" not in nu:",
       "replace": "        if \"--require-hashes\" not in nu and False:",
       "test": "tests/unit/outillage/test_verrou_fuzz.py::test_une_installation_sans_empreinte_dans_limage_est_refusee"
+    },
+    {
+      "name": "compteur-historique-dans-le-code",
+      "why": "La règle du nombre dérivé ne valait que pour les documents publiés. Le code portait les mêmes compteurs faux, et ils ne rougissaient nulle part : un compte de tests que la mesure démentait, un compte de modules inférieur à ce que la collection publie, deux copies d'un même tableau qui ne disaient plus la même chose.",
+      "file": "scripts/histoire.py",
+      "find": "        for trouve in MOTIF.finditer(texte):",
+      "replace": "        for trouve in []:",
+      "test": "tests/unit/outillage/test_histoire.py::test_un_compteur_dans_une_docstring_est_refuse"
+    },
+    {
+      "name": "article-pris-pour-un-compte",
+      "why": "« un module », « une option », « deux contrats » : c'est la moitié du vocabulaire du dépôt. Une règle qui refuserait « un module porte une opération » serait une gêne qu'on désactiverait, et elle ne mesurerait alors plus rien.",
+      "file": "scripts/histoire.py",
+      "find": "    r\"(?<![-\\w])(?:(?<![\\d.,])\\d+(?![\\d.,]\\d)|dix-sept|dix-huit|dix-neuf|trois|quatre|\"",
+      "replace": "    r\"(?<![-\\w])(?:(?<![\\d.,])\\d+(?![\\d.,]\\d)|un|une|deux|dix-sept|dix-huit|dix-neuf|trois|quatre|\"",
+      "test": "tests/unit/outillage/test_histoire.py::test_un_article_nest_pas_un_compte"
+    },
+    {
+      "name": "compte-lu-dans-un-mot-compose",
+      "why": "La première version lisait « sept » à l'intérieur de « trente-sept » et signalait deux passages corrects. Un contrôle qui crie au loup est un contrôle qu'on éteint.",
+      "file": "scripts/histoire.py",
+      "find": "    r\"(?<![-\\w])(?:(?<![\\d.,])\\d+(?![\\d.,]\\d)|dix-sept|dix-huit|dix-neuf|trois|quatre|\"",
+      "replace": "    r\"(?:(?<![\\d.,])\\d+(?![\\d.,]\\d)|dix-sept|dix-huit|dix-neuf|trois|quatre|\"",
+      "test": "tests/unit/outillage/test_histoire.py::test_un_nombre_dans_un_mot_compose_nest_pas_un_compte"
+    },
+    {
+      "name": "chaine-de-donnees-prise-pour-une-phrase",
+      "why": "Un compteur qu'un programme calcule ne vieillit pas tout seul. Refuser les chaînes ferait refuser les messages que les programmes du dépôt composent avec leurs propres mesures, c'est-à-dire exactement ce qu'on veut encourager.",
+      "file": "scripts/histoire.py",
+      "find": "        docstring = jeton.type == tokenize.STRING and jeton.line.lstrip().startswith(('\"\"\"', \"'''\"))",
+      "replace": "        docstring = jeton.type == tokenize.STRING",
+      "test": "tests/unit/outillage/test_histoire.py::test_une_chaine_de_donnees_nest_pas_une_phrase"
+    },
+    {
+      "name": "exemption-des-adr-elargie",
+      "why": "Un ADR échappe au suivi des compteurs parce qu'il est historique par construction et porte sa date. L'exemption doit rester étroite : élargie au dossier `docs/`, elle sortirait de la mesure toutes les pages publiées, et le contrôle rendrait vert sans rien examiner.",
+      "file": "scripts/chiffres.py",
+      "find": "HORS_SUIVI: tuple[Path, ...] = (ROOT / \"docs\" / \"adr\",)",
+      "replace": "HORS_SUIVI: tuple[Path, ...] = (ROOT / \"docs\",)",
+      "test": "tests/unit/outillage/test_chiffres.py::test_seuls_les_adr_echappent_au_suivi"
     }
   ]
 }

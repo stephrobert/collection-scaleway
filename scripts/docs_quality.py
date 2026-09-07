@@ -2,7 +2,7 @@
 
 **Le générateur industrialise le code ; rien n'industrialisait la documentation
 qu'il produit.** `ansible-test sanity` dit qu'un bloc est bien formé, pas qu'il
-apprend quelque chose à quelqu'un. Une relecture des cinquante modules a trouvé
+apprend quelque chose à quelqu'un. Une relecture de tous les modules a trouvé
 des pages où l'utilisateur lit « Not documented by the Scaleway API contract »,
 des exemples remplis de `<zone>`, et un module d'action dont le retour annonce
 trois actions que ce même module refuse.
@@ -136,8 +136,8 @@ def _exemples(source: str) -> list[Any]:
     Un module publie **une liste de tâches** ; un plugin d'inventaire publie
     **plusieurs fichiers**, séparés par `---`, parce que c'est un fichier
     d'inventaire entier qu'on copie et pas une tâche. `safe_load` ne rend que
-    le premier document : mesurer avec lui laissait trois exemples sur quatre
-    hors de la mesure, sur la page qu'un utilisateur lit en premier.
+    le premier document : mesurer avec lui laissait tous les suivants hors de
+    la mesure, sur la page qu'un utilisateur lit en premier.
     """
     motif = re.compile(r'^EXAMPLES = r?"""(.*?)"""', re.S | re.M)
     trouve = motif.search(source)
@@ -322,10 +322,10 @@ def mesurer() -> tuple[Mesure, list[Defaut]]:
         raise QualiteError(f"{modules_dir} n'existe pas : lancer `mise run generate`.")
 
     # **Le plugin d'inventaire est publié comme les modules.** Il a sa page sur
-    # Galaxy, ses 26 options, et il est la porte d'entrée de la collection :
-    # c'est le premier fichier qu'un utilisateur écrit. Le laisser hors de la
-    # mesure revenait à surveiller les 50 pages qu'on lit après, pas celle
-    # qu'on lit d'abord.
+    # Galaxy, ses options, et il est la porte d'entrée de la collection : c'est
+    # le premier fichier qu'un utilisateur écrit. Le laisser hors de la mesure
+    # revenait à surveiller les pages qu'on lit après, pas celle qu'on lit
+    # d'abord.
     inventaire_dir = collection.path / "plugins" / "inventory"
     a_examiner = sorted(modules_dir.glob("*.py")) + sorted(inventaire_dir.glob("*.py"))
 

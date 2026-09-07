@@ -4,11 +4,8 @@ Le README dérive ses nombres et la CI refuse un README périmé. **Cette règle
 valait que pour lui**, et un audit de la 0.3.0 a trouvé quatre documents qui
 publiaient des chiffres faux :
 
-| fichier | disait | la mesure disait |
-|---|---|---|
-| `docs/architecture/generator.md` | 41 Day-2, 40 AUTO, 97,6 %, 14 IGNORE | 40, 39, 97,5 %, 15 |
-| `docs/architecture/runtime.md` | modules joués sur **46** | 50 |
-| `docs/best-practices.md` | 575 tests, 149 mutations | 595, 158 |
+Le relevé de ces écarts, avec ses nombres et sa date, vit dans ADR-007 : ici
+il vieillirait, et deux docstrings en portaient déjà deux versions différentes.
 
 Le projet dit « ne pas mentir, mesurer ». Une règle qui ne vaut que pour un
 fichier ne vaut pas.
@@ -20,9 +17,9 @@ dépôt publie une mesure — « N tests unitaires », « N modules », « N op�
 Day-2 », « couverture N % ». Toute occurrence hors d'un bloc dérivé est refusée,
 avec le nom du bloc où la mettre.
 
-Un nombre qui n'est pas une mesure passe donc sans encombre : « les trois
-règles », « Python 3.12 », « RFC 2606 ». C'est voulu, et c'est la différence
-entre un contrôle et une gêne.
+Un nombre qui n'est pas une mesure passe donc sans encombre : « Python 3.12 »,
+« RFC 2606 ». C'est voulu, et c'est la différence entre un contrôle et une
+gêne.
 """
 
 from __future__ import annotations
@@ -35,18 +32,32 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-#: Les fichiers suivis où un compteur périmé se lit comme une mesure.
+#: Ce qui est exclu du suivi, et la raison de chaque exclusion.
 #:
-#: `CLAUDE.md` en est exclu : il n'est pas versionné dans ce dépôt. Les
-#: changelogs non plus : un changelog décrit ce qu'une version passée portait,
-#: et ses nombres doivent **rester** ceux d'alors.
+#: `CLAUDE.md` n'est pas versionné dans ce dépôt. Les changelogs décrivent ce
+#: qu'une version passée portait, et leurs nombres doivent **rester** ceux
+#: d'alors.
+#:
+#: `docs/adr/` pour la même raison, et c'est sa raison d'être : un ADR est
+#: historique par construction, il porte sa date, et il est l'endroit où un
+#: nombre du passé a le droit de vivre. Y dériver un bloc réécrirait l'histoire
+#: à chaque exécution, ce qui est exactement ce qu'un ADR interdit. Voir
+#: ADR-007, et `mise run histoire`, qui applique la même frontière au code.
+HORS_SUIVI: tuple[Path, ...] = (ROOT / "docs" / "adr",)
+
+
+def _suivi(chemin: Path) -> bool:
+    return not any(exclu in chemin.parents for exclu in HORS_SUIVI)
+
+
+#: Les fichiers suivis où un compteur périmé se lit comme une mesure.
 SURVEILLES: tuple[Path, ...] = (
     ROOT / "README.md",
     ROOT / "CONTRIBUTING.md",
     ROOT / "RELEASING.md",
     ROOT / "SECURITY.md",
     ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "README.md",
-    *sorted((ROOT / "docs").rglob("*.md")),
+    *sorted(chemin for chemin in (ROOT / "docs").rglob("*.md") if _suivi(chemin)),
 )
 
 #: Les tournures par lesquelles ce dépôt publie une mesure, et le bloc dérivé

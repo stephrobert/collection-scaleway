@@ -80,7 +80,11 @@ def test_une_reformulation_ne_dit_que_le_nom(instance_plan, collection) -> None:
 
 
 def test_une_decision_humaine_passe_avant_les_mecanismes(instance_plan, collection) -> None:
-    """Neuf champs ne sont décrits nulle part, et leur phrase est décidée."""
+    """Les champs que le contrat ne décrit nulle part portent une phrase décidée.
+
+    Les assertions ci-dessous les nomment un par un : une liste dit lesquels,
+    un compte ne dirait que combien.
+    """
     champs = _champs(_specs(instance_plan, collection)["instance_image_info"])
     assert champs["public"] == ("Whether the image is public.",)
     assert champs["from_server"] == ("Server the image comes from.",)

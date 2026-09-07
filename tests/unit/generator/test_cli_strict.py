@@ -131,9 +131,9 @@ def test_un_contrat_sans_operation_est_rouge(
 def test_un_contrat_entierement_classe_sort_en_zero(
     tmp_path: Path, racines: tuple[Path, Path]
 ) -> None:
-    """Le cas voisin, qui ne doit pas bouger : sans lui les trois autres ne prouvent rien.
+    """Le cas voisin, qui ne doit pas bouger : sans lui les autres ne prouvent rien.
 
-    Un mode strict qui sortirait en 2 sur tout ferait passer les trois tests
+    Un mode strict qui sortirait en 2 sur tout ferait passer tous les tests
     précédents, et rougirait la CI sur un dépôt sain.
     """
     specs, overrides = racines

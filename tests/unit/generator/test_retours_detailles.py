@@ -11,8 +11,9 @@ Un lecteur de la page Galaxy ne savait pas ce qu'il pouvait lire dans
 `result.server`. Il fallait appeler le module, ou aller au contrat OpenAPI, ce
 que la page publiée doit précisément éviter.
 
-Le contrat le disait pourtant : `scaleway.instance.v1.Server` déclare 36 champs,
-dont 34 décrits. La connaissance existait et s'arrêtait au parser.
+Le contrat le disait pourtant : `scaleway.instance.v1.Server` déclare ses
+champs, et les décrit presque tous. La connaissance existait et s'arrêtait au
+parser.
 """
 
 from __future__ import annotations
@@ -33,8 +34,8 @@ def _specs(plan: ProductPlan, collection: Collection) -> dict[str, AnsibleModule
 def test_lir_porte_les_champs_des_ressources_rendues(instance_service) -> None:
     """Une fois par schéma, et seulement pour ce qu'une réponse désigne.
 
-    Recopier les deux cents schémas du contrat ferait un IR que personne ne
-    relit en diff, et le golden est ce qui rend la dérive visible.
+    Recopier tous les schémas du contrat ferait un IR que personne ne relit en
+    diff, et le golden est ce qui rend la dérive visible.
     """
     noms = {objet.name for objet in instance_service.objects}
     assert "scaleway.instance.v1.Server" in noms

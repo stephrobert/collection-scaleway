@@ -1,10 +1,9 @@
 """Aucun compteur vivant dans un document écrit à la main.
 
 Le README dérivait ses nombres et la CI refusait un README périmé. **La règle ne
-valait que pour lui.** Un audit de la 0.3.0 a trouvé huit compteurs faux dans
-`docs/` : « 41 Day-2 candidates » quand la mesure en dit 40, « 40 AUTO » quand
-elle en dit 39, « out of 46 modules » quand la collection en porte 50, « 575
-unit tests » et « 49 unit tests » figés au jour où la phrase a été écrite.
+valait que pour lui.** Un audit de la 0.3.0 a trouvé plusieurs compteurs faux
+dans `docs/`, chacun figé au jour où sa phrase a été écrite. ADR-007 les relève
+avec leurs nombres et leur date, qui est ce qui les rend lisibles.
 
 Le projet dit « ne pas mentir, mesurer ». Une règle qui ne vaut que pour un
 fichier ne vaut pas.
@@ -68,7 +67,7 @@ def test_un_nom_de_bloc_a_tiret_est_reconnu(tmp_path: Path) -> None:
 
 
 def test_un_nombre_qui_nest_pas_une_mesure_passe(tmp_path: Path) -> None:
-    """« Python 3.12 », « RFC 2606 », « les trois règles ».
+    """« Python 3.12 », « RFC 2606 », un nombre qui ne mesure rien.
 
     Un contrôle qui refuserait tout chiffre serait une gêne, pas une garde :
     on le désactiverait, et il ne mesurerait plus rien.
@@ -79,6 +78,19 @@ def test_un_nombre_qui_nest_pas_une_mesure_passe(tmp_path: Path) -> None:
         "The three rules below decide everything, and 42 is not a measurement.\n",
     )
     assert chiffres.examiner(chemin) == []
+
+
+def test_seuls_les_adr_echappent_au_suivi() -> None:
+    """Un ADR porte l'histoire avec sa date : y dériver un bloc la réécrirait.
+
+    L'exemption est nommée, et elle est étroite. Élargie à `docs/`, elle
+    sortirait de la mesure les pages où un compteur périmé se lit exactement
+    comme une mesure, ce que ce contrôle existe pour empêcher.
+    """
+    suivis = {chemin.relative_to(chiffres.ROOT).as_posix() for chemin in chiffres.SURVEILLES}
+
+    assert "docs/scorecard.md" in suivis, "une page publiée doit rester suivie"
+    assert not any(nom.startswith("docs/adr/") for nom in suivis), sorted(suivis)
 
 
 def test_le_depot_ne_publie_aucun_compteur_hors_bloc() -> None:

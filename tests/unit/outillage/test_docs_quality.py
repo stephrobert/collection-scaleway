@@ -1,8 +1,8 @@
 """Ce que la porte documentaire mesure, et ce qu'elle refuse de laisser publier.
 
 `ansible-test sanity` dit qu'un bloc `DOCUMENTATION` est bien formé. Il ne dit
-rien de ce qu'il apprend à quelqu'un : un module dont les six options portent
-« Not documented by the Scaleway API contract. » et dont l'exemple montre
+rien de ce qu'il apprend à quelqu'un : un module dont toutes les options
+portent « Not documented by the Scaleway API contract. » et dont l'exemple montre
 `zone: <zone>` passe la sanity sans une remarque, et se publie tel quel.
 
 Ces tests portent sur des modules écrits ici, pas sur ceux du dépôt : une porte
@@ -279,9 +279,9 @@ def test_la_porte_mesure_bien_la_collection_livree() -> None:
 def test_le_plugin_dinventaire_entre_dans_la_mesure() -> None:
     """C'est la page qu'un utilisateur lit en premier, et elle était hors mesure.
 
-    Le plugin d'inventaire a sa page sur Galaxy et ses 26 options ; la porte ne
-    regardait que `plugins/modules`. Surveiller les cinquante pages qu'on lit
-    après, mais pas celle qu'on lit d'abord, laissait le trou au pire endroit.
+    Le plugin d'inventaire a sa page sur Galaxy et ses options ; la porte ne
+    regardait que `plugins/modules`. Surveiller les pages qu'on lit après, mais
+    pas celle qu'on lit d'abord, laissait le trou au pire endroit.
     """
     mesure, _ = docs_quality.mesurer()
     assert mesure.modules == 51, (
@@ -293,8 +293,8 @@ def test_les_exemples_dun_plugin_sont_des_fichiers_entiers(tmp_path: Path) -> No
     """On copie un fichier d'inventaire, pas une tâche.
 
     Ils sont donc séparés par `---`, et `safe_load` ne rend que le premier :
-    mesurer avec lui laissait trois exemples sur quatre hors de la mesure, et
-    ils pouvaient repasser en commentaires sans que rien ne le dise.
+    mesurer avec lui laissait tous les suivants hors de la mesure, et ils
+    pouvaient repasser en commentaires sans que rien ne le dise.
     """
     chemin = tmp_path / "demo.py"
     chemin.write_text(

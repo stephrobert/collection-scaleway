@@ -21,9 +21,9 @@ from generator.plan import build_plan
 
 #: Ce que le modèle refuse, mesuré, produit par produit. Un témoin : ce compte
 #: doit bouger quand le modèle change, jamais tout seul.
-# Ce témoin a mordu trois fois, et chaque fois pour annoncer une victoire :
+# Ce témoin a mordu plusieurs fois, et chaque fois pour annoncer une victoire :
 # `instance_security_group_rule_info` quand la seconde liste s'est révélée être
-# le même appel, puis les trois modules d'action quand le modèle a appris la
+# le même appel, puis les modules d'action quand le modèle a appris la
 # forme dont l'action est l'opération. Un refus de moins doit se voir, sinon
 # personne ne sait que la couverture a bougé.
 REFUS_ATTENDUS = {

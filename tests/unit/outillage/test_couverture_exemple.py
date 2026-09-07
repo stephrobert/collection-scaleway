@@ -22,7 +22,7 @@ import pytest
 
 @pytest.fixture
 def faux_depot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Un dépôt de laboratoire : trois modules, un playbook, aucun run."""
+    """Un dépôt de laboratoire : des modules, un playbook, aucun run."""
     modules = tmp_path / "modules"
     playbooks = tmp_path / "playbooks"
     artefacts = tmp_path / "artefacts"

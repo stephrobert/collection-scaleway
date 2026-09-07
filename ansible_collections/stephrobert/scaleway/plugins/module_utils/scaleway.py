@@ -72,7 +72,7 @@ MAX_PAGES = 1000
 #: connexion muette fige un playbook indéfiniment : mesuré, le SDK appelle
 #: `requests.request()` sans `timeout`, donc rien ne borne l'attente.
 #:
-#: 60 s est large pour une liste de cent ressources et court devant les 300 s
+#: 60 s est large pour une liste d'une page entière et court devant les 300 s
 #: de `wait_timeout`, qui borne une attente entière et non un appel.
 DEFAULT_REQUEST_TIMEOUT = 60
 
@@ -771,15 +771,17 @@ def run_info_module(module: AnsibleModule, spec: InfoModule) -> None:
     check mode ne change pas son comportement.
 
     **Un module sans sélecteur ni opération de liste n'a qu'une façon de
-    tourner, et il faut la prendre.** Cinq modules générés sont dans ce cas :
+    tourner, et il faut la prendre.** Les modules générés dans ce cas sont
     `instance_dashboard_info`, `instance_server_type_info`,
     `instance_server_type_availability_info`, `instance_volume_type_info` et
-    `instance_server_compatible_type_info`. Leur opération unique rend un objet
+    `instance_server_compatible_type_info` : les nommer vaut mieux que les
+    compter, le compte changeant au premier produit ajouté. Leur opération
+    unique rend un objet
     ou une carte, pas un tableau, donc le générateur en fait une lecture
     unitaire ; mais il n'existe aucun identifiant à fournir, le chemin étant
     entièrement déterminé par ses paramètres de chemin. Exiger un sélecteur
-    absent rendait ces cinq modules **inappelables** : ils sortaient sur
-    « ce module exige None ».
+    absent les rendait **inappelables** : ils sortaient sur « ce module exige
+    None ».
 
     `ansible-test sanity` les acceptait, et ne pouvait pas faire autrement :
     ces fichiers s'importent, se documentent et construisent leur
@@ -956,8 +958,9 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
     # **Un `PUT` remplace, un `PATCH` modifie.** N'envoyer que la différence à un
     # `PUT` efface silencieusement tout ce qu'on n'a pas nommé, ce qui est
     # exactement la raison pour laquelle les `PUT` d'Instance sont écartés par
-    # override. Sept opérations du Load Balancer sont dans ce cas, et le module
-    # généré portait les deux phrases contradictoires dans sa documentation :
+    # override. Les écritures du Load Balancer sont dans ce cas (ADR-003), et
+    # le module généré portait les deux phrases contradictoires dans sa
+    # documentation :
     # « You must set all parameters », du contrat, et « writes only the fields
     # that differ », de ce runtime.
     #

@@ -95,12 +95,13 @@ class ProductPlan:
         """Part des opérations Day-2 qu'un module réellement écrit porte.
 
         `coverage` dit ce que la classification autorise ; celui-ci dit ce que
-        la génération produit. L'écart n'est pas du bruit : sur Instance, 41
-        opérations sont classées pour la génération automatique et 25 sont
-        portées par un module. Les 16 autres appartiennent à des modules que le
-        renderer ne sait pas encore produire, ou que le modèle refuse de
-        construire, et chacun de ces écarts est déjà publié avec sa raison dans
-        le compte rendu de génération.
+        la génération produit. L'écart n'est pas du bruit : une opération peut
+        être classée pour la génération automatique sans qu'aucun module ne la
+        porte, parce que le renderer ne sait pas encore la produire ou que le
+        modèle refuse de la construire. Les deux ratios sortent côte à côte dans
+        le compte rendu de génération, chacun avec son nom et sa fraction, et
+        chaque écart y est publié avec sa raison. C'est là que les nombres
+        vivent, recalculés à chaque passage.
 
         `written` vient de l'appelant plutôt que d'un appel à `build_module_specs`.
         Le plan sait **nommer** un module, il ne sait pas le construire : c'est

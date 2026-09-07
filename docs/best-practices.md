@@ -245,7 +245,7 @@ URL alongside `Met`; they are marked below.
 **`test`** — MUST — **Met**
 
 <!-- compteurs:tests-badge:début, produits par scripts/readme_counters.py -->
-> 613 unit tests, plus `ansible-test sanity` on four `ansible-core` versions and
+> 625 unit tests, plus `ansible-test sanity` on four `ansible-core` versions and
 > an integration run of the shipped playbooks against a local emulator.
 <!-- compteurs:tests-badge:fin -->
 
