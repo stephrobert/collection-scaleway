@@ -24,6 +24,23 @@ Scaleway account and no credentials.
 
 ### Before you push
 
+```bash
+mise run qualifier   # what CI runs, in CI's order, before bothering CI
+```
+
+**CI is not a qualification lane.** `GITHUB_TOKEN` gets a thousand API requests
+per hour per repository, shared by every workflow, and SARIF and artifact
+uploads consume most of them. Using CI as a test loop drains that budget: CodeQL,
+OSV-Scanner and the dependency review once failed **together**, on
+`API rate limit exceeded for installation`, over code that had nothing wrong
+with it.
+
+`qualifier` replays `check`, `ansible-test sanity`, the integration run, the
+example platform, both container images and the workflow scanners, and it
+**names** what no local command can replay — CodeQL, the dependency review,
+TruffleHog, Scorecard. A gate that stayed quiet about its own gaps would be the
+green-on-nothing this repository is built against.
+
 `mise run check` is the floor, not the ceiling. What else to run depends on what
 you touched:
 
@@ -144,8 +161,9 @@ question.
 
 **Disclose it** with an `Assisted-by:` trailer naming the tool and the model.
 
-**Run it before you send it.** `mise run check` and `/falsify`, yourself, not
-"it should pass".
+**Run it before you send it.** `mise run qualifier` and `/falsify`, yourself,
+not "it should pass". A red pull request costs the runner, the reviewer, and the
+repository's hourly API budget.
 
 **Every field name in the diff comes from the versioned contract, the Scaleway
 SDK, or a run against the real API, and you can say which.** "The model produced

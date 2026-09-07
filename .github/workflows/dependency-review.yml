@@ -10,6 +10,16 @@ name: Revue des dépendances
 on:
   pull_request:
 
+# **Le budget d'API du dépôt est partagé.** `GITHUB_TOKEN` dispose de mille
+# requêtes par heure pour l'ensemble des workflows, et les téléversements de
+# SARIF et d'artefacts en consomment l'essentiel. Un run périmé qui finit quand
+# même paie sa part : on l'annule.
+#
+# Jamais sur `main`, où chaque run correspond à un état publié.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions: {}
 
 jobs:
