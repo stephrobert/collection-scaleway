@@ -381,7 +381,7 @@ def main(argv: list[str]) -> int:
         total = len(mesure["modules_ecrits"])
         print(f"{exerces} module(s) sur {total} appelés par l'exemple")
         for nom in mesure["sans_cible_declaree"]:
-            print(f"  sans cible, déclaré : {nom} — {SANS_CIBLE[nom]}")
+            print(f"  sans cible, déclaré : {nom} · {SANS_CIBLE[nom]}")
         return 0
 
     print(json.dumps(mesure, indent=2, ensure_ascii=False) if arguments.json else rendre(mesure))

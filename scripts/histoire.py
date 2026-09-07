@@ -26,7 +26,7 @@ Ce qu'il ne regarde pas, et pourquoi :
 * `docs/adr/`, qui est historique par construction et porte une date ;
 * les documents publiés, tenus par `scripts/chiffres.py`, qui applique la même
   règle avec l'autre issue : un bloc dérivé plutôt qu'un ADR ;
-* les chaînes de caractères qui ne sont pas des docstrings — un compteur qu'un
+* les chaînes de caractères qui ne sont pas des docstrings : un compteur qu'un
   programme calcule n'est pas une phrase qui vieillit.
 
     python scripts/histoire.py

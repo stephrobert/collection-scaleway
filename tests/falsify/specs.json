@@ -1391,6 +1391,30 @@
       "find": "HORS_SUIVI: tuple[Path, ...] = (ROOT / \"docs\" / \"adr\",)",
       "replace": "HORS_SUIVI: tuple[Path, ...] = (ROOT / \"docs\",)",
       "test": "tests/unit/outillage/test_chiffres.py::test_seuls_les_adr_echappent_au_suivi"
+    },
+    {
+      "name": "cadratin-accepte",
+      "why": "La règle du tiret cadratin était écrite dans les instructions du dépôt, dans les deux langues, et rien ne la mesurait. Le dépôt en portait cent quatre-vingt-quatorze, presque tous écrits en une semaine : il ne casse rien, ne rougit nulle part, et se relit comme de la prose ordinaire.",
+      "file": "scripts/typographie.py",
+      "find": "        if CADRATIN in ligne",
+      "replace": "        if CADRATIN in ligne and False",
+      "test": "tests/unit/outillage/test_typographie.py::test_un_cadratin_est_signale_avec_sa_ligne"
+    },
+    {
+      "name": "artefacts-doutil-passes-a-la-porte-de-redaction",
+      "why": "Une description venue du portail Scaleway n'est pas une phrase de ce dépôt : la refuser demanderait de corriger l'amont, et le contrôle deviendrait une gêne qu'on désactive.",
+      "file": "scripts/typographie.py",
+      "find": "    return [chemin for chemin in lus if not any(chemin.startswith(ignore) for ignore in IGNORES)]",
+      "replace": "    return list(lus)",
+      "test": "tests/unit/outillage/test_typographie.py::test_les_artefacts_dun_outil_ne_sont_pas_de_la_prose"
+    },
+    {
+      "name": "controle-typographique-inutilisable-hors-depot",
+      "why": "Le harnais de falsification travaille dans une copie hors dépôt, sans `.git`. Un contrôle qui s'appuie sur `git ls-files` sans repli y plante, donc ne peut pas être prouvé : il n'aurait que l'apparence d'une garde. Une archive téléchargée pose le même problème.",
+      "file": "scripts/typographie.py",
+      "find": "    lus = connus if connus is not None else _parcourus()",
+      "replace": "    lus = connus if connus is not None else []",
+      "test": "tests/unit/outillage/test_typographie.py::test_hors_depot_le_controle_lit_le_disque"
     }
   ]
 }

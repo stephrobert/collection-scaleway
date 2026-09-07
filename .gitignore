@@ -14,6 +14,9 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 *.egg-info/
+# Hypothesis y range sa base d'exemples et un dépôt des chaînes littérales du
+# code. Reproductible, donc non versionné, comme le reste de cette section.
+.hypothesis/
 
 # `ansible-test` écrit ici quand il tourne depuis le dépôt plutôt que depuis
 # la copie assemblée hors dépôt.

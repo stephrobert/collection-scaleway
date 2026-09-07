@@ -1,7 +1,7 @@
 """GitHub n'est pas une zone de qualification.
 
 Une pull request rouge coûte trois fois : le temps du runner, le temps de la
-relecture, et le budget d'API du dépôt — ce dernier a déjà fait échouer CodeQL,
+relecture, et le budget d'API du dépôt. Ce dernier a déjà fait échouer CodeQL,
 OSV-Scanner et la revue de dépendances **en même temps**, sur un `API rate limit
 exceeded for installation` qui n'avait rien à voir avec le code poussé. Une
 boucle d'essai qui passe par la CI épuise exactement ce budget.
@@ -195,7 +195,7 @@ def construire_les_fuzzers() -> int:
     """Construit l'image du fuzzer **et compile les fuzzers dedans**.
 
     Construire l'image ne prouve rien : elle ne fait que copier le dépôt. Ce
-    qui échoue, et qui a échoué trois fois, c'est `compile` — le `pip install`,
+    qui échoue, et qui a échoué trois fois, c'est `compile` : le `pip install`,
     le plancher de version, la résolution des imports par PyInstaller.
     """
     moteur = shutil.which("podman") or shutil.which("docker")

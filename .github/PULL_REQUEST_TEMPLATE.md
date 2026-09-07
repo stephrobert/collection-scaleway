@@ -4,7 +4,7 @@ before you push:
 
 **The generated code is not the product.** Files under `ansible_collections/`
 are written by the generator. `mise run check:generated` regenerates them and
-fails on `git diff`, so a hand edit does not survive — but that is not the
+fails on `git diff`, so a hand edit does not survive, but that is not the
 point. The point is that fifty modules share one fix, and a hand edit fixes one.
 
 `mise run check` takes under a minute, needs no Scaleway account, and catches
@@ -38,12 +38,12 @@ only one of the two is a decision.
 - [ ] `mise run check` passes
 - [ ] No file under `ansible_collections/` edited by hand. If a produced file is
       wrong, the generator is wrong
-- [ ] Every operation still lands in one of three states — generated, excluded
+- [ ] Every operation still lands in one of three states: generated, excluded
       with its reason, or `UNKNOWN` and the CI is red. Never filtered out
 - [ ] Nothing in the diff creates, deletes or links a resource. Terraform
       provisions, Ansible operates
 
-### When a guard, a validation or a refusal is added — otherwise N/A
+### When a guard, a validation or a refusal is added (otherwise N/A)
 
 - [ ] `/falsify` run, and the new mutation is declared in
       `tests/falsify/specs.json`
@@ -54,7 +54,7 @@ only one of the two is a decision.
       A test that reads a committed file stays green while the function is
       broken
 
-### When a rule or an override changes — otherwise N/A
+### When a rule or an override changes (otherwise N/A)
 
 - [ ] `mise run report` run, and its diff read. A naming rule rarely touches one
       operation
@@ -63,29 +63,29 @@ only one of the two is a decision.
 - [ ] It is not a rule in disguise: a correction repeated across ten operations
       belongs in `generator/classifier/rules.py`
 
-### When the parser or the IR changes — otherwise N/A
+### When the parser or the IR changes (otherwise N/A)
 
 - [ ] `mise run golden:update` run, **and the diff read**. A golden refreshed
       without being read turns a drift detector into a rubber stamp
 - [ ] What the change does not handle is written down: a warning, a report line,
       or an override
 
-### When something a reader sees changes — otherwise N/A
+### When something a reader sees changes (otherwise N/A)
 
 - [ ] `mise run docs:quality` reports zero blocking defect. A page published on
       Galaxy is immutable, including what it fails to say
 - [ ] `mise run sanity` passes
 - [ ] `mise run readme` run if a derived block or a versioned link moved
 
-### When a module, a plugin or an inventory option changes — otherwise N/A
+### When a module, a plugin or an inventory option changes (otherwise N/A)
 
 - [ ] `mise run integration` passes against the emulator
 - [ ] The example stack exercises it, or this pull request says why not. A
       module that is written is not a module that has run
-- [ ] Run against the real account before closing, and **nothing left behind** —
+- [ ] Run against the real account before closing, and **nothing left behind**:
       checked, not assumed
 
-### When `.github/workflows/` is touched — otherwise N/A
+### When `.github/workflows/` is touched (otherwise N/A)
 
 - [ ] `mise run security` passes (actionlint, zizmor, poutine)
 - [ ] Every action pinned to a full 40-character commit SHA with a `# vX.Y.Z`
@@ -94,7 +94,7 @@ only one of the two is a decision.
 - [ ] The exit-code contract still holds: `0` ok, `1` error, `2` unsorted
       operation or orphaned override
 
-### When a model wrote a substantive part of this — otherwise N/A
+### When a model wrote a substantive part of this (otherwise N/A)
 
 See the AI-assisted contributions section of
 [CONTRIBUTING.md](../CONTRIBUTING.md).

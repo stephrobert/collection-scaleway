@@ -13,7 +13,7 @@ fichier ne vaut pas.
 **Ce que ce contrôle cherche, et ce qu'il ne cherche pas.** Il ne juge pas si un
 nombre est juste : il ne le saurait pas sans le recalculer, et ce serait alors
 un second calcul à maintenir. Il cherche les **tournures** par lesquelles ce
-dépôt publie une mesure — « N tests unitaires », « N modules », « N opérations
+dépôt publie une mesure : « N tests unitaires », « N modules », « N opérations
 Day-2 », « couverture N % ». Toute occurrence hors d'un bloc dérivé est refusée,
 avec le nom du bloc où la mettre.
 

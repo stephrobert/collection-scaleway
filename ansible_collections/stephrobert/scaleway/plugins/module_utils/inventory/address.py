@@ -5,8 +5,9 @@
 """Le choix de `ansible_host`, et l'explication de ce choix.
 
 C'est la décision la plus lourde de conséquences du plugin : elle détermine
-par où Ansible joindra la machine. Elle est donc **pure** — aucun appel d'API,
-aucune lecture de configuration globale — et elle **s'explique** : la sélection
+par où Ansible joindra la machine. Elle est donc **pure**, sans aucun appel
+d'API ni aucune lecture de configuration globale, et elle **s'explique** : la
+sélection
 rend la raison à côté de l'adresse, pour que le mode debug puisse répondre à
 « pourquoi cette IP a-t-elle été choisie ».
 

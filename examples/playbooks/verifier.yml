@@ -121,7 +121,7 @@
     # plutôt que prudent. L'émulateur accepte un `reboot` en répondant
     # `success` et ne change jamais l'état de la machine : l'attente, qui exige
     # d'observer l'état quitter `running`, expire alors sur une action pourtant
-    # acceptée. C'est feint#654, et le module a raison d'insister — une action
+    # acceptée. C'est feint#654, et le module a raison d'insister : une action
     # acceptée n'est pas une action advenue.
     #
     # `stop_in_place` suit le même sort, parce qu'il vient après `reboot` dans

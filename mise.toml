@@ -466,6 +466,7 @@ depends = [
   "fuzz:verrou",
   "chiffres:check",
   "histoire",
+  "typographie",
 ]
 
 [tasks.qualifier]
@@ -496,6 +497,14 @@ description = "Refuser dans le code un nombre qui compte des choses du dépôt"
 # Un nombre vrai se prouve par une assertion, un golden ou un bloc dérivé ; un
 # nombre historique va dans `docs/adr/`, qui porte sa date.
 run = "python scripts/histoire.py"
+
+[tasks.typographie]
+description = "Refuser le tiret cadratin, que le dépôt interdit dans les deux langues"
+# **La règle était écrite, et rien ne la mesurait.** Le dépôt en portait cent
+# quatre-vingt-quatorze, presque tous écrits en une semaine : un cadratin ne
+# casse rien, ne rougit nulle part, et se relit comme de la prose ordinaire.
+# C'est la définition d'une règle qui n'est qu'un commentaire.
+run = "python scripts/typographie.py"
 
 [tasks.clean]
 description = "Supprimer les artefacts d'exécution"

@@ -1037,7 +1037,7 @@ def _action_description(
 
     Le contrat décrit ses sept actions en autant de puces. En recopier sept
     pour un module qui en accepte quatre ferait une documentation qui promet ce
-    que l'`argument_spec` refuse — et `ansible-test` ne le verrait pas.
+    que l'`argument_spec` refuse, et `ansible-test` ne le verrait pas.
 
     C'est un nettoyage, pas une réécriture : les puces conservées sont celles
     du contrat, mot pour mot.
@@ -1740,7 +1740,7 @@ def _examples(
 #: Les opérations d'écriture du Load Balancer portent « Note that the request
 #: type is PUT and not PATCH. You must set all parameters. » C'est vrai de l'API
 #: et faux du module : il lit la ressource avant d'écrire et remplit lui-même
-#: les champs qu'on ne lui donne pas — c'est ADR-003. La phrase que le
+#: les champs qu'on ne lui donne pas : c'est ADR-003. La phrase que le
 #: générateur ajoute juste après le dit déjà, donc publier les deux publie une
 #: contradiction.
 #:

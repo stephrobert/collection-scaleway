@@ -3,14 +3,14 @@
 Le fuzzer construit son image dans l'infrastructure d'OSS-Fuzz, loin de
 `mise run check`. Il y installait son lecteur YAML avec un `pip3 install
 pyyaml==6.0.3` : la version était tirée du verrou, l'empreinte ne l'était pas.
-Scorecard l'a signalé, et le reproche est juste — une version dit *quoi*, une
+Scorecard l'a signalé, et le reproche est juste : une version dit *quoi*, une
 empreinte dit *quel octet*, et c'était le seul endroit du dépôt où une
 dépendance s'installait sans.
 
 Épingler par empreinte crée aussitôt un second verrou à tenir. Ce contrôle est
 ce qui l'empêche de dériver : `mise run lock` fait monter PyYAML, le verrou du
 fuzzer garde l'ancien, et le fuzzer mesure alors un lecteur que la CI n'emploie
-plus. Rien ne rougirait — le fuzzer continuerait de trouver des défauts, dans
+plus. Rien ne rougirait : le fuzzer continuerait de trouver des défauts, dans
 du code qui n'est plus celui du dépôt.
 
     python scripts/verrou_fuzz.py

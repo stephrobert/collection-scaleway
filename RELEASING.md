@@ -57,7 +57,7 @@ repository rule requires it and refuses a direct push to `main`, and that is the
 right shape: what ships must come from the branch that ran the fourteen required
 checks. `git push origin main` will simply be rejected.
 
-Once it is merged — and **only** then, because a squash merge rewrites the
+Once it is merged, and **only** then, because a squash merge rewrites the
 commit and a tag placed before would point at something `main` does not contain:
 
 ```bash
@@ -71,7 +71,7 @@ The tag is signed. `git config --global gpg.format ssh` and a
 
 ## What the tag triggers
 
-Pushing the tag — and nothing else — starts `.github/workflows/release.yml`.
+Pushing the tag, and nothing else, starts `.github/workflows/release.yml`.
 **Not a push to `main`**: an irreversible publication must not come from a
 merge.
 

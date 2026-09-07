@@ -30,7 +30,7 @@ The badge is awarded when every `MUST` is met and every `SHOULD` is met or
 justified. `SUGGESTED` criteria may be left `Unmet` without justification.
 
 Three answers are possible: **Met**, **Unmet**, **N/A**. Some criteria require a
-URL alongside `Met`; they are marked below.
+URL alongside `Met`; they are marked `(URL required)` below.
 
 ---
 
@@ -38,27 +38,27 @@ URL alongside `Met`; they are marked below.
 
 ### Basic project website content
 
-**`description_good`** — MUST — **Met**
+**`description_good`** · MUST · **Met**
 
 > The project produces an Ansible collection for the Scaleway APIs, and the
 > generator that writes it. The README says what it is in its first two
 > sentences, and states the boundary that decides the rest: Terraform
 > provisions resources, Ansible operates existing ones.
 
-**`interact`** — MUST — **Met**
+**`interact`** · MUST · **Met**
 
 > Contribution and bug reporting are described in CONTRIBUTING.md, linked from
 > the README, with issue templates that ask the question that settles a report
 > before the conversation starts.
 
-**`contribution`** — MUST — **Met** — URL required
+**`contribution`** · MUST · **Met** (URL required)
 
     https://github.com/stephrobert/collection-scaleway/blob/0.3.0/CONTRIBUTING.md
 
 > CONTRIBUTING.md describes what to run before pushing, what gets refused on
 > sight, and how a decision is recorded as an override carrying its reason.
 
-**`contribution_requirements`** — SHOULD — **Met** — URL required
+**`contribution_requirements`** · SHOULD · **Met** (URL required)
 
     https://github.com/stephrobert/collection-scaleway/blob/0.3.0/CONTRIBUTING.md
 
@@ -68,28 +68,28 @@ URL alongside `Met`; they are marked below.
 
 ### FLOSS license
 
-**`floss_license`** — MUST — **Met**
+**`floss_license`** · MUST · **Met**
 
 > GPL-3.0-or-later, declared in `LICENSE` and in `galaxy.yml`.
 
-**`floss_license_osi`** — SUGGESTED — **Met**
+**`floss_license_osi`** · SUGGESTED · **Met**
 
 > GPL-3.0-or-later is OSI-approved.
 
-**`license_location`** — MUST — **Met** — URL required
+**`license_location`** · MUST · **Met** (URL required)
 
     https://github.com/stephrobert/collection-scaleway/blob/0.3.0/LICENSE
 
 ### Documentation
 
-**`documentation_basics`** — MUST — **Met**
+**`documentation_basics`** · MUST · **Met**
 
 > The collection README covers installation, authentication, a sixty-second
 > first run, and the module tables. Every published module carries its own
 > reference page, generated from the same model as its `argument_spec` so the
 > two cannot describe different things.
 
-**`documentation_interface`** — MUST — **Met**
+**`documentation_interface`** · MUST · **Met**
 
 > Each module publishes `DOCUMENTATION`, `EXAMPLES` and `RETURN`, rendered by
 > `ansible-doc` and on Galaxy. As of 0.3.0, 297 options, 62 returned keys and
@@ -98,17 +98,17 @@ URL alongside `Met`; they are marked below.
 
 ### Other
 
-**`sites_https`** — MUST — **Met**
+**`sites_https`** · MUST · **Met**
 
 > The repository, the released archives and the Galaxy pages are served over
 > HTTPS only.
 
-**`discussion`** — MUST — **Met**
+**`discussion`** · MUST · **Met**
 
 > GitHub Issues and pull requests. Searchable, addressable by URL, open to new
 > participants, and requiring no proprietary client.
 
-**`english`** — SHOULD — **Met**
+**`english`** · SHOULD · **Met**
 
 > Everything published is in English: both READMEs, `docs/`, `galaxy.yml`, the
 > changelog, and the documentation of every module. The code, its comments and
@@ -116,7 +116,7 @@ URL alongside `Met`; they are marked below.
 > reach a user of the collection. The boundary is written down in the
 > repository's own instructions.
 
-**`maintained`** — MUST — **Met**
+**`maintained`** · MUST · **Met**
 
 ---
 
@@ -124,39 +124,39 @@ URL alongside `Met`; they are marked below.
 
 ### Public version-controlled source repository
 
-**`repo_public`** — MUST — **Met**
+**`repo_public`** · MUST · **Met**
 
     https://github.com/stephrobert/collection-scaleway
 
-**`repo_track`** — MUST — **Met** (git)
+**`repo_track`** · MUST · **Met** (git)
 
-**`repo_interim`** — MUST — **Met**
+**`repo_interim`** · MUST · **Met**
 
 > Every change lands on `main` through a pull request; interim versions are
 > public as soon as they are pushed.
 
-**`repo_distributed`** — SUGGESTED — **Met** (git)
+**`repo_distributed`** · SUGGESTED · **Met** (git)
 
 ### Unique version numbering
 
-**`version_unique`** — MUST — **Met**
+**`version_unique`** · MUST · **Met**
 
 > Each release carries a unique version in `galaxy.yml`, and the release gate
 > refuses to publish when the tag and that file disagree.
 
-**`version_semver`** — SUGGESTED — **Met**
+**`version_semver`** · SUGGESTED · **Met**
 
 > Semantic versioning, which Ansible requires of collections. The next number is
 > derived from the changelog fragments rather than chosen.
 
-**`version_tags`** — SUGGESTED — **Met**
+**`version_tags`** · SUGGESTED · **Met**
 
 > Every release is a signed tag, and the workflow publishes on a tag and nothing
 > else.
 
 ### Release notes
 
-**`release_notes`** — MUST — **Met** — URL required
+**`release_notes`** · MUST · **Met** (URL required)
 
     https://github.com/stephrobert/collection-scaleway/blob/0.3.0/ansible_collections/stephrobert/scaleway/CHANGELOG.rst
 
@@ -164,7 +164,7 @@ URL alongside `Met`; they are marked below.
 > describe. The release gate refuses to publish while a fragment is still
 > pending, so a change cannot ship undescribed.
 
-**`release_notes_vulns`** — MUST — **Met**
+**`release_notes_vulns`** · MUST · **Met**
 
 > No publicly known vulnerability has been fixed to date. The changelog
 > mechanism carries a `security_fixes` section for the day one is, and the
@@ -176,15 +176,15 @@ URL alongside `Met`; they are marked below.
 
 ### Bug-reporting process
 
-**`report_process`** — MUST — **Met** — URL required
+**`report_process`** · MUST · **Met** (URL required)
 
     https://github.com/stephrobert/collection-scaleway/blob/0.3.0/CONTRIBUTING.md#issues
 
-**`report_tracker`** — SHOULD — **Met**
+**`report_tracker`** · SHOULD · **Met**
 
     https://github.com/stephrobert/collection-scaleway/issues
 
-**`report_responses`** — MUST — **Met**
+**`report_responses`** · MUST · **Met**
 
 > The repository has a single maintainer, and reports are answered. The issue
 > templates ask for what settles most reports in one exchange: for a module
@@ -192,7 +192,7 @@ URL alongside `Met`; they are marked below.
 > `mise run report` says about the operation, since every operation is either
 > generated, excluded with its reason, or unclassified and failing CI.
 
-**`enhancement_responses`** — SHOULD — **Met**
+**`enhancement_responses`** · SHOULD · **Met**
 
 > Enhancement requests are answered, including when the answer is no. The
 > project has a written boundary that refuses a whole class of them: Terraform
@@ -200,21 +200,21 @@ URL alongside `Met`; they are marked below.
 > creates or deletes resources is out of scope even when the generator could
 > produce it.
 
-**`report_archive`** — MUST — **Met** — URL required
+**`report_archive`** · MUST · **Met** (URL required)
 
     https://github.com/stephrobert/collection-scaleway/issues?q=is%3Aissue
 
 ### Vulnerability report process
 
-**`vulnerability_report_process`** — MUST — **Met** — URL required
+**`vulnerability_report_process`** · MUST · **Met** (URL required)
 
     https://github.com/stephrobert/collection-scaleway/blob/0.3.0/SECURITY.md
 
-**`vulnerability_report_private`** — MUST — **Met** — URL required
+**`vulnerability_report_private`** · MUST · **Met** (URL required)
 
     https://github.com/stephrobert/collection-scaleway/security/advisories/new
 
-**`vulnerability_report_response`** — MUST — **Met**
+**`vulnerability_report_response`** · MUST · **Met**
 
 > SECURITY.md commits to an acknowledgement within 3 working days, a first
 > assessment with its severity and reasoning within 10, and a fix or a reasoned
@@ -227,34 +227,34 @@ URL alongside `Met`; they are marked below.
 
 ### Working build system
 
-**`build`** — MUST — **Met**
+**`build`** · MUST · **Met**
 
 > `mise run package` builds the collection archive, checks its contents,
 > installs it into a throwaway directory and asks `ansible-doc` for its
 > documentation. A file present in an archive is not a module Ansible can load,
 > which is why the last two steps exist.
 
-**`build_common_tools`** — SUGGESTED — **Met** (mise, uv, pip, `ansible-galaxy`)
+**`build_common_tools`** · SUGGESTED · **Met** (mise, uv, pip, `ansible-galaxy`)
 
-**`build_floss_tools`** — SHOULD — **Met**
+**`build_floss_tools`** · SHOULD · **Met**
 
 > Every tool in the build is FLOSS.
 
 ### Automated test suite
 
-**`test`** — MUST — **Met**
+**`test`** · MUST · **Met**
 
 <!-- compteurs:tests-badge:début, produits par scripts/readme_counters.py -->
-> 625 unit tests, plus `ansible-test sanity` on four `ansible-core` versions and
+> 636 unit tests, plus `ansible-test sanity` on four `ansible-core` versions and
 > an integration run of the shipped playbooks against a local emulator.
 <!-- compteurs:tests-badge:fin -->
 
-**`test_invocation`** — SHOULD — **Met**
+**`test_invocation`** · SHOULD · **Met**
 
 > `mise run test` for the unit suite, `mise run check` for everything a pull
 > request must pass.
 
-**`test_most`** — SUGGESTED — **Unmet**
+**`test_most`** · SUGGESTED · **Unmet**
 
 > No line-coverage figure is measured or published, so claiming "most" would be
 > a claim nobody checked. What the repository measures instead is whether each
@@ -262,7 +262,7 @@ URL alongside `Met`; they are marked below.
 > time in a copy outside the repository and requires the named test to fail.
 > That is a different property from coverage, and it is not a substitute for it.
 
-**`test_continuous_integration`** — SUGGESTED — **Met**
+**`test_continuous_integration`** · SUGGESTED · **Met**
 
 > Every pull request runs `mise run check`, `ansible-test sanity` on four
 > `ansible-core` versions, the archive build, the integration run and the
@@ -270,15 +270,15 @@ URL alongside `Met`; they are marked below.
 
 ### New functionality testing
 
-**`test_policy`** — MUST — **Met**
+**`test_policy`** · MUST · **Met**
 
 > CONTRIBUTING.md requires a test with new functionality, and requires a
 > falsification mutation with any new guard, because a guard whose removal
 > leaves the tests green is a comment.
 
-**`tests_are_added`** — MUST — **Met**
+**`tests_are_added`** · MUST · **Met**
 
-**`tests_documented_added`** — SUGGESTED — **Met**
+**`tests_documented_added`** · SUGGESTED · **Met**
 
 > The requirement is in CONTRIBUTING.md and repeated as a checklist item in the
 > pull request template, with the two ways of writing a mutation that proves
@@ -286,15 +286,15 @@ URL alongside `Met`; they are marked below.
 
 ### Warning flags
 
-**`warnings`** — MUST — **Met**
+**`warnings`** · MUST · **Met**
 
 > `ruff check`, `ruff format --check`, and `mypy` in strict mode.
 
-**`warnings_fixed`** — MUST — **Met**
+**`warnings_fixed`** · MUST · **Met**
 
 > All three are gates: a warning fails the build rather than being reported.
 
-**`warnings_strict`** — SUGGESTED — **Met**
+**`warnings_strict`** · SUGGESTED · **Met**
 
 > `mypy` runs in strict mode, and the generator refuses an untranslatable type
 > rather than defaulting it to `str`.
@@ -305,7 +305,7 @@ URL alongside `Met`; they are marked below.
 
 ### Secure development knowledge
 
-**`know_secure_design`** — MUST — **Met**
+**`know_secure_design`** · MUST · **Met**
 
 > The maintainer understands the principles. Where they apply here, they are
 > applied and written down: least privilege on every CI job, no secret reachable
@@ -313,7 +313,7 @@ URL alongside `Met`; they are marked below.
 > only version tags may deploy to, and a runtime that centralises error handling
 > so that no code path copies a secret into a log.
 
-**`know_common_errors`** — MUST — **Met**
+**`know_common_errors`** · MUST · **Met**
 
 > The class that matters for this project is secret leakage through generated
 > code. The generator marks a sensitive parameter `no_log` from a deliberately
@@ -323,41 +323,41 @@ URL alongside `Met`; they are marked below.
 
 ### Use basic good cryptographic practices
 
-**`crypto_published`** — MUST — **Met**
+**`crypto_published`** · MUST · **Met**
 
 > The collection talks to the Scaleway API over TLS through the official SDK. It
 > implements no cryptography of its own.
 
-**`crypto_call`** — SHOULD — **Met**
+**`crypto_call`** · SHOULD · **Met**
 
 > No cryptography is implemented in this project.
 
-**`crypto_floss`** — MUST — **Met**
+**`crypto_floss`** · MUST · **Met**
 
 > Python's standard library and OpenSSL, through the SDK.
 
-**`crypto_keylength`** — MUST — **N/A**
+**`crypto_keylength`** · MUST · **N/A**
 
 > The project generates no keys and specifies no key lengths. Release signing is
 > keyless: the signature binds the archive to the identity of the workflow that
 > produced it, and the key material is Sigstore's.
 
-**`crypto_working`** — MUST — **Met**
+**`crypto_working`** · MUST · **Met**
 
 > No broken or obsolete algorithm is used or depended upon.
 
-**`crypto_weaknesses`** — SHOULD — **Met**
+**`crypto_weaknesses`** · SHOULD · **Met**
 
-**`crypto_pfs`** — SHOULD — **N/A**
+**`crypto_pfs`** · SHOULD · **N/A**
 
 > The project operates no server and terminates no TLS connection.
 
-**`crypto_password_storage`** — MUST — **N/A**
+**`crypto_password_storage`** · MUST · **N/A**
 
 > The project stores no password and authenticates no user. Credentials are read
 > from the environment or the Scaleway configuration file and passed to the SDK.
 
-**`crypto_random`** — MUST — **N/A**
+**`crypto_random`** · MUST · **N/A**
 
 > No random value is generated for a security purpose. The generator is
 > deliberately deterministic: the same contract produces the same files, byte
@@ -365,7 +365,7 @@ URL alongside `Met`; they are marked below.
 
 ### Secured delivery against man-in-the-middle attacks
 
-**`delivery_mitm`** — MUST — **Met**
+**`delivery_mitm`** · MUST · **Met**
 
 > The repository is cloned over HTTPS or SSH, the archive is downloaded from
 > Galaxy over HTTPS, and each release carries a signed tag, a keyless signature
@@ -373,20 +373,20 @@ URL alongside `Met`; they are marked below.
 > two commands that verify them, and the release workflow runs the first one on
 > the archive before publishing it.
 
-**`delivery_unsigned`** — MUST — **Met**
+**`delivery_unsigned`** · MUST · **Met**
 
 ### Publicly known vulnerabilities fixed
 
-**`vulnerabilities_fixed_60_days`** — MUST — **Met**
+**`vulnerabilities_fixed_60_days`** · MUST · **Met**
 
 > None is known. OSV-Scanner runs on every pull request and weekly, Dependabot
 > watches pip and GitHub Actions, and the dependency lock carries hashes.
 
-**`vulnerabilities_critical_fixed`** — SHOULD — **Met**
+**`vulnerabilities_critical_fixed`** · SHOULD · **Met**
 
 ### Other security issues
 
-**`no_leaked_credentials`** — MUST — **Met**
+**`no_leaked_credentials`** · MUST · **Met**
 
 > TruffleHog runs on every pull request. The publication token lives in a GitHub
 > environment reachable only from version tags, and is passed through the
@@ -399,41 +399,41 @@ URL alongside `Met`; they are marked below.
 
 ### Static code analysis
 
-**`static_analysis`** — MUST — **Met**
+**`static_analysis`** · MUST · **Met**
 
 > CodeQL on Python, `ruff` and `mypy --strict` as gates, and four workflow
 > scanners: actionlint, zizmor, poutine and plumber.
 
-**`static_analysis_common_vulnerabilities`** — SUGGESTED — **Met**
+**`static_analysis_common_vulnerabilities`** · SUGGESTED · **Met**
 
 > CodeQL's security query suite.
 
-**`static_analysis_fixed`** — MUST — **Met**
+**`static_analysis_fixed`** · MUST · **Met**
 
 > All of them are gates rather than reports.
 
-**`static_analysis_often`** — SUGGESTED — **Met**
+**`static_analysis_often`** · SUGGESTED · **Met**
 
 > On every pull request, and weekly for the ones that need a trusted context.
 
 ### Dynamic code analysis
 
-**`dynamic_analysis`** — SUGGESTED — **Met**
+**`dynamic_analysis`** · SUGGESTED · **Met**
 
 > The test suite runs on every change; the shipped playbooks are played against
 > a local emulator on every pull request; and the example platform is played
 > against the real Scaleway account before a release, with a differential check
 > that the account returns to the resources it held before.
 
-**`dynamic_analysis_unsafe`** — SUGGESTED — **N/A**
+**`dynamic_analysis_unsafe`** · SUGGESTED · **N/A**
 
 > Python is memory-safe. There is no C or C++ in this project.
 
-**`dynamic_analysis_enable_assertions`** — SUGGESTED — **Met**
+**`dynamic_analysis_enable_assertions`** · SUGGESTED · **Met**
 
 > Assertions are enabled: the code is never run with `-O`.
 
-**`dynamic_analysis_fixed`** — MUST — **Met**
+**`dynamic_analysis_fixed`** · MUST · **Met**
 
 ---
 
