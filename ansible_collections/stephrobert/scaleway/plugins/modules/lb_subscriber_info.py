@@ -85,6 +85,36 @@ EXAMPLES = r"""
 """
 
 RETURN = r"""
+result:
+  description:
+  - Retrieve information about an existing subscriber, specified by its subscriber ID. Its
+    full details, including name and email/webhook configuration, are returned in the response
+    object.
+  - 'The API contract names no payload field for this operation: the response body is returned
+    as is.'
+  returned: when I(subscriber_id) is provided
+  type: dict
+  contains:
+    id:
+      description:
+      - Subscriber ID.
+      returned: when the API returns it
+      type: str
+    name:
+      description:
+      - Subscriber name.
+      returned: when the API returns it
+      type: str
+    email_config:
+      description:
+      - Email address of subscriber.
+      returned: when the API returns it
+      type: dict
+    webhook_config:
+      description:
+      - Webhook URI of subscriber.
+      returned: when the API returns it
+      type: dict
 subscribers:
   description:
   - List all subscribers to Load Balancer alerts. By default, returns all subscribers to Load

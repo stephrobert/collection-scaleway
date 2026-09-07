@@ -73,6 +73,29 @@ EXAMPLES = r"""
 """
 
 RETURN = r"""
+result:
+  description:
+  - Get the content of a user data with the specified key on an Instance.
+  - 'The API contract names no payload field for this operation: the response body is returned
+    as is.'
+  returned: when I(key) is provided
+  type: dict
+  contains:
+    name:
+      description:
+      - Name of the file.
+      returned: when the API returns it
+      type: str
+    content_type:
+      description:
+      - MIME type of the file content.
+      returned: when the API returns it
+      type: str
+    content:
+      description:
+      - Content of the file, as the API returns it.
+      returned: when the API returns it
+      type: str
 user_data:
   description:
   - List all user data keys registered on a specified Instance.

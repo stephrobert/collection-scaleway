@@ -89,6 +89,83 @@ EXAMPLES = r"""
 """
 
 RETURN = r"""
+result:
+  description:
+  - Get information for a particular SSL/TLS certificate, specified by its certificate ID.
+    The response returns full details of the certificate, including its type, main domain
+    name, and alternative domain names.
+  - 'The API contract names no payload field for this operation: the response body is returned
+    as is.'
+  returned: when I(certificate_id) is provided
+  type: dict
+  contains:
+    type:
+      description:
+      - Certificate type (Let's Encrypt or custom).
+      returned: when the API returns it
+      type: str
+    id:
+      description:
+      - Certificate ID.
+      returned: when the API returns it
+      type: str
+    common_name:
+      description:
+      - Main domain name of certificate.
+      returned: when the API returns it
+      type: str
+    subject_alternative_name:
+      description:
+      - Alternative domain names.
+      returned: when the API returns it
+      type: list
+      elements: str
+    fingerprint:
+      description:
+      - Identifier (SHA-1) of the certificate.
+      returned: when the API returns it
+      type: str
+    not_valid_before:
+      description:
+      - Lower validity bound. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    not_valid_after:
+      description:
+      - Upper validity bound. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    status:
+      description:
+      - Certificate status.
+      returned: when the API returns it
+      type: str
+    lb:
+      description:
+      - Load Balancer object the certificate is attached to.
+      returned: when the API returns it
+      type: dict
+    name:
+      description:
+      - Certificate name.
+      returned: when the API returns it
+      type: str
+    created_at:
+      description:
+      - Date on which the certificate was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date on which the certificate was last updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    status_details:
+      description:
+      - Additional information about the certificate status (useful in case of certificate
+        generation failure, for example).
+      returned: when the API returns it
+      type: str
 certificates:
   description:
   - List all the SSL/TLS certificates on a given Load Balancer. The response is an array of

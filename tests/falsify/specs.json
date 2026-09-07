@@ -1639,6 +1639,14 @@
       "find": "                if nom not in connus:\n",
       "replace": "                if nom not in connus and False:\n",
       "test": "tests/unit/generator/test_overrides.py::test_un_override_de_parametre_qui_ne_designe_rien_est_orphelin"
+    },
+    {
+      "name": "retour-du-get-sans-champ-porteur-non-documente",
+      "why": "Un module qui rend une clé que sa page ne nomme pas ne se comprend pas depuis sa seule page Galaxy.",
+      "file": "generator/ansible/models.py",
+      "find": "        get_operation is not None\n        and not get_operation.payload_field\n        and list_operation is not None\n",
+      "replace": "        get_operation is not None\n        and not get_operation.payload_field\n        and False\n        and list_operation is not None\n",
+      "test": "tests/unit/generator/test_models.py::test_un_get_sans_champ_porteur_documente_la_cle_result"
     }
   ]
 }

@@ -83,6 +83,47 @@ EXAMPLES = r"""
 """
 
 RETURN = r"""
+result:
+  description:
+  - Retrieve information about an existing route, specified by its route ID. Its full details,
+    origin frontend, target backend and match condition, are returned in the response object.
+  - 'The API contract names no payload field for this operation: the response body is returned
+    as is.'
+  returned: when I(route_id) is provided
+  type: dict
+  contains:
+    id:
+      description:
+      - Route ID.
+      returned: when the API returns it
+      type: str
+    frontend_id:
+      description:
+      - ID of the source frontend.
+      returned: when the API returns it
+      type: str
+    backend_id:
+      description:
+      - ID of the target backend.
+      returned: when the API returns it
+      type: str
+    match:
+      description:
+      - Object defining the match condition for a route to be applied. If an incoming client
+        session matches the specified condition (i.e. it has a matching SNI value or HTTP
+        Host header value), it will be passed to the target backend.
+      returned: when the API returns it
+      type: dict
+    created_at:
+      description:
+      - Date on which the route was created. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
+    updated_at:
+      description:
+      - Date on which the route was last updated. (RFC 3339 format)
+      returned: when the API returns it
+      type: str
 routes:
   description:
   - List all routes for a given frontend. The response is an array of routes, each one with

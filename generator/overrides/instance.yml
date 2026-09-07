@@ -433,3 +433,17 @@ returns:
         Reformulation du nom. `href` désigne conventionnellement une référence,
         mais le contrat ne dit ni sa forme ni ce qu'elle pointe, et l'appeler
         une URL serait déjà en dire plus que lui.
+
+  scaleway.std.File:
+    content_type:
+      description: MIME type of the file content.
+      reason: >-
+        Reformulation du nom, et rien d'autre. `scaleway.std.File` n'est rendu
+        que par `GetServerUserData`, dont la page ne documentait pas le retour
+        avant que la clé `result` soit publiée ; le contrat décrit `name` et
+        tait les deux autres champs.
+    content:
+      description: Content of the file, as the API returns it.
+      reason: >-
+        Reformulation du nom. Le contrat ne dit ni l'encodage du contenu ni sa
+        taille maximale, et l'un comme l'autre serait une invention.

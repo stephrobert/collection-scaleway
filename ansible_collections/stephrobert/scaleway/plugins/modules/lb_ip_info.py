@@ -88,6 +88,61 @@ EXAMPLES = r"""
 """
 
 RETURN = r"""
+result:
+  description:
+  - Retrieve the full details of a Load Balancer flexible IP address.
+  - 'The API contract names no payload field for this operation: the response body is returned
+    as is.'
+  returned: when I(ip_id) is provided
+  type: dict
+  contains:
+    id:
+      description:
+      - IP address ID.
+      returned: when the API returns it
+      type: str
+    ip_address:
+      description:
+      - IP address.
+      returned: when the API returns it
+      type: str
+    organization_id:
+      description:
+      - Organization ID of the Scaleway Organization the IP address is in.
+      returned: when the API returns it
+      type: str
+    project_id:
+      description:
+      - Project ID of the Scaleway Project the IP address is in.
+      returned: when the API returns it
+      type: str
+    lb_id:
+      description:
+      - Load Balancer ID.
+      returned: when the API returns it
+      type: str
+    reverse:
+      description:
+      - Reverse DNS (domain name) of the IP address.
+      returned: when the API returns it
+      type: str
+    tags:
+      description:
+      - IP tags.
+      returned: when the API returns it
+      type: list
+      elements: str
+    region:
+      description:
+      - The region the IP address is in.
+      - Deprecated by the Scaleway API contract.
+      returned: when the API returns it
+      type: str
+    zone:
+      description:
+      - The zone the IP address is in.
+      returned: when the API returns it
+      type: str
 ips:
   description:
   - List the Load Balancer flexible IP addresses held in the account (filtered by Organization

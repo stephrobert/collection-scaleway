@@ -1715,6 +1715,33 @@ def _returns(
                 contains=_contains(service, get_operation.payload_schema, overrides),
             )
         )
+    # **Le GET sans champ porteur rend `result`, et la page doit le dire.**
+    # `run_info_module` rend `operation.payload_field or "result"` : quand le
+    # contrat ne nomme aucun champ pour la lecture unitaire mais en nomme un
+    # pour la liste, le module rend `result` avec l'identifiant fourni et
+    # `<liste>` sans lui. Seule la seconde clé était documentée, parce que le
+    # repli `result` plus bas ne joue que sur un `RETURN` entièrement vide.
+    # Un utilisateur qui fournissait l'identifiant enregistrait une clé que la
+    # page ne nommait pas.
+    if (
+        get_operation is not None
+        and not get_operation.payload_field
+        and list_operation is not None
+        and list_operation.payload_field
+    ):
+        values.append(
+            ReturnValue(
+                name="result",
+                description=(
+                    get_operation.documentation_line or UNDOCUMENTED,
+                    "The API contract names no payload field for this "
+                    "operation: the response body is returned as is.",
+                ),
+                returned=f"when I({selector}) is provided" if selector else "success",
+                type="dict",
+                contains=_contains(service, get_operation.payload_schema, overrides),
+            )
+        )
     if list_operation is not None and list_operation.payload_field:
         values.append(
             ReturnValue(
