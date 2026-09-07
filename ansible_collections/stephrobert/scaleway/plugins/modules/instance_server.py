@@ -52,7 +52,12 @@ options:
       The public_key value of this key is used to encrypt the admin password. When set to
       an empty string, reset this value and admin_password_encrypted_value to an empty string
       so a new password may be generated.'
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   boot_type:
     description:
     - Instance boot type.
@@ -76,7 +81,12 @@ options:
       - Local storage requirements of the target commercial_types must be fulfilled (i.e.
       if an Instance has 80GB of local storage, it can be changed into a GP1-XS, which has
       a maximum of 150GB, but it cannot be changed into a DEV1-S, which has only 20GB).'
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   dynamic_ip_required:
     description:
     - True if a dynamic IPv4 is required.
@@ -89,11 +99,21 @@ options:
   name:
     description:
     - Name of the Instance.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   placement_group:
     description:
     - Placement group ID if Instance must be part of a placement group.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   private_nics:
     description:
     - Instance private NICs.
@@ -102,7 +122,12 @@ options:
   protected:
     description:
     - True to activate server protection option.
-    type: bool
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is bool.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   public_ips:
     description:
     - A list of reserved IP IDs to attach to the Instance.
@@ -113,7 +138,12 @@ options:
     - True to configure the instance so it uses the new routed IP mode (once this is set to
       True you cannot set it back to False).
     - Deprecated by the Scaleway API contract.
-    type: bool
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is bool.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   security_group:
     description:
     - Instance security group.
@@ -393,20 +423,20 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "server_id": {"type": "str", "required": True},
-    "admin_password_encryption_ssh_key_id": {"type": "str", "no_log": False},
+    "admin_password_encryption_ssh_key_id": {"type": "raw", "default": "__unchanged__", "no_log": False},
     "boot_type": {
         "type": "str",
         "choices": ["local", "bootscript", "rescue"],
     },
-    "commercial_type": {"type": "str"},
+    "commercial_type": {"type": "raw", "default": "__unchanged__"},
     "dynamic_ip_required": {"type": "bool"},
     "enable_ipv6": {"type": "bool"},
-    "name": {"type": "str"},
-    "placement_group": {"type": "str"},
+    "name": {"type": "raw", "default": "__unchanged__"},
+    "placement_group": {"type": "raw", "default": "__unchanged__"},
     "private_nics": {"type": "list", "elements": "str"},
-    "protected": {"type": "bool"},
+    "protected": {"type": "raw", "default": "__unchanged__"},
     "public_ips": {"type": "list", "elements": "str"},
-    "routed_ip_enabled": {"type": "bool"},
+    "routed_ip_enabled": {"type": "raw", "default": "__unchanged__"},
     "security_group": {"type": "dict"},
     "tags": {"type": "list", "elements": "str"},
     "volumes": {"type": "dict"},
@@ -482,6 +512,14 @@ MODULE = ManageModule(
         ("security_group", "mapping"),
         ("tags", "ordered_list"),
         ("volumes", "mapping"),
+    ),
+    nullable_params=(
+        ("admin_password_encryption_ssh_key_id", {"type": "str"}),
+        ("commercial_type", {"type": "str"}),
+        ("name", {"type": "str"}),
+        ("placement_group", {"type": "str"}),
+        ("protected", {"type": "bool"}),
+        ("routed_ip_enabled", {"type": "bool"}),
     ),
 )
 

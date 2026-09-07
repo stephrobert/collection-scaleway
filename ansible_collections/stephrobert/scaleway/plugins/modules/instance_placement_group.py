@@ -47,7 +47,12 @@ options:
   name:
     description:
     - Name of the placement group.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   policy_mode:
     description:
     - Operating mode of the placement group.
@@ -184,7 +189,7 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "placement_group_id": {"type": "str", "required": True},
-    "name": {"type": "str"},
+    "name": {"type": "raw", "default": "__unchanged__"},
     "policy_mode": {
         "type": "str",
         "choices": ["optional", "enforced"],
@@ -226,6 +231,9 @@ MODULE = ManageModule(
         ("policy_mode", "scalar"),
         ("policy_type", "scalar"),
         ("tags", "ordered_list"),
+    ),
+    nullable_params=(
+        ("name", {"type": "str"}),
     ),
 )
 

@@ -104,9 +104,9 @@ CONTRAINTES_CHERCHEES: tuple[str, ...] = (
 #: Ce que le générateur sait faire d'une contrainte trouvée.
 #:
 #: `x-one-of` devient un `mutually_exclusive`. La nullabilité est portée par
-#: l'IR et comptée, sans être encore traduite : un champ effaçable et un champ
-#: absent produisent la même requête, et distinguer les deux demande une
-#: sémantique d'effacement que le contrat ne décrit pas.
+#: l'IR et comptée, sans être traduite en effacement : un module de gestion
+#: refuse le `null` explicite au lieu de l'ignorer (ADR-012), et effacer
+#: demande une sémantique que le contrat ne décrit pas (#114).
 CONTRAINTES_TRADUITES: frozenset[str] = frozenset({"x-one-of"})
 
 

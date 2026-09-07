@@ -63,11 +63,11 @@ class ApiParameter:
     ref: str | None = None
     #: Le contrat écrit le champ `oneOf: [X, null]`, donc effaçable.
     #:
-    #: Ce n'est pas la même chose qu'un champ absent, et le générateur ne sait
-    #: pas encore les distinguer : la demande d'un module de gestion se
-    #: construit depuis les valeurs non nulles, donc `description: null` et
-    #: `description` absent produisent la même requête. Le fait est porté ici
-    #: pour être compté avant d'être traité.
+    #: Ce n'est pas la même chose qu'un champ absent. Un module de gestion les
+    #: distingue par un défaut marqueur sur une option `raw`, et refuse le
+    #: `null` explicite plutôt que de l'ignorer (ADR-012) ; l'effacement, lui,
+    #: attend une sémantique que le contrat ne décrit pas (#114). Le fait est
+    #: porté ici pour être compté, et pour que le modèle sache quoi marquer.
     nullable: bool = False
     #: Nom du groupe `x-one-of` auquel le paramètre appartient, s'il y en a un.
     #:

@@ -1,21 +1,18 @@
 """Ce qu'un module ne sait pas dire : « efface ce champ ».
 
 Le contrat marque un champ effaçable de deux façons, `oneOf: [X, null]` ou
-`type: [X, "null"]`, et l'IR les porte toutes deux depuis ADR-008. Le runtime,
-lui, construit sa demande depuis les valeurs qui ne sont pas `None` :
-
-    demande = {nom: params[nom] for nom in geres if params.get(nom) is not None}
-
-Conséquence, et c'est tout le sujet :
+`type: [X, "null"]`, et l'IR les porte toutes deux depuis ADR-008. Aucun module
+ne sait encore effacer un tel champ :
 
 ```yaml
-description: null        # « efface la description »
+description: null        # « efface la description » : refusé, en nommant le champ
 # description absente    # « n'y touche pas »
 ```
 
-Les deux produisent **la même requête**. Un playbook qui veut effacer un champ ne
-le peut pas, et rien ne le lui dit : le module rend `ok`, et le champ garde sa
-valeur.
+Les deux produisaient **la même requête**, et le module rendait `ok` sur un
+champ toujours là. Un module de gestion refuse désormais le `null` explicite
+et dit quoi faire à la place (ADR-012). Un playbook qui veut effacer ne le peut
+toujours pas, mais il le sait.
 
 **Mesurer avant d'abstraire.** Une sémantique d'effacement se conçoit mal sans
 savoir combien de champs la réclament, ni lesquels. Ce programme les compte et
@@ -136,10 +133,10 @@ def main(argv: list[str]) -> int:
         print("Aucun : la question de l'effacement ne se pose sur aucun module livré.")
         return 0
 
-    print("Pour chacun, `champ: null` et `champ` absent produisent aujourd'hui la")
-    print("même requête : le runtime construit sa demande depuis les valeurs non")
-    print("nulles. Un playbook qui veut effacer ne le peut pas, et le module rend")
-    print("`ok` sans avoir rien effacé.\n")
+    print("Pour chacun, un module de gestion refuse `champ: null` plutôt que de")
+    print("l'ignorer (ADR-012), et `champ` absent laisse la valeur en place. Un")
+    print("playbook qui veut effacer ne le peut toujours pas : l'effacement attend")
+    print("#114, et ce compte le chiffre.\n")
     print(f"{'module':<38} {'opération':<24} {'champ':<28} type")
     for champ in champs:
         print(f"{champ.module:<38} {champ.operation:<24} {champ.champ:<28} {champ.type}")

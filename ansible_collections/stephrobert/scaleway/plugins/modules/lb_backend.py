@@ -47,7 +47,12 @@ options:
     description:
     - Scaleway Object Storage bucket website to be served as failover if all backend servers
       are down, e.g. failover-website.s3-website.fr-par.scw.cloud.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   forward_port:
     description:
     - Port to be used by the backend when forwarding traffic to backend servers.
@@ -74,15 +79,30 @@ options:
   ignore_ssl_server_verify:
     description:
     - Defines whether the server certificate verification should be ignored.
-    type: bool
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is bool.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   max_connections:
     description:
     - Maximum number of connections allowed per backend server.
-    type: int
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is int.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   max_retries:
     description:
     - Number of retries when a backend server connection failed.
-    type: int
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is int.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   name:
     description:
     - Backend name.
@@ -111,7 +131,12 @@ options:
   redispatch_attempt_count:
     description:
     - Whether to use another backend server on each attempt.
-    type: int
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is int.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   send_proxy_v2:
     description:
     - Deprecated in favor of proxy_protocol field.
@@ -120,7 +145,12 @@ options:
   ssl_bridging:
     description:
     - Defines whether to enable SSL bridging between the Load Balancer and backend servers.
-    type: bool
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is bool.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   sticky_sessions:
     description:
     - Defines whether to activate sticky sessions (binding a particular session to a particular
@@ -145,7 +175,12 @@ options:
     description:
     - Maximum time for a request to be left pending in queue when `max_connections` is reached.
       (in seconds)
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   timeout_server:
     description:
     - Maximum allowed time for a backend server to process a request. (in milliseconds)
@@ -364,7 +399,7 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "backend_id": {"type": "str", "required": True},
-    "failover_host": {"type": "str"},
+    "failover_host": {"type": "raw", "default": "__unchanged__"},
     "forward_port": {"type": "int", "required": True},
     "forward_port_algorithm": {
         "type": "str",
@@ -376,9 +411,9 @@ MODULE_ARGUMENT_SPEC = {
         "required": True,
         "choices": ["tcp", "http"],
     },
-    "ignore_ssl_server_verify": {"type": "bool"},
-    "max_connections": {"type": "int"},
-    "max_retries": {"type": "int"},
+    "ignore_ssl_server_verify": {"type": "raw", "default": "__unchanged__"},
+    "max_connections": {"type": "raw", "default": "__unchanged__"},
+    "max_retries": {"type": "raw", "default": "__unchanged__"},
     "name": {"type": "str", "required": True},
     "on_marked_down_action": {
         "type": "str",
@@ -395,9 +430,9 @@ MODULE_ARGUMENT_SPEC = {
             "proxy_protocol_v2_ssl_cn",
         ],
     },
-    "redispatch_attempt_count": {"type": "int"},
+    "redispatch_attempt_count": {"type": "raw", "default": "__unchanged__"},
     "send_proxy_v2": {"type": "bool"},
-    "ssl_bridging": {"type": "bool"},
+    "ssl_bridging": {"type": "raw", "default": "__unchanged__"},
     "sticky_sessions": {
         "type": "str",
         "required": True,
@@ -405,7 +440,7 @@ MODULE_ARGUMENT_SPEC = {
     },
     "sticky_sessions_cookie_name": {"type": "str"},
     "timeout_connect": {"type": "float"},
-    "timeout_queue": {"type": "str"},
+    "timeout_queue": {"type": "raw", "default": "__unchanged__"},
     "timeout_server": {"type": "float"},
     "timeout_tunnel": {"type": "float"},
 }
@@ -493,6 +528,15 @@ MODULE = ManageModule(
         ("timeout_queue", "scalar"),
         ("timeout_server", "scalar"),
         ("timeout_tunnel", "scalar"),
+    ),
+    nullable_params=(
+        ("failover_host", {"type": "str"}),
+        ("ignore_ssl_server_verify", {"type": "bool"}),
+        ("max_connections", {"type": "int"}),
+        ("max_retries", {"type": "int"}),
+        ("redispatch_attempt_count", {"type": "int"}),
+        ("ssl_bridging", {"type": "bool"}),
+        ("timeout_queue", {"type": "str"}),
     ),
 )
 

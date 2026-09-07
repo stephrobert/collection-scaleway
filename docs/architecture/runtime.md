@@ -3,7 +3,7 @@
 What `plugins/module_utils/scaleway.py` carries, why, and what it costs.
 
 <!-- compteurs:runtime-etat:début, produits par scripts/readme_counters.py -->
-State: written, measured by 96 unit tests, judged by `ansible-test sanity`, and
+State: written, measured by 104 unit tests, judged by `ansible-test sanity`, and
 exercised end to end against a local emulator and against a real Scaleway
 account.
 <!-- compteurs:runtime-etat:fin -->
@@ -11,17 +11,21 @@ account.
 ## What a module cannot say: "clear this field"
 
 <!-- compteurs:effacables:début, produits par scripts/readme_counters.py -->
-The contract marks **55 writable fields** as clearable, across 15 modules.
-The runtime builds its request from the values that are not `None`, so
-`field: null` and an absent `field` produce the same request: a playbook
-cannot clear one, and the module reports `ok` without having cleared
-anything. `mise run nullabilite` names them one by one.
+The contract marks **40 writable fields** as clearable, across 14 modules.
+No module can clear one yet. A managing module that receives `field: null`
+fails and names the field rather than reporting `ok` without having cleared
+anything; omitting the field leaves it unchanged. `mise run nullabilite`
+names them one by one.
 <!-- compteurs:effacables:fin -->
 
 This is a named debt, not an oversight. The IR carries the fact since
-[ADR-008](../adr/008-a-constraint-is-translated-or-named.md); telling `null`
-apart from absent needs a clear/reset semantics the contract does not describe,
-and the number above is what sizes that work. Issue #114 carries it.
+[ADR-008](../adr/008-a-constraint-is-translated-or-named.md), and a managing
+module tells an explicit `null` apart from an omitted option and refuses it
+([ADR-012](../adr/012-an-explicit-null-is-refused-never-ignored.md)): those
+options are published as `raw` with a marker default, which is the only public
+mechanism Ansible offers for that. Clearing itself needs a clear/reset semantics
+the contract does not describe, and the number above is what sizes that work.
+Issue #114 carries it.
 
 ## How the roles are split
 

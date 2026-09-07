@@ -53,7 +53,12 @@ options:
     description:
     - Certificate ID, deprecated in favor of certificate_ids array.
     - Deprecated by the Scaleway API contract.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   certificate_ids:
     description:
     - List of SSL/TLS certificate IDs to bind to the frontend.
@@ -63,11 +68,21 @@ options:
     description:
     - Rate limit for new connections established on this frontend. Use 0 value to disable,
       else value is connections per second.
-    type: int
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is int.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   enable_access_logs:
     description:
     - Defines whether to enable access logs on the frontend.
-    type: bool
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is bool.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   enable_http3:
     description:
     - Defines whether to enable HTTP/3 protocol on the frontend.
@@ -224,10 +239,10 @@ MODULE_ARGUMENT_SPEC = {
     },
     "frontend_id": {"type": "str", "required": True},
     "backend_id": {"type": "str", "required": True},
-    "certificate_id": {"type": "str"},
+    "certificate_id": {"type": "raw", "default": "__unchanged__"},
     "certificate_ids": {"type": "list", "elements": "str"},
-    "connection_rate_limit": {"type": "int"},
-    "enable_access_logs": {"type": "bool"},
+    "connection_rate_limit": {"type": "raw", "default": "__unchanged__"},
+    "enable_access_logs": {"type": "raw", "default": "__unchanged__"},
     "enable_http3": {"type": "bool"},
     "inbound_port": {"type": "int", "required": True},
     "name": {"type": "str", "required": True},
@@ -287,6 +302,11 @@ MODULE = ManageModule(
         ("inbound_port", "scalar"),
         ("name", "scalar"),
         ("timeout_client", "scalar"),
+    ),
+    nullable_params=(
+        ("certificate_id", {"type": "str"}),
+        ("connection_rate_limit", {"type": "int"}),
+        ("enable_access_logs", {"type": "bool"}),
     ),
 )
 

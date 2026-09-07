@@ -61,11 +61,21 @@ options:
   name:
     description:
     - Name of the image.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   public:
     description:
     - True to set the image as public.
-    type: bool
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is bool.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   tags:
     description:
     - Tags of the image.
@@ -218,8 +228,8 @@ MODULE_ARGUMENT_SPEC = {
         "choices": ["unknown_arch", "x86_64", "arm", "arm64"],
     },
     "extra_volumes": {"type": "dict"},
-    "name": {"type": "str"},
-    "public": {"type": "bool"},
+    "name": {"type": "raw", "default": "__unchanged__"},
+    "public": {"type": "raw", "default": "__unchanged__"},
     "tags": {"type": "list", "elements": "str"},
 }
 
@@ -254,6 +264,10 @@ MODULE = ManageModule(
         ("name", "scalar"),
         ("public", "scalar"),
         ("tags", "ordered_list"),
+    ),
+    nullable_params=(
+        ("name", {"type": "str"}),
+        ("public", {"type": "bool"}),
     ),
 )
 

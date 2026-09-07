@@ -197,3 +197,34 @@ def test_le_module_daction_ne_porte_aucune_logique() -> None:
     assert fonctions == ["main"]
     main = next(n for n in ast.walk(arbre) if isinstance(n, ast.FunctionDef))
     assert len(main.body) == 2
+
+
+# --- le module de gestion, et ce qu'Ansible fait d'un null explicite ---------
+
+
+@pytest.fixture(scope="module")
+def module_gestion(collection_root: Path) -> Any:
+    from ansible_collections.stephrobert.scaleway.plugins.modules import instance_security_group
+
+    return instance_security_group
+
+
+def test_ansible_distingue_un_null_explicite_dune_option_omise(module_gestion: Any) -> None:
+    """La preuve sur le fichier produit, par le validateur d'Ansible lui-même.
+
+    `description` est effaçable au contrat : omise, elle vaut le marqueur ;
+    à `null`, elle vaut `None`. C'est ce que le runtime lit pour refuser.
+    """
+    from generator.ansible.mapping import UNCHANGED
+
+    validateur = ArgumentSpecValidator(module_gestion.ARGUMENT_SPEC)
+    base = {"zone": "fr-par-1", "security_group_id": "11111111-2222-3333-4444-555555555555"}
+
+    omise = validateur.validate(dict(base))
+    explicite = validateur.validate({**base, "description": None})
+
+    assert not omise.error_messages and not explicite.error_messages
+    assert omise.validated_parameters["description"] == UNCHANGED
+    assert explicite.validated_parameters["description"] is None
+    assert module_gestion.MODULE.nullable_params
+    assert dict(module_gestion.MODULE.nullable_params)["description"] == {"type": "str"}

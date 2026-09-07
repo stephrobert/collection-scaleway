@@ -45,11 +45,21 @@ options:
   lb_id:
     description:
     - ID of the server on which to attach the flexible IP.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   reverse:
     description:
     - Reverse DNS (domain name) for the IP address.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   tags:
     description:
     - List of tags for the IP.
@@ -165,8 +175,8 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "ip_id": {"type": "str", "required": True},
-    "lb_id": {"type": "str"},
-    "reverse": {"type": "str"},
+    "lb_id": {"type": "raw", "default": "__unchanged__"},
+    "reverse": {"type": "raw", "default": "__unchanged__"},
     "tags": {"type": "list", "elements": "str"},
 }
 
@@ -197,6 +207,10 @@ MODULE = ManageModule(
         ("lb_id", "scalar"),
         ("reverse", "scalar"),
         ("tags", "ordered_list"),
+    ),
+    nullable_params=(
+        ("lb_id", {"type": "str"}),
+        ("reverse", {"type": "str"}),
     ),
 )
 

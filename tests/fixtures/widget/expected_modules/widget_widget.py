@@ -39,7 +39,12 @@ options:
   email_config:
     description:
     - Email address configuration.
-    type: dict
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is dict.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   protected:
     description:
     - Not documented by the Scaleway API contract.
@@ -47,7 +52,12 @@ options:
   secret_token:
     description:
     - Jeton de rotation.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   tags:
     description:
     - Tags of the widget.
@@ -56,7 +66,12 @@ options:
   webhook_config:
     description:
     - Webhook URI configuration.
-    type: dict
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is dict.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
 extends_documentation_fragment:
 - lab.widget.scaleway
 """
@@ -129,11 +144,11 @@ MODULE_ARGUMENT_SPEC = {
         "choices": ["fr-par-1", "nl-ams-1"],
     },
     "widget_id": {"type": "str", "required": True},
-    "email_config": {"type": "dict"},
+    "email_config": {"type": "raw", "default": "__unchanged__"},
     "protected": {"type": "bool"},
-    "secret_token": {"type": "str", "no_log": True},
+    "secret_token": {"type": "raw", "default": "__unchanged__", "no_log": True},
     "tags": {"type": "list", "elements": "str"},
-    "webhook_config": {"type": "dict"},
+    "webhook_config": {"type": "raw", "default": "__unchanged__"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -168,6 +183,11 @@ MODULE = ManageModule(
         ("webhook_config", "mapping"),
     ),
     secret_params=("secret_token",),
+    nullable_params=(
+        ("email_config", {"type": "dict"}),
+        ("secret_token", {"type": "str"}),
+        ("webhook_config", {"type": "dict"}),
+    ),
 )
 
 

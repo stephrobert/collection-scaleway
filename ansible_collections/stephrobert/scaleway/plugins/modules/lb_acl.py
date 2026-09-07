@@ -52,7 +52,12 @@ options:
   description:
     description:
     - ACL description.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   index:
     description:
     - Priority of this ACL (ACLs are applied in ascending order, 0 is the first ACL executed).
@@ -185,7 +190,7 @@ MODULE_ARGUMENT_SPEC = {
     },
     "acl_id": {"type": "str", "required": True},
     "action": {"type": "dict", "required": True},
-    "description": {"type": "str"},
+    "description": {"type": "raw", "default": "__unchanged__"},
     "index": {"type": "int", "required": True},
     "match": {"type": "dict"},
     "name": {"type": "str", "required": True},
@@ -220,6 +225,9 @@ MODULE = ManageModule(
         ("index", "scalar"),
         ("match", "mapping"),
         ("name", "scalar"),
+    ),
+    nullable_params=(
+        ("description", {"type": "str"}),
     ),
 )
 

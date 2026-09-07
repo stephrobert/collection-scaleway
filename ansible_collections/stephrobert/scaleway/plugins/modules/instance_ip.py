@@ -47,7 +47,12 @@ options:
   reverse:
     description:
     - Reverse domain name.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   server:
     description:
     - Instance attached to the IP.
@@ -191,7 +196,7 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "ip": {"type": "str", "required": True},
-    "reverse": {"type": "str"},
+    "reverse": {"type": "raw", "default": "__unchanged__"},
     "server": {"type": "str"},
     "tags": {"type": "list", "elements": "str"},
     "type": {
@@ -230,6 +235,9 @@ MODULE = ManageModule(
         ("server", "scalar"),
         ("tags", "ordered_list"),
         ("type", "scalar"),
+    ),
+    nullable_params=(
+        ("reverse", {"type": "str"}),
     ),
 )
 

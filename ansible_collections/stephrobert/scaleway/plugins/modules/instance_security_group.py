@@ -47,12 +47,22 @@ options:
   description:
     description:
     - Description of the security group.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   enable_default_security:
     description:
     - True to block SMTP on IPv4 and IPv6. This feature is read only, please open a support
       ticket if you need to make it configurable.
-    type: bool
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is bool.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   inbound_default_policy:
     description:
     - Default inbound policy.
@@ -64,12 +74,22 @@ options:
   name:
     description:
     - Name of the security group.
-    type: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   organization_default:
     description:
     - Please use project_default instead.
     - Deprecated by the Scaleway API contract.
-    type: bool
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is bool.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   outbound_default_policy:
     description:
     - Default outbound policy.
@@ -81,11 +101,21 @@ options:
   project_default:
     description:
     - True use this security group for future Instances created in this project.
-    type: bool
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is bool.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   stateful:
     description:
     - True to set the security group as stateful.
-    type: bool
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is bool.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   tags:
     description:
     - Tags of the security group.
@@ -249,20 +279,20 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "security_group_id": {"type": "str", "required": True},
-    "description": {"type": "str"},
-    "enable_default_security": {"type": "bool"},
+    "description": {"type": "raw", "default": "__unchanged__"},
+    "enable_default_security": {"type": "raw", "default": "__unchanged__"},
     "inbound_default_policy": {
         "type": "str",
         "choices": ["unknown_policy", "accept", "drop"],
     },
-    "name": {"type": "str"},
-    "organization_default": {"type": "bool"},
+    "name": {"type": "raw", "default": "__unchanged__"},
+    "organization_default": {"type": "raw", "default": "__unchanged__"},
     "outbound_default_policy": {
         "type": "str",
         "choices": ["unknown_policy", "accept", "drop"],
     },
-    "project_default": {"type": "bool"},
-    "stateful": {"type": "bool"},
+    "project_default": {"type": "raw", "default": "__unchanged__"},
+    "stateful": {"type": "raw", "default": "__unchanged__"},
     "tags": {"type": "list", "elements": "str"},
 }
 
@@ -321,6 +351,14 @@ MODULE = ManageModule(
         ("project_default", "scalar"),
         ("stateful", "scalar"),
         ("tags", "ordered_list"),
+    ),
+    nullable_params=(
+        ("description", {"type": "str"}),
+        ("enable_default_security", {"type": "bool"}),
+        ("name", {"type": "str"}),
+        ("organization_default", {"type": "bool"}),
+        ("project_default", {"type": "bool"}),
+        ("stateful", {"type": "bool"}),
     ),
 )
 

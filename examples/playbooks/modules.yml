@@ -542,6 +542,32 @@
           check mode sans effet.
         quiet: true
 
+    # **Un `null` explicite n'est pas ignoré.** Le runtime ne sait pas encore
+    # effacer un champ (#114) ; plutôt que de rendre `ok` sur une description
+    # toujours là, il refuse et dit quoi faire (ADR-012). Le refus précède
+    # toute lecture : il est le même contre l'émulateur et contre le cloud.
+    - name: Demander l'effacement de la description
+      stephrobert.scaleway.instance_security_group:
+        zone: "{{ zone }}"
+        security_group_id: "{{ groupe_web }}"
+        description: null
+      register: effacement
+      # `ignore_errors` et non `failed_when: false` : le second efface le
+      # statut d'échec, et l'assertion suivante ne mesurerait plus rien.
+      ignore_errors: true
+
+    - name: Le module refuse, nomme le champ, et n'a rien changé
+      ansible.builtin.assert:
+        that:
+          - effacement is failed
+          - "'description' in effacement.msg"
+          - effacement is not changed
+        fail_msg: >-
+          Un `null` explicite a été ignoré au lieu d'être refusé : le module a
+          rendu {{ effacement }}.
+        success_msg: "refus mesuré : {{ effacement.msg }}"
+        quiet: true
+
     # ---- Les écritures, et leur idempotence -----------------------------
     #
     # **C'est ici que la collection se prouve.** Un module de gestion lit,
