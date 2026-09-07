@@ -54,16 +54,24 @@ def _rapport(produit: str) -> dict[str, Any]:
 def _tests() -> int:
     """Le nombre de tests que pytest collecte, demandé à pytest."""
     resultat = subprocess.run(
-        [sys.executable, "-m", "pytest", "--collect-only", "-q"],
+        [sys.executable, "-m", "pytest", "--collect-only", str(ROOT / "tests")],
         cwd=ROOT,
         capture_output=True,
         text=True,
         check=False,
     )
+    # `N tests collected`, la ligne que pytest écrit lui-même. La forme courte
+    # `-q` rend un compte par fichier qu'il faudrait sommer, et une somme est
+    # une occasion de se tromper là où pytest a déjà fait le calcul. Écrit ici
+    # après l'avoir essayée : `-q` ne porte pas cette ligne.
     for ligne in reversed(resultat.stdout.splitlines()):
-        if "test" in ligne and "collected" in ligne:
-            return int(ligne.split()[0])
-    raise EvidenceError("pytest n'a pas dit combien de tests il collecte")
+        mots = ligne.split()
+        if len(mots) >= 3 and mots[1] in {"test", "tests"} and mots[2] == "collected":
+            return int(mots[0])
+    raise EvidenceError(
+        "pytest n'a pas dit combien de tests il collecte. Un compte deviné "
+        "serait pire que pas de compte."
+    )
 
 
 def _mutations() -> int:

@@ -53,14 +53,14 @@ URL alongside `Met`; they are marked below.
 
 **`contribution`** — MUST — **Met** — URL required
 
-    https://github.com/stephrobert/collection-scaleway/blob/main/CONTRIBUTING.md
+    https://github.com/stephrobert/collection-scaleway/blob/0.3.0/CONTRIBUTING.md
 
 > CONTRIBUTING.md describes what to run before pushing, what gets refused on
 > sight, and how a decision is recorded as an override carrying its reason.
 
 **`contribution_requirements`** — SHOULD — **Met** — URL required
 
-    https://github.com/stephrobert/collection-scaleway/blob/main/CONTRIBUTING.md
+    https://github.com/stephrobert/collection-scaleway/blob/0.3.0/CONTRIBUTING.md
 
 > The same file states the requirements: no hand-edited generated file, a
 > falsification mutation for every new guard, and the language boundary between
@@ -78,7 +78,7 @@ URL alongside `Met`; they are marked below.
 
 **`license_location`** — MUST — **Met** — URL required
 
-    https://github.com/stephrobert/collection-scaleway/blob/main/LICENSE
+    https://github.com/stephrobert/collection-scaleway/blob/0.3.0/LICENSE
 
 ### Documentation
 
@@ -158,7 +158,7 @@ URL alongside `Met`; they are marked below.
 
 **`release_notes`** — MUST — **Met** — URL required
 
-    https://github.com/stephrobert/collection-scaleway/blob/main/ansible_collections/stephrobert/scaleway/CHANGELOG.rst
+    https://github.com/stephrobert/collection-scaleway/blob/0.3.0/ansible_collections/stephrobert/scaleway/CHANGELOG.rst
 
 > Composed by `antsibull-changelog` from fragments written with the change they
 > describe. The release gate refuses to publish while a fragment is still
@@ -178,7 +178,7 @@ URL alongside `Met`; they are marked below.
 
 **`report_process`** — MUST — **Met** — URL required
 
-    https://github.com/stephrobert/collection-scaleway/blob/main/CONTRIBUTING.md#issues
+    https://github.com/stephrobert/collection-scaleway/blob/0.3.0/CONTRIBUTING.md#issues
 
 **`report_tracker`** — SHOULD — **Met**
 
@@ -208,7 +208,7 @@ URL alongside `Met`; they are marked below.
 
 **`vulnerability_report_process`** — MUST — **Met** — URL required
 
-    https://github.com/stephrobert/collection-scaleway/blob/main/SECURITY.md
+    https://github.com/stephrobert/collection-scaleway/blob/0.3.0/SECURITY.md
 
 **`vulnerability_report_private`** — MUST — **Met** — URL required
 
@@ -244,8 +244,10 @@ URL alongside `Met`; they are marked below.
 
 **`test`** — MUST — **Met**
 
-> 575 unit tests, plus `ansible-test sanity` on four `ansible-core` versions and
+<!-- compteurs:tests-badge:début, produits par scripts/readme_counters.py -->
+> 600 unit tests, plus `ansible-test sanity` on four `ansible-core` versions and
 > an integration run of the shipped playbooks against a local emulator.
+<!-- compteurs:tests-badge:fin -->
 
 **`test_invocation`** — SHOULD — **Met**
 
@@ -256,7 +258,7 @@ URL alongside `Met`; they are marked below.
 
 > No line-coverage figure is measured or published, so claiming "most" would be
 > a claim nobody checked. What the repository measures instead is whether each
-> guard actually bites: `/falsify` neutralises 149 declared guards one at a
+> guard actually bites: `/falsify` neutralises every declared guard one at a
 > time in a copy outside the repository and requires the named test to fail.
 > That is a different property from coverage, and it is not a substitute for it.
 

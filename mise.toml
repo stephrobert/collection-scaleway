@@ -381,6 +381,14 @@ run = "python scripts/version.py --show"
 description = "Écrire le prochain numéro dans galaxy.yml et composer le changelog"
 run = "python scripts/version.py --bump"
 
+[tasks."chiffres:check"]
+description = "Refuser un compteur publié hors d'un bloc dérivé"
+# Le README dérivait ses nombres et la CI refusait un README périmé. La règle
+# ne valait que pour lui : un audit a trouvé huit compteurs faux dans `docs/`,
+# dont « 41 Day-2 » quand la mesure en dit 40, et « sur 46 modules » quand la
+# collection en porte 50. Ce contrôle étend la règle à ce qui est publié.
+run = "python scripts/chiffres.py --check"
+
 [tasks."release:check"]
 description = "Ce qui doit être vrai avant de publier sur Galaxy"
 # **Hors de `check`**, et c'est délibéré : cette garde exige un tag qui désigne
@@ -446,6 +454,7 @@ depends = [
   # aller-retour. Une pull request doit la passer comme le reste.
   "docs:quality",
   "fuzz:smoke",
+  "chiffres:check",
 ]
 
 [tasks.clean]

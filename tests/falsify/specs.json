@@ -1270,6 +1270,30 @@
       "find": "            \"after\": _cote_du_diff(apres, ecarts),",
       "replace": "            \"after\": {\n                nom: (masque if nom in spec.secret_params else apres.get(nom)) for nom in ecarts\n            },",
       "test": "tests/unit/collection/test_runtime.py::test_le_diff_lit_ses_deux_cotes_de_la_meme_facon"
+    },
+    {
+      "name": "compteur-hors-bloc-accepte",
+      "why": "Le README dérivait ses nombres et le reste du dépôt non : huit compteurs faux dans docs/, dont « 41 Day-2 » quand la mesure en dit 40.",
+      "file": "scripts/chiffres.py",
+      "find": "    (re.compile(r\"\\b\\d+\\s+Day-2\\b\", re.I), \"compteurs\"),",
+      "replace": "    (re.compile(r\"\\b\\d+\\s+\\x00Day-2\\x00\\b\", re.I), \"compteurs\"),",
+      "test": "tests/unit/outillage/test_chiffres.py::test_un_compteur_hors_bloc_est_refuse"
+    },
+    {
+      "name": "bloc-a-tiret-non-reconnu",
+      "why": "`runtime-etat` et `ecart-cibles` portent un tiret : sans lui dans la classe, le contrôle signale des blocs qui existent et fait chercher un défaut absent.",
+      "file": "scripts/chiffres.py",
+      "find": "DEBUT = re.compile(r\"<!-- compteurs:(?:[a-z-]+:)?début\")",
+      "replace": "DEBUT = re.compile(r\"<!-- compteurs:(?:[a-z]+:)?début\")",
+      "test": "tests/unit/outillage/test_chiffres.py::test_un_nom_de_bloc_a_tiret_est_reconnu"
+    },
+    {
+      "name": "controle-des-chiffres-trop-large",
+      "why": "Un contrôle qui refuserait tout chiffre serait une gêne qu'on désactive, et il ne mesurerait alors plus rien.",
+      "file": "scripts/chiffres.py",
+      "find": "    (re.compile(r\"\\b\\d+\\s+unit tests\\b\", re.I), \"compteurs\"),",
+      "replace": "    (re.compile(r\"\\b\\d+\\b\", re.I), \"compteurs\"),",
+      "test": "tests/unit/outillage/test_chiffres.py::test_un_nombre_qui_nest_pas_une_mesure_passe"
     }
   ]
 }

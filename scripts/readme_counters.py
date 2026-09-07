@@ -454,6 +454,107 @@ def bloc_versionnement() -> str:
     )
 
 
+def bloc_classification() -> str:
+    """Ce que la classification d'Instance donne, mesuré sur le compte rendu.
+
+    Le document publiait 41 Day-2, 40 AUTO, 97,6 % et 14 IGNORE, quand la
+    mesure disait 40, 39, 97,5 % et 15. Quatre nombres faux dans une phrase qui
+    commence par « Measured on Instance v1 ».
+    """
+    rapport = _rapport("instance", "v1")
+    totaux = rapport["totals"]
+    genres = totaux["by_kind"]
+    modes = totaux["by_mode"]
+    return (
+        f"Measured on Instance v1: **{totaux['day2_candidates']} Day-2 candidates, "
+        f"{modes['auto']} AUTO, {modes['manual']} MANUAL, coverage "
+        f"{_pourcent(rapport['day2_automation_coverage'])}**, out of "
+        f"{totaux['operations']} operations discovered, of which "
+        f"{genres['lifecycle']} LIFECYCLE and {genres['ignore']} IGNORE."
+    )
+
+
+def bloc_runtime_etat() -> str:
+    """L'état du runtime, dont le nombre de tests qui le mesurent.
+
+    Le document en annonçait 49, un compte figé au jour où la phrase a été
+    écrite. Ce qui est publié ici est le nombre de tests qui portent vraiment
+    sur le runtime, pas le total du dépôt : le second serait vrai et hors sujet.
+    """
+    resultat = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--collect-only",
+            str(ROOT / "tests" / "unit" / "collection"),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+        check=False,
+    )
+    compte = None
+    for ligne in reversed(resultat.stdout.splitlines()):
+        mots = ligne.split()
+        if len(mots) >= 3 and mots[1] in {"test", "tests"} and mots[2] == "collected":
+            compte = int(mots[0])
+            break
+    if compte is None:
+        raise CompteursError(
+            "pytest n'a pas dit combien de tests portent sur le runtime. "
+            "Un compte deviné vaut moins que pas de compte."
+        )
+    return (
+        f"State: written, measured by {compte} unit tests, judged by "
+        "`ansible-test sanity`, and\nexercised end to end against a local emulator "
+        "and against a real Scaleway\naccount."
+    )
+
+
+def bloc_ecart_cibles() -> str:
+    """Ce que chaque cible a réellement joué, lu dans les artefacts de run.
+
+    Le document annonçait « 28 sur 46 » et « 39 sur 46 », un dénominateur figé
+    à une époque où la collection portait 46 modules. Elle en porte davantage,
+    et les deux fractions étaient donc fausses par leur bas.
+    """
+    # **La frontière de langue passe ici.** `example_coverage.py` écrit sa
+    # sortie en français parce qu'elle va au terminal ; ce bloc-ci est publié
+    # dans `docs/`, donc en anglais. Traduire les deux valeurs de résidu à la
+    # sortie est ce qui garde une seule mesure et deux publics, plutôt que deux
+    # mesures qui divergeraient.
+    residus = {
+        "aucun": "none",
+        "sans objet (émulateur)": "not applicable (emulator)",
+    }
+    exemple = mesurer_exemple()
+    ecrits, _ = _modules_ecrits()
+    lignes = ["```text"]
+    for cible, run in sorted((exemple.get("runs") or {}).items()):
+        residu = run["residu"]
+        lignes.append(
+            f"{cible:10s} {len(run['modules_joues'])} modules played out of {ecrits} · "
+            f"{run['idempotence_prouvee']} idempotences proven · "
+            f"residue: {residus.get(residu, residu)}"
+        )
+    if len(lignes) == 1:
+        # « Aucun run enregistré » et non « 0 module joué » : rien n'a été
+        # mesuré n'est pas rien n'a marché.
+        lignes.append("no run recorded yet")
+    lignes.append("```")
+    return "\n".join(lignes)
+
+
+def bloc_tests_badge() -> str:
+    """La phrase du questionnaire OpenSSF qui compte les tests."""
+    return (
+        f"> {_tests()} unit tests, plus `ansible-test sanity` on four "
+        "`ansible-core` versions and\n> an integration run of the shipped playbooks "
+        "against a local emulator."
+    )
+
+
 def bloc_image() -> str:
     """La commande qui tire l'environnement d'exécution de la version publiée.
 
@@ -491,6 +592,10 @@ NOMMES = {
     "compatibilite": lambda: bloc_compatibilite(),
     "versionnement": lambda: bloc_versionnement(),
     "image": lambda: bloc_image(),
+    "classification": lambda: bloc_classification(),
+    "runtime-etat": lambda: bloc_runtime_etat(),
+    "ecart-cibles": lambda: bloc_ecart_cibles(),
+    "tests-badge": lambda: bloc_tests_badge(),
     "modules": lambda: bloc_nombre_de_modules(),
 }
 
@@ -501,6 +606,10 @@ BLOCS_NOMMES: tuple[tuple[str, Path], ...] = (
     ("compatibilite", README_COLLECTION),
     ("versionnement", README_COLLECTION),
     ("image", README_COLLECTION),
+    ("classification", ROOT / "docs" / "architecture" / "generator.md"),
+    ("runtime-etat", ROOT / "docs" / "architecture" / "runtime.md"),
+    ("ecart-cibles", ROOT / "docs" / "architecture" / "runtime.md"),
+    ("tests-badge", ROOT / "docs" / "best-practices.md"),
     ("modules", README),
 )
 
@@ -533,6 +642,11 @@ def main(argv: list[str]) -> int:
     # `galaxy.yml` n'a pas de bloc dérivé mais porte un lien : la liste des
     # fichiers à versionner n'est donc pas celle des blocs.
     a_versionner = {README, README_COLLECTION, GALAXY}
+    # Les documents qui portent un bloc nommé entrent dans la boucle, même
+    # sans bloc principal ni lien à versionner : sinon leurs blocs ne seraient
+    # jamais produits, et la garde de `scripts/chiffres.py` se contenterait de
+    # marqueurs autour de chiffres faux.
+    a_versionner |= {cible for _, cible in BLOCS_NOMMES}
     for fichier in sorted(set(blocs()) | a_versionner):
         contenu = blocs().get(fichier)
         texte = fichier.read_text(encoding="utf-8")

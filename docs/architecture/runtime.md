@@ -2,9 +2,11 @@
 
 What `plugins/module_utils/scaleway.py` carries, why, and what it costs.
 
-State: written, measured by 49 unit tests, judged by `ansible-test sanity`, and
+<!-- compteurs:runtime-etat:début, produits par scripts/readme_counters.py -->
+State: written, measured by 71 unit tests, judged by `ansible-test sanity`, and
 exercised end to end against a local emulator and against a real Scaleway
 account.
+<!-- compteurs:runtime-etat:fin -->
 
 ## How the roles are split
 
@@ -292,12 +294,15 @@ An unmounted route receives **501 `not_emulated`**, with a message pointing at
 The gap is measured rather than felt. The example stack plays the same
 playbook against both targets and keeps an artefact of each run:
 
+<!-- compteurs:ecart-cibles:début, produits par scripts/readme_counters.py -->
 ```text
-feint  28 modules played out of 46 · 8 idempotences proven · 4 routes not emulated
-real   39 modules played out of 46 · 9 idempotences proven · no residue
+emulateur  32 modules played out of 50 · 10 idempotences proven · residue: not applicable (emulator)
+machines   32 modules played out of 50 · 10 idempotences proven · residue: not applicable (emulator)
+reel       44 modules played out of 50 · 13 idempotences proven · residue: none
 ```
+<!-- compteurs:ecart-cibles:fin -->
 
-Eleven modules therefore run against the real cloud and not here, and they are
+Some modules therefore run against the real cloud and not here, and they are
 listed by name rather than summarised. `mise run coverage:example` publishes
 the comparison.
 
