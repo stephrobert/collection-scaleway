@@ -11,7 +11,7 @@ account.
 ## What a module cannot say: "clear this field"
 
 <!-- compteurs:effacables:début, produits par scripts/readme_counters.py -->
-The contract marks **40 writable fields** as clearable, across 14 modules.
+The contract marks **55 writable fields** as clearable, across 15 modules.
 No module can clear one yet. A managing module that receives `field: null`
 fails and names the field rather than reporting `ok` without having cleared
 anything; omitting the field leaves it unchanged. `mise run nullabilite`

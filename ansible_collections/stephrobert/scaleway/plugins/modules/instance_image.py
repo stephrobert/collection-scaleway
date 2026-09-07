@@ -79,8 +79,12 @@ options:
   tags:
     description:
     - Tags of the image.
-    type: list
-    elements: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is list of str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
 """
@@ -230,7 +234,7 @@ MODULE_ARGUMENT_SPEC = {
     "extra_volumes": {"type": "dict"},
     "name": {"type": "raw", "default": "__unchanged__"},
     "public": {"type": "raw", "default": "__unchanged__"},
-    "tags": {"type": "list", "elements": "str"},
+    "tags": {"type": "raw", "default": "__unchanged__"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -268,6 +272,7 @@ MODULE = ManageModule(
     nullable_params=(
         ("name", {"type": "str"}),
         ("public", {"type": "bool"}),
+        ("tags", {"type": "list", "elements": "str"}),
     ),
 )
 

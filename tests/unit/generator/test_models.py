@@ -373,6 +373,8 @@ def test_un_mot_ordinaire_se_pluralise_comme_avant(instance_plan: ProductPlan) -
     spec = _spec(instance_plan, "instance_server_info")
 
     assert any(nom.endswith("Instance servers by tags") for nom in (e.name for e in spec.examples))
+
+
 # --- ce que le module rend, la page le nomme ------------------------------
 
 

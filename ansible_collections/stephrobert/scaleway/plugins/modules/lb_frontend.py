@@ -62,8 +62,12 @@ options:
   certificate_ids:
     description:
     - List of SSL/TLS certificate IDs to bind to the frontend.
-    type: list
-    elements: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is list of str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   connection_rate_limit:
     description:
     - Rate limit for new connections established on this frontend. Use 0 value to disable,
@@ -240,7 +244,7 @@ MODULE_ARGUMENT_SPEC = {
     "frontend_id": {"type": "str", "required": True},
     "backend_id": {"type": "str", "required": True},
     "certificate_id": {"type": "raw", "default": "__unchanged__"},
-    "certificate_ids": {"type": "list", "elements": "str"},
+    "certificate_ids": {"type": "raw", "default": "__unchanged__"},
     "connection_rate_limit": {"type": "raw", "default": "__unchanged__"},
     "enable_access_logs": {"type": "raw", "default": "__unchanged__"},
     "enable_http3": {"type": "bool"},
@@ -305,6 +309,7 @@ MODULE = ManageModule(
     ),
     nullable_params=(
         ("certificate_id", {"type": "str"}),
+        ("certificate_ids", {"type": "list", "elements": "str"}),
         ("connection_rate_limit", {"type": "int"}),
         ("enable_access_logs", {"type": "bool"}),
     ),

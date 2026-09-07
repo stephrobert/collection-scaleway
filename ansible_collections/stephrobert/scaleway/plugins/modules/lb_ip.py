@@ -63,8 +63,12 @@ options:
   tags:
     description:
     - List of tags for the IP.
-    type: list
-    elements: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is list of str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
 """
@@ -177,7 +181,7 @@ MODULE_ARGUMENT_SPEC = {
     "ip_id": {"type": "str", "required": True},
     "lb_id": {"type": "raw", "default": "__unchanged__"},
     "reverse": {"type": "raw", "default": "__unchanged__"},
-    "tags": {"type": "list", "elements": "str"},
+    "tags": {"type": "raw", "default": "__unchanged__"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -211,6 +215,7 @@ MODULE = ManageModule(
     nullable_params=(
         ("lb_id", {"type": "str"}),
         ("reverse", {"type": "str"}),
+        ("tags", {"type": "list", "elements": "str"}),
     ),
 )
 

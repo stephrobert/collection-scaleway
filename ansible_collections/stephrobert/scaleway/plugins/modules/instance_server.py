@@ -90,12 +90,22 @@ options:
   dynamic_ip_required:
     description:
     - True if a dynamic IPv4 is required.
-    type: bool
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is bool.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   enable_ipv6:
     description:
     - True if IPv6 is enabled (deprecated and always `False` when `routed_ip_enabled` is `True`).
     - Deprecated by the Scaleway API contract.
-    type: bool
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is bool.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   name:
     description:
     - Name of the Instance.
@@ -117,8 +127,12 @@ options:
   private_nics:
     description:
     - Instance private NICs.
-    type: list
-    elements: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is list of str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   protected:
     description:
     - True to activate server protection option.
@@ -131,8 +145,12 @@ options:
   public_ips:
     description:
     - A list of reserved IP IDs to attach to the Instance.
-    type: list
-    elements: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is list of str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   routed_ip_enabled:
     description:
     - True to configure the instance so it uses the new routed IP mode (once this is set to
@@ -151,8 +169,12 @@ options:
   tags:
     description:
     - Tags of the Instance.
-    type: list
-    elements: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is list of str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   volumes:
     description:
     - Instance volumes.
@@ -429,16 +451,16 @@ MODULE_ARGUMENT_SPEC = {
         "choices": ["local", "bootscript", "rescue"],
     },
     "commercial_type": {"type": "raw", "default": "__unchanged__"},
-    "dynamic_ip_required": {"type": "bool"},
-    "enable_ipv6": {"type": "bool"},
+    "dynamic_ip_required": {"type": "raw", "default": "__unchanged__"},
+    "enable_ipv6": {"type": "raw", "default": "__unchanged__"},
     "name": {"type": "raw", "default": "__unchanged__"},
     "placement_group": {"type": "raw", "default": "__unchanged__"},
-    "private_nics": {"type": "list", "elements": "str"},
+    "private_nics": {"type": "raw", "default": "__unchanged__"},
     "protected": {"type": "raw", "default": "__unchanged__"},
-    "public_ips": {"type": "list", "elements": "str"},
+    "public_ips": {"type": "raw", "default": "__unchanged__"},
     "routed_ip_enabled": {"type": "raw", "default": "__unchanged__"},
     "security_group": {"type": "dict"},
-    "tags": {"type": "list", "elements": "str"},
+    "tags": {"type": "raw", "default": "__unchanged__"},
     "volumes": {"type": "dict"},
 }
 
@@ -516,10 +538,15 @@ MODULE = ManageModule(
     nullable_params=(
         ("admin_password_encryption_ssh_key_id", {"type": "str"}),
         ("commercial_type", {"type": "str"}),
+        ("dynamic_ip_required", {"type": "bool"}),
+        ("enable_ipv6", {"type": "bool"}),
         ("name", {"type": "str"}),
         ("placement_group", {"type": "str"}),
+        ("private_nics", {"type": "list", "elements": "str"}),
         ("protected", {"type": "bool"}),
+        ("public_ips", {"type": "list", "elements": "str"}),
         ("routed_ip_enabled", {"type": "bool"}),
+        ("tags", {"type": "list", "elements": "str"}),
     ),
 )
 

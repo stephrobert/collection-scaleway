@@ -45,10 +45,19 @@ options:
       yet.
     type: raw
     default: __unchanged__
+  label:
+    description:
+    - Free-form label of the widget.
+    type: str
   protected:
     description:
     - Not documented by the Scaleway API contract.
-    type: bool
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is bool.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   secret_token:
     description:
     - Jeton de rotation.
@@ -61,8 +70,12 @@ options:
   tags:
     description:
     - Tags of the widget.
-    type: list
-    elements: str
+    - 'Omit this option to keep the current value: the published default is only the marker
+      of an omitted option, and the API type is list of str.'
+    - An explicit null is refused, because clearing this field is not supported by the module
+      yet.
+    type: raw
+    default: __unchanged__
   webhook_config:
     description:
     - Webhook URI configuration.
@@ -145,9 +158,10 @@ MODULE_ARGUMENT_SPEC = {
     },
     "widget_id": {"type": "str", "required": True},
     "email_config": {"type": "raw", "default": "__unchanged__"},
-    "protected": {"type": "bool"},
+    "label": {"type": "str"},
+    "protected": {"type": "raw", "default": "__unchanged__"},
     "secret_token": {"type": "raw", "default": "__unchanged__", "no_log": True},
-    "tags": {"type": "list", "elements": "str"},
+    "tags": {"type": "raw", "default": "__unchanged__"},
     "webhook_config": {"type": "raw", "default": "__unchanged__"},
 }
 
@@ -172,11 +186,12 @@ MODULE = ManageModule(
         path="/widget/v1/zones/{zone}/widgets/{widget_id}",
         path_params=("zone", "widget_id"),
         query_params=(),
-        body_params=("tags", "protected", "secret_token", "email_config", "webhook_config"),
+        body_params=("tags", "label", "protected", "secret_token", "email_config", "webhook_config"),
     ),
-    managed_params=("tags", "protected", "secret_token", "email_config", "webhook_config"),
+    managed_params=("tags", "label", "protected", "secret_token", "email_config", "webhook_config"),
     comparisons=(
         ("email_config", "mapping"),
+        ("label", "scalar"),
         ("protected", "scalar"),
         ("secret_token", "scalar"),
         ("tags", "ordered_list"),
@@ -185,7 +200,9 @@ MODULE = ManageModule(
     secret_params=("secret_token",),
     nullable_params=(
         ("email_config", {"type": "dict"}),
+        ("protected", {"type": "bool"}),
         ("secret_token", {"type": "str"}),
+        ("tags", {"type": "list", "elements": "str"}),
         ("webhook_config", {"type": "dict"}),
     ),
 )

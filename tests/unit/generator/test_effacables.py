@@ -89,10 +89,18 @@ def test_un_champ_effacable_gere_est_expose_en_raw_avec_le_marqueur(
         assert options[nom].type == "raw", nom
         assert options[nom].default == UNCHANGED, nom
     assert options["secret_token"].no_log is True, "le secret reste masqué"
-    assert options["protected"].type == "bool", "un champ non effaçable ne bouge pas"
+    # **Le contre-exemple, et il a fallu l'ajouter au contrat.** `protected` en
+    # tenait lieu, jusqu'à ce que le parser lise la nullabilité derrière un
+    # `$ref` : `google.protobuf.BoolValue` est effaçable, et le laboratoire n'a
+    # plus porté aucun champ ordinaire. Un test sans contre-exemple passe aussi
+    # sur un générateur qui marquerait tout.
+    assert options["label"].type == "str", "un champ non effaçable ne bouge pas"
+    assert options["label"].default is None
     assert spec.nullable_params == (
         ("email_config", {"type": "dict"}),
+        ("protected", {"type": "bool"}),
         ("secret_token", {"type": "str"}),
+        ("tags", {"type": "list", "elements": "str"}),
         ("webhook_config", {"type": "dict"}),
     )
 
@@ -109,9 +117,16 @@ def test_la_page_dit_le_type_reel_et_ce_que_le_marqueur_veut_dire(widget_plan: P
 
 def test_un_champ_non_effacable_ne_recoit_pas_le_marqueur(widget_plan: ProductPlan) -> None:
     """Le contre-exemple, sans lequel le premier test passerait aussi sur un
-    modèle qui marquerait tout."""
-    option = _options(_spec(widget_plan, "widget_widget"))["protected"]
+    modèle qui marquerait tout.
 
+    Il portait sur `protected` jusqu'à ce que le parser lise la nullabilité
+    derrière un `$ref` : `google.protobuf.BoolValue` est effaçable, et le
+    contrat de laboratoire a reçu `label` pour que le contre-exemple existe
+    encore.
+    """
+    option = _options(_spec(widget_plan, "widget_widget"))["label"]
+
+    assert option.type == "str"
     assert option.default is None
     assert "explicit null" not in " ".join(option.description)
 
