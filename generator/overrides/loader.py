@@ -25,7 +25,7 @@ from generator.ansible.comparison import (
     ComparisonStrategy,
     depuis_le_nom,
 )
-from generator.ir.enums import GenerationMode, OperationKind
+from generator.ir.enums import GenerationMode, OperationKind, ParameterLocation
 from generator.ir.models import ApiService
 
 DEFAULT_OVERRIDES_ROOT = Path(__file__).resolve().parent
@@ -243,12 +243,13 @@ class OverrideSet:
                 inertes.append(
                     f"{cle} : description d'override devenue inutile, le contrat en porte une"
                 )
-            connus = {parameter.name for parameter in operation.parameters}
+            par_nom = {parameter.name: parameter for parameter in operation.parameters}
             documentes = {
                 parameter.name for parameter in operation.parameters if parameter.description
             }
             for nom, restriction in override.parameters.items():
-                if nom not in connus:
+                parametre = par_nom.get(nom)
+                if parametre is None:
                     inertes.append(
                         f"{cle}.parameters.{nom} : aucun paramètre de ce nom sur l'opération"
                     )
@@ -257,6 +258,18 @@ class OverrideSet:
                     inertes.append(
                         f"{cle}.parameters.{nom} : description d'override devenue "
                         "inutile, le contrat en porte une"
+                    )
+                # **`csv` ne veut dire quelque chose que sur un filtre de
+                # requête.** Le runtime joint les valeurs par des virgules au
+                # moment de construire la chaîne de requête, et nulle part
+                # ailleurs : posé sur un champ de corps ou un segment de chemin,
+                # l'override serait silencieusement inerte, et le module
+                # exposerait une liste que rien ne joindrait.
+                if restriction.csv and parametre.location is not ParameterLocation.QUERY:
+                    inertes.append(
+                        f"{cle}.parameters.{nom} : `csv` sur un paramètre "
+                        f"{parametre.location.value}, alors qu'il ne s'applique qu'à un "
+                        "filtre de requête"
                     )
         # **Un champ rendu que le contrat décrit désormais lui-même.** La
         # description écrite ici ne sort plus, et personne ne la relit : elle

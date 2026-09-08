@@ -252,3 +252,59 @@ def test_un_parametre_csv_sans_raison_est_refuse(tmp_path: Path) -> None:
     with pytest.raises(OverrideError) as erreur:
         load_overrides("instance", root=tmp_path)
     assert "reason" in str(erreur.value)
+
+
+def test_un_csv_hors_dun_filtre_de_requete_est_inerte(
+    tmp_path: Path, widget_service: ApiService
+) -> None:
+    """`csv` ne veut dire quelque chose que sur un filtre de requête.
+
+    Le runtime joint les valeurs par des virgules au moment de construire la
+    chaîne de requête, et nulle part ailleurs. Posé sur un champ de corps,
+    l'override était accepté et silencieusement inerte : le module exposait une
+    liste que rien ne joindrait, et l'utilisateur recevait une erreur de l'API
+    sur une option que la page lui promettait.
+
+    Reproduit dans #128 avant d'être corrigé.
+    """
+    _write(
+        tmp_path,
+        """
+operations:
+  widget.v1.Widget.UpdateWidget:
+    parameters:
+      tags:
+        csv: true
+        reason: essai, sur un champ de corps
+""",
+    )
+    plan = plan_service(widget_service, load_overrides("widget", root=tmp_path))
+
+    assert plan.orphan_overrides == (
+        "widget.v1.Widget.UpdateWidget.parameters.tags : `csv` sur un paramètre body, "
+        "alors qu'il ne s'applique qu'à un filtre de requête",
+    )
+
+
+def test_un_csv_sur_un_filtre_de_requete_reste_accepte(
+    tmp_path: Path, widget_service: ApiService
+) -> None:
+    """Le contre-exemple, sans lequel le refus pourrait tout refuser.
+
+    C'est la forme que les overrides réels emploient, et la rendre orpheline
+    ferait échouer `report --strict` sur ce que le dépôt fait déjà.
+    """
+    _write(
+        tmp_path,
+        """
+operations:
+  widget.v1.Widget.ListWidgets:
+    parameters:
+      state:
+        csv: true
+        reason: le contrat décrit la virgule comme séparateur
+""",
+    )
+    plan = plan_service(widget_service, load_overrides("widget", root=tmp_path))
+
+    assert plan.orphan_overrides == ()

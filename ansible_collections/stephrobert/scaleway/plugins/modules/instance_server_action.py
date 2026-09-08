@@ -84,25 +84,25 @@ EXAMPLES = r"""
 # The module waits until the API reports the target state before
 # returning, so the next task acts on a resource that has settled.
 
-- name: Poweron an Instance
+- name: Poweron the Instance server
   stephrobert.scaleway.instance_server_action:
     zone: fr-par-1
     server_id: 11111111-2222-3333-4444-555555555555
     action: poweron
   register: result
-- name: Poweroff an Instance
+- name: Poweroff the Instance server
   stephrobert.scaleway.instance_server_action:
     zone: fr-par-1
     server_id: 11111111-2222-3333-4444-555555555555
     action: poweroff
   register: result
-- name: Reboot an Instance
+- name: Reboot the Instance server
   stephrobert.scaleway.instance_server_action:
     zone: fr-par-1
     server_id: 11111111-2222-3333-4444-555555555555
     action: reboot
   register: result
-- name: Stop in place an Instance
+- name: Stop in place the Instance server
   stephrobert.scaleway.instance_server_action:
     zone: fr-par-1
     server_id: 11111111-2222-3333-4444-555555555555

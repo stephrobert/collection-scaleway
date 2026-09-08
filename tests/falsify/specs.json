@@ -1636,8 +1636,8 @@
       "name": "override-de-parametre-orphelin",
       "why": "Une faute de frappe dans `parameters` produirait un override silencieusement inerte, ce que la règle 2 du dépôt interdit.",
       "file": "generator/overrides/loader.py",
-      "find": "                if nom not in connus:\n",
-      "replace": "                if nom not in connus and False:\n",
+      "find": "                if parametre is None:\n",
+      "replace": "                if parametre is None and False:\n",
       "test": "tests/unit/generator/test_overrides.py::test_un_override_de_parametre_qui_ne_designe_rien_est_orphelin"
     },
     {
@@ -2103,6 +2103,30 @@
       "find": "    operation = _unitary_read_operation(service, resource, overrides)\n    schema = operation.response.payload_schema if operation and operation.response else None",
       "replace": "    operation = _unitary_read_operation(service, resource, None)\n    schema = operation.response.payload_schema if operation and operation.response else None",
       "test": "tests/unit/generator/test_attente_ressource_renommee.py::test_une_attente_sur_une_ressource_renommee_construit_son_module"
+    },
+    {
+      "name": "parametres-du-chemin-perdus",
+      "why": "OpenAPI §4.7.9.1 dit qu'un `parameters` du chemin s'applique à chaque opération qui s'y trouve. Sans lui, une opération sort sans aucun paramètre, et le module porte un chemin dont les accolades ne se rempliront jamais.",
+      "file": "generator/parser/openapi.py",
+      "find": "    return [*herites, *(operation.get(\"parameters\") or [])]",
+      "replace": "    return list(operation.get(\"parameters\") or [])",
+      "test": "tests/unit/generator/test_parametres_partages.py::test_un_parametre_declare_par_le_chemin_arrive_sur_loperation"
+    },
+    {
+      "name": "parametre-du-chemin-qui-recouvre-loperation",
+      "why": "Un paramètre de l'opération remplace celui du chemin, jamais l'inverse : recouvrir dans l'autre sens écraserait une précision locale par une valeur générale, et ferait apparaître le paramètre deux fois.",
+      "file": "generator/parser/openapi.py",
+      "find": "        p for p in partages if isinstance(p, dict) and (p.get(\"name\"), p.get(\"in\")) not in identite",
+      "replace": "        p for p in partages if isinstance(p, dict)",
+      "test": "tests/unit/generator/test_parametres_partages.py::test_loperation_gagne_sur_le_chemin"
+    },
+    {
+      "name": "csv-pose-hors-dun-filtre-de-requete",
+      "why": "Le runtime ne joint les valeurs que pour la chaîne de requête. Posé sur un champ de corps, `csv` est silencieusement inerte : le module expose une liste que rien ne joindra, ce que le refus des overrides inertes existe précisément pour empêcher.",
+      "file": "generator/overrides/loader.py",
+      "find": "                if restriction.csv and parametre.location is not ParameterLocation.QUERY:",
+      "replace": "                if False:",
+      "test": "tests/unit/generator/test_overrides.py::test_un_csv_hors_dun_filtre_de_requete_est_inerte"
     }
   ]
 }
