@@ -962,8 +962,47 @@ _COMPARAISONS: dict[str, Any] = {
         else attendu == observe
     ),
     "object_id": lambda attendu, observe: attendu == observe,
+    "id_list": lambda attendu, observe: list(attendu or []) == list(observe or []),
     "normalized_object": lambda attendu, observe: attendu == _cles_demandees(attendu, observe),
 }
+
+
+def _identifiants(valeur: Any) -> Any:
+    """Une liste d'objets ramenée à ses identifiants.
+
+    **La requête prend des identifiants, la lecture rend les objets entiers.**
+    `UpdateServer` accepte `public_ips: ["id1", "id2"]` et `GetServer` répond
+    `public_ips: [{"id": "id1", "address": ...}, ...]`. Comparer les deux
+    directement rend « différent » à tous les coups : le module réécrit à
+    **chaque** exécution et annonce `changed`, indéfiniment.
+
+    C'est le défaut de `lb_frontend.backend_id` dans sa forme plurielle, que
+    `_valeur_courante` ne traitait qu'au singulier. Reproduit hors ligne avant
+    d'être corrigé.
+
+    La projection ne s'applique que sur des objets qui portent tous un `id` :
+    autre chose n'est pas une liste de références, et l'écraser serait perdre ce
+    que la comparaison doit voir.
+    """
+    if not isinstance(valeur, list):
+        return valeur
+    if not all(isinstance(element, dict) and "id" in element for element in valeur):
+        return valeur
+    return [element["id"] for element in valeur]
+
+
+#: Ce qu'il faut faire de la valeur **observée** avant de la comparer.
+#:
+#: Une projection posée ici sert à comparer **et** à montrer le diff, parce que
+#: les deux passent par elle. C'est l'invariant que `_cote_du_diff` porte : une
+#: projection utilisée d'un seul côté fait mentir le diff sur un module qui
+#: marche, ce qui est pire qu'un module qui échoue.
+_PROJECTIONS: dict[str, Any] = {"id_list": _identifiants}
+
+
+def _observe(strategie: str, valeur: Any) -> Any:
+    """La valeur lue, ramenée à ce que la stratégie compare."""
+    return _PROJECTIONS.get(strategie, lambda x: x)(valeur)
 
 
 def _identique(strategie: str, attendu: Any, observe: Any) -> bool:
@@ -974,6 +1013,10 @@ def _identique(strategie: str, attendu: Any, observe: Any) -> bool:
     sait pas faire doit le dire. Le repli silencieux sur l'égalité stricte
     donnerait un module qui croit comparer autrement, ce qui est le défaut
     d'origine rendu invisible.
+
+    La valeur observée passe d'abord par la projection de la stratégie, s'il y
+    en a une : c'est là que la liste d'objets rendue par l'API redevient la
+    liste d'identifiants que la requête a envoyée.
     """
     comparer = _COMPARAISONS.get(strategie)
     if comparer is None:
@@ -983,7 +1026,7 @@ def _identique(strategie: str, attendu: Any, observe: Any) -> bool:
             f"Connues : {connues}. Le module a probablement été produit par un "
             "générateur plus récent que `module_utils`."
         )
-    return bool(comparer(attendu, observe))
+    return bool(comparer(attendu, _observe(strategie, observe)))
 
 
 def _postconditions_non_tenues(
@@ -1018,8 +1061,12 @@ def _postconditions_non_tenues(
     for nom, attendu in demande.items():
         if nom in hors_mesure:
             continue
-        obtenu = _valeur_courante(observe, nom)
-        if not _identique(strategies.get(nom, "scalar"), attendu, obtenu):
+        strategie = strategies.get(nom, "scalar")
+        # Publié tel que la comparaison l'a vu : rapporter l'objet entier là où
+        # la comparaison a lu un identifiant ferait chercher un écart qui n'en
+        # est pas un, dans le message même qui signale l'écart.
+        obtenu = _observe(strategie, _valeur_courante(observe, nom))
+        if not _identique(strategie, attendu, obtenu):
             ecarts[nom] = {"requested": attendu, "observed": obtenu}
     return ecarts
 
@@ -1183,9 +1230,17 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
 
         alors que l'API avait parfaitement rendu `backend.id`. Le module
         marchait ; le diff mentait, ce qui est pire qu'un module qui échoue.
+
+        La projection de la stratégie compte pour la même raison : un `before`
+        qui montrerait les objets entiers face à un `after` qui montre des
+        identifiants ferait lire un changement là où il n'y en a pas.
         """
         return {
-            nom: (masque if nom in spec.secret_params else _valeur_courante(ressource, nom))
+            nom: (
+                masque
+                if nom in spec.secret_params
+                else _observe(strategies.get(nom, "scalar"), _valeur_courante(ressource, nom))
+            )
             for nom in noms
         }
 

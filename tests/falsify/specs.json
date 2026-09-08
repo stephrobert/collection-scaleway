@@ -1524,7 +1524,7 @@
       "name": "postcondition-comparee-autrement-qualler",
       "why": "Comparer en ensemble pour décider d'écrire puis strictement pour vérifier ferait échouer sur un ordre que la première comparaison venait justement d'accepter.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "        if not _identique(strategies.get(nom, \"scalar\"), attendu, obtenu):",
+      "find": "        if not _identique(strategie, attendu, obtenu):",
       "replace": "        if attendu != obtenu:",
       "test": "tests/unit/collection/test_postconditions.py::test_la_verification_emploie_la_meme_comparaison_que_laller"
     },
@@ -1911,6 +1911,38 @@
       "find": "    return {**charge, \"total_count\": total}",
       "replace": "    charge[\"total_count\"] = total\n    return charge",
       "test": "tests/unit/collection/test_runtime.py::test_le_corps_lu_nest_pas_modifie_sur_place"
+    },
+    {
+      "name": "liste-de-references-comparee-aux-objets",
+      "why": "La requête prend des identifiants, la lecture rend les objets entiers. Sans la projection, la comparaison rend « différent » à tous les coups : le module réécrit à chaque exécution et annonce `changed`, indéfiniment.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "_PROJECTIONS: dict[str, Any] = {\"id_list\": _identifiants}",
+      "replace": "_PROJECTIONS: dict[str, Any] = {}",
+      "test": "tests/unit/collection/test_liste_de_references.py::test_un_serveur_deja_dans_letat_demande_nest_pas_reecrit"
+    },
+    {
+      "name": "projection-appliquee-a-nimporte-quoi",
+      "why": "Projeter autre chose qu'une liste de références ferait perdre à la comparaison ce qu'elle doit voir, et le module tairait un changement réel, ce qui est pire qu'un `changed` de trop.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    if not all(isinstance(element, dict) and \"id\" in element for element in valeur):",
+      "replace": "    if not all(isinstance(element, dict) and \"id\" in element for element in valeur) and False:",
+      "test": "tests/unit/collection/test_liste_de_references.py::test_des_objets_sans_id_ne_sont_pas_projetes"
+    },
+    {
+      "name": "diff-qui-montre-autre-chose-que-la-comparaison",
+      "why": "Un `before` montrant les objets entiers face à un `after` montrant des identifiants ferait lire un changement là où il n'y en a pas. C'est l'invariant d'ADR-009 : projeter pour comparer, c'est projeter pour montrer.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "                else _observe(strategies.get(nom, \"scalar\"), _valeur_courante(ressource, nom))",
+      "replace": "                else _valeur_courante(ressource, nom)",
+      "test": "tests/unit/collection/test_liste_de_references.py::test_le_diff_montre_ce_que_la_comparaison_a_lu"
+    },
+    {
+      "name": "strategie-de-liste-decidee-sans-regarder-la-lecture",
+      "why": "Le type de l'écriture seul ne distingue pas une liste de chaînes d'une liste de références : les deux sont un tableau. C'est le schéma de lecture qui tranche, et le mesurer d'un seul côté ne décide rien.",
+      "file": "generator/ansible/models.py",
+      "find": "        and lu.item_type is ApiType.OBJECT",
+      "replace": "        and lu.item_type is ApiType.OBJECT\n        and False",
+      "test": "tests/unit/generator/test_strategie_mesuree.py::test_une_liste_relue_en_objets_se_compare_par_ses_identifiants"
     }
   ]
 }

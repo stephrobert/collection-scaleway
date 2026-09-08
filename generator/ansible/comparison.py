@@ -52,6 +52,16 @@ class ComparisonStrategy(Enum):
     NORMALIZED_STRING = "normalized_string"
     #: L'API rend `{"id": "x"}` là où la requête prend `"x"`.
     OBJECT_ID = "object_id"
+    #: Le pluriel du précédent : la requête prend `["x", "y"]`, la lecture rend
+    #: `[{"id": "x", ...}, {"id": "y", ...}]`.
+    #:
+    #: **Ce n'est pas un choix humain, c'est une mesure du contrat.** Le schéma
+    #: de lecture déclare un tableau d'objets portant un `id` là où le corps de
+    #: la requête déclare un tableau. Comparer les deux directement rend
+    #: « différent » à tous les coups, et le module réécrit à chaque exécution
+    #: en annonçant `changed` : c'est le défaut de `lb_frontend.backend_id`,
+    #: dans sa forme plurielle.
+    ID_LIST = "id_list"
     #: L'API rend l'objet enrichi de champs que la requête ne porte pas : seules
     #: les clés demandées se comparent.
     NORMALIZED_OBJECT = "normalized_object"

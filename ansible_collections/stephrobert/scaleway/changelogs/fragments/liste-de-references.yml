@@ -1,0 +1,19 @@
+---
+bugfixes:
+  - "``instance_server`` rewrote ``public_ips`` and ``private_nics`` on **every**
+    run, reporting ``changed`` each time. The request takes a list of IDs and the
+    API returns the full objects, so the comparison found them different at every
+    execution: a playbook using either field was never idempotent, whatever
+    ``changed`` displayed. This is the plural form of the ``lb_frontend.backend_id``
+    defect, which the runtime handled only in the singular. Reproduced offline
+    before being fixed, and the reproduction is kept as a test."
+minor_changes:
+  - "A new comparison strategy, ``id_list``, compares a requested list of IDs
+    with the list of objects the API returns. It is **not** a human decision: the
+    generator measures both sides of the contract, the request declaring an array
+    and the read schema declaring an array of objects, and comparing those two
+    directly has only one possible verdict. Exactly two managed parameters are in
+    that case across both products, and a test names them so the count cannot
+    drift in silence. The runtime refuses to project anything that is not a list
+    of objects carrying an ``id``, and the diff goes through the same projection,
+    which is the invariant ADR-009 already carried."
