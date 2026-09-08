@@ -47,12 +47,11 @@ options:
     description:
     - Scaleway Object Storage bucket website to be served as failover if all backend servers
       are down, e.g. failover-website.s3-website.fr-par.scw.cloud.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'To clear this field, write `failover_host: ""`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
+    type: str
   forward_port:
     description:
     - Port to be used by the backend when forwarding traffic to backend servers.
@@ -79,30 +78,24 @@ options:
   ignore_ssl_server_verify:
     description:
     - Defines whether the server certificate verification should be ignored.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is bool.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
+    type: bool
   max_connections:
     description:
     - Maximum number of connections allowed per backend server.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is int.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'The contract marks this field clearable, but int has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
+    type: int
   max_retries:
     description:
     - Number of retries when a backend server connection failed.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is int.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'The contract marks this field clearable, but int has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
+    type: int
   name:
     description:
     - Backend name.
@@ -131,12 +124,10 @@ options:
   redispatch_attempt_count:
     description:
     - Whether to use another backend server on each attempt.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is int.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'The contract marks this field clearable, but int has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
+    type: int
   send_proxy_v2:
     description:
     - Deprecated in favor of proxy_protocol field.
@@ -145,12 +136,10 @@ options:
   ssl_bridging:
     description:
     - Defines whether to enable SSL bridging between the Load Balancer and backend servers.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is bool.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
+    type: bool
   sticky_sessions:
     description:
     - Defines whether to activate sticky sessions (binding a particular session to a particular
@@ -175,12 +164,11 @@ options:
     description:
     - Maximum time for a request to be left pending in queue when `max_connections` is reached.
       (in seconds)
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'To clear this field, write `timeout_queue: ""`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
+    type: str
   timeout_server:
     description:
     - Maximum allowed time for a backend server to process a request. (in milliseconds)
@@ -387,6 +375,7 @@ from ansible.module_utils.basic import AnsibleModule  # noqa: E402
 from ansible_collections.stephrobert.scaleway.plugins.module_utils.scaleway import (  # noqa: E402
     ManageModule,
     Operation,
+    poser_les_temoins,
     run_manage_module,
     scaleway_argument_spec,
 )
@@ -408,7 +397,7 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "backend_id": {"type": "str", "required": True},
-    "failover_host": {"type": "raw", "default": "__unchanged__"},
+    "failover_host": {"type": "str"},
     "forward_port": {"type": "int", "required": True},
     "forward_port_algorithm": {
         "type": "str",
@@ -420,9 +409,9 @@ MODULE_ARGUMENT_SPEC = {
         "required": True,
         "choices": ["tcp", "http"],
     },
-    "ignore_ssl_server_verify": {"type": "raw", "default": "__unchanged__"},
-    "max_connections": {"type": "raw", "default": "__unchanged__"},
-    "max_retries": {"type": "raw", "default": "__unchanged__"},
+    "ignore_ssl_server_verify": {"type": "bool"},
+    "max_connections": {"type": "int"},
+    "max_retries": {"type": "int"},
     "name": {"type": "str", "required": True},
     "on_marked_down_action": {
         "type": "str",
@@ -439,9 +428,9 @@ MODULE_ARGUMENT_SPEC = {
             "proxy_protocol_v2_ssl_cn",
         ],
     },
-    "redispatch_attempt_count": {"type": "raw", "default": "__unchanged__"},
+    "redispatch_attempt_count": {"type": "int"},
     "send_proxy_v2": {"type": "bool"},
-    "ssl_bridging": {"type": "raw", "default": "__unchanged__"},
+    "ssl_bridging": {"type": "bool"},
     "sticky_sessions": {
         "type": "str",
         "required": True,
@@ -449,7 +438,7 @@ MODULE_ARGUMENT_SPEC = {
     },
     "sticky_sessions_cookie_name": {"type": "str"},
     "timeout_connect": {"type": "float"},
-    "timeout_queue": {"type": "raw", "default": "__unchanged__"},
+    "timeout_queue": {"type": "str"},
     "timeout_server": {"type": "float"},
     "timeout_tunnel": {"type": "float"},
 }
@@ -539,20 +528,25 @@ MODULE = ManageModule(
         ("timeout_tunnel", "scalar"),
     ),
     nullable_params=(
-        ("failover_host", {"type": "str"}),
-        ("ignore_ssl_server_verify", {"type": "bool"}),
-        ("max_connections", {"type": "int"}),
-        ("max_retries", {"type": "int"}),
-        ("redispatch_attempt_count", {"type": "int"}),
-        ("ssl_bridging", {"type": "bool"}),
-        ("timeout_queue", {"type": "str"}),
+        "failover_host",
+        "ignore_ssl_server_verify",
+        "max_connections",
+        "max_retries",
+        "redispatch_attempt_count",
+        "ssl_bridging",
+        "timeout_queue",
     ),
 )
+
+#: Ce que le contrat déclare effaçable. Ansible n'appelle un `fallback`
+#: que sur une clé absente de l'invocation : le témoin note le nom sans
+#: rien injecter, ce qui sépare `champ: null` de `champ` omis.
+OMISSIONS = poser_les_temoins(ARGUMENT_SPEC, MODULE.nullable_params)
 
 
 def main() -> None:
     module = AnsibleModule(argument_spec=ARGUMENT_SPEC, supports_check_mode=True)
-    run_manage_module(module, MODULE)
+    run_manage_module(module, MODULE, OMISSIONS)
 
 
 if __name__ == "__main__":

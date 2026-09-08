@@ -47,21 +47,18 @@ options:
   name:
     description:
     - Name of the snapshot.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'To clear this field, write `name: ""`; omit the option to leave the current value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
+    type: str
   tags:
     description:
     - Tags of the snapshot.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is list of str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'To clear this field, write `tags: []`; omit the option to leave the current value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
+    type: list
+    elements: str
 attributes:
   check_mode:
     description: In check mode the module reads the resource and compares it, then reports
@@ -179,6 +176,7 @@ from ansible.module_utils.basic import AnsibleModule  # noqa: E402
 from ansible_collections.stephrobert.scaleway.plugins.module_utils.scaleway import (  # noqa: E402
     ManageModule,
     Operation,
+    poser_les_temoins,
     run_manage_module,
     scaleway_argument_spec,
 )
@@ -202,8 +200,8 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "snapshot_id": {"type": "str", "required": True},
-    "name": {"type": "raw", "default": "__unchanged__"},
-    "tags": {"type": "raw", "default": "__unchanged__"},
+    "name": {"type": "str"},
+    "tags": {"type": "list", "elements": "str"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -235,16 +233,18 @@ MODULE = ManageModule(
         ("name", "scalar"),
         ("tags", "ordered_list"),
     ),
-    nullable_params=(
-        ("name", {"type": "str"}),
-        ("tags", {"type": "list", "elements": "str"}),
-    ),
+    nullable_params=("name", "tags"),
 )
+
+#: Ce que le contrat déclare effaçable. Ansible n'appelle un `fallback`
+#: que sur une clé absente de l'invocation : le témoin note le nom sans
+#: rien injecter, ce qui sépare `champ: null` de `champ` omis.
+OMISSIONS = poser_les_temoins(ARGUMENT_SPEC, MODULE.nullable_params)
 
 
 def main() -> None:
     module = AnsibleModule(argument_spec=ARGUMENT_SPEC, supports_check_mode=True)
-    run_manage_module(module, MODULE)
+    run_manage_module(module, MODULE, OMISSIONS)
 
 
 if __name__ == "__main__":

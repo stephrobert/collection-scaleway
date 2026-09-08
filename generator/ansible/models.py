@@ -35,7 +35,6 @@ from generator.ansible.comparison import ComparisonStrategy, strategie_par_defau
 from generator.ansible.introductions import Introductions
 from generator.ansible.mapping import (
     COMMON_PARAMETERS,
-    UNCHANGED,
     UnmappedType,
     argument_spec_entry,
     no_log_de,
@@ -296,15 +295,14 @@ class AnsibleModuleSpec:
     managed_params: tuple[str, ...] = ()
     #: Ceux de ces champs qui portent un secret, et qui ne se comparent donc pas.
     secret_params: tuple[str, ...] = ()
-    #: Ceux que le contrat déclare effaçables, avec l'entrée d'`argument_spec`
-    #: de leur type réel.
+    #: Ceux que le contrat déclare effaçables.
     #:
-    #: L'option publiée est `raw` avec `UNCHANGED` pour défaut : c'est ce qui
-    #: rend un `null` explicite visible du runtime, qui le refuse plutôt que de
-    #: l'ignorer (ADR-012). L'entrée réelle sert au runtime à revalider la
-    #: valeur fournie, pour que `raw` ne coûte au playbook ni conversion ni
-    #: contrôle de type.
-    nullable_params: tuple[tuple[str, dict[str, Any]], ...] = ()
+    #: L'option garde son type naturel, ses `choices` et ses `elements` : le
+    #: runtime pose sur chacune un témoin d'omission, qu'Ansible ne déclenche
+    #: que sur une clé absente de l'invocation. `champ: null` est donc une
+    #: demande d'effacement, et `champ` omis laisse la valeur en place, sans
+    #: que rien de tout ça n'apparaisse sur la page (ADR-016).
+    nullable_params: tuple[str, ...] = ()
     #: La lecture unitaire de la même ressource, pour attendre l'état visé.
     read_operation: OperationBinding | None = None
     #: Le paramètre qui porte l'action demandée.
@@ -859,7 +857,7 @@ def _build_manage_module(
         )
 
     effacables = _effacables(item.operation, options, geres)
-    options = _marquer_les_effacables(options, effacables)
+    options = _dire_leffacement(options, effacables)
 
     secrets = tuple(option.name for option in options if option.no_log and option.name in geres)
     if secrets:
@@ -932,93 +930,97 @@ def _build_manage_module(
 
 def _effacables(
     operation: ApiOperation, options: tuple[AnsibleOption, ...], geres: tuple[str, ...]
-) -> tuple[tuple[str, dict[str, Any]], ...]:
-    """Les champs gérés que le contrat déclare effaçables, avec leur entrée réelle.
+) -> tuple[str, ...]:
+    """Les champs gérés que le contrat déclare effaçables.
 
-    L'entrée réelle est ce que le runtime revalidera : le type, ses éléments,
-    ses choix. Ni `required`, ni `no_log`, ni `default` : le premier n'a pas de
-    sens pour un champ qu'on peut omettre, le deuxième reste sur l'option
-    publiée, et le troisième est refusé plus bas.
+    Rien d'autre que leurs noms : le runtime pose un témoin d'omission sur
+    l'entrée que le module publie déjà, et n'a donc plus besoin d'une seconde
+    description du même type (ADR-016).
+
+    **Un défaut du contrat sur un champ effaçable est refusé.** Avec un
+    `default`, Ansible convertit un `null` explicite vers le type de l'option, et
+    `description: null` arrive au module sous la forme d'une chaîne vide plutôt
+    que de `None` : l'effacement deviendrait indistinguable de l'écriture d'une
+    chaîne vide, ce qui est la confusion qu'ADR-016 lève. Le fait est mesuré par
+    `test_un_defaut_ferait_lire_un_null_comme_une_valeur_vide`, et aucun champ
+    n'est dans ce cas : le refus attend celui qui y viendra.
     """
     par_nom = {parametre.name: parametre for parametre in operation.parameters}
-    trouves: list[tuple[str, dict[str, Any]]] = []
+    trouves: list[str] = []
     for option in options:
         parametre = par_nom.get(option.name)
         if option.name not in geres or parametre is None or not parametre.nullable:
             continue
-        entree: dict[str, Any] = {"type": option.type}
-        if option.elements:
-            entree["elements"] = option.elements
-        if option.choices:
-            entree["choices"] = list(option.choices)
-        trouves.append((option.name, entree))
-    return tuple(trouves)
-
-
-def _marquer_les_effacables(
-    options: tuple[AnsibleOption, ...], effacables: tuple[tuple[str, dict[str, Any]], ...]
-) -> tuple[AnsibleOption, ...]:
-    """Expose chaque champ effaçable en `raw`, avec le marqueur pour défaut.
-
-    **C'est le seul mécanisme public qui distingue `null` d'une option omise**,
-    mesuré sur chaque version d'ansible-core que la CI éprouve (ADR-012). Un
-    `str` avec ce défaut échoue sur les versions anciennes ; un `fallback`
-    casse `mutually_exclusive`, parce qu'Ansible compte les clés présentes.
-
-    Le prix se paie sur la page : `type: raw` et le marqueur en défaut, que
-    `validate-modules` exige de publier tels quels. La description dit donc le
-    type réel, et ce que le marqueur veut dire. Les `choices` et `elements`
-    quittent l'option publiée : Ansible vérifierait le marqueur contre les
-    choix, et refuserait chaque appel où l'option est omise.
-
-    Un défaut du contrat sur un tel champ n'a pas de cas déclenchant, et le
-    marqueur l'écraserait : refusé plutôt que perdu en silence.
-    """
-    reelles = dict(effacables)
-    marquees: list[AnsibleOption] = []
-    for option in options:
-        entree = reelles.get(option.name)
-        if entree is None:
-            marquees.append(option)
-            continue
         if option.default is not None:
             raise ConflictingOption(
                 f"{option.name} : effaçable et porteur d'un défaut du contrat "
-                f"({option.default!r}), que le marqueur d'omission écraserait. "
-                "Cas non rencontré, à décider avant de générer."
+                f"({option.default!r}). Avec un défaut, Ansible convertit un `null` "
+                "explicite vers le type de l'option, et l'effacement devient "
+                "indistinguable d'une valeur vide. Cas non rencontré, à décider "
+                "avant de générer."
             )
-        marquees.append(
-            replace(
-                option,
-                type="raw",
-                default=UNCHANGED,
-                choices=(),
-                elements=None,
-                description=(*option.description, *_phrase_effacable(entree)),
-            )
-        )
-    return tuple(marquees)
+        trouves.append(option.name)
+    return tuple(trouves)
 
 
-def _phrase_effacable(entree: dict[str, Any]) -> tuple[str, ...]:
-    """Ce que la page doit dire d'une option publiée en `raw` pour cette raison.
+#: Ce qu'il faut écrire pour vider un champ, par type d'option publiée.
+#:
+#: **Mesuré sur le compte réel, jamais déduit du contrat.** Le contrat déclare
+#: `description` effaçable ; l'API accepte un `null`, répond 200, et ne change
+#: rien. C'est la chaîne vide qui efface, et le tableau vide pour un tableau
+#: (ADR-016). Un type absent d'ici n'a pas de valeur vide : `0` et `false` sont
+#: des valeurs qu'un playbook peut déjà écrire, pas des effacements.
+_VALEUR_VIDE: dict[str, str] = {"str": '""', "list": "[]", "dict": "{}"}
 
-    Publié, donc en anglais. Le lecteur voit `raw` et un défaut qui n'en est
-    pas un : sans ces phrases, la page perd le type et laisse croire à une
-    valeur par défaut.
+
+def _dire_leffacement(
+    options: tuple[AnsibleOption, ...], effacables: tuple[str, ...]
+) -> tuple[AnsibleOption, ...]:
+    """Ajoute à chaque option effaçable la phrase qui dit comment l'effacer.
+
+    **L'option ne change pas de forme.** Elle garde son type, ses `choices` et
+    ses `elements` : c'est le runtime qui pose le témoin d'omission, et il le
+    pose sur l'entrée telle qu'elle est publiée (ADR-016). La page ne porte donc
+    aucun marqueur, et le lecteur y voit `str`, `int` ou `list` comme partout
+    ailleurs.
+
+    Ce qui manquerait sans cette phrase : rien ne distingue, sur la page, un
+    champ que l'API sait vider d'un champ qu'elle ne sait pas vider, et rien ne
+    dit qu'un `null` ne fera pas ce qu'un lecteur en attend. Le contrat le dit
+    à sa façon, la page doit le dire dans la sienne, parce que le critère du
+    dépôt est qu'un module se comprenne depuis sa seule page.
     """
-    type_reel = str(entree["type"])
-    if entree.get("elements"):
-        type_reel = f"{type_reel} of {entree['elements']}"
-    phrases = [
-        "Omit this option to keep the current value: the published default is only "
-        f"the marker of an omitted option, and the API type is {type_reel}.",
-        "An explicit null is refused, because clearing this field is not supported "
-        "by the module yet.",
-    ]
-    if entree.get("choices"):
-        phrases.append(f"Accepted values: {', '.join(str(c) for c in entree['choices'])}.")
-    return tuple(phrases)
+    noms = set(effacables)
+    return tuple(
+        replace(option, description=(*option.description, *_phrase_effacable(option)))
+        if option.name in noms
+        else option
+        for option in options
+    )
+
+
+def _phrase_effacable(option: AnsibleOption) -> tuple[str, ...]:
+    """Ce que la page dit d'une option que le contrat déclare effaçable.
+
+    Publié, donc en anglais. Deux phrases quand le type a une valeur vide, une
+    seule sinon : promettre un effacement que l'API ne fait pas serait pire que
+    se taire.
+    """
+    vide = _VALEUR_VIDE.get(option.type)
+    refus = (
+        "Setting it to null is refused: this API reads null as "
+        '"field not provided" and would change nothing.'
+    )
+    if vide is None:
+        return (
+            f"The contract marks this field clearable, but {option.type} has no empty "
+            "value, so the API cannot clear it. " + refus,
+        )
+    return (
+        f"To clear this field, write `{option.name}: {vide}`; omit the option to leave "
+        "the current value untouched.",
+        refus,
+    )
 
 
 #: Mots qu'une ressource porte en abrégé, et leur forme publiée.

@@ -3,29 +3,43 @@
 What `plugins/module_utils/scaleway.py` carries, why, and what it costs.
 
 <!-- compteurs:runtime-etat:début, produits par scripts/readme_counters.py -->
-State: written, measured by 136 unit tests, judged by `ansible-test sanity`, and
+State: written, measured by 144 unit tests, judged by `ansible-test sanity`, and
 exercised end to end against a local emulator and against a real Scaleway
 account.
 <!-- compteurs:runtime-etat:fin -->
 
-## What a module cannot say: "clear this field"
+## Clearing a field
 
 <!-- compteurs:effacables:début, produits par scripts/readme_counters.py -->
 The contract marks **55 writable fields** as clearable, across 15 modules.
-No module can clear one yet. A managing module that receives `field: null`
-fails and names the field rather than reporting `ok` without having cleared
-anything; omitting the field leaves it unchanged. `mise run nullabilite`
-names them one by one.
+Clearing one is writing the empty value of its type, `""` or `[]` or `{}`,
+measured against the real account. An explicit `null` is refused, naming
+that value, because the API reads `null` as "field not provided" and would
+change nothing. `int` and `bool` have no empty value and cannot be cleared;
+their pages say so. `mise run nullabilite` names the fields one by one.
 <!-- compteurs:effacables:fin -->
 
-This is a named debt, not an oversight. The IR carries the fact since
-[ADR-008](../adr/008-a-constraint-is-translated-or-named.md), and a managing
-module tells an explicit `null` apart from an omitted option and refuses it
-([ADR-012](../adr/012-an-explicit-null-is-refused-never-ignored.md)): those
-options are published as `raw` with a marker default, which is the only public
-mechanism Ansible offers for that. Clearing itself needs a clear/reset semantics
-the contract does not describe, and the number above is what sizes that work.
-Issue #114 carries it.
+The IR carries the fact since
+[ADR-008](../adr/008-a-constraint-is-translated-or-named.md), and what the fact
+means was measured on the real account rather than read off the contract
+([ADR-016](../adr/016-a-clearable-field-is-cleared-with-the-empty-value.md)):
+
+| body sent | status | reread |
+|---|---|---|
+| `{"description": null}` | 200 | unchanged |
+| `{"description": ""}` | 200 | cleared |
+| `{"tags": null}` | 200 | unchanged |
+| `{"tags": []}` | 200 | cleared |
+
+The nullability comes from protobuf wrapper types, whose purpose is to say
+"field not set" over the wire. Declaring a field clearable means the decoder
+accepts `null`, and `null` means "I am not talking about this field": the
+wire-level twin of an omitted key, not a clearing instruction.
+
+So clearing needs no mechanism, and the refusal does. Ansible carries `None` in
+`module.params` for an omitted option and for an explicit `null` alike; the
+omission witness separates them, so a `null` written by hand is refused with
+the empty value of its type named, and an omitted option is left alone.
 
 ## How the roles are split
 

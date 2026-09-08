@@ -54,6 +54,7 @@ adr/012-an-explicit-null-is-refused-never-ignored
 adr/013-when-a-module-appeared-is-recorded-not-computed
 adr/014-the-runtime-owns-its-http-transport
 adr/015-a-claim-about-the-real-api-is-a-recorded-exchange
+adr/016-a-clearable-field-is-cleared-with-the-empty-value
 ```
 
 ```{toctree}

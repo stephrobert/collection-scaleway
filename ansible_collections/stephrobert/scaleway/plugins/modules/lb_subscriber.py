@@ -47,12 +47,11 @@ options:
   email_config:
     description:
     - Email address configuration.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is dict.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'To clear this field, write `email_config: {}`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
+    type: dict
   name:
     description:
     - Subscriber name.
@@ -61,12 +60,11 @@ options:
   webhook_config:
     description:
     - Webhook URI configuration.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is dict.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'To clear this field, write `webhook_config: {}`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
+    type: dict
 attributes:
   check_mode:
     description: In check mode the module reads the resource and compares it, then reports
@@ -140,6 +138,7 @@ from ansible.module_utils.basic import AnsibleModule  # noqa: E402
 from ansible_collections.stephrobert.scaleway.plugins.module_utils.scaleway import (  # noqa: E402
     ManageModule,
     Operation,
+    poser_les_temoins,
     run_manage_module,
     scaleway_argument_spec,
 )
@@ -161,9 +160,9 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "subscriber_id": {"type": "str", "required": True},
-    "email_config": {"type": "raw", "default": "__unchanged__"},
+    "email_config": {"type": "dict"},
     "name": {"type": "str", "required": True},
-    "webhook_config": {"type": "raw", "default": "__unchanged__"},
+    "webhook_config": {"type": "dict"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -194,11 +193,13 @@ MODULE = ManageModule(
         ("name", "scalar"),
         ("webhook_config", "mapping"),
     ),
-    nullable_params=(
-        ("email_config", {"type": "dict"}),
-        ("webhook_config", {"type": "dict"}),
-    ),
+    nullable_params=("email_config", "webhook_config"),
 )
+
+#: Ce que le contrat déclare effaçable. Ansible n'appelle un `fallback`
+#: que sur une clé absente de l'invocation : le témoin note le nom sans
+#: rien injecter, ce qui sépare `champ: null` de `champ` omis.
+OMISSIONS = poser_les_temoins(ARGUMENT_SPEC, MODULE.nullable_params)
 
 
 #: Ce que l'API interdit d'utiliser ensemble, déclaré par le contrat.
@@ -213,7 +214,7 @@ def main() -> None:
         supports_check_mode=True,
         mutually_exclusive=MUTUALLY_EXCLUSIVE,
     )
-    run_manage_module(module, MODULE)
+    run_manage_module(module, MODULE, OMISSIONS)
 
 
 if __name__ == "__main__":

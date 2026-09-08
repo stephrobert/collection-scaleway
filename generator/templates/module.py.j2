@@ -43,7 +43,7 @@ ARGUMENT_SPEC.update(MODULE_ARGUMENT_SPEC)
 
 #: Ce que le module exécute, et les décisions que le générateur a prises.
 MODULE = {{ module_literal }}
-
+{{ omission_declaration }}
 
 {{ exclusive_declaration }}def main() -> None:
     module = AnsibleModule({{ module_arguments }})

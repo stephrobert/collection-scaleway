@@ -1,23 +1,22 @@
-"""Ce qu'un module ne sait pas dire : « efface ce champ ».
+"""Les champs que le contrat dit effaçables, comptés et nommés.
 
 Le contrat marque un champ effaçable de deux façons, `oneOf: [X, null]` ou
-`type: [X, "null"]`, et l'IR les porte toutes deux depuis ADR-008. Aucun module
-ne sait encore effacer un tel champ :
+`type: [X, "null"]`, et l'IR les porte toutes deux depuis ADR-008 :
 
 ```yaml
-description: null        # « efface la description » : refusé, en nommant le champ
+description: ""          # « efface la description »
+description: null        # refusé : l'API le lit « champ non fourni »
 # description absente    # « n'y touche pas »
 ```
 
-Les deux produisaient **la même requête**, et le module rendait `ok` sur un
-champ toujours là. Un module de gestion refuse désormais le `null` explicite
-et dit quoi faire à la place (ADR-012). Un playbook qui veut effacer ne le peut
-toujours pas, mais il le sait.
+Les trois produisaient **la même requête** pour les deux derniers, et le module
+rendait `ok` sur un champ toujours là. Ce que le mot « effaçable » veut dire a
+été mesuré sur le compte réel, pas déduit du contrat : c'est la valeur vide du
+type qui efface, et `null` ne change rien (ADR-016).
 
-**Mesurer avant d'abstraire.** Une sémantique d'effacement se conçoit mal sans
-savoir combien de champs la réclament, ni lesquels. Ce programme les compte et
-les nomme. Si le compte vaut zéro, il n'y a rien à faire et c'est écrit ; il ne
-vaut pas zéro, et le nombre chiffre le travail restant.
+**Mesurer avant d'abstraire, et continuer de mesurer après.** Ce programme dit
+la portée de la question, et sur quels modules elle se pose. Si le compte vaut
+zéro, il n'y a rien à faire et c'est écrit.
 
 Ce programme ne juge pas : il ne rend jamais autre chose que 0, sauf quand il
 n'a rien pu examiner. Compter n'est pas refuser, et transformer ce compte en
@@ -133,10 +132,10 @@ def main(argv: list[str]) -> int:
         print("Aucun : la question de l'effacement ne se pose sur aucun module livré.")
         return 0
 
-    print("Pour chacun, un module de gestion refuse `champ: null` plutôt que de")
-    print("l'ignorer (ADR-012), et `champ` absent laisse la valeur en place. Un")
-    print("playbook qui veut effacer ne le peut toujours pas : l'effacement attend")
-    print("#114, et ce compte le chiffre.\n")
+    print("Pour chacun, la valeur vide du type efface, `champ` absent laisse la")
+    print("valeur en place, et `champ: null` est refusé en nommant la valeur à")
+    print("écrire (ADR-016). `integer` et `boolean` n'ont pas de valeur vide :")
+    print("l'API ne sait pas les effacer, et leur page le dit.\n")
     print(f"{'module':<38} {'opération':<24} {'champ':<28} type")
     for champ in champs:
         print(f"{champ.module:<38} {champ.operation:<24} {champ.champ:<28} {champ.type}")

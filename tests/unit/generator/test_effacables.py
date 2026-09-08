@@ -1,11 +1,13 @@
-"""Un champ effaçable est exposé de façon qu'un `null` explicite se voie.
+"""Un champ effaçable garde son type, et la page dit comment l'effacer.
 
 Le contrat dit `oneOf: [T, null]` ; Ansible, lui, rend `None` pour une option
-absente comme pour une option à `null`. Le seul mécanisme public qui les
-sépare, mesuré sur chaque version d'ansible-core que la CI éprouve, est un
-défaut marqueur sur une option `raw` (ADR-012). Ces tests portent sur ce que
-le modèle en fait : quelles options le reçoivent, ce que la page en dit, et ce
-que le runtime reçoit pour rendre à la valeur son type.
+absente comme pour une option à `null`. Ce qui les sépare est un **témoin
+d'omission** : Ansible n'appelle un `fallback` que sur une clé absente de
+l'invocation, et un fallback qui lève `AnsibleFallbackNotFound` note le nom sans
+rien injecter (ADR-016).
+
+Ces tests portent sur ce que le modèle en fait. La forme publiée ne change pas :
+c'est tout l'intérêt, et c'est ce qu'ils mesurent.
 """
 
 from __future__ import annotations
@@ -15,7 +17,6 @@ from pathlib import Path
 import pytest
 
 from generator.ansible.collection import Collection
-from generator.ansible.mapping import UNCHANGED
 from generator.ansible.models import ConflictingOption, build_module_spec
 from generator.ir.enums import ApiType, HTTPMethod, ParameterLocation, Scope
 from generator.ir.models import ApiOperation, ApiParameter, ApiResponse, ApiService
@@ -78,46 +79,89 @@ def _options(spec):  # type: ignore[no-untyped-def]
 # --- sur le contrat de laboratoire ------------------------------------------
 
 
-def test_un_champ_effacable_gere_est_expose_en_raw_avec_le_marqueur(
-    widget_plan: ProductPlan,
-) -> None:
-    """Les champs que le contrat de laboratoire déclare effaçables, et eux seuls."""
-    spec = _spec(widget_plan, "widget_widget")
-    options = _options(spec)
+def test_un_champ_effacable_est_nomme_au_runtime(widget_plan: ProductPlan) -> None:
+    """Les champs que le contrat de laboratoire déclare effaçables, et eux seuls.
 
-    for nom in ("email_config", "secret_token", "webhook_config"):
-        assert options[nom].type == "raw", nom
-        assert options[nom].default == UNCHANGED, nom
-    assert options["secret_token"].no_log is True, "le secret reste masqué"
-    # **Le contre-exemple, et il a fallu l'ajouter au contrat.** `protected` en
-    # tenait lieu, jusqu'à ce que le parser lise la nullabilité derrière un
-    # `$ref` : `google.protobuf.BoolValue` est effaçable, et le laboratoire n'a
-    # plus porté aucun champ ordinaire. Un test sans contre-exemple passe aussi
-    # sur un générateur qui marquerait tout.
-    assert options["label"].type == "str", "un champ non effaçable ne bouge pas"
-    assert options["label"].default is None
+    Rien que leurs noms : c'est sur l'entrée que le module publie déjà que le
+    runtime pose son témoin, et une seconde description du même type n'aurait
+    servi qu'à diverger de la première.
+    """
+    spec = _spec(widget_plan, "widget_widget")
+
     assert spec.nullable_params == (
-        ("email_config", {"type": "dict"}),
-        ("protected", {"type": "bool"}),
-        ("secret_token", {"type": "str"}),
-        ("tags", {"type": "list", "elements": "str"}),
-        ("webhook_config", {"type": "dict"}),
+        "email_config",
+        "protected",
+        "secret_token",
+        "tags",
+        "webhook_config",
     )
 
 
-def test_la_page_dit_le_type_reel_et_ce_que_le_marqueur_veut_dire(widget_plan: ProductPlan) -> None:
-    """`raw` et un défaut qui n'en est pas un : sans ces phrases, la page perd le type."""
-    option = _options(_spec(widget_plan, "widget_widget"))["secret_token"]
-    texte = " ".join(option.description)
+def test_un_champ_effacable_garde_son_type_publie(widget_plan: ProductPlan) -> None:
+    """C'est ce que le changement achète, et c'est donc ce qu'il faut mesurer.
 
-    assert "API type is str" in texte
-    assert "explicit null is refused" in texte
-    assert texte.startswith("Jeton de rotation."), "la description du contrat reste en tête"
+    Ces options étaient publiées en `raw` avec un défaut `__unchanged__`, que
+    `validate-modules` obligeait à publier tel quel : le lecteur de la page
+    voyait un type qui n'existe pas et un défaut qui n'en était pas un.
+    """
+    options = _options(_spec(widget_plan, "widget_widget"))
+
+    assert options["secret_token"].type == "str"
+    assert options["protected"].type == "bool"
+    assert options["tags"].type == "list"
+    assert options["tags"].elements == "str"
+    assert options["email_config"].type == "dict"
+    for nom in ("secret_token", "protected", "tags", "email_config"):
+        assert options[nom].default is None, f"{nom} ne porte aucun marqueur"
+    assert options["secret_token"].no_log is True, "le secret reste masqué"
 
 
-def test_un_champ_non_effacable_ne_recoit_pas_le_marqueur(widget_plan: ProductPlan) -> None:
-    """Le contre-exemple, sans lequel le premier test passerait aussi sur un
-    modèle qui marquerait tout.
+def test_la_page_dit_la_valeur_vide_du_type(widget_plan: ProductPlan) -> None:
+    """Le critère du dépôt est qu'un module se comprenne depuis sa seule page.
+
+    La valeur à écrire dépend du type, et la page l'écrit littéralement plutôt
+    que de parler de « la valeur vide » : un lecteur copie ce qu'il voit.
+    """
+    options = _options(_spec(widget_plan, "widget_widget"))
+
+    assert 'write `secret_token: ""`' in " ".join(options["secret_token"].description)
+    assert "write `tags: []`" in " ".join(options["tags"].description)
+    assert "write `email_config: {}`" in " ".join(options["email_config"].description)
+    assert options["secret_token"].description[0] == "Jeton de rotation.", (
+        "la description du contrat reste en tête"
+    )
+
+
+def test_la_page_refuse_de_promettre_un_effacement_impossible(
+    widget_plan: ProductPlan,
+) -> None:
+    """`protected` est un booléen : il n'a pas de valeur vide.
+
+    Écrire « pour effacer, mettre `false` » serait promettre un effacement que
+    l'API ne fait pas : `false` est une valeur, pas une absence.
+    """
+    texte = " ".join(_options(_spec(widget_plan, "widget_widget"))["protected"].description)
+
+    assert "bool has no empty value" in texte
+    assert "cannot clear it" in texte
+    assert "write `protected:" not in texte
+
+
+def test_la_page_dit_partout_que_null_est_refuse(widget_plan: ProductPlan) -> None:
+    """Mesuré sur le compte réel : l'API accepte le `null` et ne change rien.
+
+    Un lecteur qui écrit `null` en attendant un effacement doit le lire sur la
+    page, pas le découvrir sur un module qui échoue.
+    """
+    options = _options(_spec(widget_plan, "widget_widget"))
+
+    for nom in ("secret_token", "protected", "tags", "email_config", "webhook_config"):
+        assert "Setting it to null is refused" in " ".join(options[nom].description), nom
+
+
+def test_un_champ_non_effacable_ne_recoit_rien(widget_plan: ProductPlan) -> None:
+    """Le contre-exemple, sans lequel les tests ci-dessus passeraient aussi sur
+    un modèle qui traiterait toutes les options de la même façon.
 
     Il portait sur `protected` jusqu'à ce que le parser lise la nullabilité
     derrière un `$ref` : `google.protobuf.BoolValue` est effaçable, et le
@@ -128,16 +172,17 @@ def test_un_champ_non_effacable_ne_recoit_pas_le_marqueur(widget_plan: ProductPl
 
     assert option.type == "str"
     assert option.default is None
-    assert "explicit null" not in " ".join(option.description)
+    assert "clear" not in " ".join(option.description)
+    assert "null" not in " ".join(option.description)
 
 
 # --- sur des formes que le laboratoire ne déclare pas -----------------------
 
 
-def test_les_choix_et_les_elements_quittent_loption_publiee_pour_le_runtime() -> None:
-    """Ansible vérifierait le marqueur contre les choix, et refuserait chaque
-    appel où l'option est omise : mesuré. Les choix vont donc au runtime, et
-    la page les dit en clair."""
+def test_les_choix_et_les_elements_restent_sur_loption_publiee() -> None:
+    """Ils avaient dû quitter la page : Ansible vérifiait le marqueur contre les
+    choix et refusait chaque appel où l'option était omise. Sans marqueur, ils
+    reviennent là où un lecteur les cherche."""
     plan = _plan(
         ApiParameter(
             name="mode",
@@ -159,19 +204,20 @@ def test_les_choix_et_les_elements_quittent_loption_publiee_pour_le_runtime() ->
     spec = _spec(plan, "demo_thing")
     options = _options(spec)
 
-    assert options["mode"].choices == ()
-    assert options["tags"].elements is None
-    assert "Accepted values: fast, slow." in options["mode"].description
-    assert "API type is list of str" in " ".join(options["tags"].description)
-    assert dict(spec.nullable_params) == {
-        "mode": {"type": "str", "choices": ["fast", "slow"]},
-        "tags": {"type": "list", "elements": "str"},
-    }
+    assert options["mode"].choices == ("fast", "slow")
+    assert options["tags"].elements == "str"
+    assert spec.nullable_params == ("mode", "tags")
 
 
 def test_un_champ_effacable_avec_un_defaut_du_contrat_est_refuse() -> None:
-    """Le marqueur écraserait le défaut du contrat : aucun cas ne l'a demandé,
-    et le perdre en silence serait pire que refuser."""
+    """Avec un défaut, Ansible convertit un `null` explicite vers le type de
+    l'option : l'effacement deviendrait indistinguable d'une valeur vide.
+
+    Le test qui mesure ce fait sur Ansible lui-même est
+    `test_un_defaut_ferait_lire_un_null_comme_une_valeur_vide`, dans les tests
+    de collection. Ici, seule la conséquence est vérifiée : le générateur
+    refuse plutôt que de produire un module ambigu.
+    """
     plan = _plan(
         ApiParameter(
             name="size",

@@ -1,0 +1,15 @@
+minor_changes:
+  - "Managing modules now say how to clear a field the contract declares
+    clearable. Measured against the real account: the empty value of the type
+    clears it (``description: \"\"``, ``tags: []``), while an explicit ``null``
+    is accepted with a 200 and changes nothing, because this API reads ``null``
+    as \"field not provided\". An explicit ``null`` is therefore refused before
+    anything is read, and the refusal names the value to write. ``int`` and
+    ``bool`` have no empty value and cannot be cleared; their pages say so.
+    See ADR-016."
+  - "Options for clearable fields recover their natural type on the published
+    page. They were ``type: raw`` with the default ``__unchanged__``, and their
+    ``choices`` and ``elements`` had to be stated in prose; they now publish the
+    type, choices and elements of the contract, and no default at all. An
+    omitted option is told from an explicit ``null`` by a witness that publishes
+    nothing."

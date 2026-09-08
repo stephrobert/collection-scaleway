@@ -47,22 +47,19 @@ options:
   description:
     description:
     - Description of the security group.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'To clear this field, write `description: ""`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
+    type: str
   enable_default_security:
     description:
     - True to block SMTP on IPv4 and IPv6. This feature is read only, please open a support
       ticket if you need to make it configurable.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is bool.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
+    type: bool
   inbound_default_policy:
     description:
     - Default inbound policy.
@@ -74,22 +71,18 @@ options:
   name:
     description:
     - Name of the security group.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'To clear this field, write `name: ""`; omit the option to leave the current value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
+    type: str
   organization_default:
     description:
     - Please use project_default instead.
     - Deprecated by the Scaleway API contract.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is bool.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
+    type: bool
   outbound_default_policy:
     description:
     - Default outbound policy.
@@ -101,30 +94,25 @@ options:
   project_default:
     description:
     - True use this security group for future Instances created in this project.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is bool.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
+    type: bool
   stateful:
     description:
     - True to set the security group as stateful.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is bool.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
+    type: bool
   tags:
     description:
     - Tags of the security group.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is list of str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'To clear this field, write `tags: []`; omit the option to leave the current value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
+    type: list
+    elements: str
 attributes:
   check_mode:
     description: In check mode the module reads the resource and compares it, then reports
@@ -269,6 +257,7 @@ from ansible.module_utils.basic import AnsibleModule  # noqa: E402
 from ansible_collections.stephrobert.scaleway.plugins.module_utils.scaleway import (  # noqa: E402
     ManageModule,
     Operation,
+    poser_les_temoins,
     run_manage_module,
     scaleway_argument_spec,
 )
@@ -292,21 +281,21 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "security_group_id": {"type": "str", "required": True},
-    "description": {"type": "raw", "default": "__unchanged__"},
-    "enable_default_security": {"type": "raw", "default": "__unchanged__"},
+    "description": {"type": "str"},
+    "enable_default_security": {"type": "bool"},
     "inbound_default_policy": {
         "type": "str",
         "choices": ["unknown_policy", "accept", "drop"],
     },
-    "name": {"type": "raw", "default": "__unchanged__"},
-    "organization_default": {"type": "raw", "default": "__unchanged__"},
+    "name": {"type": "str"},
+    "organization_default": {"type": "bool"},
     "outbound_default_policy": {
         "type": "str",
         "choices": ["unknown_policy", "accept", "drop"],
     },
-    "project_default": {"type": "raw", "default": "__unchanged__"},
-    "stateful": {"type": "raw", "default": "__unchanged__"},
-    "tags": {"type": "raw", "default": "__unchanged__"},
+    "project_default": {"type": "bool"},
+    "stateful": {"type": "bool"},
+    "tags": {"type": "list", "elements": "str"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -366,20 +355,25 @@ MODULE = ManageModule(
         ("tags", "ordered_list"),
     ),
     nullable_params=(
-        ("description", {"type": "str"}),
-        ("enable_default_security", {"type": "bool"}),
-        ("name", {"type": "str"}),
-        ("organization_default", {"type": "bool"}),
-        ("project_default", {"type": "bool"}),
-        ("stateful", {"type": "bool"}),
-        ("tags", {"type": "list", "elements": "str"}),
+        "description",
+        "enable_default_security",
+        "name",
+        "organization_default",
+        "project_default",
+        "stateful",
+        "tags",
     ),
 )
+
+#: Ce que le contrat déclare effaçable. Ansible n'appelle un `fallback`
+#: que sur une clé absente de l'invocation : le témoin note le nom sans
+#: rien injecter, ce qui sépare `champ: null` de `champ` omis.
+OMISSIONS = poser_les_temoins(ARGUMENT_SPEC, MODULE.nullable_params)
 
 
 def main() -> None:
     module = AnsibleModule(argument_spec=ARGUMENT_SPEC, supports_check_mode=True)
-    run_manage_module(module, MODULE)
+    run_manage_module(module, MODULE, OMISSIONS)
 
 
 if __name__ == "__main__":

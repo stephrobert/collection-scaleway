@@ -1690,35 +1690,35 @@
     },
     {
       "name": "null-explicite-ignore",
-      "why": "Sans le refus, `description: null` disparaît avant la lecture et le module rend `ok` sur une description toujours là : un faux succès.",
+      "why": "Sans le refus, `description: null` est filtré par `is not None` et le module rend `ok` sur une description toujours là : le faux succès d'origine, revenu. L'API accepte ce `null` et ne change rien, mesuré sur le compte réel.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "    nuls = explicit_nulls(spec, module.params)\n    if nuls:",
-      "replace": "    nuls = explicit_nulls(spec, module.params)\n    if nuls and False:",
-      "test": "tests/unit/collection/test_null_explicite.py::test_un_null_explicite_sur_un_champ_effacable_fait_echouer_sans_rien_lire"
+      "find": "    if nuls:\n        module.fail_json(msg=_refus_du_null(nuls))",
+      "replace": "    if nuls and False:\n        module.fail_json(msg=_refus_du_null(nuls))",
+      "test": "tests/unit/collection/test_null_explicite.py::test_un_null_explicite_est_refuse_sans_rien_lire"
     },
     {
-      "name": "refus-du-null-sans-egard-a-ce-qui-seffacera",
-      "why": "Un refus écrit en dur sur tout champ effaçable refuserait aussi le `null` qu'un runtime saura un jour exécuter.",
+      "name": "refus-decide-sans-consulter-le-temoin",
+      "why": "Sans le témoin, tout `None` passe pour un `null` écrit à la main : le module refuserait chaque playbook qui ne nomme pas toutes ses options.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "        if nom not in clearable and nom in params and params[nom] is None",
+      "find": "        if nom not in omissions.absents and nom in params and params[nom] is None",
       "replace": "        if nom in params and params[nom] is None",
-      "test": "tests/unit/collection/test_null_explicite.py::test_un_null_sur_un_champ_que_le_runtime_sait_effacer_nest_pas_refuse"
+      "test": "tests/unit/collection/test_null_explicite.py::test_un_champ_effacable_omis_ne_declenche_aucun_refus"
     },
     {
-      "name": "valeur-effacable-non-revalidee",
-      "why": "`raw` laisse passer une chaîne là où l'API attend un booléen : sans revalidation, `stateful: \"no\"` partirait tel quel.",
+      "name": "temoin-domission-muet",
+      "why": "Un témoin qui ne note rien fait passer chaque option omise pour une option écrite à `null`, donc pour un effacement demandé.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "        module.params[nom] = resultat.validated_parameters[nom]",
-      "replace": "        module.params[nom] = valeur",
-      "test": "tests/unit/collection/test_null_explicite.py::test_une_valeur_fournie_sur_un_champ_effacable_garde_son_type"
+      "find": "        absents.add(nom)",
+      "replace": "        pass",
+      "test": "tests/unit/collection/test_null_explicite.py::test_le_temoin_ne_se_declenche_que_sur_une_cle_absente"
     },
     {
-      "name": "marqueur-domission-non-retire",
-      "why": "Un marqueur qui resterait dans les paramètres serait envoyé à l'API comme une valeur, et publié dans `invocation`.",
+      "name": "module-sans-temoin-admis",
+      "why": "`None` en guise d'omissions n'est pas un ensemble vide : le confondre avec lui ferait effacer tout ce que le playbook n'a pas nommé, sur un module que ce runtime ne sait plus lire.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "        if isinstance(valeur, str) and valeur == UNCHANGED:",
-      "replace": "        if isinstance(valeur, str) and valeur == UNCHANGED and False:",
-      "test": "tests/unit/collection/test_null_explicite.py::test_un_champ_effacable_omis_porte_le_marqueur_et_nest_pas_gere"
+      "find": "    if omissions is None:\n        raise ValueError(",
+      "replace": "    if omissions is None and False:\n        raise ValueError(",
+      "test": "tests/unit/collection/test_null_explicite.py::test_un_module_sans_temoin_fait_echouer_plutot_que_tout_effacer"
     },
     {
       "name": "champ-effacable-non-marque",
@@ -1729,12 +1729,12 @@
       "test": "tests/unit/generator/test_effacables.py::test_un_champ_effacable_gere_est_expose_en_raw_avec_le_marqueur"
     },
     {
-      "name": "choix-laisses-sur-une-option-marquee",
-      "why": "Ansible vérifie le marqueur contre les choix : chaque appel où l'option est omise échouerait, mesuré.",
+      "name": "defaut-du-contrat-sur-un-champ-effacable-admis",
+      "why": "Avec un défaut, Ansible convertit un `null` explicite vers le type de l'option : l'effacement deviendrait indistinguable de l'écriture d'une valeur vide, et le module mentirait sur ce qu'il a fait.",
       "file": "generator/ansible/models.py",
-      "find": "                choices=(),\n                elements=None,",
-      "replace": "                choices=option.choices,\n                elements=None,",
-      "test": "tests/unit/generator/test_effacables.py::test_les_choix_et_les_elements_quittent_loption_publiee_pour_le_runtime"
+      "find": "        if option.default is not None:\n            raise ConflictingOption(",
+      "replace": "        if option.default is not None and False:\n            raise ConflictingOption(",
+      "test": "tests/unit/generator/test_effacables.py::test_un_champ_effacable_avec_un_defaut_du_contrat_est_refuse"
     },
     {
       "name": "defaut-du-contrat-ecrase-par-le-marqueur",
@@ -2007,6 +2007,22 @@
       "find": "    except (ValueError, TypeError):",
       "replace": "    except (ValueError, TypeError):\n        return None\n    if False:",
       "test": "tests/unit/outillage/test_verrou_plateforme.py::test_un_verrou_illisible_est_signale"
+    },
+    {
+      "name": "verrou-lie-au-sort-du-run",
+      "why": "Lier le verrou au sort du run le laisse debout sur une plateforme entièrement détruite : le run suivant est refusé au nom d'une plateforme qui n'existe plus, et le fichier finit retiré à la main sans être lu.",
+      "file": "scripts/verrou_plateforme.py",
+      "find": "    return detruit and not garder",
+      "replace": "    return not garder",
+      "test": "tests/unit/outillage/test_verrou_plateforme.py::test_le_verrou_reste_quand_la_destruction_a_echoue"
+    },
+    {
+      "name": "refus-qui-ne-dit-pas-quoi-ecrire",
+      "why": "Un refus qui ne nomme pas la valeur vide du type oblige à la chercher ailleurs, et rien sur la page ne la donne pour ce champ précis.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        vide = _VALEUR_VIDE.get(type_option)",
+      "replace": "        vide = None",
+      "test": "tests/unit/collection/test_null_explicite.py::test_le_refus_nomme_la_valeur_vide_du_type"
     }
   ]
 }
