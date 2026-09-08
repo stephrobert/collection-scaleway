@@ -453,8 +453,15 @@
           # assertion ne s'évalue que là.
           - backends.backends | selectattr('name', 'search', prefixe)
             | list | length == 2
+          # **Un frontend, ou deux quand la cible porte les certificats.**
+          # Le frontend TLS de la mesure d'ordre (#119) n'existe que là où
+          # `CreateCertificate` est servi, donc pas contre l'émulateur, qui le
+          # décline avec sa raison. Le compte se déduit donc de la **même**
+          # condition que la mesure elle-même : deux sources pour « cette cible
+          # porte-t-elle les certificats » finiraient par diverger, et c'est le
+          # run réel qui l'a dit, comme pour le compte de backends au-dessus.
           - frontends.frontends | selectattr('name', 'search', prefixe)
-            | list | length == 1
+            | list | length == (2 if certificats_mesure | default([]) | length == 2 else 1)
           - routes.routes | default([]) | length == 1
           - types_lb.lb_types | length > 0
         fail_msg: >-
@@ -1136,3 +1143,121 @@
           {{ cartes.private_nics | default([]) | length }} carte privée sur un worker ·
           {{ balanceurs.lbs | default([]) | length }} load balancer ·
           {{ backends.backends | default([]) | length }} backend
+
+    # ---- L'ordre d'une liste de références, mesuré et non supposé (#119) ----
+    #
+    # ADR-009 pose que le type décide ce qu'il peut et qu'un tableau reste
+    # comparé **dans l'ordre** tant que personne n'a observé l'API le
+    # réordonner. C'est une hypothèse, et une hypothèse qui décide de
+    # l'idempotence de tout module qui écrit une liste : si l'API normalise
+    # l'ordre, le module rend `changed` à chaque exécution.
+    #
+    # `tags` a été mesuré sur trois champs et deux produits : l'ordre et les
+    # doublons sont conservés. `certificate_ids` méritait sa propre mesure,
+    # parce que c'est une liste de **références** et non de chaînes libres :
+    # l'API pourrait la trier, la dédoublonner, ou la rendre telle quelle.
+    #
+    # La mesure ne tourne que sur le cloud réel, et le playbook ne diverge pas
+    # pour autant : la liste est vide ailleurs, et `when` la lit comme telle.
+
+    - name: L'ordre des certificats, mesuré contre l'API réelle
+      when: certificats_mesure | default([]) | length == 2
+      block:
+        - name: Le frontend TLS, tel que la création l'a laissé
+          stephrobert.scaleway.lb_frontend_info:
+            zone: "{{ zone }}"
+            frontend_id: "{{ frontend_tls }}"
+          register: cree
+
+        - name: La création rend les certificats dans l'ordre demandé
+          ansible.builtin.assert:
+            that:
+              - cree.result.certificate_ids == certificats_mesure
+            fail_msg: >-
+              demandé {{ certificats_mesure }}, rendu
+              {{ cree.result.certificate_ids }} : l'API réordonne à la création.
+            success_msg: l'ordre de création est conservé
+
+        # Le nom d'un certificat est ce qu'un module de gestion peut réécrire :
+        # c'est ce qui donne enfin une cible à `lb_certificate`, jusqu'ici
+        # jamais appelé par l'exemple.
+        - name: Le premier certificat, relu par son module
+          stephrobert.scaleway.lb_certificate_info:
+            zone: "{{ zone }}"
+            certificate_id: "{{ certificats_mesure[0] }}"
+          register: certificat
+
+        - name: Réécrire son nom à l'identique ne change rien
+          stephrobert.scaleway.lb_certificate:
+            zone: "{{ zone }}"
+            certificate_id: "{{ certificats_mesure[0] }}"
+            name: "{{ certificat.result.name }}"
+          register: certificat_reecrit
+
+        - name: Un nom déjà posé n'est pas une écriture
+          ansible.builtin.assert:
+            that:
+              - not certificat_reecrit.changed
+            fail_msg: >-
+              le module a réécrit un nom identique : l'idempotence de
+              `lb_certificate` n'est pas tenue.
+
+        # Le cœur de la mesure : demander l'ordre inverse, et lire ce que
+        # l'API en fait. Le backend est repassé parce que `UpdateFrontend` est
+        # un PUT, et qu'un PUT remplace (ADR-003).
+        - name: Demander l'ordre inverse
+          stephrobert.scaleway.lb_frontend:
+            zone: "{{ zone }}"
+            frontend_id: "{{ frontend_tls }}"
+            backend_id: "{{ certificat_backend }}"
+            certificate_ids: "{{ certificats_mesure | reverse | list }}"
+          register: inverse
+
+        - name: Relire ce que l'API a réellement stocké
+          stephrobert.scaleway.lb_frontend_info:
+            zone: "{{ zone }}"
+            frontend_id: "{{ frontend_tls }}"
+          register: apres_inverse
+
+        - name: Ce que l'API fait de l'ordre demandé
+          ansible.builtin.debug:
+            msg: >-
+              MESURE #119 · certificate_ids ·
+              demandé {{ certificats_mesure | reverse | list }} ·
+              rendu {{ apres_inverse.result.certificate_ids }} ·
+              ordre {{ 'conservé' if apres_inverse.result.certificate_ids
+                       == (certificats_mesure | reverse | list)
+                       else 'NORMALISÉ PAR L API' }}
+
+        # **Le second passage est la preuve, pas le premier.** Un module qui
+        # écrit rend `changed` la première fois quoi qu'il arrive ; ce qui dit
+        # si la comparaison est juste, c'est ce qu'il fait la seconde.
+        - name: Redemander exactement le même ordre
+          stephrobert.scaleway.lb_frontend:
+            zone: "{{ zone }}"
+            frontend_id: "{{ frontend_tls }}"
+            backend_id: "{{ certificat_backend }}"
+            certificate_ids: "{{ certificats_mesure | reverse | list }}"
+          register: second_passage
+
+        - name: L'ordre demandé est celui que l'API tient
+          ansible.builtin.assert:
+            that:
+              - inverse.changed
+              - not second_passage.changed
+            fail_msg: >-
+              second passage {{ 'changed' if second_passage.changed else 'ok' }} :
+              si le premier a changé et pas le second, la comparaison est juste ;
+              sinon l'API ne tient pas l'ordre demandé et `ordered_list` est le
+              mauvais repli pour ce champ.
+
+      always:
+        # Remettre l'ordre d'origine, pour que la plateforme finisse comme
+        # Terraform la décrit. Un état laissé de travers ferait diverger le
+        # `destroy` de ce qu'il croit détruire.
+        - name: Rétablir l'ordre de création
+          stephrobert.scaleway.lb_frontend:
+            zone: "{{ zone }}"
+            frontend_id: "{{ frontend_tls }}"
+            backend_id: "{{ certificat_backend }}"
+            certificate_ids: "{{ certificats_mesure }}"

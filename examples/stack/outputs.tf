@@ -61,3 +61,25 @@ output "route_lb" {
   description = "La route du frontend, cible de `lb_route`."
   value       = scaleway_lb_route.secondaire.id
 }
+
+# --- ce que la mesure d'ordre de #119 vise, vide hors du cloud réel ---------
+#
+# Les trois sorties sont **toujours déclarées**, et vides quand la cible est
+# l'émulateur. Un playbook qui devrait tester l'existence d'une sortie serait
+# un playbook qui diverge selon la cible, et c'est exactement ce que la stack
+# unique refuse : ici il teste une liste vide, ce qu'Ansible fait nativement.
+
+output "frontend_tls" {
+  description = "Le frontend TLS, cible de la mesure d'ordre de `certificate_ids`."
+  value       = join("", [for f in scaleway_lb_frontend.tls : f.id])
+}
+
+output "certificats_mesure" {
+  description = "Les deux certificats, dans l'ordre où la création les a envoyés."
+  value       = [for c in scaleway_lb_certificate.mesure : c.id]
+}
+
+output "certificat_backend" {
+  description = "Le backend du frontend TLS, que sa réécriture doit conserver."
+  value       = join("", [for f in scaleway_lb_frontend.tls : f.backend_id])
+}

@@ -1,0 +1,17 @@
+---
+bugfixes:
+  - "``lb_frontend`` rewrote ``certificate_ids`` on every run. Measured against
+    the real account on 8 September 2026 through a recording proxy: the write
+    answers in the order asked, and the **read reverses it**, stably, two
+    hundred exchanges apart. Comparing in order therefore found a difference at
+    every execution, and the module was never idempotent whatever ``changed``
+    displayed. The override sets ``set``, which keeps multiplicities: a
+    certificate listed twice stays distinct from one listed once."
+minor_changes:
+  - "``python scripts/example.py reel --enregistrer <file>`` puts ``feint proxy``
+    between the collection and the cloud and writes every exchange. An assertion
+    returns a boolean; when it fails it says what it expected, never what the API
+    answered, and a play that dies on one carries away everything after it. Two
+    billed runs returned nothing about the question asked before the third
+    recorded the answer even though the measurement task was skipped again. See
+    ADR-015."

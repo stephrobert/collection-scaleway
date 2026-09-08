@@ -50,11 +50,16 @@ def test_une_liste_de_chaines_des_deux_cotes_reste_comparee_dans_lordre() -> Non
 def test_une_liste_didentifiants_relue_telle_quelle_nest_pas_projetee() -> None:
     """`Frontend.certificate_ids` est un tableau de chaînes des deux côtés.
 
-    Le nom suggère des références, et le contrat dit que l'API les rend comme
-    la requête les envoie. Décider sur le nom aurait projeté une liste qui n'en
-    a pas besoin.
+    Le nom suggère des références, et le contrat dit que l'API les rend comme la
+    requête les envoie : pas d'objets, donc rien à projeter. Décider sur le nom
+    aurait posé `id_list` sur une liste qui n'en a pas besoin.
+
+    Ce champ porte bien un `set`, et **ce n'est pas cette règle-ci** : c'est un
+    override, posé parce qu'une mesure contre l'API réelle a montré que la
+    lecture inverse l'ordre (ADR-015). Le distinguer importe : l'un est ce que
+    le contrat décide, l'autre ce qu'une observation a coûté.
     """
-    assert _strategies("lb", "lb_frontend")["certificate_ids"] == "ordered_list"
+    assert _strategies("lb", "lb_frontend")["certificate_ids"] != "id_list"
 
 
 def test_aucun_autre_parametre_gere_ne_tombe_dans_ce_cas() -> None:

@@ -308,7 +308,7 @@ MODULE = ManageModule(
     comparisons=(
         ("backend_id", "scalar"),
         ("certificate_id", "scalar"),
-        ("certificate_ids", "ordered_list"),
+        ("certificate_ids", "set"),
         ("connection_rate_limit", "scalar"),
         ("enable_access_logs", "scalar"),
         ("enable_http3", "scalar"),
