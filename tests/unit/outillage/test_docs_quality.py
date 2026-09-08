@@ -15,6 +15,10 @@ from pathlib import Path
 
 import docs_quality
 import pytest
+import yaml
+
+from generator.ansible.attributes import pour
+from generator.ir.enums import OperationKind
 
 EN_TETE = '#!/usr/bin/python\n"""Module de test."""\n\n'
 
@@ -349,3 +353,50 @@ thing:
     fautes = [d for d in defauts if d.genre == "champ-de-retour-sans-description"]
     assert fautes and fautes[0].bloquant
     assert "couleur" in fautes[0].detail
+
+
+def test_la_porte_documentaire_ne_reproche_aucun_attribut() -> None:
+    """C'est `docs_quality` qui juge la page, et ce test dit où en est le dépôt.
+
+    Le contrôle vit là parce qu'un défaut d'`attributes` est un défaut
+    documentaire, et parce que `release:check` le lance avant de publier. Le
+    refaire ici en donnerait deux implémentations, dont une seule serait
+    corrigée le jour où la table changera.
+    """
+    _, defauts = docs_quality.mesurer()
+    miens = [
+        f"{defaut.module} : {defaut.detail}"
+        for defaut in defauts
+        if defaut.genre == "attributs-non-conformes-a-la-classe"
+    ]
+    assert miens == [], "\n".join(miens)
+
+
+def test_la_porte_documentaire_refuse_une_page_qui_ment_sur_son_diff(tmp_path: Path) -> None:
+    """Le contre-exemple, sans lequel le test précédent ne prouve que l'état du jour.
+
+    Un module de gestion qui annoncerait `diff_mode: none` passerait
+    `ansible-test sanity` sans un mot : la section est bien formée, et elle est
+    fausse.
+    """
+    modules = tmp_path / "modules"
+    modules.mkdir()
+    menteur = dict(pour(OperationKind.MANAGE))
+    menteur["diff_mode"] = {**menteur["diff_mode"], "support": "none"}
+    (modules / "widget_chose.py").write_text(
+        "DOCUMENTATION = r'''\n"
+        + yaml.safe_dump(
+            {
+                "module": "widget_chose",
+                "description": ["Manage a widget."],
+                "attributes": menteur,
+            },
+            sort_keys=False,
+        )
+        + "'''\nRETURN = r'''{}'''\nEXAMPLES = r'''[]'''\n",
+        encoding="utf-8",
+    )
+
+    _, defauts = docs_quality.examiner(modules / "widget_chose.py", {})
+    categories = [defaut.genre for defaut in defauts]
+    assert "attributs-non-conformes-a-la-classe" in categories

@@ -29,6 +29,7 @@ import re
 from dataclasses import dataclass, replace
 from typing import Any
 
+from generator.ansible.attributes import pour as attributs_pour
 from generator.ansible.collection import Collection
 from generator.ansible.comparison import strategie_par_defaut
 from generator.ansible.introductions import Introductions
@@ -385,6 +386,10 @@ class AnsibleModuleSpec:
                 option.name: option.to_documentation(version_added=versions.get(option.name))
                 for option in self.options
             },
+            # Ce que le module sait faire, dans la section qu'Ansible normalise.
+            # Le README l'affirmait, la page ne le disait pas, et il fallait
+            # donc croire le README (#133).
+            "attributes": attributs_pour(self.kind),
             "extends_documentation_fragment": self.doc_fragments(),
         }
 

@@ -36,6 +36,13 @@ options:
     - pl-waw-1
     - pl-waw-2
     - pl-waw-3
+attributes:
+  check_mode:
+    description: This module only reads, so check mode changes nothing about how it runs.
+    support: full
+  diff_mode:
+    description: This module changes nothing, so it has no difference to report.
+    support: none
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
 """

@@ -63,6 +63,13 @@ options:
     description:
     - Filter on the IP Mobility IP type (whose value should be either 'routed_ipv4' or 'routed_ipv6').
     type: str
+attributes:
+  check_mode:
+    description: This module only reads, so check mode changes nothing about how it runs.
+    support: full
+  diff_mode:
+    description: This module changes nothing, so it has no difference to report.
+    support: none
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
 """

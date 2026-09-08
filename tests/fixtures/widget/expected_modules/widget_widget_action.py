@@ -42,6 +42,15 @@ options:
     - poweron
     - poweroff
     - reboot
+attributes:
+  check_mode:
+    description: In check mode the module reports the action it would trigger and sends nothing,
+      without even building an API client.
+    support: full
+  diff_mode:
+    description: An action is a trigger rather than a state, so there is no before and after
+      to compare.
+    support: none
 extends_documentation_fragment:
 - lab.widget.scaleway
 """
