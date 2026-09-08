@@ -255,6 +255,7 @@ MODULE = InfoModule(
         path="/lb/v1/zones/{zone}/ips/{ip_id}",
         path_params=("zone", "ip_id"),
         query_params=(),
+        retry="safe",
     ),
     list_operation=Operation(
         id="ListIPs",
@@ -266,6 +267,7 @@ MODULE = InfoModule(
         is_list=True,
         page_param="page",
         per_page_param="page_size",
+        retry="safe",
     ),
     selector="ip_id",
 )

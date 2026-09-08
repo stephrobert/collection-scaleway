@@ -40,6 +40,7 @@ from generator.ansible.mapping import (
     no_log_de,
     return_type,
 )
+from generator.ansible.retry import RetryPolicy, politique_par_defaut
 from generator.ir.enums import ApiType, HTTPMethod, OperationKind, ParameterLocation
 from generator.ir.models import ApiField, ApiObject, ApiOperation, ApiParameter, ApiService
 from generator.overrides.loader import (
@@ -179,6 +180,10 @@ class OperationBinding:
     #: Nom du schéma de la ressource rendue. Sert au `contains` du `RETURN` :
     #: sans lui, la page nommait la clé sans dire ce qu'on y trouve.
     payload_schema: str | None = None
+    #: Ce que cette opération autorise à rejouer, déduit de la méthode HTTP et
+    #: de la classe que le classifieur a établie (ADR-018). Le défaut est le
+    #: plus prudent : ne rien rejouer.
+    retry: RetryPolicy = RetryPolicy.NEVER
 
     @property
     def documentation_line(self) -> str | None:
@@ -575,8 +580,16 @@ def build_module_spec(
     override_get = overrides.get(getters[0].operation.key) if overrides and getters else None
     override_list = overrides.get(listers[0].operation.key) if overrides and listers else None
 
-    get_operation = _bind(getters[0].operation, override=override_get) if getters else None
-    list_operation = _bind(listers[0].operation, override=override_list) if listers else None
+    get_operation = (
+        _bind(getters[0].operation, override=override_get, classe=OperationKind.INFO)
+        if getters
+        else None
+    )
+    list_operation = (
+        _bind(listers[0].operation, override=override_list, classe=OperationKind.INFO)
+        if listers
+        else None
+    )
     selector = _selector(get_operation, list_operation, name)
 
     operations = [item.operation for item in plans]
@@ -672,7 +685,7 @@ def _build_action_module(
         for nom, restriction in (override.parameters if override else {}).items()
         if restriction.expose is False
     )
-    action_operation = _bind(item.operation, masques, override)
+    action_operation = _bind(item.operation, masques, override, classe=OperationKind.ACTION)
 
     parametre = _action_parameter(item.operation, name)
     identifiants = tuple(
@@ -816,7 +829,7 @@ def _build_manage_module(
         for nom, restriction in (override.parameters if override else {}).items()
         if restriction.expose is False
     )
-    update_operation = _bind(item.operation, masques, override)
+    update_operation = _bind(item.operation, masques, override, classe=OperationKind.MANAGE)
 
     read_operation = _unitary_read(service, item.resource, overrides)
     if read_operation is None:
@@ -1294,7 +1307,10 @@ def _unitary_read(
 ) -> OperationBinding | None:
     """La lecture unitaire de la ressource, celle qui sert à observer un état."""
     operation = _unitary_read_operation(service, resource, overrides)
-    return _bind(operation) if operation is not None else None
+    # Une lecture unitaire est un `GET` : elle sert à observer l'état, et
+    # la rejouer ne peut rien changer, quelle que soit la classe du module
+    # qui s'en sert.
+    return _bind(operation, classe=OperationKind.INFO) if operation is not None else None
 
 
 def _resource_effective(operation: ApiOperation, overrides: OverrideSet | None) -> str:
@@ -1500,8 +1516,15 @@ def _bind(
     operation: ApiOperation,
     hidden: frozenset[str] = frozenset(),
     override: OperationOverride | None = None,
+    *,
+    classe: OperationKind,
 ) -> OperationBinding:
     """Traduit une opération de l'IR en ce que le runtime exécutera.
+
+    `classe` n'a pas de défaut, et c'est délibéré : la politique de réessai en
+    dépend, et une action prise pour une écriture ordinaire se rejouerait sur
+    un `429`. Un défaut ferait de cet oubli une valeur plausible plutôt qu'une
+    erreur de frappe.
 
     `hidden` retire les paramètres qu'un override masque : le module ne peut
     pas les recevoir, donc les déclarer dans la liaison serait annoncer un
@@ -1558,6 +1581,7 @@ def _bind(
         # diverger la page publiée de l'API sans que rien ne le signale. Devenu
         # inutile, l'override sort en orphelin plutôt qu'en silence.
         description=operation.description or (override.description if override else None),
+        retry=politique_par_defaut(operation.http_method, classe),
     )
 
 

@@ -183,6 +183,7 @@ MODULE = ManageModule(
         path_params=("zone", "widget_id"),
         query_params=(),
         payload_field="widget",
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateWidget",
@@ -191,6 +192,7 @@ MODULE = ManageModule(
         path_params=("zone", "widget_id"),
         query_params=(),
         body_params=("tags", "label", "protected", "secret_token", "email_config", "webhook_config"),
+        retry="limited",
     ),
     managed_params=("tags", "label", "protected", "secret_token", "email_config", "webhook_config"),
     comparisons=(

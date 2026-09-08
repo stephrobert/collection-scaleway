@@ -23,6 +23,7 @@ import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from generator.ansible.models import AnsibleModuleSpec, OperationBinding
+from generator.ansible.retry import RetryPolicy
 from generator.ir.enums import OperationKind
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1] / "templates"
@@ -478,6 +479,11 @@ def _operation_literal(operation: OperationBinding, *, indent: int) -> str:
         fields.append(("page_param", operation.page_param))
     if operation.per_page_param is not None:
         fields.append(("per_page_param", operation.per_page_param))
+    # Le défaut du runtime est `never`, le plus prudent : l'omettre sur une
+    # action, c'est écrire la même chose plus court, et le diff de génération
+    # ne montre alors que les opérations qui autorisent vraiment un réessai.
+    if operation.retry is not RetryPolicy.NEVER:
+        fields.append(("retry", operation.retry.value))
 
     lines = ["Operation("]
     for name, value in fields:

@@ -226,6 +226,7 @@ MODULE = ManageModule(
         path_params=("zone", "placement_group_id"),
         query_params=(),
         payload_field="placement_group",
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdatePlacementGroup",
@@ -235,6 +236,7 @@ MODULE = ManageModule(
         query_params=(),
         body_params=("name", "tags", "policy_mode", "policy_type"),
         payload_field="placement_group",
+        retry="limited",
     ),
     managed_params=("name", "tags", "policy_mode", "policy_type"),
     comparisons=(

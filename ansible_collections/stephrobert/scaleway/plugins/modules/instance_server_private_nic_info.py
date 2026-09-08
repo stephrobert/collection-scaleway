@@ -254,6 +254,7 @@ MODULE = InfoModule(
         path_params=("zone", "server_id", "private_nic_id"),
         query_params=(),
         payload_field="private_nic",
+        retry="safe",
     ),
     list_operation=Operation(
         id="ListPrivateNICs",
@@ -265,6 +266,7 @@ MODULE = InfoModule(
         is_list=True,
         page_param="page",
         per_page_param="per_page",
+        retry="safe",
     ),
     selector="private_nic_id",
 )

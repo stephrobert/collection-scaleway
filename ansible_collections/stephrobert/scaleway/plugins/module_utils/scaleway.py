@@ -36,6 +36,8 @@ import logging
 import time
 import traceback
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from collections.abc import Iterable, Mapping
 from typing import Any, Callable
 from urllib.parse import quote
@@ -94,6 +96,40 @@ DEFAULT_PAGE_SIZE = 100
 #: rendrait indéfiniment la même page ; mieux vaut échouer bruyamment que
 #: boucler en silence.
 MAX_PAGES = 1000
+
+#: Ce que le serveur rend quand il dit **n'avoir rien traité**.
+#:
+#: C'est la seule famille qu'une écriture se permet de rejouer : le refus vient
+#: du limiteur, avant l'API, et la requête n'a donc pas eu lieu.
+TROP_DE_REQUETES = 429
+
+#: Les échecs dont on ne sait pas s'ils ont eu lieu.
+#:
+#: Après l'un d'eux, une écriture a **peut-être** abouti : seule une lecture
+#: pourrait le dire, et ce runtime préfère échouer bruyamment plutôt que rendre
+#: un état qu'il n'a pas observé. Une lecture, elle, se rejoue sans risque.
+AMBIGUS: frozenset[int] = frozenset({500, 502, 503, 504})
+
+#: Nombre d'appels supplémentaires accordés à une opération rejouable.
+#:
+#: Trois et pas dix : au-delà, un playbook attend sans que personne sache
+#: pourquoi, et `wait_timeout` borne déjà les attentes qui ont un sens.
+MAX_REESSAIS = 3
+
+#: Secondes d'attente avant le n-ième réessai, quand le serveur n'a rien dit.
+#:
+#: Croissance simple plutôt qu'exponentielle avec jitter : la valeur exacte
+#: n'est pas ce qui compte ici, et une formule qu'on ne peut pas lire est une
+#: formule qu'on ne peut pas juger.
+ATTENTES: tuple[float, ...] = (1.0, 3.0, 8.0)
+
+#: Plafond de ce qu'un `Retry-After` peut faire attendre, en secondes.
+#:
+#: Le serveur peut annoncer des minutes. Les respecter aveuglément ferait un
+#: module qui a l'air figé ; les ignorer ferait un module qui aggrave la
+#: saturation qu'on lui signale. Au-delà du plafond, on n'attend pas : on rend
+#: l'erreur, qui porte le `Retry-After` dans son message.
+ATTENTE_MAX = 30.0
 
 #: Secondes accordées à un appel d'API, connexion et lecture. Sans limite, une
 #: connexion muette fige un playbook indéfiniment : mesuré, le SDK appelle
@@ -228,6 +264,13 @@ class Operation:
     is_list: bool = False
     page_param: str | None = None
     per_page_param: str | None = None
+    #: Ce que cette opération autorise à rejouer, décidé par le générateur
+    #: depuis la méthode HTTP et la classe de l'opération (ADR-018).
+    #:
+    #: Le défaut est `never`, le plus prudent : un module produit par un
+    #: générateur plus ancien, qui ne déclare rien, ne doit pas se mettre à
+    #: rejouer des écritures parce que ce runtime a appris à le faire.
+    retry: str = "never"
 
 
 @dataclass(frozen=True)
@@ -735,31 +778,53 @@ class ScalewayApi:
                 paires.append((nom, valeur))
 
         delai = int(self._module.params.get("api_timeout") or DEFAULT_REQUEST_TIMEOUT)
-        try:
-            response = requests.request(
-                method=methode,
-                url=f"{client.api_url}{path}",
-                params=paires,
-                headers=entetes,
-                data=json.dumps(body) if body is not None else None,
-                verify=not client.api_allow_insecure,
-                timeout=delai,
-            )
-        except requests.exceptions.Timeout as erreur:
-            raise ScalewayApiError(
-                operation=operation.id,
-                message=f"l'API n'a pas répondu en {delai} s : {erreur}",
-            ) from erreur
-        except requests.exceptions.RequestException as erreur:
-            # Sans cette traduction, une panne réseau sort en trace Python et
-            # Ansible affiche MODULE FAILURE : l'utilisateur ne sait pas si son
-            # playbook est fautif ou si le réseau l'est.
-            raise ScalewayApiError(
-                operation=operation.id,
-                message=f"l'API est injoignable : {erreur}",
-            ) from erreur
+        corps = json.dumps(body) if body is not None else None
 
-        return response
+        # **Le réessai est ici, autour de l'appel, et nulle part ailleurs.**
+        # Le mettre dans `request` obligerait chaque appelant à savoir s'il a
+        # déjà été rejoué ; le mettre dans une session `requests` le rendrait
+        # global, donc identique pour un `GET` et pour un redémarrage de
+        # machine, ce qui est exactement ce qu'ADR-018 refuse.
+        for tentative in range(MAX_REESSAIS + 1):
+            transitoire: str | None = None
+            attente: float | None = None
+            try:
+                response = requests.request(
+                    method=methode,
+                    url=f"{client.api_url}{path}",
+                    params=paires,
+                    headers=entetes,
+                    data=corps,
+                    verify=not client.api_allow_insecure,
+                    timeout=delai,
+                )
+            except requests.exceptions.Timeout as erreur:
+                transitoire = f"l'API n'a pas répondu en {delai} s : {erreur}"
+            except requests.exceptions.RequestException as erreur:
+                # Sans cette traduction, une panne réseau sort en trace Python et
+                # Ansible affiche MODULE FAILURE : l'utilisateur ne sait pas si son
+                # playbook est fautif ou si le réseau l'est.
+                transitoire = f"l'API est injoignable : {erreur}"
+            else:
+                attente = _attente_avant_reessai(operation, response, tentative)
+                if attente is None:
+                    return response
+
+            if transitoire is not None:
+                # Une panne de transport est le cas le plus ambigu qui soit :
+                # la requête est peut-être partie. Seule une lecture se rejoue.
+                if operation.retry != "safe" or tentative == MAX_REESSAIS:
+                    raise ScalewayApiError(operation=operation.id, message=transitoire)
+                attente = ATTENTES[min(tentative, len(ATTENTES) - 1)]
+
+            time.sleep(attente or 0.0)
+
+        # Inatteignable : chaque branche rend ou lève avant la dernière
+        # tentative. Écrit quand même, parce que `mypy` a raison d'exiger que
+        # toute sortie de fonction soit nommée.
+        raise ScalewayApiError(
+            operation=operation.id, message="réessais épuisés sans réponse ni erreur"
+        )
 
     def fetch_one(self, operation: Operation) -> Any:
         """Lit une ressource unique, et rend le champ que le contrat désigne."""
@@ -791,6 +856,67 @@ class ScalewayApi:
             return list(payload.get(operation.payload_field) or [])
 
         return paginate(fetch_page, payload_field=operation.payload_field)
+
+
+def _secondes_de_retry_after(valeur: str | None) -> float | None:
+    """Ce que `Retry-After` demande d'attendre, en secondes, ou `None`.
+
+    RFC 9110 en autorise deux formes : un nombre de secondes, ou une date HTTP.
+    Les deux se rencontrent, et n'en lire qu'une ferait ignorer l'autre en
+    silence, donc rejouer trop tôt sur une API qui vient de dire non.
+
+    Une valeur illisible rend `None` : le réessai retombe alors sur l'attente
+    par défaut plutôt que d'échouer sur un en-tête mal formé, parce que le
+    serveur a déjà dit l'essentiel en rendant 429.
+    """
+    if valeur is None:
+        return None
+    texte = valeur.strip()
+    try:
+        return max(0.0, float(texte))
+    except ValueError:
+        pass
+    try:
+        cible = parsedate_to_datetime(texte)
+    except (TypeError, ValueError):
+        return None
+    if cible.tzinfo is None:
+        cible = cible.replace(tzinfo=UTC)
+    return max(0.0, (cible - datetime.now(UTC)).total_seconds())
+
+
+def _attente_avant_reessai(operation: Operation, response: Any, tentative: int) -> float | None:
+    """Combien attendre avant de rejouer, ou `None` pour rendre la réponse.
+
+    **Ce que la politique autorise, et rien de plus** (ADR-018) :
+
+    * `never` ne rejoue jamais. Un redémarrage joué deux fois n'est pas un
+      redémarrage, et aucun code de statut ne change ça ;
+    * `limited` ne rejoue que sur `429`, où le refus vient du limiteur, avant
+      l'API : la requête n'a pas eu lieu. Après un `502`, l'écriture a
+      peut-être abouti, et ce runtime préfère échouer que rendre un état qu'il
+      n'a pas observé ;
+    * `safe` rejoue aussi les `5xx` ambigus, parce qu'une lecture rejouée ne
+      peut rien casser.
+
+    Un `Retry-After` au-delà du plafond n'est pas attendu : le module rendrait
+    l'air figé, et l'erreur qui sort porte l'en-tête dans son message.
+    """
+    statut = int(response.status_code)
+    if statut < 400:
+        return None
+    if tentative >= MAX_REESSAIS or operation.retry == "never":
+        return None
+
+    if statut == TROP_DE_REQUETES:
+        demandee = _secondes_de_retry_after(response.headers.get("Retry-After"))
+        if demandee is None:
+            return ATTENTES[min(tentative, len(ATTENTES) - 1)]
+        return demandee if demandee <= ATTENTE_MAX else None
+
+    if statut in AMBIGUS and operation.retry == "safe":
+        return ATTENTES[min(tentative, len(ATTENTES) - 1)]
+    return None
 
 
 def _error_from_response(operation: Operation, response: Any) -> ScalewayApiError:

@@ -228,6 +228,7 @@ MODULE = ManageModule(
         path_params=("zone", "volume_id"),
         query_params=(),
         payload_field="volume",
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateVolume",
@@ -237,6 +238,7 @@ MODULE = ManageModule(
         query_params=(),
         body_params=("name", "tags", "size"),
         payload_field="volume",
+        retry="limited",
     ),
     managed_params=("name", "tags", "size"),
     comparisons=(

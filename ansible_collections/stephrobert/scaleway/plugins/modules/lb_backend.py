@@ -456,6 +456,7 @@ MODULE = ManageModule(
         path="/lb/v1/zones/{zone}/backends/{backend_id}",
         path_params=("zone", "backend_id"),
         query_params=(),
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateBackend",
@@ -484,6 +485,7 @@ MODULE = ManageModule(
             "max_connections",
             "timeout_queue",
         ),
+        retry="limited",
     ),
     managed_params=(
         "name",

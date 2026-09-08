@@ -148,6 +148,7 @@ MODULE = InfoModule(
         path="/instance/v1/zones/{zone}/servers/{server_id}/compatible-types",
         path_params=("zone", "server_id"),
         query_params=(),
+        retry="safe",
     ),
 )
 

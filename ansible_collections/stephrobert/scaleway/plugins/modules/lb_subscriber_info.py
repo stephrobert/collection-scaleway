@@ -200,6 +200,7 @@ MODULE = InfoModule(
         path="/lb/v1/zones/{zone}/subscribers/{subscriber_id}",
         path_params=("zone", "subscriber_id"),
         query_params=(),
+        retry="safe",
     ),
     list_operation=Operation(
         id="ListSubscriber",
@@ -211,6 +212,7 @@ MODULE = InfoModule(
         is_list=True,
         page_param="page",
         per_page_param="page_size",
+        retry="safe",
     ),
     selector="subscriber_id",
 )

@@ -637,6 +637,7 @@ MODULE = InfoModule(
         path_params=("zone", "server_id"),
         query_params=(),
         payload_field="server",
+        retry="safe",
     ),
     list_operation=Operation(
         id="ListServers",
@@ -664,6 +665,7 @@ MODULE = InfoModule(
         is_list=True,
         page_param="page",
         per_page_param="per_page",
+        retry="safe",
     ),
     selector="server_id",
 )

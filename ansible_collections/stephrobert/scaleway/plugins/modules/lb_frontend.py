@@ -271,6 +271,7 @@ MODULE = ManageModule(
         path="/lb/v1/zones/{zone}/frontends/{frontend_id}",
         path_params=("zone", "frontend_id"),
         query_params=(),
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateFrontend",
@@ -289,6 +290,7 @@ MODULE = ManageModule(
             "connection_rate_limit",
             "enable_access_logs",
         ),
+        retry="limited",
     ),
     managed_params=(
         "name",

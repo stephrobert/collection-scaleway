@@ -252,6 +252,7 @@ MODULE = ActionModule(
         path_params=("zone", "server_id"),
         query_params=(),
         payload_field="server",
+        retry="safe",
     ),
     state_field="state",
     wait_states={

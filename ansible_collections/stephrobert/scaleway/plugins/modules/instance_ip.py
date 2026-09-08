@@ -235,6 +235,7 @@ MODULE = ManageModule(
         path_params=("zone", "ip"),
         query_params=(),
         payload_field="ip",
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateIp",
@@ -244,6 +245,7 @@ MODULE = ManageModule(
         query_params=(),
         body_params=("reverse", "type", "tags", "server"),
         payload_field="ip",
+        retry="limited",
     ),
     managed_params=("reverse", "type", "tags", "server"),
     comparisons=(

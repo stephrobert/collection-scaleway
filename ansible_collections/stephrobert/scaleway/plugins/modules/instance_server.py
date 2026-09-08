@@ -474,6 +474,7 @@ MODULE = ManageModule(
         path_params=("zone", "server_id"),
         query_params=(),
         payload_field="server",
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateServer",
@@ -498,6 +499,7 @@ MODULE = ManageModule(
             "admin_password_encryption_ssh_key_id",
         ),
         payload_field="server",
+        retry="limited",
     ),
     managed_params=(
         "name",

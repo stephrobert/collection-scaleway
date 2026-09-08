@@ -246,6 +246,7 @@ MODULE = InfoModule(
         path_params=("zone", "security_group_id", "security_group_rule_id"),
         query_params=(),
         payload_field="rule",
+        retry="safe",
     ),
     list_operation=Operation(
         id="ListSecurityGroupRules",
@@ -257,6 +258,7 @@ MODULE = InfoModule(
         is_list=True,
         page_param="page",
         per_page_param="per_page",
+        retry="safe",
     ),
     selector="security_group_rule_id",
 )

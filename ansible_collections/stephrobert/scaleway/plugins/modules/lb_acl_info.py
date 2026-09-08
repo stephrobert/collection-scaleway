@@ -162,6 +162,7 @@ MODULE = InfoModule(
         path="/lb/v1/zones/{zone}/acls/{acl_id}",
         path_params=("zone", "acl_id"),
         query_params=(),
+        retry="safe",
     ),
 )
 

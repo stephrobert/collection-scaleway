@@ -264,6 +264,7 @@ MODULE = InfoModule(
         path_params=("zone", "placement_group_id"),
         query_params=(),
         payload_field="placement_group",
+        retry="safe",
     ),
     list_operation=Operation(
         id="ListPlacementGroups",
@@ -275,6 +276,7 @@ MODULE = InfoModule(
         is_list=True,
         page_param="page",
         per_page_param="per_page",
+        retry="safe",
     ),
     selector="placement_group_id",
 )

@@ -160,6 +160,7 @@ MODULE = InfoModule(
         is_list=True,
         page_param="page",
         per_page_param="page_size",
+        retry="safe",
     ),
 )
 

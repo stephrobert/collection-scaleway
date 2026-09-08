@@ -279,6 +279,7 @@ MODULE = ManageModule(
         path="/lb/v1/zones/{zone}/lbs/{lb_id}",
         path_params=("zone", "lb_id"),
         query_params=(),
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateLb",
@@ -287,6 +288,7 @@ MODULE = ManageModule(
         path_params=("zone", "lb_id"),
         query_params=(),
         body_params=("name", "description", "tags", "ssl_compatibility_level"),
+        retry="limited",
     ),
     managed_params=("name", "description", "tags", "ssl_compatibility_level"),
     comparisons=(

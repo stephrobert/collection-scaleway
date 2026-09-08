@@ -256,6 +256,7 @@ MODULE = ManageModule(
         path_params=("zone", "image_id"),
         query_params=(),
         payload_field="image",
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateImage",
@@ -265,6 +266,7 @@ MODULE = ManageModule(
         query_params=(),
         body_params=("name", "arch", "extra_volumes", "tags", "public"),
         payload_field="image",
+        retry="limited",
     ),
     managed_params=("name", "arch", "extra_volumes", "tags", "public"),
     comparisons=(

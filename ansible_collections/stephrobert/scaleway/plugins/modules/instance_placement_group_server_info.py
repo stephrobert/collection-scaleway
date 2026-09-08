@@ -134,6 +134,7 @@ MODULE = InfoModule(
         query_params=(),
         payload_field="servers",
         is_list=True,
+        retry="safe",
     ),
 )
 

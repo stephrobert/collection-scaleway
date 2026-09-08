@@ -175,6 +175,7 @@ MODULE = ManageModule(
         path="/lb/v1/zones/{zone}/routes/{route_id}",
         path_params=("zone", "route_id"),
         query_params=(),
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateRoute",
@@ -183,6 +184,7 @@ MODULE = ManageModule(
         path_params=("zone", "route_id"),
         query_params=(),
         body_params=("backend_id", "match"),
+        retry="limited",
     ),
     managed_params=("backend_id", "match"),
     comparisons=(

@@ -201,6 +201,7 @@ MODULE = ManageModule(
         path_params=("zone", "server_id", "private_nic_id"),
         query_params=(),
         payload_field="private_nic",
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdatePrivateNIC",
@@ -209,6 +210,7 @@ MODULE = ManageModule(
         path_params=("zone", "server_id", "private_nic_id"),
         query_params=(),
         body_params=("tags",),
+        retry="limited",
     ),
     managed_params=("tags",),
     comparisons=(
