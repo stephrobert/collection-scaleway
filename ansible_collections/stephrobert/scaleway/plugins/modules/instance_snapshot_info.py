@@ -295,6 +295,7 @@ MODULE = InfoModule(
         path_params=("zone", "snapshot_id"),
         query_params=(),
         payload_field="snapshot",
+        retry="safe",
     ),
     list_operation=Operation(
         id="ListSnapshots",
@@ -306,6 +307,7 @@ MODULE = InfoModule(
         is_list=True,
         page_param="page",
         per_page_param="per_page",
+        retry="safe",
     ),
     selector="snapshot_id",
 )

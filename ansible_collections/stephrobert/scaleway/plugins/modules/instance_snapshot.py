@@ -218,6 +218,7 @@ MODULE = ManageModule(
         path_params=("zone", "snapshot_id"),
         query_params=(),
         payload_field="snapshot",
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateSnapshot",
@@ -227,6 +228,7 @@ MODULE = ManageModule(
         query_params=(),
         body_params=("name", "tags"),
         payload_field="snapshot",
+        retry="limited",
     ),
     managed_params=("name", "tags"),
     comparisons=(

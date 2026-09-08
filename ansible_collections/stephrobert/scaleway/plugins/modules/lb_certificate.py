@@ -205,6 +205,7 @@ MODULE = ManageModule(
         path="/lb/v1/zones/{zone}/certificates/{certificate_id}",
         path_params=("zone", "certificate_id"),
         query_params=(),
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateCertificate",
@@ -213,6 +214,7 @@ MODULE = ManageModule(
         path_params=("zone", "certificate_id"),
         query_params=(),
         body_params=("name",),
+        retry="limited",
     ),
     managed_params=("name",),
     comparisons=(

@@ -308,6 +308,7 @@ MODULE = InfoModule(
         path_params=("zone", "volume_id"),
         query_params=(),
         payload_field="volume",
+        retry="safe",
     ),
     list_operation=Operation(
         id="ListVolumes",
@@ -319,6 +320,7 @@ MODULE = InfoModule(
         is_list=True,
         page_param="page",
         per_page_param="per_page",
+        retry="safe",
     ),
     selector="volume_id",
 )

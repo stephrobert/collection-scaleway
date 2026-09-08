@@ -161,6 +161,7 @@ MODULE = InfoModule(
         path_params=("zone", "widget_id"),
         query_params=(),
         payload_field="widget",
+        retry="safe",
     ),
     list_operation=Operation(
         id="ListWidgets",
@@ -172,6 +173,7 @@ MODULE = InfoModule(
         is_list=True,
         page_param="page",
         per_page_param="per_page",
+        retry="safe",
     ),
     selector="widget_id",
 )

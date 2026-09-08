@@ -218,6 +218,7 @@ MODULE = ManageModule(
         path="/lb/v1/zones/{zone}/acls/{acl_id}",
         path_params=("zone", "acl_id"),
         query_params=(),
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateAcl",
@@ -226,6 +227,7 @@ MODULE = ManageModule(
         path_params=("zone", "acl_id"),
         query_params=(),
         body_params=("name", "action", "match", "index", "description"),
+        retry="limited",
     ),
     managed_params=("name", "action", "match", "index", "description"),
     comparisons=(

@@ -312,6 +312,7 @@ MODULE = ManageModule(
         path_params=("zone", "security_group_id"),
         query_params=(),
         payload_field="security_group",
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateSecurityGroup",
@@ -331,6 +332,7 @@ MODULE = ManageModule(
             "stateful",
         ),
         payload_field="security_group",
+        retry="limited",
     ),
     managed_params=(
         "name",

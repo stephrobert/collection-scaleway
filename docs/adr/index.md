@@ -44,3 +44,4 @@ Code says the **current** invariant. This directory says what happened.
 | [ADR-015](015-a-claim-about-the-real-api-is-a-recorded-exchange.md) | A claim about the real API is a recorded exchange, not a green assertion |
 | [ADR-016](016-a-clearable-field-is-cleared-with-the-empty-value.md) | A clearable field is cleared with the empty value of its type, and an explicit `null` is refused with that value named |
 | [ADR-017](017-the-launcher-removes-what-blocks-its-own-destruction.md) | On a failed destruction the launcher removes what blocks it, once, only within the run's own platform, and says what it removed |
+| [ADR-018](018-a-retry-policy-belongs-to-the-operation.md) | A retry policy belongs to the operation: a read replays, a write only when the server says it did nothing, an action never |

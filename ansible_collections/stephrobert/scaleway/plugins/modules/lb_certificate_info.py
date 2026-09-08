@@ -298,6 +298,7 @@ MODULE = InfoModule(
         path="/lb/v1/zones/{zone}/certificates/{certificate_id}",
         path_params=("zone", "certificate_id"),
         query_params=(),
+        retry="safe",
     ),
     list_operation=Operation(
         id="ListCertificates",
@@ -309,6 +310,7 @@ MODULE = InfoModule(
         is_list=True,
         page_param="page",
         per_page_param="page_size",
+        retry="safe",
     ),
     selector="certificate_id",
 )

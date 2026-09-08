@@ -304,6 +304,7 @@ MODULE = InfoModule(
         path="/lb/v1/zones/{zone}/frontends/{frontend_id}",
         path_params=("zone", "frontend_id"),
         query_params=(),
+        retry="safe",
     ),
     list_operation=Operation(
         id="ListFrontends",
@@ -315,6 +316,7 @@ MODULE = InfoModule(
         is_list=True,
         page_param="page",
         per_page_param="page_size",
+        retry="safe",
     ),
     selector="frontend_id",
 )

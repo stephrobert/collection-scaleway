@@ -112,6 +112,7 @@ MODULE = InfoModule(
         query_params=(),
         page_param="page",
         per_page_param="per_page",
+        retry="safe",
     ),
 )
 

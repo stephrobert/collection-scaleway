@@ -178,6 +178,7 @@ MODULE = ManageModule(
         path="/lb/v1/zones/{zone}/subscribers/{subscriber_id}",
         path_params=("zone", "subscriber_id"),
         query_params=(),
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateSubscriber",
@@ -186,6 +187,7 @@ MODULE = ManageModule(
         path_params=("zone", "subscriber_id"),
         query_params=(),
         body_params=("name", "email_config", "webhook_config"),
+        retry="limited",
     ),
     managed_params=("name", "email_config", "webhook_config"),
     comparisons=(

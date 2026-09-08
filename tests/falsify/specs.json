@@ -2047,6 +2047,54 @@
       "find": "    if resultat.returncode != 0:\n        raise DeblocageError(f\"`scw {' '.join(arguments)}` a échoué :\\n{resultat.stderr.strip()}\")",
       "replace": "    if resultat.returncode != 0:\n        return []",
       "test": "tests/unit/outillage/test_deblocage.py::test_une_commande_qui_echoue_nest_pas_zero_carte"
+    },
+    {
+      "name": "action-rejouee-comme-le-reste",
+      "why": "Un redémarrage joué deux fois n'est pas un redémarrage. Une écriture ordinaire se permet de rejouer un `429`, où le serveur dit n'avoir rien traité ; une action non, et c'est cette garde qui l'en empêche.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    if tentative >= MAX_REESSAIS or operation.retry == \"never\":",
+      "replace": "    if tentative >= MAX_REESSAIS:",
+      "test": "tests/unit/collection/test_reessai.py::test_une_action_nest_pas_rejouee_non_plus_sur_un_429"
+    },
+    {
+      "name": "ecriture-rejouee-sur-une-reponse-ambigue",
+      "why": "Après un `502`, l'écriture a peut-être abouti : la rejouer ferait rendre un état que le module n'a pas observé, ce qui est la promesse qu'il ne casse nulle part ailleurs.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    if statut in AMBIGUS and operation.retry == \"safe\":",
+      "replace": "    if statut in AMBIGUS:",
+      "test": "tests/unit/collection/test_reessai.py::test_une_ecriture_nest_pas_rejouee_sur_un_502"
+    },
+    {
+      "name": "retry-after-ignore",
+      "why": "Attendre moins que ce que le serveur demande aggrave la saturation qu'il signale, et c'est exactement ce qu'un réessai naïf fait.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        demandee = _secondes_de_retry_after(response.headers.get(\"Retry-After\"))",
+      "replace": "        demandee = None",
+      "test": "tests/unit/collection/test_reessai.py::test_un_retry_after_en_secondes_est_respecte"
+    },
+    {
+      "name": "retry-after-en-date-non-lu",
+      "why": "RFC 9110 autorise deux formes, et n'en lire qu'une ignore l'autre en silence : le module rejouerait tout de suite sur une API qui vient de dire non.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    try:\n        cible = parsedate_to_datetime(texte)\n    except (TypeError, ValueError):\n        return None",
+      "replace": "    return None\n    try:\n        cible = parsedate_to_datetime(texte)\n    except (TypeError, ValueError):\n        return None",
+      "test": "tests/unit/collection/test_reessai.py::test_un_retry_after_en_date_http_est_respecte"
+    },
+    {
+      "name": "panne-de-transport-rejouee-sur-une-ecriture",
+      "why": "Une panne de transport est le cas le plus ambigu : la requête est peut-être partie. La rejouer sur une écriture ferait appliquer deux fois ce qu'on ne sait pas avoir appliqué une.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "                if operation.retry != \"safe\" or tentative == MAX_REESSAIS:",
+      "replace": "                if tentative == MAX_REESSAIS:",
+      "test": "tests/unit/collection/test_reessai.py::test_une_panne_de_transport_sur_une_ecriture_echoue_tout_de_suite"
+    },
+    {
+      "name": "classe-effacee-par-la-methode",
+      "why": "`ServerAction` est un `POST` comme le serait une création : c'est le classifieur qui sait la différence. Tester la méthode d'abord rendrait `limited` pour une action, donc rejouable sur un `429`.",
+      "file": "generator/ansible/retry.py",
+      "find": "    if classe is OperationKind.ACTION:\n        return RetryPolicy.NEVER\n    if methode in _SURES:",
+      "replace": "    if methode in _SURES:",
+      "test": "tests/unit/generator/test_reessai.py::test_la_classe_prime_sur_la_methode"
     }
   ]
 }

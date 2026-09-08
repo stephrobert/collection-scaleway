@@ -206,6 +206,7 @@ MODULE = InfoModule(
         path_params=("zone",),
         query_params=("organization", "project"),
         payload_field="dashboard",
+        retry="safe",
     ),
 )
 

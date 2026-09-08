@@ -269,6 +269,7 @@ MODULE = ManageModule(
         path_params=("zone", "security_group_id", "security_group_rule_id"),
         query_params=(),
         payload_field="rule",
+        retry="safe",
     ),
     update_operation=Operation(
         id="UpdateSecurityGroupRule",
@@ -286,6 +287,7 @@ MODULE = ManageModule(
             "position",
         ),
         payload_field="rule",
+        retry="limited",
     ),
     managed_params=(
         "protocol",

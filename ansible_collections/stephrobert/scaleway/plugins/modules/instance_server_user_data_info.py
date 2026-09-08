@@ -156,6 +156,7 @@ MODULE = InfoModule(
         path="/instance/v1/zones/{zone}/servers/{server_id}/user_data/{key}",
         path_params=("zone", "server_id", "key"),
         query_params=(),
+        retry="safe",
     ),
     list_operation=Operation(
         id="ListServerUserData",
@@ -165,6 +166,7 @@ MODULE = InfoModule(
         query_params=(),
         payload_field="user_data",
         is_list=True,
+        retry="safe",
     ),
     selector="key",
 )

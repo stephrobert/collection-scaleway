@@ -125,6 +125,7 @@ MODULE = InfoModule(
         path="/lb/v1/zones/{zone}/lbs/{lb_id}/stats",
         path_params=("zone", "lb_id"),
         query_params=("backend_id",),
+        retry="safe",
     ),
 )
 

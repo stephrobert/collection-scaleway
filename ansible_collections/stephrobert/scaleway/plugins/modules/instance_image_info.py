@@ -322,6 +322,7 @@ MODULE = InfoModule(
         path_params=("zone", "image_id"),
         query_params=(),
         payload_field="image",
+        retry="safe",
     ),
     list_operation=Operation(
         id="ListImages",
@@ -333,6 +334,7 @@ MODULE = InfoModule(
         is_list=True,
         page_param="page",
         per_page_param="per_page",
+        retry="safe",
     ),
     selector="image_id",
 )
