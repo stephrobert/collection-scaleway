@@ -54,8 +54,10 @@ group_by: [product, zone, tags]
 ```
 
 <!-- compteurs:modules:début, produits par scripts/readme_counters.py -->
-The inventory sets `scaleway_id` and `scaleway_zone`, which is all any of
-the 50 modules needs behind `delegate_to: localhost`.
+The inventory sets `scaleway_id` and `scaleway_zone`, which is what 25
+of the 50 modules need behind `delegate_to: localhost`. The other
+25 act on a sub-resource carrying its own identifier, which the
+matching `_info` module returns.
 <!-- compteurs:modules:fin -->
 
 The rest, requirements, module tables, compatibility and versioning, lives in

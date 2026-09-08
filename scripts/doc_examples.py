@@ -48,18 +48,57 @@ def extract(chemin: Path) -> list[str]:
     return [bloc for bloc in FENCE.findall(texte) if PLAYBOOK.search(bloc)]
 
 
+#: Les README, qui ne sont pas sous `docs/` et qui sont pourtant les pages les
+#: plus lues.
+#:
+#: **Celui de la collection est ce que Galaxy publie**, donc le premier playbook
+#: qu'un utilisateur copie, et il n'était analysé par rien. Un module renommé y
+#: serait resté jusqu'à ce que quelqu'un essaie (#134). Celui du dépôt porte le
+#: même exemple d'entrée.
+README: tuple[Path, ...] = (
+    ROOT / "README.md",
+    ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "README.md",
+)
+
+
 def sources() -> list[tuple[Path, int, str]]:
     """Tous les playbooks trouvés dans la documentation, avec leur origine."""
     trouves: list[tuple[Path, int, str]] = []
-    for chemin in sorted(GUIDES.rglob("*.md")):
+    for chemin in sorted(GUIDES.rglob("*.md")) + [c for c in README if c.is_file()]:
         for index, bloc in enumerate(extract(chemin), start=1):
             trouves.append((chemin.relative_to(ROOT), index, bloc))
     return trouves
 
 
+#: Ce qu'un bloc doit porter pour être un jeu et non une suite de tâches.
+#:
+#: Le tiret de liste est optionnel parce qu'un jeu s'écrit des deux façons :
+#: `- hosts:` en tête d'élément, ou `hosts:` sur la ligne suivante quand le
+#: `- name:` vient d'abord. L'oublier faisait envelopper un jeu dans un jeu, et
+#: Ansible répondait « conflicting action statements: hosts, tasks ».
+JEU = re.compile(r"^\s*-?\s*hosts:", re.MULTILINE)
+
+#: Le jeu minimal qui enveloppe un extrait de tâches.
+#:
+#: **Un README publie des tâches, pas des playbooks.** « These tags on this
+#: server » se copie dans un jeu que le lecteur a déjà ; l'écrire en entier
+#: dans la page noierait ce qu'elle montre. Refuser ces blocs laisserait sans
+#: contrôle les exemples les plus copiés de la collection, et les envoyer tels
+#: quels à `--syntax-check` les ferait échouer pour la seule raison qu'ils sont
+#: bien écrits.
+ENVELOPPE = (
+    "- name: Extrait de documentation\n  hosts: localhost\n  gather_facts: false\n  tasks:\n"
+)
+
+
 def check(bloc: str, environnement: dict[str, str], workdir: Path, nom: str) -> str:
     """Fait analyser un playbook par Ansible. Rend le message d'erreur, ou ''."""
     fichier = workdir / f"{nom}.yml"
+    if not JEU.search(bloc):
+        indente = "\n".join(
+            f"    {ligne}" if ligne.strip() else ligne for ligne in bloc.splitlines()
+        )
+        bloc = ENVELOPPE + indente + "\n"
     fichier.write_text(bloc, encoding="utf-8")
     resultat = subprocess.run(
         [

@@ -593,16 +593,64 @@ def bloc_image() -> str:
     )
 
 
+#: Ce que le plugin d'inventaire pose sur chaque hôte découvert, et qu'un
+#: module trouve donc sans rien demander à personne.
+POSE_PAR_LINVENTAIRE: frozenset[str] = frozenset({"server_id", "zone", "region"})
+
+
+def _autonomie_des_modules() -> tuple[int, int]:
+    """Combien de modules se contentent de ce que l'inventaire pose, sur combien.
+
+    **La phrase publiée disait « all any module needs », et c'était faux pour
+    plus de la moitié** (#134). Une sous-ressource porte son propre identifiant,
+    qu'aucune découverte de machine ne peut donner : `backend_id`,
+    `certificate_id`, `route_id`. Le lecteur s'en aperçoit à l'essai, ce qui
+    n'est pas un dommage, mais une affirmation absolue et fausse dans le premier
+    exemple d'une page publiée abîme le reste.
+
+    Un paramètre requis qui n'est pas un identifiant, `action` par exemple, est
+    ce qu'un playbook écrit exprès : il ne compte pas comme un obstacle, il
+    compte comme le sujet de la tâche.
+    """
+    import ast
+
+    # Le chemin vient de `galaxy.yml`, jamais écrit segment par segment : c'est
+    # ce qui a fait survivre trois chemins au renommage du namespace.
+    dossier = load_collection().path / "plugins" / "modules"
+    autonomes = total = 0
+    for chemin in sorted(dossier.glob("*.py")):
+        if chemin.name.startswith("_"):
+            continue
+        documentation: dict[str, Any] = {}
+        for noeud in ast.parse(chemin.read_text(encoding="utf-8")).body:
+            if isinstance(noeud, ast.Assign) and any(
+                getattr(cible, "id", None) == "DOCUMENTATION" for cible in noeud.targets
+            ):
+                documentation = yaml.safe_load(ast.literal_eval(noeud.value)) or {}
+        total += 1
+        requis = {
+            nom
+            for nom, corps in (documentation.get("options") or {}).items()
+            if (corps or {}).get("required") and nom not in POSE_PAR_LINVENTAIRE
+        }
+        if not any(nom.endswith(("_id", "_ids")) for nom in requis):
+            autonomes += 1
+    return autonomes, total
+
+
 def bloc_nombre_de_modules() -> str:
-    """La phrase du README racine qui compte les modules.
+    """La phrase du README racine, et ce qu'elle promet vraiment.
 
     Elle contredisait, à quelques lignes de distance, le bloc dérivé qui
-    compte les mêmes modules (ADR-007).
+    compte les mêmes modules (ADR-007). Elle promettait ensuite que ces
+    variables suffisaient à **tous** les modules (#134).
     """
-    ecrits, _ = _modules_ecrits()
+    autonomes, total = _autonomie_des_modules()
     return (
-        "The inventory sets `scaleway_id` and `scaleway_zone`, which is all any of\n"
-        f"the {ecrits} modules needs behind `delegate_to: localhost`."
+        f"The inventory sets `scaleway_id` and `scaleway_zone`, which is what {autonomes}\n"
+        f"of the {total} modules need behind `delegate_to: localhost`. The other\n"
+        f"{total - autonomes} act on a sub-resource carrying its own identifier, which the\n"
+        "matching `_info` module returns."
     )
 
 
