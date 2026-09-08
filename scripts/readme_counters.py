@@ -44,6 +44,11 @@ README_COLLECTION = ROOT / "ansible_collections" / "stephrobert" / "scaleway" / 
 #: version : un lien vers `main` y mène à un fichier qui a bougé depuis.
 GALAXY = ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "galaxy.yml"
 RAPPORTS = ROOT / "build" / "reports"
+
+#: La raison qu'un compte rendu porte quand `--module` a restreint la
+#: production. Sa présence dit que le fichier ne mesure pas le dépôt, et le
+#: générateur l'écrit déjà : rien à ajouter là-bas, seulement à le lire ici.
+RESTREINTE = "`--module` restreint cette production"
 MUTATIONS = ROOT / "tests" / "falsify" / "specs.json"
 WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 
@@ -126,6 +131,20 @@ def _modules_ecrits() -> tuple[int, int]:
         )
         if ligne is None:
             raise CompteursError(f"{_affichable(chemin)} ne porte pas sa ligne de modules")
+
+        # **Un compte rendu de génération restreinte n'est pas une mesure du
+        # dépôt.** `--module` écarte tout le reste, et le compte rendu part dans
+        # le même répertoire que celui d'une génération complète : le fichier se
+        # lit pareil et dit autre chose. Le README a publié le compte d'un seul
+        # module, et `--check` l'a déclaré conforme puisqu'il compare le bloc à
+        # cette même source (ADR-007).
+        if RESTREINTE in chemin.read_text(encoding="utf-8"):
+            raise CompteursError(
+                f"{_affichable(chemin)} vient d'une génération restreinte par "
+                "`--module` : elle ne mesure pas le dépôt. Relancer "
+                "`mise run generate` sans périmètre."
+            )
+
         produits = int(ligne.split("**")[1])
         ecrits += produits
         plan += produits + int(ligne.split("**")[3])

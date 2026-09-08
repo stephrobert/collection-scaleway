@@ -48,8 +48,10 @@ pip install 'scaleway>=2.9.0'
 
 ## Authentication
 
-Through the environment, through the Scaleway configuration file, or through
-module parameters, in that order of precedence:
+Module parameters take precedence over environment variables, which take
+precedence over the Scaleway configuration file. A playbook that names a key
+explicitly therefore wins, whatever the shell it runs from and whatever
+`~/.config/scw/config.yaml` holds.
 
 ```bash
 export SCW_ACCESS_KEY=...

@@ -132,6 +132,12 @@ def test_la_generation_par_le_cli_lit_le_journal(tmp_path: Path) -> None:
 
     Sans ce test, un `build_module_specs` appelé sans journal dans `cli.py`
     laisserait tous les tests verts et republierait la version du jour.
+
+    `--report-dir` est **obligatoire** ici, et pas une précaution de style : sans
+    lui le compte rendu part dans `build/reports`, celui dont les compteurs
+    publiés dérivent, et une génération restreinte y écrit le compte d'un seul
+    module. Le README l'a publié, et le contrôle des compteurs l'a déclaré
+    conforme, puisqu'il compare le bloc à la même source empoisonnée (ADR-007).
     """
     sortie = tmp_path / "modules"
     resultat = subprocess.run(
@@ -145,6 +151,8 @@ def test_la_generation_par_le_cli_lit_le_journal(tmp_path: Path) -> None:
             "instance_server_info",
             "--output-dir",
             str(sortie),
+            "--report-dir",
+            str(tmp_path / "rapports"),
         ],
         cwd=ROOT,
         capture_output=True,

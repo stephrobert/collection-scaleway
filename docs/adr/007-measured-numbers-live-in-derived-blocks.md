@@ -24,6 +24,17 @@ Two scripts carried the same table of these findings in their docstrings, with
 **different** numbers in each: 595/158 in one, 577/151 in the other. Neither was
 wrong the day it was written.
 
+*Added 8 September 2026, and it corrects nothing above: it records the same
+failure reaching the mechanism from a side the record did not describe.* The
+block was regenerated from a source that no longer measured the repository. A
+unit test ran `generate --module instance_server_info` and let its report land
+in `build/reports`, where a full generation writes its own; the file reads the
+same and says something else. The README then published "23 modules written out
+of 52 planned", and `readme:check` declared it conformant, for the same reason
+as in 2026-09-06: it compares the block to what the script produces, and the
+script was reading the poisoned file. The writer also carried no dependency on
+the measurement it published, while the checker did.
+
 ## Decision
 
 Every measured number in a published document lives inside a **derived block**,

@@ -432,6 +432,13 @@ run = "python scripts/example_coverage.py"
 description = "Réécrire les compteurs du README depuis ce qui est mesuré"
 # Un nombre recopié à la main vieillit en silence, et se lit exactement comme
 # une mesure. Le README en annonçait 366 quand pytest en collectait 420.
+#
+# **Les mêmes dépendances que `readme:check`, et c'est une correction.** Elles
+# n'étaient déclarées que sur le contrôle, jamais sur l'écriture : `mise run
+# readme` publiait donc ce que `build/reports` contenait, quel qu'il soit. C'est
+# l'écriture qui est dangereuse, puisqu'elle pose le nombre dans un document
+# publié.
+depends = ["report", "generate"]
 run = "python scripts/readme_counters.py --write"
 
 [tasks."readme:check"]
