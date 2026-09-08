@@ -36,6 +36,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import verrou_plateforme
+
 ROOT = Path(__file__).resolve().parents[1]
 STACK = ROOT / "examples" / "stack"
 PLAYBOOKS = ROOT / "examples" / "playbooks"
@@ -695,6 +698,10 @@ def main(argv: list[str]) -> int:
     env["ANSIBLE_PRIVATE_KEY_FILE"] = str(CLE)
     env["ANSIBLE_LOCALHOST_WARNING"] = "False"
 
+    # **Le verrou avant le `try`, et son retrait dans le `finally`.**
+    # Il refuse un second run tant qu'une plateforme est debout : deux
+    # exercices concurrents se détruiraient mutuellement par leurs `finally`.
+    verrou_plateforme.poser(run_id, arguments.cible)
     code = 0
     try:
         if terraform("init", env, {}).returncode != 0:
@@ -755,6 +762,14 @@ def main(argv: list[str]) -> int:
             print(f"  terraform -chdir=examples/stack destroy -auto-approve -var run_id={run_id}")
         else:
             print("\n--- destruction ---", flush=True)
+            # **Avant Terraform, pas après.** Une destruction lancée depuis
+            # une définition qui n'est plus celle du déploiement échoue sur
+            # un fournisseur absent, et laisse tout debout. Le dire ici est
+            # bon marché ; le découvrir après a coûté un compte à nettoyer à la
+            # main (ADR-015).
+            dit = verrou_plateforme.derive()
+            if dit:
+                print(f"\n{dit}\n", file=sys.stderr, flush=True)
             if terraform("destroy", env, variables).returncode != 0:
                 print(
                     "LA DESTRUCTION A ÉCHOUÉ. Ne pas en rester là : relancer "
@@ -780,6 +795,11 @@ def main(argv: list[str]) -> int:
         # qui parle au cloud directement, mais un playbook interrompu peut
         # encore avoir un appel en vol. Couper le proxy trop tôt perdrait la
         # fin de la transcription, c'est-à-dire précisément ce qui a échoué.
+        # **Retiré seulement si la destruction a réussi.** Un verrou levé
+        # sur un échec dirait qu'il n'y a plus rien debout, ce qui est
+        # exactement le mensonge que l'incident a produit.
+        if not arguments.garder and code == 0:
+            verrou_plateforme.retirer()
         if proxy is not None:
             proxy.terminate()
             proxy.wait(timeout=10)

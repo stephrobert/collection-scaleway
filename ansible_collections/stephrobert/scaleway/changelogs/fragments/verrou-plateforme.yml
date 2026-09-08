@@ -1,0 +1,12 @@
+---
+minor_changes:
+  - "``scripts/example.py`` now takes a lock while a platform is up. It refuses a
+    second run, and before destroying it compares the tree with the one that
+    deployed, naming the commit to recover when the two diverge. A real run had
+    left billed resources alive: the ``finally`` was reached and did launch the
+    destroy, but ``examples/stack/`` is versioned, lock file included, and a
+    branch switch during the run replaced the definition **under** the
+    deployment. Terraform then refused to load a provider its own definition no
+    longer named. A ``finally`` only protects if the command it launches can
+    still run, and that limit was written nowhere. Three mutations prove the
+    refusals bite, and the tests build a lock rather than touching any cloud."
