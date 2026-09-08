@@ -1,0 +1,22 @@
+---
+minor_changes:
+  - "``mise run security`` and ``mise run security:trust`` now refuse to run when
+    a workflow scanner installed locally is not the version CI installs. The gate
+    that exists to replay CI had reported **12/12 green** on a tree CI then
+    refused: zizmor was 1.28.0 locally against 1.30.0 in CI, and the audit that
+    reddened the pull request was introduced in 1.30.0. A gate judging with a
+    different tool than the one it claims to replay produces a green worth
+    nothing. The versions are read from the workflows that install them, which
+    keeps a single declaration."
+  - "``plumber`` moves from 0.4.51 to 0.4.55. The pin had three different values
+    at once: the workflow said 0.4.51, the maintainer's toolchain 0.4.52, and
+    upstream published 0.4.55. Verdict on this repository is unchanged, grade A
+    with no finding at any severity."
+bugfixes:
+  - "``.github/zizmor.yml`` disables the ``self-repository`` audit, with the
+    measurement that justifies it. zizmor 1.30.0 asks for ``uses: $/...``, which
+    GitHub has supported since July 2026; **actionlint 1.7.12 rejects it** as an
+    invalid format, and that is both the latest release and the one CI installs.
+    Applying one gate's fix would turn it into the other gate's failure. Both
+    were installed and run locally before writing that down, because a supposed
+    conflict between gates is not a conflict between gates."

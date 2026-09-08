@@ -116,8 +116,17 @@ description = "Épingler une version d'ansible-core (ANSIBLE_CORE='>=2.17,<2.18'
 # matrice de CI échouait avant d'y arriver.
 run = 'uv pip install "ansible-core${ANSIBLE_CORE:->=2.17}"'
 
+[tasks."security:versions"]
+description = "Les scanners jugent-ils avec la version que la CI installe ?"
+# **`mise run qualifier` a rendu 12/12 vert sur un arbre que la CI a refusé.**
+# zizmor local était en 1.28.0, la CI en 1.30.0, et l'audit qui a rougi est né
+# avec la 1.30.0. Une porte qui juge avec un autre outil que celui qu'elle
+# prétend rejouer produit un vert qui ne vaut rien.
+run = "python scripts/scanners.py"
+
 [tasks.security]
 description = "Juger les workflows : actionlint, zizmor, poutine"
+depends = ["security:versions"]
 # Les mêmes portes que la CI, lançables avant de pousser. Elles échouent quand
 # l'outil est absent au lieu de se sauter : un contrôle qui se saute tout seul
 # finit par ne plus jamais tourner, et c'est la leçon que la cible
@@ -130,6 +139,7 @@ poutine analyze_local . --fail-on-violation --quiet
 
 [tasks."security:trust"]
 description = "Juger la politique de confiance du pipeline : plumber"
+depends = ["security:versions"]
 # Séparé des trois autres, et pas par goût du rangement : plumber déduit le
 # fournisseur du remote git et refuse une copie de travail qui n'en a pas. Tant
 # que ce dépôt n'a pas de remote, cette tâche échoue avec ce message, et les

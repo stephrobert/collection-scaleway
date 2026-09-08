@@ -1,0 +1,37 @@
+---
+# Ce que zizmor est autorisé à taire, et pourquoi.
+#
+# **Un seul audit, et il est désactivé parce qu'une autre porte de la même CI
+# refuse le correctif qu'il propose.** Ce n'est pas un arbitrage de confort : les
+# deux verdicts ont été reproduits en local, avec les versions exactes que la CI
+# installe.
+
+rules:
+  # `self-repository` demande d'écrire `uses: $/.github/actions/mise` plutôt que
+  # `uses: ./.github/actions/mise`. GitHub supporte cette syntaxe depuis juillet
+  # 2026, et l'audit est né avec zizmor 1.30.0.
+  #
+  # **actionlint 1.7.12 la refuse**, et c'est la dernière version publiée au
+  # 8 septembre 2026 comme celle que la CI installe :
+  #
+  #     specifying action "$/.github/actions/mise" in invalid format because ref
+  #     is missing. available formats are "{owner}/{repo}@{ref}" or
+  #     "{owner}/{repo}/{path}@{ref}"
+  #
+  # Appliquer le correctif de zizmor transformerait donc une porte rouge en une
+  # autre porte rouge. Les deux ont été installées et lancées en local avant
+  # d'écrire ceci, parce qu'un conflit de portes supposé n'est pas un conflit de
+  # portes.
+  #
+  # **Ce que `./` risque ici, mesuré.** Cette forme se résout contre l'espace de
+  # travail récupéré, qui pourrait être un autre dépôt. Aucun des neuf jobs
+  # concernés ne récupère un dépôt étranger : tous appellent
+  # `actions/checkout` sans `repository`, donc sur celui-ci. Le risque que
+  # l'audit décrit n'existe pas dans ces workflows, et c'est ce qui rend le
+  # silence défendable plutôt que commode.
+  #
+  # **À rouvrir** le jour où actionlint sait lire `$/`. Le correctif est
+  # automatique du côté de zizmor (`--fix=safe`), donc l'attente ne coûte rien
+  # d'autre que ce commentaire.
+  self-repository:
+    disable: true

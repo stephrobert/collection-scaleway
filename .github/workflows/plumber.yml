@@ -61,7 +61,7 @@ jobs:
       # où ce dépôt aura un jeton à y consacrer.
       - name: Installer plumber (binaire de release vérifié)
         env:
-          PLUMBER_VERSION: "0.4.51"
+          PLUMBER_VERSION: "0.4.55"
         run: |
           set -euo pipefail
           workdir="$(mktemp -d)"
