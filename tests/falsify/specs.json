@@ -2023,6 +2023,30 @@
       "find": "        vide = _VALEUR_VIDE.get(type_option)",
       "replace": "        vide = None",
       "test": "tests/unit/collection/test_null_explicite.py::test_le_refus_nomme_la_valeur_vide_du_type"
+    },
+    {
+      "name": "deblocage-sans-prefixe",
+      "why": "`startswith(\"\")` est vrai pour tout : sans le refus, un préfixe vide ferait retirer les cartes réseau de toutes les machines du compte, et une machine sans carte n'est plus jointe à son réseau privé.",
+      "file": "scripts/deblocage.py",
+      "find": "    if not prefixe:\n        raise DeblocageError(",
+      "replace": "    if not prefixe and False:\n        raise DeblocageError(",
+      "test": "tests/unit/outillage/test_deblocage.py::test_un_prefixe_vide_est_refuse"
+    },
+    {
+      "name": "deblocage-qui-retire-hors-du-run",
+      "why": "Sans le filtre, le déblocage retirerait les cartes des machines que personne n'a créées pour l'exercice : un outil de nettoyage devenu un outil de destruction du compte.",
+      "file": "scripts/deblocage.py",
+      "find": "    return [s for s in serveurs if str(s.get(\"name\") or \"\").startswith(prefixe)]",
+      "replace": "    return list(serveurs)",
+      "test": "tests/unit/outillage/test_deblocage.py::test_une_machine_du_compte_nest_jamais_touchee"
+    },
+    {
+      "name": "scw-en-echec-lu-comme-aucune-carte",
+      "why": "Un déblocage qui ne retire rien parce que `scw` a échoué laisse la destruction échouer une seconde fois, et le compte facturé.",
+      "file": "scripts/deblocage.py",
+      "find": "    if resultat.returncode != 0:\n        raise DeblocageError(f\"`scw {' '.join(arguments)}` a échoué :\\n{resultat.stderr.strip()}\")",
+      "replace": "    if resultat.returncode != 0:\n        return []",
+      "test": "tests/unit/outillage/test_deblocage.py::test_une_commande_qui_echoue_nest_pas_zero_carte"
     }
   ]
 }

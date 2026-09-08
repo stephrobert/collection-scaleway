@@ -37,6 +37,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import deblocage
 import verrou_plateforme
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -777,7 +778,33 @@ def main(argv: list[str]) -> int:
             dit = verrou_plateforme.derive()
             if dit:
                 print(f"\n{dit}\n", file=sys.stderr, flush=True)
-            if terraform("destroy", env, variables).returncode != 0:
+            echec = terraform("destroy", env, variables).returncode != 0
+            if echec and not cible["emulateur"]:
+                # **Une seule reprise, et seulement après un échec.** Terraform
+                # détruit `scaleway_instance_private_nic` avant le serveur,
+                # parce que la carte porte le `server_id`, et l'API refuse une
+                # carte attachée : des ressources facturées restent debout.
+                # Retirer les cartes par l'API puis relancer est la séquence qui
+                # aboutit (ADR-017).
+                #
+                # Une boucle sans borne serait pire que l'échec qu'elle
+                # rattrape : elle masquerait un blocage d'une autre nature en
+                # tournant jusqu'au bout du temps.
+                try:
+                    retirees = deblocage.deverrouiller(f"acs-{run_id}")
+                except deblocage.DeblocageError as erreur:
+                    print(f"déblocage impossible : {erreur}", file=sys.stderr)
+                    retirees = []
+                if retirees:
+                    print(
+                        f"\n{len(retirees)} carte(s) réseau retirée(s) pour débloquer "
+                        "la destruction :",
+                        file=sys.stderr,
+                    )
+                    for carte in retirees:
+                        print(f"  {carte.serveur_nom}  {carte.identifiant}", file=sys.stderr)
+                    echec = terraform("destroy", env, variables).returncode != 0
+            if echec:
                 print(
                     "LA DESTRUCTION A ÉCHOUÉ. Ne pas en rester là : relancer "
                     "`terraform -chdir=examples/stack destroy`, puis vérifier.",
