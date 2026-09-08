@@ -31,7 +31,7 @@ target, and no cell carries an arrow towards one.
 | Fuzzing | 10 | ClusterFuzzLite on pull requests and weekly, see below |
 | License | 10 | `LICENSE` at the root, GPL-3.0-or-later |
 | Packaging | 10 | an execution environment image published on every tag, see below |
-| SAST | 10 | CodeQL, plus four workflow scanners acting as a gate |
+| SAST | 10 | CodeQL, plus `actionlint`, `zizmor`, `poutine` and `plumber` acting as a gate |
 | Security-Policy | 10 | it held no link and no address; both were added |
 | Token-Permissions | 10 | `permissions: {}` on every workflow, minimum per job |
 | Vulnerabilities | 10 | OSV-Scanner on pull requests and weekly |

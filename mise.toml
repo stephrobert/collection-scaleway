@@ -447,7 +447,12 @@ depends = ["report", "generate"]
 run = "python scripts/readme_counters.py --check"
 
 [tasks.check]
-description = "Ce qu'une pull request doit passer"
+description = "La porte courte : hors ligne, déterministe, quelques secondes"
+# **Elle ne suffit pas à une pull request, et le dire évite un aller-retour.**
+# La CI lance plusieurs jobs ; `check` est ce que le premier rejoue. La
+# description a longtemps promis « ce qu'une pull request doit passer », et une
+# pull request est partie sur cette foi : elle a rougi sur la construction du
+# site, que `check` ne lance pas. C'est `qualifier` qui rejoue les autres.
 depends = [
   "lint",
   "typecheck",

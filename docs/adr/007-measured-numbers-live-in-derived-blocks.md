@@ -35,6 +35,18 @@ as in 2026-09-06: it compares the block to what the script produces, and the
 script was reading the poisoned file. The writer also carried no dependency on
 the measurement it published, while the checker did.
 
+*Also 8 September 2026, and this one the control could not see at all.* The
+same README carried, fourteen lines below a derived block announcing **6 jobs**,
+a hand-written table row reading **"four jobs, plus a weekly trigger"**. Two
+counts of the same thing, contradicting each other in one file. The control
+looked for digits, and this counter was spelled out in letters; `docs/scorecard.md`
+and the README both said "four workflow scanners" where `mise run security`
+runs three. Alongside them, two claims that are not numbers at all and that
+nothing compares to anything: `mise run check` described as "what a pull request
+has to pass", when CI runs several jobs and `check` is what one of them replays;
+and a `galaxy.yml` comment stating that the documentation site was not published
+yet, months after it went online. Both had been true the day they were written.
+
 ## Decision
 
 Every measured number in a published document lives inside a **derived block**,

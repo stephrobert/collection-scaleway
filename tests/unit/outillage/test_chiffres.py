@@ -93,6 +93,46 @@ def test_seuls_les_adr_echappent_au_suivi() -> None:
     assert not any(nom.startswith("docs/adr/") for nom in suivis), sorted(suivis)
 
 
+def test_un_compte_ecrit_en_lettres_est_refuse(tmp_path: Path) -> None:
+    """La phrase exacte que `README.md` a publiée, sous son propre démenti.
+
+    Le bloc dérivé du même fichier donnait un autre compte des jobs. Un motif
+    qui ne cherche que des chiffres ne voyait ni l'un ni l'autre. ADR-007 porte
+    les deux comptes et leur date.
+    """
+    chemin = _document(
+        tmp_path,
+        "| CI on every pull request and on a schedule | four jobs, plus a weekly trigger |\n",
+    )
+    ecarts = chiffres.examiner(chemin)
+    assert [ecart.texte for ecart in ecarts] == ["four jobs"]
+
+
+def test_un_compte_de_scanners_ecrit_en_lettres_est_refuse(tmp_path: Path) -> None:
+    """Deux pages publiaient « four workflow scanners », et `mise run security` en lance trois."""
+    chemin = _document(tmp_path, "CodeQL, plus four workflow scanners acting as a gate\n")
+    assert [ecart.texte for ecart in chiffres.examiner(chemin)] == ["four workflow scanners"]
+
+
+def test_un_nombre_compose_nest_pas_lu_par_morceaux(tmp_path: Path) -> None:
+    """Un compte ne se lit pas à l'intérieur d'un terme composé.
+
+    `Day-2` et `twenty-seven` en sont les deux formes : chiffre collé à un
+    tiret, mot collé à un tiret. C'est la garde que `histoire.py` a déjà payée
+    sur la même famille de motif : sans elle le contrôle désigne des passages
+    sans rapport, et un contrôle qui crie à tort est un contrôle qu'on
+    désactive.
+    """
+    chemin = _document(
+        tmp_path,
+        "Coverage relates AUTO to Day-2 operations only.\n"
+        "The pipeline has twenty-seven jobs is a sentence nobody writes.\n",
+    )
+    textes = [ecart.texte for ecart in chiffres.examiner(chemin)]
+    assert "2 operations" not in textes
+    assert "seven jobs" not in textes
+
+
 def test_le_depot_ne_publie_aucun_compteur_hors_bloc() -> None:
     """Ce que le contrôle mesure aujourd'hui sur les fichiers publiés.
 
