@@ -611,7 +611,7 @@ def test_une_lecture_qui_repond_par_le_corps_reste_une_lecture() -> None:
     `GetBackend` rend un `Backend` et `GetLb` rend un `Lb`.
     """
     service = _lecture(payload_field=None, schema="labo.v1.Chose")
-    trouvee = _unitary_read_operation(service, "chose")
+    trouvee = _unitary_read_operation(service, "chose", None)
     assert trouvee is not None
     assert trouvee.id == "GetChose"
 
@@ -619,7 +619,7 @@ def test_une_lecture_qui_repond_par_le_corps_reste_une_lecture() -> None:
 def test_une_lecture_par_enveloppe_reste_trouvee() -> None:
     """Le cas voisin, qui ne doit pas bouger."""
     service = _lecture(payload_field="chose", schema="labo.v1.GetChoseResponse")
-    trouvee = _unitary_read_operation(service, "chose")
+    trouvee = _unitary_read_operation(service, "chose", None)
     assert trouvee is not None
 
 
@@ -630,7 +630,7 @@ def test_une_reponse_qui_ne_decrit_rien_nest_pas_une_lecture() -> None:
     l'attendrait comparerait le vide au vide.
     """
     service = _lecture(payload_field=None, schema=None)
-    assert _unitary_read_operation(service, "chose") is None
+    assert _unitary_read_operation(service, "chose", None) is None
 
 
 # --- l'action dont l'action est l'opération --------------------------------
