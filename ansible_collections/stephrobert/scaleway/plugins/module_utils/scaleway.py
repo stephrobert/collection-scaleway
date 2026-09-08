@@ -60,6 +60,26 @@ PRODUCTION_API_URL = "https://api.scaleway.com"
 #: Identifie la collection auprès de l'API, comme le SDK le fait pour lui-même.
 DEFAULT_USER_AGENT = "ansible-stephrobert.scaleway"
 
+#: L'ordre de priorité des sources d'identifiants, du plus fort au plus faible.
+#:
+#: **Il n'existe qu'ici.** Trois documents publiés le décrivent, chacun dans ses
+#: mots : le README de la collection, le fragment de documentation et la page
+#: d'architecture du runtime. Le README l'a annoncé **à l'envers** jusqu'à la
+#: 0.4.0, et rien ne l'a vu, parce qu'une phrase ne se compare à rien. Une
+#: personne qui gère plusieurs projets comprenait donc l'inverse de ce que le
+#: code fait, sur une décision où l'API ne dira rien : les identifiants de
+#: l'autre compte sont valides, juste pas ceux qu'on croyait.
+#:
+#: Chaque rang porte les formulations acceptables, parce qu'Ansible dit
+#: « options » là où le README dit « parameters ». Un test exige que les trois
+#: documents nomment les trois rangs **dans cet ordre**, et un autre exige que
+#: le runtime les applique dans le même.
+PRECEDENCE: tuple[tuple[str, ...], ...] = (
+    ("module parameters", "module options"),
+    ("environment variables", "the environment"),
+    ("configuration file",),
+)
+
 #: Taille de page demandée aux opérations de liste. 100 est le maximum accepté
 #: par l'API Instance, mesuré dans la description de `per_page` du contrat.
 DEFAULT_PAGE_SIZE = 100

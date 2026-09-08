@@ -3,7 +3,7 @@
 What `plugins/module_utils/scaleway.py` carries, why, and what it costs.
 
 <!-- compteurs:runtime-etat:début, produits par scripts/readme_counters.py -->
-State: written, measured by 104 unit tests, judged by `ansible-test sanity`, and
+State: written, measured by 112 unit tests, judged by `ansible-test sanity`, and
 exercised end to end against a local emulator and against a real Scaleway
 account.
 <!-- compteurs:runtime-etat:fin -->
@@ -71,6 +71,14 @@ The official collection has two, and the second silently ignores an
 ```text
 module parameters  >  environment variables  >  configuration file
 ```
+
+That order has **one** definition, `PRECEDENCE` in the runtime, and three
+documents state it in their own words: this page, the collection README and the
+`scaleway` documentation fragment. The README published the reverse until
+0.4.0, and nothing noticed, because a sentence is compared to nothing. Two
+tests now hold it: one puts the three sources in conflict on the same field and
+asserts which wins, the other reads the three documents and requires them to
+name the sources in that order.
 
 The SDK logger receives a `NullHandler`: without it, every run without a
 configuration file writes a warning to standard error, which is the normal case

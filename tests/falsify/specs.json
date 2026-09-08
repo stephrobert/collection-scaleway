@@ -1815,6 +1815,30 @@
       "find": "    return [ligne for ligne in lignes.splitlines() if ligne and ligne[1] != \" \"]",
       "replace": "    return [ligne for ligne in lignes.splitlines() if ligne and ligne[1] not in \" ?\"]",
       "test": "tests/unit/outillage/test_check_generated.py::test_un_fichier_non_suivi_reste_une_derive"
+    },
+    {
+      "name": "parametre-ecrase-par-le-fichier-de-configuration",
+      "why": "Un paramètre explicite est ce qu'un playbook écrit exprès pour viser un compte précis. S'il ne l'emporte plus, le playbook travaille sur le mauvais projet et l'API ne dit rien : les identifiants sont valides, juste pas ceux qu'on croyait.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    for parameter, attribute in _PARAMETER_TO_PROFILE.items():\n        value = values.get(parameter)\n        if value is not None:",
+      "replace": "    for parameter, attribute in _PARAMETER_TO_PROFILE.items():\n        value = values.get(parameter)\n        if value is not None and False:",
+      "test": "tests/unit/collection/test_precedence.py::test_un_parametre_lemporte_sur_lenvironnement_et_sur_le_fichier"
+    },
+    {
+      "name": "fichier-de-configuration-jamais-lu",
+      "why": "Le contre-exemple : un runtime qui ignorerait purement le fichier passerait les deux premiers rangs sans que rien ne le dise.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    profile = Profile.from_config_file_and_env(\n        values.get(\"config_file\"),\n        values.get(\"profile\") or \"default\",\n    )",
+      "replace": "    profile = Profile.from_config_file_and_env(\n        values.get(\"config_file\"),\n        values.get(\"profile\") or \"default\",\n    )\n    profile.access_key = None",
+      "test": "tests/unit/collection/test_precedence.py::test_le_fichier_sert_quand_rien_dautre_ne_le_dit"
+    },
+    {
+      "name": "compte-rendu-restreint-compte-comme-une-mesure",
+      "why": "Une génération restreinte par `--module` écrit son compte rendu au même endroit qu'une génération complète : le fichier se lit pareil et dit autre chose. Sans ce refus, le README a publié « 23 modules sur 52 » et le contrôle l'a déclaré conforme, puisqu'il compare le bloc à cette source.",
+      "file": "scripts/readme_counters.py",
+      "find": "        if RESTREINTE in chemin.read_text(encoding=\"utf-8\"):",
+      "replace": "        if RESTREINTE in chemin.read_text(encoding=\"utf-8\") and False:",
+      "test": "tests/unit/outillage/test_readme_counters.py::test_un_compte_rendu_de_generation_restreinte_est_refuse"
     }
   ]
 }

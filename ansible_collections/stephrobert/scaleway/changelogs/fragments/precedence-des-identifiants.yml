@@ -1,0 +1,17 @@
+---
+bugfixes:
+  - "The collection README announced the credential precedence **backwards**.
+    It read ``environment, then configuration file, then module parameters``,
+    while the runtime has always let a module parameter win over the
+    environment, which wins over the configuration file. The documentation
+    fragment said it correctly, so two published pages contradicted each other.
+    Someone managing several projects could believe an environment variable
+    overrode an explicit parameter, and work on the wrong project without the
+    API saying anything: the credentials are valid, just not the intended ones."
+minor_changes:
+  - "The credential precedence now has a single definition, ``PRECEDENCE`` in
+    the runtime. One test puts the three sources in conflict on the same field
+    and asserts which wins; another reads the collection README, the
+    documentation fragment and the runtime architecture page, and requires each
+    to name the three sources in that order. A third pins the sentence
+    published up to 0.4.0 and proves the check refuses it."
