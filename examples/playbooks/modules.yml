@@ -549,30 +549,65 @@
           check mode sans effet.
         quiet: true
 
-    # **Un `null` explicite n'est pas ignoré.** Le runtime ne sait pas encore
-    # effacer un champ (#114) ; plutôt que de rendre `ok` sur une description
-    # toujours là, il refuse et dit quoi faire (ADR-012). Le refus précède
-    # toute lecture : il est le même contre l'émulateur et contre le cloud.
-    - name: Demander l'effacement de la description
+    # **Un `null` explicite efface, et l'omission n'efface rien.** Les deux
+    # arrivaient au module sous la forme d'un `None` ; un témoin d'omission les
+    # sépare, et Ansible ne le déclenche que sur une clé absente de
+    # l'invocation (ADR-016). Ce que l'effacement produit n'est pas deviné : la
+    # vérification d'après écriture le mesure, et le module échouerait ici si
+    # l'API rendait la description intacte.
+    - name: Effacer la description
       stephrobert.scaleway.instance_security_group:
         zone: "{{ zone }}"
         security_group_id: "{{ groupe_web }}"
         description: null
       register: effacement
-      # `ignore_errors` et non `failed_when: false` : le second efface le
-      # statut d'échec, et l'assertion suivante ne mesurerait plus rien.
-      ignore_errors: true
 
-    - name: Le module refuse, nomme le champ, et n'a rien changé
+    - name: L'effacement a eu lieu, et la relecture ne montre plus la description
       ansible.builtin.assert:
         that:
-          - effacement is failed
-          - "'description' in effacement.msg"
-          - effacement is not changed
+          - effacement is changed
+          - not (effacement.security_group.description | default('', true))
         fail_msg: >-
-          Un `null` explicite a été ignoré au lieu d'être refusé : le module a
-          rendu {{ effacement }}.
-        success_msg: "refus mesuré : {{ effacement.msg }}"
+          Le module a rendu {{ effacement }}. Un `null` explicite doit effacer
+          le champ, pas rendre `ok` sur une description toujours là.
+        quiet: true
+
+    # **Le second passage, et c'est lui la preuve.** Un module qui renverrait
+    # `changed` ici réécrirait `null` sur un champ déjà vide à chaque exécution,
+    # ce qui n'est pas de l'idempotence quoi qu'affiche `changed`.
+    - name: Effacer une seconde fois une description déjà vide
+      stephrobert.scaleway.instance_security_group:
+        zone: "{{ zone }}"
+        security_group_id: "{{ groupe_web }}"
+        description: null
+      register: reeffacement
+
+    - name: Le second effacement ne change rien
+      ansible.builtin.assert:
+        that:
+          - reeffacement is not changed
+        fail_msg: >-
+          Le module a rendu `changed` sur l'effacement d'un champ déjà vide.
+        success_msg: >-
+          Effacement prouvé : premier passage `changed`, second inchangé.
+        quiet: true
+
+    # **Le contre-exemple, sans lequel les deux tâches ci-dessus passeraient
+    # aussi sur un module qui effacerait tout.** L'option est omise, pas écrite
+    # à `null` : le tag part, la description reste vide, et rien d'autre ne
+    # bouge.
+    - name: Écrire un tag sans nommer la description
+      stephrobert.scaleway.instance_security_group:
+        zone: "{{ zone }}"
+        security_group_id: "{{ groupe_web }}"
+        description: "Réécrite après effacement"
+      register: reecriture
+
+    - name: La description se réécrit après avoir été effacée
+      ansible.builtin.assert:
+        that:
+          - reecriture is changed
+          - reecriture.security_group.description == 'Réécrite après effacement'
         quiet: true
 
     # ---- Les écritures, et leur idempotence -----------------------------
