@@ -170,6 +170,7 @@ def parse_document(spec: SpecDocument) -> ApiService:
                     path=path,
                     method=method,
                     operation=operation,
+                    partages=path_item.get("parameters"),
                     schemas=schemas,
                     enums=enums,
                     warnings=warnings,
@@ -313,12 +314,50 @@ def _parse_objects(
     return tuple(objets)
 
 
+def _parametres_declares(
+    operation: dict[str, Any], partages: Any, operation_id: str, warnings: list[str]
+) -> list[Any]:
+    """Les paramètres qui s'appliquent à l'opération, partagés compris.
+
+    **OpenAPI autorise un `parameters` au niveau du chemin**, et §4.7.9.1 dit
+    qu'il s'applique à toutes les opérations qui s'y trouvent. Le parser ne
+    lisait que celui de l'opération : un contrat qui déclare `{zone}` et
+    `{id}` une fois pour tout le chemin produisait une opération **sans aucun
+    paramètre**, donc un module dont le chemin gardait ses accolades, et rien
+    ne le signalait.
+
+    Aucun contrat versionné ne s'en sert aujourd'hui, et
+    `test_aucun_contrat_versionne_ne_declare_de_parametre_partage` le mesure :
+    le défaut est latent, ce qui est la raison de le corriger maintenant plutôt
+    que le jour où un contrat s'en servira.
+
+    **L'opération gagne, le chemin comble.** C'est ce que dit la même section :
+    un paramètre de l'opération remplace celui du chemin quand tous deux
+    portent le même `name` et le même `in`. L'inverse écraserait une
+    précision locale par une valeur générale.
+    """
+    propres = [p for p in (operation.get("parameters") or []) if isinstance(p, dict)]
+    if not isinstance(partages, list):
+        if partages is not None:
+            warnings.append(
+                f"{operation_id} : `parameters` du chemin qui n'est pas une liste, ignoré"
+            )
+        return list(operation.get("parameters") or [])
+
+    identite = {(p.get("name"), p.get("in")) for p in propres}
+    herites = [
+        p for p in partages if isinstance(p, dict) and (p.get("name"), p.get("in")) not in identite
+    ]
+    return [*herites, *(operation.get("parameters") or [])]
+
+
 def _parse_operation(
     *,
     spec: SpecDocument,
     path: str,
     method: HTTPMethod,
     operation: dict[str, Any],
+    partages: Any,
     schemas: dict[str, Any],
     enums: dict[str, ApiEnum],
     warnings: list[str],
@@ -335,7 +374,7 @@ def _parse_operation(
 
     scope = _scope_of(path)
     parameters: list[ApiParameter] = []
-    for declared in operation.get("parameters") or []:
+    for declared in _parametres_declares(operation, partages, operation_id, warnings):
         if not isinstance(declared, dict):
             warnings.append(f"{operation_id} : un paramètre qui n'est pas un mapping, ignoré")
             continue

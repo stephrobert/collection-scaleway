@@ -724,7 +724,9 @@ def _build_action_module(
         description=_action_description(action_operation, choix),
         options=options,
         returns=retours,
-        examples=_action_examples(name, collection, options, parametre, action_operation),
+        examples=_action_examples(
+            name, collection, options, parametre, action_operation, _libelle(service, item.resource)
+        ),
         get_operation=None,
         list_operation=None,
         selector=None,
@@ -1473,8 +1475,21 @@ def _action_examples(
     options: tuple[AnsibleOption, ...],
     action_parameter: str | None,
     operation: OperationBinding,
+    libelle: str,
 ) -> tuple[ExampleTask, ...]:
-    """Un exemple par action exposée : c'est ce qu'un lecteur vient chercher."""
+    """Un exemple par action exposée : c'est ce qu'un lecteur vient chercher.
+
+    `libelle` est celui de la ressource, celui-là même qui titre la page d'un
+    module de gestion. Il était écrit en dur, « an Instance », et cette phrase
+    est publiée sur Galaxy : elle n'était juste que parce qu'`instance_server_action`
+    est le seul module dont l'action porte un enum. Le second aurait publié
+    « Migrate an Instance » sur un load balancer.
+
+    **« the » et pas « a ».** L'article indéfini anglais dépend du son et non de
+    la lettre : « an IP », « an SSL », mais « a NIC ». Le déduire du libellé
+    demanderait une table de prononciation, et se tromperait sur le premier
+    acronyme venu. « the » ne se trompe sur aucun libellé.
+    """
     module = collection.module_fqcn(name)
     requis = {
         option.name: _example_value(option, name)
@@ -1497,7 +1512,7 @@ def _action_examples(
     action_option = next(option for option in options if option.name == action_parameter)
     return tuple(
         ExampleTask(
-            name=f"{valeur.replace('_', ' ').capitalize()} an Instance",
+            name=f"{valeur.replace('_', ' ').capitalize()} the {libelle}",
             module=module,
             parameters={**requis, action_parameter: valeur},
             register="result",

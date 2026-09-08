@@ -60,19 +60,19 @@ EXAMPLES = r"""
 # reports `changed` again, and that is correct. Idempotence is the
 # business of the management modules.
 
-- name: Poweron an Instance
+- name: Poweron the Widget
   lab.widget.widget_widget_action:
     zone: fr-par-1
     widget_id: 11111111-2222-3333-4444-555555555555
     action: poweron
   register: result
-- name: Poweroff an Instance
+- name: Poweroff the Widget
   lab.widget.widget_widget_action:
     zone: fr-par-1
     widget_id: 11111111-2222-3333-4444-555555555555
     action: poweroff
   register: result
-- name: Reboot an Instance
+- name: Reboot the Widget
   lab.widget.widget_widget_action:
     zone: fr-par-1
     widget_id: 11111111-2222-3333-4444-555555555555
