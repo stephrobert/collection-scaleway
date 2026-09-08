@@ -616,6 +616,13 @@ def main(argv: list[str]) -> int:
             # L'image d'or n'existe que sur le cloud réel : la stack la met à
             # zéro ailleurs, et le playbook saute la tâche plutôt que d'échouer.
             "image_doree": sorties.get("image_doree", {}).get("value", ""),
+            # La mesure d'ordre de #119. Les trois sorties existent toujours et
+            # sont vides hors du cloud réel : feint décline `CreateCertificate`,
+            # avec sa raison, et le playbook saute la mesure sur une liste vide
+            # plutôt que de diverger selon la cible.
+            "frontend_tls": sorties.get("frontend_tls", {}).get("value", ""),
+            "certificats_mesure": sorties.get("certificats_mesure", {}).get("value", []),
+            "certificat_backend": sorties.get("certificat_backend", {}).get("value", ""),
         }
 
         # Les modules recensés parlent à l'API et n'ont besoin d'aucune

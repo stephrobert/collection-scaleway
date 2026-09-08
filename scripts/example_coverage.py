@@ -75,11 +75,6 @@ SANS_CIBLE: dict[str, str] = {
         "que l'exemple prend à la place de qui le lance. feint ne sert pas cette "
         "route non plus (501), donc aucune des deux cibles ne l'exerce."
     ),
-    "lb_certificate": (
-        "demande un certificat, donc un domaine pour Let's Encrypt ou un PEM à "
-        "fournir. La stack n'a pas de domaine, et embarquer un certificat auto-signé "
-        "ajouterait un fournisseur Terraform pour une seule réécriture."
-    ),
     "lb_subscriber": (
         "demande un destinataire d'alertes, et le provider Terraform ne déclare "
         "aucune ressource `scaleway_lb_subscriber` : il n'existe aucun moyen d'en "

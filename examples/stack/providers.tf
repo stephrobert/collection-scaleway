@@ -17,6 +17,12 @@ terraform {
       # un seul changement de leur côté.
       version = "2.81.0"
     }
+    # Le matériel cryptographique des certificats de mesure, produit à
+    # l'application. Épinglé pour la même raison que le précédent.
+    tls = {
+      source  = "hashicorp/tls"
+      version = "4.1.0"
+    }
   }
 }
 
