@@ -31,7 +31,7 @@ from typing import Any
 
 from generator.ansible.attributes import pour as attributs_pour
 from generator.ansible.collection import Collection
-from generator.ansible.comparison import strategie_par_defaut
+from generator.ansible.comparison import ComparisonStrategy, strategie_par_defaut
 from generator.ansible.introductions import Introductions
 from generator.ansible.mapping import (
     COMMON_PARAMETERS,
@@ -42,7 +42,7 @@ from generator.ansible.mapping import (
     return_type,
 )
 from generator.ir.enums import ApiType, HTTPMethod, OperationKind, ParameterLocation
-from generator.ir.models import ApiOperation, ApiParameter, ApiService
+from generator.ir.models import ApiField, ApiObject, ApiOperation, ApiParameter, ApiService
 from generator.overrides.loader import (
     OperationOverride,
     OverrideSet,
@@ -733,6 +733,7 @@ def _comparaisons(
     operation: ApiOperation,
     geres: tuple[str, ...],
     override: OperationOverride | None,
+    lecture: ApiObject | None = None,
 ) -> tuple[tuple[str, str], ...]:
     """La stratégie de comparaison de chaque paramètre géré.
 
@@ -741,6 +742,15 @@ def _comparaisons(
     réordonner : adopter `set` par défaut ferait taire un `changed` qui a
     peut-être raison, et un module qui tait un changement réel est pire qu'un
     module qui en annonce un de trop.
+
+    **Le contrat décide une chose de plus, et elle se mesure des deux côtés.**
+    Quand l'écriture prend un tableau et que la lecture rend un tableau
+    d'objets, la requête envoie des identifiants et la réponse rend les
+    ressources entières. Les comparer directement rend « différent » à tous les
+    coups : le module réécrit à chaque exécution en annonçant `changed`. Ce
+    n'est pas une préférence, c'est le seul verdict possible, et `id_list` le
+    porte. La forme singulière de ce défaut est celle de
+    `lb_frontend.backend_id`, que `_valeur_courante` traite déjà.
 
     Un paramètre géré que l'opération ne déclare pas ne peut pas arriver, le
     plan les tirant de la même source ; s'il arrivait, il tomberait sur
@@ -751,14 +761,28 @@ def _comparaisons(
         for nom, restriction in (override.parameters if override else {}).items()
         if restriction.comparison is not None
     }
+    rendus = {champ.name: champ for champ in (lecture.fields if lecture else ())}
     decidees: list[tuple[str, str]] = []
     for nom in geres:
         parametre = operation.parameter(nom)
-        strategie = poses.get(nom) or strategie_par_defaut(
-            parametre.type if parametre else ApiType.STRING
-        )
+        strategie = poses.get(nom)
+        if strategie is None:
+            strategie = _strategie_mesuree(parametre, rendus.get(nom))
         decidees.append((nom, strategie.value))
     return tuple(sorted(decidees))
+
+
+def _strategie_mesuree(ecrit: ApiParameter | None, lu: ApiField | None) -> ComparisonStrategy:
+    """Ce que le contrat décide seul, en regardant l'écriture **et** la lecture."""
+    if (
+        ecrit is not None
+        and lu is not None
+        and ecrit.type is ApiType.ARRAY
+        and lu.type is ApiType.ARRAY
+        and lu.item_type is ApiType.OBJECT
+    ):
+        return ComparisonStrategy.ID_LIST
+    return strategie_par_defaut(ecrit.type if ecrit else ApiType.STRING)
 
 
 def _build_manage_module(
@@ -887,7 +911,12 @@ def _build_manage_module(
         secret_params=secrets,
         nullable_params=effacables,
         limits=limits,
-        comparisons=_comparaisons(item.operation, geres, override),
+        comparisons=_comparaisons(
+            item.operation,
+            geres,
+            override,
+            service.object(read_operation.payload_schema),
+        ),
         unverified_params=tuple(
             nom
             for nom in geres
