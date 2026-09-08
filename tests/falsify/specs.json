@@ -452,9 +452,9 @@
       "name": "total-non-reverse",
       "why": "Sans le report de x-total-count, la pagination perd son garde-fou et rend une liste tronquée sans le dire.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "    charge[\"total_count\"] = total",
-      "replace": "    charge[\"total_count\"] = total if False else None\n    return",
-      "test": "tests/unit/collection/test_runtime.py::test_le_total_est_reverse_de_lentete_vers_le_corps"
+      "find": "    total = entetes.get(\"x-total-count\")",
+      "replace": "    total = None",
+      "test": "tests/unit/collection/test_runtime.py::test_le_total_est_reverse_de_lentete_vers_le_corps_lu"
     },
     {
       "name": "strict-hors-cle-de-cache",
@@ -1879,6 +1879,38 @@
       "find": "    if module.check_mode:\n        module.exit_json(\n            changed=True,\n            action=action,",
       "replace": "    if module.check_mode and False:\n        module.exit_json(\n            changed=True,\n            action=action,",
       "test": "tests/unit/collection/test_attributs.py::test_un_module_daction_annonce_un_check_mode_plein_et_ne_declenche_rien"
+    },
+    {
+      "name": "acces-a-une-api-privee-admis",
+      "why": "Le runtime a quitté `API._request` parce qu'un souligné n'est pas un contrat, puis a écrit `Response._content`. Une règle qu'on énonce sans la mesurer se réintroduit par la porte d'à côté (ADR-014).",
+      "file": "scripts/api_privee.py",
+      "find": "        if not isinstance(noeud, ast.Attribute) or not noeud.attr.startswith(\"_\"):",
+      "replace": "        if not isinstance(noeud, ast.Attribute) or not noeud.attr.startswith(\"_\") or True:",
+      "test": "tests/unit/outillage/test_api_privee.py::test_ecrire_un_attribut_prive_dune_bibliotheque_est_refuse"
+    },
+    {
+      "name": "attribut-prive-sur-soi-refuse",
+      "why": "`self._client` n'engage aucune dépendance : c'est du privé à soi, et c'est le style de tout le runtime. Le refuser ferait un contrôle qu'on désactive au lieu de le respecter.",
+      "file": "scripts/api_privee.py",
+      "find": "        if isinstance(noeud.value, ast.Name) and noeud.value.id in (\"self\", \"cls\"):",
+      "replace": "        if isinstance(noeud.value, ast.Name) and noeud.value.id in (\"self\", \"cls\") and False:",
+      "test": "tests/unit/outillage/test_api_privee.py::test_un_attribut_prive_sur_soi_est_le_style_du_depot"
+    },
+    {
+      "name": "total-count-non-reverse-au-lecteur",
+      "why": "Le contrat ne déclare pas `total_count` sur les réponses de liste : c'est l'en-tête qui le porte, et la pagination s'en sert comme garde-fou. Sans le report, une liste tronquée sort sans le dire.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        if isinstance(payload, dict):\n            return _avec_total_count(payload, response.headers)",
+      "replace": "        if isinstance(payload, dict):\n            return payload",
+      "test": "tests/unit/collection/test_runtime.py::test_lentete_arrive_jusqua_ce_que_request_rend"
+    },
+    {
+      "name": "corps-lu-mute-sur-place",
+      "why": "Rendre un nouveau mapping plutôt que muter l'argument : muter reproduirait à un étage près le défaut corrigé, le lecteur d'une structure ne devant pas la voir changer derrière lui.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    return {**charge, \"total_count\": total}",
+      "replace": "    charge[\"total_count\"] = total\n    return charge",
+      "test": "tests/unit/collection/test_runtime.py::test_le_corps_lu_nest_pas_modifie_sur_place"
     }
   ]
 }

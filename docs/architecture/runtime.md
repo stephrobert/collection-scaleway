@@ -3,7 +3,7 @@
 What `plugins/module_utils/scaleway.py` carries, why, and what it costs.
 
 <!-- compteurs:runtime-etat:début, produits par scripts/readme_counters.py -->
-State: written, measured by 120 unit tests, judged by `ansible-test sanity`, and
+State: written, measured by 123 unit tests, judged by `ansible-test sanity`, and
 exercised end to end against a local emulator and against a real Scaleway
 account.
 <!-- compteurs:runtime-etat:fin -->
@@ -42,24 +42,40 @@ that it define only `main`, that `main` do two things, and that there be
 neither a condition nor a loop inside. Logic sneaking into the template would
 redden that test immediately.
 
-## Decision 1: execute the contract's method and path
+## Decision 1: execute the contract's method and path, over our own transport
 
-The Python SDK is the execution client. What remained was **how** a generated
-module reaches an operation. Two paths existed:
+The contract is **the only source**: the generator guesses no SDK method name
+from an `operationId`, and the IR already carries `http_method` and `path`. What
+remained was who sends the request.
 
-| path | what it requires knowing | what it costs |
-|---|---|---|
-| the SDK's generated classes (`InstanceV1API.get_server`) | translating `GetServer` into `get_server`, and hoping | a second source, never measured, drifting silently |
-| `scaleway_core.api.API._request(method, path, ...)` | the method and the path, which the IR already carries | a dependency on an underscore-prefixed method |
+The runtime composes it itself. The SDK supplies the profile and the
+credentials; it does not execute. [ADR-014](../adr/014-the-runtime-owns-its-http-transport.md)
+carries the decision and the two measurements that closed the question, the
+first of which is that the SDK passes no timeout to `requests`.
 
-The second was chosen. The contract stays **the only source**: the generator
-guesses no SDK method name, and the IR already carries `http_method` and
-`path`.
+Owning the transport means owning every responsibility that comes with it, and
+each has one place:
 
-The price is real, and it is held by a guard rather than by hope:
-`test_le_sdk_expose_toujours_le_point_dexecution_attendu` checks the signature
-of `API._request`. If the SDK moves it, `mise run check` says so, not a
-playbook in production.
+| responsibility | where |
+|---|---|
+| authentication headers, user agent, content type | `ScalewayApi._send` |
+| query parameter serialisation, a list becoming repeated pairs | `ScalewayApi._send` |
+| timeout, per call, from the `api_timeout` option | `ScalewayApi._send` |
+| TLS, and the `api_allow_insecure` escape for an emulator | `ScalewayApi._send` |
+| error translation, without ever copying the response body | `_error_from_response` |
+| reading the body, and carrying `x-total-count` into it | `ScalewayApi.request`, `_avec_total_count` |
+| pagination, and the three conditions that stop it | `paginate` |
+
+**Retries are not in that table, and their absence is deliberate.** Retrying a
+`POST` that triggers an action is not the same act as retrying a `GET`, and the
+policy belongs to the kind of operation rather than to the transport. Issue #91
+carries it.
+
+**No private attribute of a third-party library is shipped.** The runtime left
+`API._request` because an underscore is not a contract, then wrote
+`requests.Response._content` to hand the paginator a header. `mise run
+api:privee` reads `plugins/` and refuses that, so the rule is measured rather
+than stated.
 
 ## Decision 2: a single way to build the client
 

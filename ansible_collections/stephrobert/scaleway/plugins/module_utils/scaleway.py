@@ -16,10 +16,12 @@ collection officielle `scaleway/ansible` :
 * **une seule construction de client**, qui lit les paramètres du module puis
   l'environnement. La collection officielle en a deux qui divergent, et la
   seconde ignore silencieusement `access_key` ;
-* **l'exécution se fait sur la méthode et le chemin du contrat**, via
-  `scaleway_core.api.API._request`. Le SDK reste le client d'exécution, mais il
-  n'est jamais la source de la génération : le générateur ne devine aucun nom de
-  méthode SDK à partir d'un `operationId` ;
+* **l'exécution se fait sur la méthode et le chemin du contrat**, par une
+  requête que ce fichier compose lui-même. Le SDK fournit le profil et les
+  identifiants ; il n'est jamais la source de la génération, et le générateur ne
+  devine aucun nom de méthode SDK à partir d'un `operationId`. Le transport a
+  d'abord passé par `scaleway_core.api.API._request`, et ADR-014 dit pourquoi il
+  n'y passe plus ;
 * **la pagination va jusqu'au bout**, et elle s'arrête sur une condition
   observable, pas sur une supposition.
 
@@ -34,7 +36,7 @@ import logging
 import time
 import traceback
 from dataclasses import dataclass, field
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Any, Callable
 from urllib.parse import quote
 
@@ -620,24 +622,26 @@ def _validate_client(module: AnsibleModule, client: Client) -> None:
             module.fail_json(msg=f"configuration Scaleway invalide : {_safe_reason(error)}")
 
 
-def _carry_total_count(response: Any) -> None:
-    """Reverse `x-total-count` dans le corps, comme le SDK le faisait.
+def _avec_total_count(charge: dict[str, Any], entetes: Mapping[str, str]) -> dict[str, Any]:
+    """Le corps lu, complété par `x-total-count` quand l'en-tête le porte.
 
     Le contrat ne déclare pas `total_count` dans ses réponses de liste : c'est
     l'en-tête qui le porte. La pagination s'en sert comme garde-fou, donc ne
     pas le reverser rendrait une liste tronquée sans le dire.
+
+    **Ce n'est plus la réponse HTTP qu'on modifie, c'est le corps qu'on lit.**
+    La version précédente réécrivait `requests.Response._content`, un attribut
+    privé, dans un runtime réécrit précisément pour ne plus dépendre d'une API
+    privée du SDK (#132). Le besoin n'a jamais été de changer la réponse : il
+    était de donner à son lecteur ce que l'en-tête sait.
+
+    Un total déjà présent dans le corps prime : c'est l'API qui parle d'
+    elle-même, et l'en-tête n'est qu'un report.
     """
-    total = response.headers.get("x-total-count")
-    if not total or not response.content:
-        return
-    try:
-        charge = response.json()
-    except ValueError:
-        return
-    if not isinstance(charge, dict) or "total_count" in charge:
-        return
-    charge["total_count"] = total
-    response._content = json.dumps(charge).encode("utf-8")
+    total = entetes.get("x-total-count")
+    if not total or "total_count" in charge:
+        return charge
+    return {**charge, "total_count": total}
 
 
 class ScalewayApi:
@@ -682,7 +686,12 @@ class ScalewayApi:
                 status_code=response.status_code,
                 request_id=response.headers.get("x-request-id"),
             ) from error
-        return payload if isinstance(payload, dict) else {"result": payload}
+        if isinstance(payload, dict):
+            return _avec_total_count(payload, response.headers)
+        # Une charge qui n'est pas un mapping n'a pas de place où loger un
+        # total, et le contrat n'en décrit aucune : la nommer `result` est déjà
+        # une convention, y greffer un compte en serait une seconde.
+        return {"result": payload}
 
     def _send(
         self,
@@ -706,10 +715,12 @@ class ScalewayApi:
 
         * une valeur de liste devient des paires répétées, `?tags=a&tags=b`,
           comme le SDK. Ce que l'API réelle attend n'est pas tranché ;
-        * `x-total-count` est reversé dans le corps sous `total_count`. Sans
-          ce report, la pagination perdrait son garde-fou, parce que le contrat
-          ne déclare pas `total_count` dans les réponses de liste. C'était le
-          comportement le plus discret du SDK, et il est ici explicite.
+        * `x-total-count` est reversé sous `total_count` dans ce que `request`
+          rend. Sans ce report, la pagination perdrait son garde-fou, parce que
+          le contrat ne déclare pas `total_count` dans les réponses de liste.
+          C'était le comportement le plus discret du SDK, et il est ici
+          explicite. Le report se fait sur le corps **lu**, jamais sur la
+          réponse HTTP : `_avec_total_count` dit pourquoi.
         """
         client = self._client
         methode = operation.method.upper()
@@ -757,7 +768,6 @@ class ScalewayApi:
                 message=f"l'API est injoignable : {erreur}",
             ) from erreur
 
-        _carry_total_count(response)
         return response
 
     def fetch_one(self, operation: Operation) -> Any:

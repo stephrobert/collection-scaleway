@@ -52,6 +52,7 @@ adr/010-postconditions-are-checked-not-announced
 adr/011-a-product-is-admitted-not-merely-added
 adr/012-an-explicit-null-is-refused-never-ignored
 adr/013-when-a-module-appeared-is-recorded-not-computed
+adr/014-the-runtime-owns-its-http-transport
 ```
 
 ```{toctree}

@@ -360,6 +360,9 @@ def test_le_runtime_ne_depend_plus_du_point_dexecution_prive_du_sdk(runtime: Any
     module indéfiniment. La collection compose donc sa requête elle-même.
 
     Ce test garde le sens du changement : `API` ne doit plus être importé.
+    La règle générale, elle, est mesurée par `mise run api:privee`, qui refuse
+    tout attribut souligné d'une bibliothèque tierce dans ce qui est livré. Ce
+    test reste parce qu'il nomme **ce** point d'entrée, et ADR-014 dit pourquoi.
     """
     source = Path(runtime.__file__).read_text(encoding="utf-8")
     assert "_request(" not in source, "le runtime rappelle la méthode privée du SDK"
@@ -661,23 +664,55 @@ def test_un_depassement_de_delai_nomme_le_delai(runtime: Any, monkeypatch: Any) 
     assert "3 s" in str(erreur.value)
 
 
-def test_le_total_est_reverse_de_lentete_vers_le_corps(runtime: Any) -> None:
+def test_le_total_est_reverse_de_lentete_vers_le_corps_lu(runtime: Any) -> None:
     """Le contrat ne déclare pas `total_count` sur les listes : c'est l'en-tête
     qui le porte, et la pagination s'en sert comme garde-fou. Le SDK le
     reversait discrètement ; ici c'est explicite, donc testable."""
-    reponse = _ReponseFactice(b'{"servers": []}', {"x-total-count": "150"})
-
-    runtime._carry_total_count(reponse)
-
-    assert reponse.json()["total_count"] == "150"
+    assert runtime._avec_total_count({"servers": []}, {"x-total-count": "150"}) == {
+        "servers": [],
+        "total_count": "150",
+    }
 
 
 def test_un_total_deja_present_dans_le_corps_nest_pas_ecrase(runtime: Any) -> None:
-    reponse = _ReponseFactice(b'{"servers": [], "total_count": 7}', {"x-total-count": "150"})
+    """L'API qui parle d'elle-même prime sur un en-tête qui n'est qu'un report."""
+    charge = {"servers": [], "total_count": 7}
+    assert runtime._avec_total_count(charge, {"x-total-count": "150"})["total_count"] == 7
 
-    runtime._carry_total_count(reponse)
 
-    assert reponse.json()["total_count"] == 7
+def test_le_corps_lu_nest_pas_modifie_sur_place(runtime: Any) -> None:
+    """La fusion rend un nouveau mapping, elle ne mute pas ce qu'on lui donne.
+
+    Muter l'argument reproduirait à un étage près le défaut corrigé : le
+    lecteur d'une structure ne doit pas la voir changer derrière lui.
+    """
+    charge = {"servers": []}
+    runtime._avec_total_count(charge, {"x-total-count": "150"})
+    assert charge == {"servers": []}
+
+
+def test_sans_entete_le_corps_traverse_inchange(runtime: Any) -> None:
+    """Le contre-exemple : rien ne s'invente quand l'API ne dit rien."""
+    assert runtime._avec_total_count({"servers": []}, {}) == {"servers": []}
+
+
+def test_lentete_arrive_jusqua_ce_que_request_rend(runtime: Any, monkeypatch: Any) -> None:
+    """Le câblage, et pas seulement la fusion.
+
+    La fusion se testait déjà seule ; ce qui pouvait casser en déplaçant le
+    report du transport vers le lecteur du corps, c'est qu'il ne soit plus
+    appelé. Un test de la seule fonction serait resté vert.
+    """
+    monkeypatch.setattr(
+        runtime.requests,
+        "request",
+        lambda **_kw: _ReponseFactice(b'{"servers": []}', {"x-total-count": "150"}),
+    )
+    api = _api_factice(runtime, monkeypatch, _ModuleFactice())
+
+    charge = api.request(runtime.Operation(id="ListServers", method="GET", path="/servers"))
+
+    assert charge == {"servers": [], "total_count": "150"}
 
 
 def test_une_valeur_de_liste_devient_des_paires_repetees(runtime: Any, monkeypatch: Any) -> None:
