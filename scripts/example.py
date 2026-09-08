@@ -57,6 +57,14 @@ PREFIXE_COLLECTION = "stephrobert.scaleway."
 ADRESSE = os.environ.get("FEINT_ADDR", "127.0.0.1:4877")
 ENDPOINT = f"http://{ADRESSE}"
 
+#: L'adresse du proxy d'enregistrement, distincte de celle de l'émulateur.
+#:
+#: Les deux ne servent pas la même chose et ne doivent jamais se confondre :
+#: l'émulateur **répond** à la place du cloud, le proxy **transmet** au cloud
+#: et note ce qui passe. Un run qui les mélangerait croirait mesurer le réel
+#: en interrogeant une imitation.
+PROXY = os.environ.get("FEINT_PROXY_ADDR", "127.0.0.1:4878")
+
 #: Ce que chaque cible implique. `vm` est le mode de l'émulateur, `ssh` dit si
 #: les playbooks qui se connectent aux machines ont un sens.
 CIBLES: dict[str, dict[str, Any]] = {
@@ -165,6 +173,50 @@ def environnement_emulateur() -> dict[str, str]:
             "sans cette variable, Terraform et les playbooks parleraient à l'API réelle."
         )
     return valeurs
+
+
+def demarrer_proxy(chemin: str) -> subprocess.Popen[str]:
+    """Lance `feint proxy` devant l'API réelle, et attend qu'il réponde.
+
+    **Il transmet, il ne répond pas à la place.** C'est ce qui le distingue de
+    l'émulateur, et ce qui fait de sa transcription une mesure du cloud plutôt
+    qu'une mesure d'une imitation.
+
+    Deux propriétés viennent de feint et ne se redéclarent pas ici : les
+    identifiants n'atteignent jamais le fichier, la rédaction étant une
+    propriété du type enregistré, et le proxy n'écoute que sur la boucle locale.
+    """
+    Path(chemin).parent.mkdir(parents=True, exist_ok=True)
+    processus = subprocess.Popen(
+        [
+            binaire("feint"),
+            "proxy",
+            "--provider",
+            "scaleway",
+            "--upstream",
+            "https://api.scaleway.com",
+            "--addr",
+            PROXY,
+            "--record",
+            chemin,
+        ],
+        text=True,
+    )
+    for _ in range(50):
+        try:
+            import socket
+
+            hote, port = PROXY.split(":")
+            with socket.create_connection((hote, int(port)), timeout=0.2):
+                return processus
+        except OSError:
+            time.sleep(0.2)
+    processus.terminate()
+    raise ExempleError(
+        f"`feint proxy` n'écoute pas sur {PROXY}. L'exercice s'arrête plutôt que "
+        "de parler au cloud sans enregistrer : un run facturé qui ne mesure rien "
+        "est le pire des deux."
+    )
 
 
 def terraform(
@@ -502,12 +554,27 @@ def ecrire_artefact(chemin_journal: Path, cible: str, run_id: str, residu: str) 
     return destination
 
 
-def jouer(playbook: str, env: dict[str, str], variables: dict[str, str]) -> int:
+def jouer(playbook: str, env: dict[str, str], variables: dict[str, Any]) -> int:
+    """Joue un playbook, en lui passant les variables **sans les aplatir**.
+
+    **`-e nom=valeur` transforme toute valeur en chaîne.** Une liste Python y
+    devient `"['a', 'b']"`, dont la longueur est celle du texte : une assertion
+    `| length == 2` la lit à 22 et tombe. Mesuré sur un run réel, où la mesure
+    d'ordre de #119 a été sautée pour cette seule raison, après quarante-cinq
+    ressources créées et détruites.
+
+    C'est exactement le défaut que l'override `csv` documente un étage plus bas,
+    sur `tags` de `ListServers` : Ansible n'échoue pas, il compose une chaîne
+    que personne n'attendait.
+
+    `-e` avec un document JSON préserve les types. Une chaîne reste une chaîne,
+    une liste reste une liste, et le playbook n'a plus à deviner.
+    """
     binaire_ansible = str(Path(sys.executable).parent / "ansible-playbook")
     inventaire_fichier = str(PLAYBOOKS / "inventaire.scaleway.yml")
     commande = [binaire_ansible, "-i", inventaire_fichier, str(PLAYBOOKS / playbook)]
-    for nom, valeur in variables.items():
-        commande += ["-e", f"{nom}={valeur}"]
+    if variables:
+        commande += ["-e", json.dumps(variables)]
     print(f"\n--- {playbook} ---", flush=True)
     code: int = lancer(commande, env=env).returncode
     return code
@@ -517,6 +584,15 @@ def main(argv: list[str]) -> int:
     parseur = argparse.ArgumentParser(description=__doc__)
     parseur.add_argument("cible", choices=sorted(CIBLES))
     parseur.add_argument("--garder", action="store_true", help="ne pas détruire à la fin")
+    parseur.add_argument(
+        "--enregistrer",
+        metavar="FICHIER",
+        help=(
+            "faire passer les modules par `feint proxy` et écrire la transcription "
+            "ici. Ce que l'API répond devient une mesure relisible, là où une "
+            "assertion ne rend qu'un booléen. Cible `reel` seulement."
+        ),
+    )
     arguments = parseur.parse_args(argv[1:])
     cible = CIBLES[arguments.cible]
 
@@ -533,6 +609,9 @@ def main(argv: list[str]) -> int:
     verdict_residu = (
         "sans objet (émulateur)" if CIBLES[arguments.cible]["emulateur"] else "non vérifié"
     )
+    # Déclaré avant tout branchement : le `finally` y touche, et un `finally`
+    # qui lève sur un nom inconnu masque l'erreur qu'il devait laisser passer.
+    proxy: subprocess.Popen[str] | None = None
     variables = {"run_id": run_id, "ssh_public_key": cle_ssh()}
     env = dict(os.environ)
     adopte = False
@@ -568,6 +647,34 @@ def main(argv: list[str]) -> int:
         env["SCW_CONFIG_PATH"] = str(TRAVAIL / "absent.yaml")
     else:
         variables["endpoint"] = ""
+        # **Enregistrer ce que l'API répond, et pas seulement si l'assertion
+        # passe.** Une assertion rend un booléen ; quand elle échoue, elle dit
+        # ce qu'elle attendait, jamais ce que l'API a répondu, et un play qui
+        # meurt sur une assertion emporte tout ce qui la suit. Un run réel a
+        # ainsi coûté quarante-cinq ressources pour rendre zéro donnée sur la
+        # question posée (#119).
+        #
+        # `feint proxy` s'intercale entre les modules et le cloud, et écrit
+        # chaque échange : identifiants expurgés par construction, boucle locale
+        # seulement. La collection honore `SCW_API_URL` de bout en bout, ce qui
+        # est la règle 7 du projet et exactement ce pour quoi elle existe.
+        #
+        # **Terraform y passe aussi, et c'est mesuré plutôt que supposé.** Le
+        # bloc `provider` de la stack laisse `api_url` à `null` sur la cible
+        # réelle, donc le fournisseur lit `SCW_API_URL` comme les modules. La
+        # transcription d'un run porte trente-deux opérations de création et de
+        # suppression, qu'aucun module de cette collection n'émet.
+        #
+        # C'est un gain, pas un effet de bord : la transcription montre alors ce
+        # que l'API a répondu **à la création** autant qu'à la relecture, et
+        # c'est justement la comparaison qui manquait. Le premier commentaire
+        # écrit ici affirmait l'inverse ; la transcription l'a démenti.
+        if arguments.enregistrer:
+            proxy = demarrer_proxy(arguments.enregistrer)
+            env["SCW_API_URL"] = f"http://{PROXY}"
+            print(
+                f"les modules passent par le proxy {PROXY}, transcription : {arguments.enregistrer}"
+            )
         print("cible : le compte Scaleway réel. Prise de la référence de résidu.")
         residu = [sys.executable, str(ROOT / "scripts" / "residue.py"), "capture"]
         if lancer(residu).returncode != 0:
@@ -669,6 +776,14 @@ def main(argv: list[str]) -> int:
         ecrit = ecrire_artefact(journal, arguments.cible, run_id, verdict_residu)
         if ecrit is not None:
             print(f"\ncouverture de cette exécution : {ecrit.relative_to(ROOT)}")
+        # **Après la destruction, et pas avant.** Elle passe par Terraform,
+        # qui parle au cloud directement, mais un playbook interrompu peut
+        # encore avoir un appel en vol. Couper le proxy trop tôt perdrait la
+        # fin de la transcription, c'est-à-dire précisément ce qui a échoué.
+        if proxy is not None:
+            proxy.terminate()
+            proxy.wait(timeout=10)
+            print(f"transcription écrite : {arguments.enregistrer}")
         if cible["emulateur"] and not adopte and not arguments.garder:
             lancer([binaire("feint"), "stop", "--addr", ADRESSE], capture=True)
 

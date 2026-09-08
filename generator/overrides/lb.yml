@@ -201,3 +201,38 @@ operations:
           et `redirect`, et dont le défaut déclaré est `allow`. Le parser aplatit
           le corps et perd cette forme ; l'override la remet, il ne l'invente
           pas.
+
+  # --- Ce que seule une mesure contre l'API réelle pouvait trancher ---------
+  #
+  # ADR-009 pose qu'un tableau reste comparé **dans l'ordre** tant que personne
+  # n'a observé l'API le réordonner, et que `set` ne s'adopte jamais tout seul :
+  # un ensemble absorbe un doublon, et un module qui tait un changement réel est
+  # pire qu'un module qui en annonce un de trop.
+  #
+  # Ici quelqu'un a observé. Mesuré le 8 septembre 2026 contre le compte réel,
+  # à travers `feint proxy`, transcription conservée :
+  #
+  #     seq 277  CreateFrontend  envoyé [cfcb677d, 28856172]  rendu [cfcb677d, 28856172]
+  #     seq 286  UpdateFrontend  envoyé [cfcb677d, 28856172]  rendu [cfcb677d, 28856172]
+  #     seq 288  GetFrontend                                  rendu [28856172, cfcb677d]
+  #     seq 467  GetFrontend                                  rendu [28856172, cfcb677d]
+  #
+  # **L'écriture répond dans l'ordre demandé, la relecture l'inverse**, et elle
+  # est stable : deux `GetFrontend` séparés de deux cents échanges rendent le
+  # même ordre. Sans cet override, `lb_frontend` comparerait `[a, b]` à `[b, a]`
+  # et rendrait `changed` à chaque exécution, indéfiniment.
+  #
+  # `set` et non un tri : la comparaison conserve les multiplicités, donc un
+  # certificat listé deux fois reste distinct d'un certificat listé une fois.
+  # C'est ce qui distingue cette stratégie d'un ensemble au sens strict.
+
+  lb.v1.Frontend.UpdateFrontend:
+    parameters:
+      certificate_ids:
+        comparison: set
+        reason: >-
+          L'API rend cette liste dans un ordre différent de celui qu'elle
+          accepte. Mesuré contre le compte réel le 8 septembre 2026 : envoyé
+          `[a, b]` à `UpdateFrontend`, rendu `[b, a]` par `GetFrontend`, deux
+          fois et de façon stable. Comparer dans l'ordre rendrait le module non
+          idempotent quoi qu'affiche `changed`.

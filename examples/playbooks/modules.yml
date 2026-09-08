@@ -453,8 +453,15 @@
           # assertion ne s'évalue que là.
           - backends.backends | selectattr('name', 'search', prefixe)
             | list | length == 2
+          # **Un frontend, ou deux quand la cible porte les certificats.**
+          # Le frontend TLS de la mesure d'ordre (#119) n'existe que là où
+          # `CreateCertificate` est servi, donc pas contre l'émulateur, qui le
+          # décline avec sa raison. Le compte se déduit donc de la **même**
+          # condition que la mesure elle-même : deux sources pour « cette cible
+          # porte-t-elle les certificats » finiraient par diverger, et c'est le
+          # run réel qui l'a dit, comme pour le compte de backends au-dessus.
           - frontends.frontends | selectattr('name', 'search', prefixe)
-            | list | length == 1
+            | list | length == (2 if certificats_mesure | default([]) | length == 2 else 1)
           - routes.routes | default([]) | length == 1
           - types_lb.lb_types | length > 0
         fail_msg: >-
