@@ -1839,6 +1839,22 @@
       "find": "        if RESTREINTE in chemin.read_text(encoding=\"utf-8\"):",
       "replace": "        if RESTREINTE in chemin.read_text(encoding=\"utf-8\") and False:",
       "test": "tests/unit/outillage/test_readme_counters.py::test_un_compte_rendu_de_generation_restreinte_est_refuse"
+    },
+    {
+      "name": "compteur-ecrit-en-lettres-invisible",
+      "why": "Un compteur écrit en lettres se lit comme une mesure et n'en est pas surveillé. `README.md` publiait « four jobs » quatorze lignes sous un bloc dérivé qui en annonçait six, dans le même fichier.",
+      "file": "scripts/chiffres.py",
+      "find": "_NOMBRE = rf\"(?<![-\\w])(?:\\d+|{_EN_LETTRES})\"",
+      "replace": "_NOMBRE = r\"(?<![-\\w])(?:\\d+)\"",
+      "test": "tests/unit/outillage/test_chiffres.py::test_un_compte_ecrit_en_lettres_est_refuse"
+    },
+    {
+      "name": "nombre-compose-lu-par-morceaux",
+      "why": "Sans la garde, le contrôle lit « 2 operations » dans « Day-2 operations » et désigne des passages sans rapport. Un contrôle qui crie à tort est un contrôle qu'on désactive, et `histoire.py` a déjà payé cette leçon.",
+      "file": "scripts/chiffres.py",
+      "find": "_NOMBRE = rf\"(?<![-\\w])(?:\\d+|{_EN_LETTRES})\"",
+      "replace": "_NOMBRE = rf\"(?:\\d+|{_EN_LETTRES})\"",
+      "test": "tests/unit/outillage/test_chiffres.py::test_un_nombre_compose_nest_pas_lu_par_morceaux"
     }
   ]
 }

@@ -133,7 +133,7 @@ collection stephrobert.scaleway: 50 modules written out of 52 planned
   44 modules called by the example playbook out of 50 (88.0%), which is not the same as played
   51 published pages: 297/297 options and 70/70 returned keys documented
   108/108 examples copyable as is · 61/65 returned keys list their fields
-  777 unit tests · 230 mutations proven by /falsify
+  780 unit tests · 232 mutations proven by /falsify
   CI: 6 jobs, Générateur · collection · Image · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks and inventory against the emulator:
   reported by `mise run sanity` and `mise run integration`
@@ -159,7 +159,8 @@ collection. A user never needs any of it.
 mise run setup                 # development environment
 mise run report                # coverage report for Instance
 mise run generate              # write the modules into plugins/modules
-mise run check                 # what a pull request has to pass
+mise run check                 # the short gate: offline, deterministic, seconds
+mise run qualifier             # what CI runs, in its order, before you disturb it
 mise run sanity                # what Ansible says about the produced file
 mise run docs                  # judge the docs with antsibull-docs, then build the pages
 mise run package               # build the archive, install it, and question it
@@ -238,10 +239,10 @@ and every item is held by a command rather than an intention:
 | **measured** minimum ansible-core version | CI matrix over 2.17 to 2.20; 2.16 fails, and the bound says so |
 | changelog, preferably `changelogs/changelog.yaml` | fragments and `antsibull-changelog`, judged by `mise run check` |
 | documentation to standard | `ansible-test sanity` **and** `antsibull-docs`, which sees what the first lets through |
-| CI on every pull request and on a schedule | four jobs, plus a weekly trigger |
+| CI on every pull request and on a schedule | every job of `ci.yml`, named in the block above, plus a weekly trigger |
 | no stray files in the repository | `mise run check:worktree` fails if a build leaves an untracked file |
 | dependencies declared for an execution environment | `meta/execution-environment.yml` and `meta/ee-requirements.txt` |
-| supply chain held | actions pinned by SHA, dependencies locked with hashes, four workflow scanners at the gate |
+| supply chain held | actions pinned by SHA, dependencies locked with hashes, and `actionlint`, `zizmor`, `poutine` and `plumber` at the gate |
 
 The archive is not merely built: `mise run package` inspects its contents,
 installs it into a throwaway directory, then asks `ansible-doc` for its
@@ -249,6 +250,13 @@ documentation and has `ansible-playbook` resolve every playbook. A file present
 in an archive is not a module Ansible can load.
 
 ## Documentation
+
+Everything below is also served as a site, with the module pages and the
+generator's API alongside it:
+**<https://stephrobert.github.io/collection-scaleway/>**. It publishes the state
+of `main` and nothing else, which is why `galaxy.yml` points at the repository
+tree at the tag instead: that link sits next to a version number, and this one
+does not.
 
 * [Generator architecture](docs/architecture/generator.md)
 * [The Scaleway contracts](docs/architecture/scaleway-contracts.md): the source, its limits, how it is watched

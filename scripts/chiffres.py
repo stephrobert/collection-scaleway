@@ -20,6 +20,32 @@ avec le nom du bloc où la mettre.
 Un nombre qui n'est pas une mesure passe donc sans encombre : « Python 3.12 »,
 « RFC 2606 ». C'est voulu, et c'est la différence entre un contrôle et une
 gêne.
+
+## Ce qu'il ne voit pas, et qui reste à la relecture humaine
+
+Écrit ici parce qu'un contrôle qui tairait ses trous se lit exactement comme un
+contrôle complet, et que l'audit du 8 septembre a trouvé trois divergences dont
+**deux** sont hors de portée de tout motif (ADR-007).
+
+**Une affirmation vérifiable qui n'est pas un nombre.** « `mise run check` est
+ce qu'une pull request doit passer » était vrai, puis la CI a gagné des jobs que
+`check` ne rejoue pas. Aucun motif ne dit qu'une phrase décrivant une commande
+a cessé de la décrire. Ce qui protège ici est ailleurs : la description de la
+tâche dans `mise.toml`, que quelqu'un lit en la lançant.
+
+**Une affirmation sur le monde extérieur.** Le commentaire de `galaxy.yml`
+disait que le site de documentation n'était pas publié, des mois après sa mise
+en ligne. Le vérifier demanderait le réseau, que ce contrôle s'interdit : il
+doit tourner hors ligne, comme le reste de `mise run check`. Une phrase qui
+affirme qu'une chose **n'existe pas** est la plus dangereuse de toutes, parce
+qu'elle devient fausse sans que le dépôt bouge.
+
+**Un compte vrai aujourd'hui, écrit à la main.** Les documents publiés en
+portent encore : les produits que l'inventaire découvre, les opérations d'un
+contrat, les PUT écartés par override, les mutations qui prouvent un verrou.
+Tous ont été mesurés justes le 8 septembre, et aucun n'est dérivé : ils
+vieilliront en silence. La liste vit dans #140, avec la valeur mesurée de
+chacun, plutôt qu'ici où elle serait un compteur de plus.
 """
 
 from __future__ import annotations
@@ -60,9 +86,47 @@ SURVEILLES: tuple[Path, ...] = (
     *sorted(chemin for chemin in (ROOT / "docs").rglob("*.md") if _suivi(chemin)),
 )
 
+#: Les nombres que ce dépôt écrit en toutes lettres dans ses documents.
+#:
+#: Ils sont là parce qu'un compteur écrit ainsi échappait au contrôle : le
+#: README annonçait un compte de jobs en lettres dans un tableau écrit à la
+#: main, sous un bloc dérivé du même fichier qui en donnait un autre. Un motif
+#: qui ne cherche que des chiffres ne mesure que la moitié de ce que ce dépôt
+#: écrit. ADR-007 porte l'occurrence et sa date.
+#:
+#: La liste s'arrête aux formes simples : un nombre composé, « twenty-seven
+#: jobs », échappe aux deux branches, et la garde de `_NOMBRE` l'exige puisqu'elle
+#: refuse un nombre collé à un tiret. Le cas ne s'est jamais présenté, les
+#: comptes de ce dépôt tenant sous vingt ; il se présentera peut-être, et il
+#: faudra alors l'ajouter plutôt que le découvrir.
+_EN_LETTRES = (
+    r"one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|"
+    r"fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|hundred"
+)
+
+#: Un nombre, en chiffres ou en lettres, et pas au milieu d'un terme composé.
+#:
+#: `(?<![-\w])` empêche de lire un compte à l'intérieur d'un terme composé,
+#: `Day-2` et `twenty-seven` en étant les deux formes. La garde n'est pas
+#: théorique : `histoire.py` l'a payée sur le premier motif de la même famille,
+#: et le contrôle signalait des passages sans rapport, ce qui est la façon la
+#: plus sûre de le faire désactiver.
+_NOMBRE = rf"(?<![-\w])(?:\d+|{_EN_LETTRES})"
+
 #: Les tournures par lesquelles ce dépôt publie une mesure, et le bloc dérivé
 #: qui doit la porter. Chacune vient d'une divergence réellement trouvée.
 TOURNURES: tuple[tuple[re.Pattern[str], str], ...] = (
+    # Le vocabulaire de la CI, en chiffres comme en lettres. C'est la classe
+    # qui a produit « four jobs » : un fait vérifiable, publié, que personne ne
+    # compare à sa source parce qu'il ne ressemble pas à un chiffre.
+    (
+        re.compile(
+            rf"{_NOMBRE}\s+(?:workflow\s+)?"
+            r"(jobs|scanners|required checks|gates|workflows|runners)\b",
+            re.I,
+        ),
+        "compteurs",
+    ),
     (re.compile(r"\b\d+\s+unit tests\b", re.I), "compteurs"),
     (re.compile(r"\b\d+\s+mutations\b", re.I), "compteurs"),
     (re.compile(r"\b\d+\s+modules? (written|played|called|generated)\b", re.I), "compteurs"),

@@ -43,9 +43,21 @@ repository: https://github.com/stephrobert/collection-scaleway
 issues: https://github.com/stephrobert/collection-scaleway/issues
 homepage: https://github.com/stephrobert/collection-scaleway
 
-# Le dépôt produit un site avec `mise run docs:site`, et il n'est pas encore
-# publié. Un lien vrai vers le dépôt vaut mieux qu'un lien mort vers un site
-# qui n'existe pas : ce champ suivra le jour où le site aura une adresse.
+# **Le site existe, et ce champ ne le vise pas.** Il est en ligne sur
+# https://stephrobert.github.io/collection-scaleway/, produit par
+# `mise run docs:site`, et il ne publie que l'état de `main`. Or Galaxy affiche
+# ce lien **à côté du numéro de version** : le lecteur d'une version publiée il
+# y a six mois atterrirait sur la documentation d'aujourd'hui, sans que rien
+# sur la page le lui dise. C'est exactement le défaut que
+# `test_aucun_lien_de_ce_depot_ne_pointe_sur_une_branche` refuse.
+#
+# L'arbre du dépôt au tag est donc le seul lien qui dise la vérité pour la
+# version qui l'accompagne, et le site reste annoncé depuis le README, où
+# aucune version ne l'encadre.
+#
+# Le commentaire précédent disait que le site n'était pas encore publié. Il a
+# été vrai, il ne l'est plus, et rien ne l'a relevé : une affirmation sur le
+# monde extérieur ne se compare à rien de local (#90).
 documentation: https://github.com/stephrobert/collection-scaleway/tree/0.4.0/docs
 
 dependencies: {}
