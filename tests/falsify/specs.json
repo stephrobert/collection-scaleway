@@ -1943,6 +1943,30 @@
       "find": "        and lu.item_type is ApiType.OBJECT",
       "replace": "        and lu.item_type is ApiType.OBJECT\n        and False",
       "test": "tests/unit/generator/test_strategie_mesuree.py::test_une_liste_relue_en_objets_se_compare_par_ses_identifiants"
+    },
+    {
+      "name": "declaration-doublee-de-loutillage-admise",
+      "why": "La version de mise et le condensat de son action étaient recopiés dans neuf étapes. Dependabot rattrape le condensat, pas la version : une des neuf pouvait partir seule, et rien ne l'aurait vu.",
+      "file": "scripts/outillage_ci.py",
+      "find": "            if outil.action in str(etape.get(\"uses\", \"\")):",
+      "replace": "            if outil.action in str(etape.get(\"uses\", \"\")) and False:",
+      "test": "tests/unit/outillage/test_outillage_ci.py::test_un_appel_direct_dans_un_workflow_est_vu"
+    },
+    {
+      "name": "etapes-dune-action-composite-ignorees",
+      "why": "Une action composite n'a pas de `jobs`. Ne lire que ceux-là rendrait le contrôle aveugle à l'enveloppe elle-même, et il conclurait que l'outil n'est déclaré nulle part.",
+      "file": "scripts/outillage_ci.py",
+      "find": "    trouvees.extend(runs.get(\"steps\") or [])",
+      "replace": "    trouvees.extend([])",
+      "test": "tests/unit/outillage/test_outillage_ci.py::test_les_etapes_dune_action_composite_sont_lues"
+    },
+    {
+      "name": "plancher-et-epingle-libres-de-diverger",
+      "why": "L'épingle de CI a été posée sur la version installée du poste et rien ne pouvait la lever : Dependabot suit le condensat de l'action, pas son entrée `version:`. Lier les deux fait qu'on ne peut plus monter l'une sans l'autre.",
+      "file": "scripts/outillage_ci.py",
+      "find": "    elif epinglee != sol:",
+      "replace": "    elif epinglee != sol and False:",
+      "test": "tests/unit/outillage/test_outillage_ci.py::test_une_divergence_entre_le_plancher_et_lepingle_est_refusee"
     }
   ]
 }

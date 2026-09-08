@@ -8,6 +8,15 @@
 # recopier leurs commandes : une CI qui diverge du lanceur ne mesure pas ce
 # qu'on croit.
 
+# **mise épingle tout, et rien n'épinglait mise.** Sa version de CI vit dans
+# `.github/actions/mise/action.yml`, à un seul endroit ; ici c'est le plancher
+# qu'un poste doit tenir. Les deux ne disent pas la même chose : l'une fixe ce
+# que la CI installe, l'autre refuse un `mise` trop ancien pour lire ce fichier.
+#
+# Un plancher et non une épingle : imposer la version exacte de la CI à qui
+# développe ferait échouer sur une version plus récente, ce qui n'aide personne.
+min_version = "2026.9.2"
+
 [tools]
 python = "3.12"
 # Le style et le typage sont épinglés ici plutôt que laissés à la version
@@ -107,8 +116,17 @@ description = "Épingler une version d'ansible-core (ANSIBLE_CORE='>=2.17,<2.18'
 # matrice de CI échouait avant d'y arriver.
 run = 'uv pip install "ansible-core${ANSIBLE_CORE:->=2.17}"'
 
+[tasks."security:versions"]
+description = "Les scanners jugent-ils avec la version que la CI installe ?"
+# **`mise run qualifier` a rendu 12/12 vert sur un arbre que la CI a refusé.**
+# zizmor local était en 1.28.0, la CI en 1.30.0, et l'audit qui a rougi est né
+# avec la 1.30.0. Une porte qui juge avec un autre outil que celui qu'elle
+# prétend rejouer produit un vert qui ne vaut rien.
+run = "python scripts/scanners.py"
+
 [tasks.security]
 description = "Juger les workflows : actionlint, zizmor, poutine"
+depends = ["security:versions"]
 # Les mêmes portes que la CI, lançables avant de pousser. Elles échouent quand
 # l'outil est absent au lieu de se sauter : un contrôle qui se saute tout seul
 # finit par ne plus jamais tourner, et c'est la leçon que la cible
@@ -121,6 +139,7 @@ poutine analyze_local . --fail-on-violation --quiet
 
 [tasks."security:trust"]
 description = "Juger la politique de confiance du pipeline : plumber"
+depends = ["security:versions"]
 # Séparé des trois autres, et pas par goût du rangement : plumber déduit le
 # fournisseur du remote git et refuse une copie de travail qui n'en a pas. Tant
 # que ce dépôt n'a pas de remote, cette tâche échoue avec ce message, et les
@@ -483,6 +502,7 @@ depends = [
   "admission",
   "introductions",
   "api:privee",
+  "outillage",
 ]
 
 [tasks.qualifier]
@@ -557,6 +577,17 @@ description = "Aucun attribut privé d'une bibliothèque tierce dans ce qui est 
 # `requests.Response._content` (ADR-014). Une règle qu'on énonce sans la mesurer
 # se réintroduit par la porte d'à côté, et c'est ce qui s'est passé.
 run = "python scripts/api_privee.py"
+
+[tasks."outillage"]
+description = "L'outillage de la CI n'est déclaré qu'à un endroit"
+# **mise épingle toutes les versions, et sa propre version était recopiée neuf
+# fois.** Dependabot rattrape le condensat de l'action, parce que c'est une
+# dépendance pour lui ; il ne rattrape pas `version:`, qui n'en est pas une.
+#
+# Le 8 septembre 2026, le point de version de mise annonçait un numéro dont la
+# release ne portait aucun artefact. Ce dépôt n'est pas tombé parce qu'il
+# épingle ; le défaut était le nombre de copies, pas l'épingle.
+run = "python scripts/outillage_ci.py"
 
 [tasks.hooks]
 description = "Installer les crochets git qui refusent avant la poussée ce que la CI refuse après"
