@@ -1855,6 +1855,30 @@
       "find": "_NOMBRE = rf\"(?<![-\\w])(?:\\d+|{_EN_LETTRES})\"",
       "replace": "_NOMBRE = rf\"(?:\\d+|{_EN_LETTRES})\"",
       "test": "tests/unit/outillage/test_chiffres.py::test_un_nombre_compose_nest_pas_lu_par_morceaux"
+    },
+    {
+      "name": "page-qui-ment-sur-son-diff-admise",
+      "why": "`attributes` est une promesse formelle que des outils lisent. Une page annonçant un support que le module ne tient pas passe `ansible-test sanity` sans un mot : la section est bien formée, et elle est fausse.",
+      "file": "scripts/docs_quality.py",
+      "find": "        if publies != attendus:",
+      "replace": "        if publies != attendus and False:",
+      "test": "tests/unit/outillage/test_docs_quality.py::test_la_porte_documentaire_refuse_une_page_qui_ment_sur_son_diff"
+    },
+    {
+      "name": "diff-dun-module-de-gestion-non-rendu",
+      "why": "Le module annonce `diff_mode: full`. S'il cesse de rendre le diff en check mode, la page continue de le promettre, et c'est la promesse qui devient fausse plutôt que le module qui échoue.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        module.exit_json(\n            changed=True,\n            diff={\"before\": avant, \"after\": apres_demande},",
+      "replace": "        module.exit_json(\n            changed=True,\n            diff={\"before\": {}, \"after\": {}},",
+      "test": "tests/unit/collection/test_attributs.py::test_un_module_de_gestion_annonce_un_diff_plein_et_le_rend"
+    },
+    {
+      "name": "action-qui-declenche-en-check-mode",
+      "why": "Le module annonce `check_mode: full`. Un module qui agit en check mode rend le mode inutile, et personne ne s'en aperçoit avant le jour où ça compte.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    if module.check_mode:\n        module.exit_json(\n            changed=True,\n            action=action,",
+      "replace": "    if module.check_mode and False:\n        module.exit_json(\n            changed=True,\n            action=action,",
+      "test": "tests/unit/collection/test_attributs.py::test_un_module_daction_annonce_un_check_mode_plein_et_ne_declenche_rien"
     }
   ]
 }

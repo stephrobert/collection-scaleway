@@ -60,6 +60,13 @@ options:
     - List placement groups with these exact tags (to filter with several tags, use commas
       to separate them).
     type: str
+attributes:
+  check_mode:
+    description: This module only reads, so check mode changes nothing about how it runs.
+    support: full
+  diff_mode:
+    description: This module changes nothing, so it has no difference to report.
+    support: none
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
 """

@@ -1,0 +1,16 @@
+---
+minor_changes:
+  - "Every generated module now publishes an ``attributes`` section, the place
+    Ansible normalises for declaring ``check_mode`` and ``diff_mode`` support.
+    Until now the collection README claimed both and the module pages said
+    nothing, so a reader on Galaxy had to take the README's word for it, which
+    is exactly what this repository's own criterion forbids. The values are not
+    intuited from the class: a test exercises the runtime for each of the three
+    kinds and asserts the declared support against what actually happens, and
+    ``mise run docs:quality`` refuses a page announcing a support its kind does
+    not hold. Three mutations prove those refusals bite.
+
+    The attributes carry no ``version_added``: check mode has worked since each
+    module's own first version, and only the declaration is new. Dating the
+    declaration would suggest new support, which would be a second way of lying
+    about a date."

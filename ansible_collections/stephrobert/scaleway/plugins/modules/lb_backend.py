@@ -190,6 +190,15 @@ options:
     - Maximum allowed tunnel inactivity time after Websocket is established (takes precedence
       over client and server timeout). (in milliseconds)
     type: float
+attributes:
+  check_mode:
+    description: In check mode the module reads the resource and compares it, then reports
+      what it would write without writing it.
+    support: full
+  diff_mode:
+    description: The module reports the fields that differ, read through the same projection
+      the comparison uses.
+    support: full
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
 """

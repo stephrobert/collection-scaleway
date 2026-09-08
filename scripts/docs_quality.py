@@ -34,7 +34,9 @@ from typing import Any
 
 import yaml
 
+from generator.ansible.attributes import pour as attributs_pour
 from generator.ansible.collection import load_collection
+from generator.ir.enums import OperationKind
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -287,7 +289,50 @@ def examiner(chemin: Path, choix_exposes: dict[str, set[str]]) -> tuple[Mesure, 
         if phrase.lower() in texte_publie.lower():
             defauts.append(Defaut(nom, "fuite-de-la-couche-http", f"« {phrase} »", True))
 
+    # --- ce que la page promet sur le check mode et le diff ----------------
+    #
+    # **Une promesse formelle est plus dangereuse qu'une phrase.** `attributes`
+    # est lu par des outils, et une page annonçant `diff_mode: full` sur un
+    # module qui n'en rend aucun trompe une machine autant qu'un lecteur.
+    #
+    # La classe se lit dans le nom, comme la convention de nommage l'impose,
+    # et la table des supports est celle du générateur : ce contrôle ne
+    # rejuge pas ce qui est vrai, il vérifie que la page publie ce que le
+    # générateur devait y mettre. Le lien avec le comportement réel du runtime
+    # est tenu ailleurs, par `tests/unit/collection/test_attributs.py`, qui
+    # exerce les trois classes.
+    # Les modules générés seulement. Le plugin d'inventaire est publié et
+    # mesuré comme eux, mais il n'a pas de classe d'opération, et les
+    # `attributes` d'un plugin d'inventaire ne sont pas ceux d'un module :
+    # lui appliquer cette table lui reprocherait de ne pas être un module.
+    if chemin.parent.name == "modules":
+        attendus = attributs_pour(_classe_du_nom(nom))
+        publies = doc.get("attributes")
+        if publies != attendus:
+            defauts.append(
+                Defaut(
+                    nom,
+                    "attributs-non-conformes-a-la-classe",
+                    f"publie {publies!r}, sa classe demande {attendus!r}",
+                    True,
+                )
+            )
+
     return mesure, defauts
+
+
+def _classe_du_nom(nom: str) -> OperationKind:
+    """La classe d'un module, lue dans son suffixe.
+
+    C'est la convention que le générateur applique et qu'un test vérifie sur
+    tous les modules du plan : `_info`, `_action`, ou rien pour la gestion. La
+    relire ici évite de reconstruire le plan pour juger une page.
+    """
+    if nom.endswith("_info"):
+        return OperationKind.INFO
+    if nom.endswith("_action"):
+        return OperationKind.ACTION
+    return OperationKind.MANAGE
 
 
 def _valeurs_du_contrat(texte: str) -> set[str]:
