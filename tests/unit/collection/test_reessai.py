@@ -86,10 +86,16 @@ def _operation(runtime: Any, retry: str, methode: str = "GET") -> Any:
 def test_une_action_nest_jamais_rejouee_sur_un_503(
     runtime: Any, monkeypatch: pytest.MonkeyPatch, horloge: list[float]
 ) -> None:
-    """La propriété que l'issue demande de prouver, et la raison d'être du champ.
+    """La propriété que l'issue demande de prouver.
 
     Un redémarrage joué deux fois n'est pas un redémarrage. Aucun code de
     statut ne change ça : après un `503`, l'action a peut-être été déclenchée.
+
+    **Deux gardes la tiennent, et celle-ci n'en éprouve qu'une.** Un `503` ne se
+    rejoue que pour une lecture, donc une action y échapperait même sans le
+    refus explicite : c'est `test_une_action_nest_pas_rejouee_non_plus_sur_un_429`
+    qui éprouve ce refus-là, et `/falsify` le dit. Ce test garde son intérêt
+    parce qu'il porte la propriété telle que l'issue la formule.
     """
     api = _client(runtime, monkeypatch)
     recus = _api(runtime, monkeypatch, [_Reponse(503)])
