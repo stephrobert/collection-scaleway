@@ -2095,6 +2095,14 @@
       "find": "    if classe is OperationKind.ACTION:\n        return RetryPolicy.NEVER\n    if methode in _SURES:",
       "replace": "    if methode in _SURES:",
       "test": "tests/unit/generator/test_reessai.py::test_la_classe_prime_sur_la_methode"
+    },
+    {
+      "name": "etats-cherches-sous-le-nom-davant-loverride",
+      "why": "L'IR porte la ressource déduite du chemin, le plan la corrige, et cette correction ne redescend pas dans `service.operations`. Sans les overrides, la garde cherche la lecture unitaire sous le nouveau nom dans un IR qui porte l'ancien : aucun module d'action d'un produit renommé ne peut alors attendre un état, et le message accuse le contrat, qui n'y est pour rien.",
+      "file": "generator/ansible/models.py",
+      "find": "    operation = _unitary_read_operation(service, resource, overrides)\n    schema = operation.response.payload_schema if operation and operation.response else None",
+      "replace": "    operation = _unitary_read_operation(service, resource, None)\n    schema = operation.response.payload_schema if operation and operation.response else None",
+      "test": "tests/unit/generator/test_attente_ressource_renommee.py::test_une_attente_sur_une_ressource_renommee_construit_son_module"
     }
   ]
 }

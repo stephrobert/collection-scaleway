@@ -1237,7 +1237,9 @@ def _wait_contract(
             f"de la ressource '{item.resource}' n'existe pour les observer"
         )
 
-    _check_states_exist(name, service, item.resource, override.wait.field, override.wait.states)
+    _check_states_exist(
+        name, service, item.resource, override.wait.field, override.wait.states, overrides
+    )
 
     etats = tuple(sorted(override.wait.states.items()))
     return etats, override.wait.field, lecture
@@ -1249,6 +1251,7 @@ def _check_states_exist(
     resource: str,
     field: str,
     states: dict[str, str],
+    overrides: OverrideSet | None,
 ) -> None:
     """Refuse un état attendu que le contrat ne déclare pas.
 
@@ -1266,7 +1269,7 @@ def _check_states_exist(
     n'est pas une raison de laisser passer : le générateur ne devine pas, il
     refuse et le dit.
     """
-    operation = _unitary_read_operation(service, resource)
+    operation = _unitary_read_operation(service, resource, overrides)
     schema = operation.response.payload_schema if operation and operation.response else None
     if not schema:
         raise UnreachableState(
@@ -1330,9 +1333,17 @@ def _resource_effective(operation: ApiOperation, overrides: OverrideSet | None) 
 
 
 def _unitary_read_operation(
-    service: ApiService, resource: str, overrides: OverrideSet | None = None
+    service: ApiService, resource: str, overrides: OverrideSet | None
 ) -> ApiOperation | None:
     """La même, non aplatie : la vérification des états a besoin de sa réponse.
+
+    **`overrides` n'a pas de défaut, et c'est le correctif.** L'IR porte la
+    ressource déduite du chemin, `lb` ; le plan la corrige en `load_balancer`,
+    et cette correction ne redescend pas dans `service.operations`. Un appelant
+    qui omettait les overrides cherchait donc `load_balancer` dans un IR qui dit
+    `lb`, ne trouvait rien, et accusait le contrat de ne pas déclarer ce qu'il
+    déclare pourtant. Un défaut faisait de cet oubli une valeur plausible ; sans
+    lui, il ne compile pas.
 
     **Une réponse sans champ porteur est une réponse quand même.** La condition
     exigeait un `payload_field`, ce qui était juste tant que toute lecture
