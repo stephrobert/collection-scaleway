@@ -1983,6 +1983,30 @@
       "find": "    if not JEU.search(bloc):",
       "replace": "    if not JEU.search(bloc) and False:",
       "test": "tests/unit/outillage/test_doc_examples.py::test_un_extrait_de_taches_est_enveloppe_avant_analyse"
+    },
+    {
+      "name": "second-run-sur-une-plateforme-debout",
+      "why": "Deux exercices concurrents se détruiraient par leurs `finally` respectifs : le premier emporterait ce que le second vient de créer. Le verrou refuse le second départ.",
+      "file": "scripts/verrou_plateforme.py",
+      "find": "    if existant is not None:",
+      "replace": "    if existant is not None and False:",
+      "test": "tests/unit/outillage/test_verrou_plateforme.py::test_un_second_run_est_refuse"
+    },
+    {
+      "name": "derive-de-larbre-passee-sous-silence",
+      "why": "`examples/stack/` est versionné, verrou Terraform compris. Une destruction lancée depuis une définition qui n'est plus celle du déploiement échoue sur un fournisseur absent : 41 ressources facturées ont survécu comme ça.",
+      "file": "scripts/verrou_plateforme.py",
+      "find": "    if empreinte() == plateforme.empreinte:",
+      "replace": "    if empreinte() == plateforme.empreinte or True:",
+      "test": "tests/unit/outillage/test_verrou_plateforme.py::test_un_arbre_qui_a_change_est_annonce"
+    },
+    {
+      "name": "verrou-illisible-traite-comme-absent",
+      "why": "Un verrou illisible dit qu'une plateforme **peut** être debout. Le traiter comme absent perdrait l'information qui reste, et laisserait un second run partir sur un compte qui porte déjà tout.",
+      "file": "scripts/verrou_plateforme.py",
+      "find": "    except (ValueError, TypeError):",
+      "replace": "    except (ValueError, TypeError):\n        return None\n    if False:",
+      "test": "tests/unit/outillage/test_verrou_plateforme.py::test_un_verrou_illisible_est_signale"
     }
   ]
 }
