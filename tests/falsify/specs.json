@@ -660,8 +660,8 @@
       "name": "gestion-gere-un-parametre-absent",
       "why": "Un paramètre absent n'est pas « à vider », il n'est pas géré. Sans cette règle, un playbook qui règle les tags effacerait le nom.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "        if module.params.get(nom) is not None or nom in effacements",
-      "replace": "        if nom in module.params",
+      "find": "        nom: module.params[nom] for nom in spec.managed_params if module.params.get(nom) is not None",
+      "replace": "        nom: module.params.get(nom) for nom in spec.managed_params if nom in module.params",
       "test": "tests/unit/collection/test_runtime.py::test_un_parametre_non_fourni_nest_pas_gere"
     },
     {
@@ -1690,19 +1690,19 @@
     },
     {
       "name": "null-explicite-ignore",
-      "why": "Sans l'effacement dans la demande, `description: null` est filtré par `is not None` et le module rend `ok` sur une description toujours là : c'est le faux succès d'origine, revenu.",
+      "why": "Sans le refus, `description: null` est filtré par `is not None` et le module rend `ok` sur une description toujours là : le faux succès d'origine, revenu. L'API accepte ce `null` et ne change rien, mesuré sur le compte réel.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "        if module.params.get(nom) is not None or nom in effacements",
-      "replace": "        if module.params.get(nom) is not None",
-      "test": "tests/unit/collection/test_null_explicite.py::test_un_null_explicite_part_dans_le_corps"
+      "find": "    if nuls:\n        assert omissions is not None",
+      "replace": "    if nuls and False:\n        assert omissions is not None",
+      "test": "tests/unit/collection/test_null_explicite.py::test_un_null_explicite_est_refuse_sans_rien_lire"
     },
     {
-      "name": "effacement-decide-sans-consulter-le-temoin",
-      "why": "Sans le témoin, tout `None` passe pour un effacement demandé : le module écrirait `null` sur chaque champ effaçable que le playbook n'a pas nommé.",
+      "name": "refus-decide-sans-consulter-le-temoin",
+      "why": "Sans le témoin, tout `None` passe pour un `null` écrit à la main : le module refuserait chaque playbook qui ne nomme pas toutes ses options.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "        if nom not in omissions and nom in params and params[nom] is None",
+      "find": "        if nom not in omissions.absents and nom in params and params[nom] is None",
       "replace": "        if nom in params and params[nom] is None",
-      "test": "tests/unit/collection/test_null_explicite.py::test_un_champ_effacable_omis_ne_part_pas"
+      "test": "tests/unit/collection/test_null_explicite.py::test_un_champ_effacable_omis_ne_declenche_aucun_refus"
     },
     {
       "name": "temoin-domission-muet",
@@ -2015,6 +2015,14 @@
       "find": "    return detruit and not garder",
       "replace": "    return not garder",
       "test": "tests/unit/outillage/test_verrou_plateforme.py::test_le_verrou_reste_quand_la_destruction_a_echoue"
+    },
+    {
+      "name": "refus-qui-ne-dit-pas-quoi-ecrire",
+      "why": "Un refus qui ne nomme pas la valeur vide du type oblige à la chercher ailleurs, et rien sur la page ne la donne pour ce champ précis.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        vide = _VALEUR_VIDE.get(omissions.types.get(nom, \"\"))",
+      "replace": "        vide = None",
+      "test": "tests/unit/collection/test_null_explicite.py::test_le_refus_nomme_la_valeur_vide_du_type"
     }
   ]
 }

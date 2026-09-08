@@ -39,9 +39,10 @@ options:
   email_config:
     description:
     - Email address configuration.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `email_config: {}`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: dict
   label:
     description:
@@ -50,31 +51,33 @@ options:
   protected:
     description:
     - Not documented by the Scaleway API contract.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: bool
   secret_token:
     description:
     - Jeton de rotation.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `secret_token: ""`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: str
   tags:
     description:
     - Tags of the widget.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `tags: []`; omit the option to leave the current value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: list
     elements: str
   webhook_config:
     description:
     - Webhook URI configuration.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `webhook_config: {}`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: dict
 attributes:
   check_mode:

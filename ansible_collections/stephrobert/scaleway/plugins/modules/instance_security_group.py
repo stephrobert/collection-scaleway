@@ -47,17 +47,18 @@ options:
   description:
     description:
     - Description of the security group.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `description: ""`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: str
   enable_default_security:
     description:
     - True to block SMTP on IPv4 and IPv6. This feature is read only, please open a support
       ticket if you need to make it configurable.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: bool
   inbound_default_policy:
     description:
@@ -70,17 +71,17 @@ options:
   name:
     description:
     - Name of the security group.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `name: ""`; omit the option to leave the current value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: str
   organization_default:
     description:
     - Please use project_default instead.
     - Deprecated by the Scaleway API contract.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: bool
   outbound_default_policy:
     description:
@@ -93,23 +94,23 @@ options:
   project_default:
     description:
     - True use this security group for future Instances created in this project.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: bool
   stateful:
     description:
     - True to set the security group as stateful.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: bool
   tags:
     description:
     - Tags of the security group.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `tags: []`; omit the option to leave the current value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: list
     elements: str
 attributes:

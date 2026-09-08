@@ -52,9 +52,9 @@ options:
   tags:
     description:
     - Tags used to select private NIC/s.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `tags: []`; omit the option to leave the current value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: list
     elements: str
 attributes:

@@ -52,9 +52,10 @@ options:
       The public_key value of this key is used to encrypt the admin password. When set to
       an empty string, reset this value and admin_password_encrypted_value to an empty string
       so a new password may be generated.'
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `admin_password_encryption_ssh_key_id: ""`; omit the option
+      to leave the current value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: str
   boot_type:
     description:
@@ -79,60 +80,64 @@ options:
       - Local storage requirements of the target commercial_types must be fulfilled (i.e.
       if an Instance has 80GB of local storage, it can be changed into a GP1-XS, which has
       a maximum of 150GB, but it cannot be changed into a DEV1-S, which has only 20GB).'
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `commercial_type: ""`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: str
   dynamic_ip_required:
     description:
     - True if a dynamic IPv4 is required.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: bool
   enable_ipv6:
     description:
     - True if IPv6 is enabled (deprecated and always `False` when `routed_ip_enabled` is `True`).
     - Deprecated by the Scaleway API contract.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: bool
   name:
     description:
     - Name of the Instance.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `name: ""`; omit the option to leave the current value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: str
   placement_group:
     description:
     - Placement group ID if Instance must be part of a placement group.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `placement_group: ""`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: str
   private_nics:
     description:
     - Instance private NICs.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `private_nics: []`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: list
     elements: str
   protected:
     description:
     - True to activate server protection option.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: bool
   public_ips:
     description:
     - A list of reserved IP IDs to attach to the Instance.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `public_ips: []`; omit the option to leave the current value
+      untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: list
     elements: str
   routed_ip_enabled:
@@ -140,9 +145,9 @@ options:
     - True to configure the instance so it uses the new routed IP mode (once this is set to
       True you cannot set it back to False).
     - Deprecated by the Scaleway API contract.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: bool
   security_group:
     description:
@@ -151,9 +156,9 @@ options:
   tags:
     description:
     - Tags of the Instance.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `tags: []`; omit the option to leave the current value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: list
     elements: str
   volumes:

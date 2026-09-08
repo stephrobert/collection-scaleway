@@ -47,9 +47,10 @@ options:
   email_config:
     description:
     - Email address configuration.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `email_config: {}`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: dict
   name:
     description:
@@ -59,9 +60,10 @@ options:
   webhook_config:
     description:
     - Webhook URI configuration.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `webhook_config: {}`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: dict
 attributes:
   check_mode:

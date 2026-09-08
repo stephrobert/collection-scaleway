@@ -47,9 +47,10 @@ options:
     description:
     - Scaleway Object Storage bucket website to be served as failover if all backend servers
       are down, e.g. failover-website.s3-website.fr-par.scw.cloud.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `failover_host: ""`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: str
   forward_port:
     description:
@@ -77,23 +78,23 @@ options:
   ignore_ssl_server_verify:
     description:
     - Defines whether the server certificate verification should be ignored.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: bool
   max_connections:
     description:
     - Maximum number of connections allowed per backend server.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but int has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: int
   max_retries:
     description:
     - Number of retries when a backend server connection failed.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but int has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: int
   name:
     description:
@@ -123,9 +124,9 @@ options:
   redispatch_attempt_count:
     description:
     - Whether to use another backend server on each attempt.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but int has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: int
   send_proxy_v2:
     description:
@@ -135,9 +136,9 @@ options:
   ssl_bridging:
     description:
     - Defines whether to enable SSL bridging between the Load Balancer and backend servers.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but bool has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: bool
   sticky_sessions:
     description:
@@ -163,9 +164,10 @@ options:
     description:
     - Maximum time for a request to be left pending in queue when `max_connections` is reached.
       (in seconds)
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `timeout_queue: ""`; omit the option to leave the current
+      value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: str
   timeout_server:
     description:

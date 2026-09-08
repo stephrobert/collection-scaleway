@@ -219,15 +219,15 @@ def test_ansible_distingue_un_null_explicite_dune_option_omise(module_gestion: A
     """
     base = {"zone": "fr-par-1", "security_group_id": "11111111-2222-3333-4444-555555555555"}
 
-    module_gestion.OMISSIONS.clear()
+    module_gestion.OMISSIONS.absents.clear()
     omise = ArgumentSpecValidator(module_gestion.ARGUMENT_SPEC).validate(dict(base))
-    vu_omise = set(module_gestion.OMISSIONS)
+    vu_omise = set(module_gestion.OMISSIONS.absents)
 
-    module_gestion.OMISSIONS.clear()
+    module_gestion.OMISSIONS.absents.clear()
     explicite = ArgumentSpecValidator(module_gestion.ARGUMENT_SPEC).validate(
         {**base, "description": None}
     )
-    vu_explicite = set(module_gestion.OMISSIONS)
+    vu_explicite = set(module_gestion.OMISSIONS.absents)
 
     assert not omise.error_messages and not explicite.error_messages
     assert omise.validated_parameters["description"] is None

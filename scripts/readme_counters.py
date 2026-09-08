@@ -552,11 +552,11 @@ def bloc_effacables() -> str:
     return (
         f"The contract marks **{len(champs)} writable fields** as clearable, "
         f"across {modules} modules.\n"
-        "A managing module clears one when the playbook writes `field: null`, and\n"
-        "leaves it untouched when the option is omitted. The two are told apart by\n"
-        "an omission witness, which publishes nothing on the page: the option keeps\n"
-        "its natural type, its choices and its elements. `mise run nullabilite`\n"
-        "names the fields one by one."
+        'Clearing one is writing the empty value of its type, `""` or `[]` or `{}`,\n'
+        "measured against the real account. An explicit `null` is refused, naming\n"
+        'that value, because the API reads `null` as "field not provided" and would\n'
+        "change nothing. `int` and `bool` have no empty value and cannot be cleared;\n"
+        "their pages say so. `mise run nullabilite` names the fields one by one."
     )
 
 

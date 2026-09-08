@@ -42,4 +42,4 @@ Code says the **current** invariant. This directory says what happened.
 | [ADR-013](013-when-a-module-appeared-is-recorded-not-computed.md) | When a module, option or return appeared is read from a journal, never from the current version |
 | [ADR-014](014-the-runtime-owns-its-http-transport.md) | The runtime composes its own HTTP request, and no private attribute of a third-party library is shipped |
 | [ADR-015](015-a-claim-about-the-real-api-is-a-recorded-exchange.md) | A claim about the real API is a recorded exchange, not a green assertion |
-| [ADR-016](016-an-explicit-null-clears-the-field.md) | An explicit `null` clears the field, an omitted option touches nothing, and the page publishes neither mechanism |
+| [ADR-016](016-a-clearable-field-is-cleared-with-the-empty-value.md) | A clearable field is cleared with the empty value of its type, and an explicit `null` is refused with that value named |

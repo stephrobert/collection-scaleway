@@ -963,6 +963,16 @@ def _effacables(
     return tuple(trouves)
 
 
+#: Ce qu'il faut écrire pour vider un champ, par type d'option publiée.
+#:
+#: **Mesuré sur le compte réel, jamais déduit du contrat.** Le contrat déclare
+#: `description` effaçable ; l'API accepte un `null`, répond 200, et ne change
+#: rien. C'est la chaîne vide qui efface, et le tableau vide pour un tableau
+#: (ADR-016). Un type absent d'ici n'a pas de valeur vide : `0` et `false` sont
+#: des valeurs qu'un playbook peut déjà écrire, pas des effacements.
+_VALEUR_VIDE: dict[str, str] = {"str": '""', "list": "[]", "dict": "{}"}
+
+
 def _dire_leffacement(
     options: tuple[AnsibleOption, ...], effacables: tuple[str, ...]
 ) -> tuple[AnsibleOption, ...]:
@@ -975,30 +985,42 @@ def _dire_leffacement(
     ailleurs.
 
     Ce qui manquerait sans cette phrase : rien ne distingue, sur la page, un
-    champ que l'API sait effacer d'un champ qu'elle ne sait pas effacer. Le
-    contrat le dit, la page doit le dire aussi, parce que le critère du dépôt
-    est qu'un module se comprenne depuis sa seule page.
+    champ que l'API sait vider d'un champ qu'elle ne sait pas vider, et rien ne
+    dit qu'un `null` ne fera pas ce qu'un lecteur en attend. Le contrat le dit
+    à sa façon, la page doit le dire dans la sienne, parce que le critère du
+    dépôt est qu'un module se comprenne depuis sa seule page.
     """
     noms = set(effacables)
     return tuple(
-        replace(option, description=(*option.description, *_PHRASE_EFFACABLE))
+        replace(option, description=(*option.description, *_phrase_effacable(option)))
         if option.name in noms
         else option
         for option in options
     )
 
 
-#: Ce que la page dit d'une option que le contrat déclare effaçable.
-#:
-#: Publié, donc en anglais. Deux phrases et pas une : la première dit ce que
-#: `null` fait, la seconde ce que l'omission fait. Ne dire que la première
-#: laisserait croire qu'omettre l'option l'efface aussi, ce qui est la confusion
-#: d'origine, retournée.
-_PHRASE_EFFACABLE: tuple[str, ...] = (
-    "Set this option to null to clear the field: the contract declares it clearable, "
-    "and the module sends the clearing request then checks that the reread shows it.",
-    "Omit this option to leave the current value untouched.",
-)
+def _phrase_effacable(option: AnsibleOption) -> tuple[str, ...]:
+    """Ce que la page dit d'une option que le contrat déclare effaçable.
+
+    Publié, donc en anglais. Deux phrases quand le type a une valeur vide, une
+    seule sinon : promettre un effacement que l'API ne fait pas serait pire que
+    se taire.
+    """
+    vide = _VALEUR_VIDE.get(option.type)
+    refus = (
+        "Setting it to null is refused: this API reads null as "
+        '"field not provided" and would change nothing.'
+    )
+    if vide is None:
+        return (
+            f"The contract marks this field clearable, but {option.type} has no empty "
+            "value, so the API cannot clear it. " + refus,
+        )
+    return (
+        f"To clear this field, write `{option.name}: {vide}`; omit the option to leave "
+        "the current value untouched.",
+        refus,
+    )
 
 
 #: Mots qu'une ressource porte en abrégé, et leur forme publiée.

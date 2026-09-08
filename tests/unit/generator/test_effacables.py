@@ -116,21 +116,47 @@ def test_un_champ_effacable_garde_son_type_publie(widget_plan: ProductPlan) -> N
     assert options["secret_token"].no_log is True, "le secret reste masqué"
 
 
-def test_la_page_dit_comment_effacer_et_ce_quomettre_veut_dire(
-    widget_plan: ProductPlan,
-) -> None:
+def test_la_page_dit_la_valeur_vide_du_type(widget_plan: ProductPlan) -> None:
     """Le critère du dépôt est qu'un module se comprenne depuis sa seule page.
 
-    Deux phrases et pas une : ne dire que la première laisserait croire
-    qu'omettre l'option l'efface aussi, ce qui est la confusion d'origine
-    retournée.
+    La valeur à écrire dépend du type, et la page l'écrit littéralement plutôt
+    que de parler de « la valeur vide » : un lecteur copie ce qu'il voit.
     """
-    option = _options(_spec(widget_plan, "widget_widget"))["secret_token"]
-    texte = " ".join(option.description)
+    options = _options(_spec(widget_plan, "widget_widget"))
 
-    assert "Set this option to null to clear the field" in texte
-    assert "Omit this option to leave the current value untouched." in texte
-    assert texte.startswith("Jeton de rotation."), "la description du contrat reste en tête"
+    assert 'write `secret_token: ""`' in " ".join(options["secret_token"].description)
+    assert "write `tags: []`" in " ".join(options["tags"].description)
+    assert "write `email_config: {}`" in " ".join(options["email_config"].description)
+    assert options["secret_token"].description[0] == "Jeton de rotation.", (
+        "la description du contrat reste en tête"
+    )
+
+
+def test_la_page_refuse_de_promettre_un_effacement_impossible(
+    widget_plan: ProductPlan,
+) -> None:
+    """`protected` est un booléen : il n'a pas de valeur vide.
+
+    Écrire « pour effacer, mettre `false` » serait promettre un effacement que
+    l'API ne fait pas : `false` est une valeur, pas une absence.
+    """
+    texte = " ".join(_options(_spec(widget_plan, "widget_widget"))["protected"].description)
+
+    assert "bool has no empty value" in texte
+    assert "cannot clear it" in texte
+    assert "write `protected:" not in texte
+
+
+def test_la_page_dit_partout_que_null_est_refuse(widget_plan: ProductPlan) -> None:
+    """Mesuré sur le compte réel : l'API accepte le `null` et ne change rien.
+
+    Un lecteur qui écrit `null` en attendant un effacement doit le lire sur la
+    page, pas le découvrir sur un module qui échoue.
+    """
+    options = _options(_spec(widget_plan, "widget_widget"))
+
+    for nom in ("secret_token", "protected", "tags", "email_config", "webhook_config"):
+        assert "Setting it to null is refused" in " ".join(options[nom].description), nom
 
 
 def test_un_champ_non_effacable_ne_recoit_rien(widget_plan: ProductPlan) -> None:
@@ -146,7 +172,8 @@ def test_un_champ_non_effacable_ne_recoit_rien(widget_plan: ProductPlan) -> None
 
     assert option.type == "str"
     assert option.default is None
-    assert "clear the field" not in " ".join(option.description)
+    assert "clear" not in " ".join(option.description)
+    assert "null" not in " ".join(option.description)
 
 
 # --- sur des formes que le laboratoire ne déclare pas -----------------------

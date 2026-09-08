@@ -61,17 +61,17 @@ options:
     description:
     - Beginning of the range of ports this rule applies to (inclusive). If 0 is provided,
       unset the parameter.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but int has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: int
   dest_port_to:
     description:
     - End of the range of ports this rule applies to (inclusive). If 0 is provided, unset
       the parameter.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but int has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: int
   direction:
     description:
@@ -84,16 +84,17 @@ options:
   ip_range:
     description:
     - Range of IP addresses these rules apply to. (IP network)
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'To clear this field, write `ip_range: ""`; omit the option to leave the current value
+      untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
     type: str
   position:
     description:
     - Position of this rule in the security group rules list.
-    - 'Set this option to null to clear the field: the contract declares it clearable, and
-      the module sends the clearing request then checks that the reread shows it.'
-    - Omit this option to leave the current value untouched.
+    - 'The contract marks this field clearable, but int has no empty value, so the API cannot
+      clear it. Setting it to null is refused: this API reads null as "field not provided"
+      and would change nothing.'
     type: int
   protocol:
     description:

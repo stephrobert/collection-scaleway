@@ -1,21 +1,22 @@
-"""Les champs qu'un module sait effacer, comptés et nommés.
+"""Les champs que le contrat dit effaçables, comptés et nommés.
 
 Le contrat marque un champ effaçable de deux façons, `oneOf: [X, null]` ou
 `type: [X, "null"]`, et l'IR les porte toutes deux depuis ADR-008 :
 
 ```yaml
-description: null        # « efface la description »
+description: ""          # « efface la description »
+description: null        # refusé : l'API le lit « champ non fourni »
 # description absente    # « n'y touche pas »
 ```
 
-Les deux produisaient **la même requête**, et le module rendait `ok` sur un
-champ toujours là. Un témoin d'omission les sépare désormais, et le `null` part
-dans le corps de la requête (ADR-016).
+Les trois produisaient **la même requête** pour les deux derniers, et le module
+rendait `ok` sur un champ toujours là. Ce que le mot « effaçable » veut dire a
+été mesuré sur le compte réel, pas déduit du contrat : c'est la valeur vide du
+type qui efface, et `null` ne change rien (ADR-016).
 
-**Mesurer avant d'abstraire, et continuer de mesurer après.** Ce programme a
-chiffré le travail tant que rien ne s'effaçait ; il dit maintenant la portée de
-ce qui s'efface, et sur quels modules. Si le compte vaut zéro, il n'y a rien à
-faire et c'est écrit.
+**Mesurer avant d'abstraire, et continuer de mesurer après.** Ce programme dit
+la portée de la question, et sur quels modules elle se pose. Si le compte vaut
+zéro, il n'y a rien à faire et c'est écrit.
 
 Ce programme ne juge pas : il ne rend jamais autre chose que 0, sauf quand il
 n'a rien pu examiner. Compter n'est pas refuser, et transformer ce compte en
@@ -131,10 +132,10 @@ def main(argv: list[str]) -> int:
         print("Aucun : la question de l'effacement ne se pose sur aucun module livré.")
         return 0
 
-    print("Pour chacun, `champ: null` efface et `champ` absent laisse la valeur")
-    print("en place (ADR-016). Ce que l'effacement produit n'est pas deviné : la")
-    print("vérification d'après écriture le mesure et nomme le champ quand l'API")
-    print("rend autre chose.\n")
+    print("Pour chacun, la valeur vide du type efface, `champ` absent laisse la")
+    print("valeur en place, et `champ: null` est refusé en nommant la valeur à")
+    print("écrire (ADR-016). `integer` et `boolean` n'ont pas de valeur vide :")
+    print("l'API ne sait pas les effacer, et leur page le dit.\n")
     print(f"{'module':<38} {'opération':<24} {'champ':<28} type")
     for champ in champs:
         print(f"{champ.module:<38} {champ.operation:<24} {champ.champ:<28} {champ.type}")

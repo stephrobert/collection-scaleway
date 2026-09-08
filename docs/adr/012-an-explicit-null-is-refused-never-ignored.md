@@ -1,8 +1,15 @@
 # ADR-012. An explicit null is refused, never ignored
 
-**Status**: superseded by [ADR-016](016-an-explicit-null-clears-the-field.md), 8 September 2026.
+**Status**: superseded by
+[ADR-016](016-a-clearable-field-is-cleared-with-the-empty-value.md),
+8 September 2026.
 
-The refusal below closed a false success and was right to. Its mechanism was ruled by a measurement whose scope was too narrow: it measured a `fallback` that returns a value, and never one that raises. ADR-016 carries the wider measurement, and the clearing this record could not do.
+The refusal below closed a false success and was right to, and ADR-016 keeps
+it. Two things changed. Its mechanism was ruled by a measurement whose scope
+was too narrow: it measured a `fallback` that returns a value, and never one
+that raises. And what clearing means was left open here; it has since been
+measured on the real account, and it is the empty value of the type, never
+`null`.
 
 ## Context
 

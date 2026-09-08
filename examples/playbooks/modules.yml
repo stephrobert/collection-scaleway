@@ -549,49 +549,40 @@
           check mode sans effet.
         quiet: true
 
-    # **Un `null` explicite efface, et l'omission n'efface rien.** Les deux
-    # arrivaient au module sous la forme d'un `None` ; un témoin d'omission les
-    # sépare, et Ansible ne le déclenche que sur une clé absente de
-    # l'invocation (ADR-016). Ce que l'effacement produit n'est pas deviné : la
-    # vérification d'après écriture le mesure, et le module échoue si l'API
-    # rend la description intacte.
+    # **Effacer, c'est écrire la valeur vide du type.** Mesuré sur le compte
+    # réel, pas déduit du contrat : `{"description": ""}` efface,
+    # `{"description": null}` est accepté en 200 et ne change rien. Le
+    # `oneOf: [T, null]` du contrat vient des types d'enveloppe protobuf, où
+    # `null` veut dire « champ non fourni » (ADR-016).
     #
-    # **L'émulateur ne sert pas ce cas, et c'est mesuré.** feint décode le
-    # corps vers des pointeurs Go : `encoding/json` y rend le même `nil` pour
-    # une clé absente et pour une clé à `null`, donc la garde
-    # `if req.Description != nil` range le `null` du côté « le client n'a pas
-    # parlé de ce champ ». Le module a bien échoué contre lui, en nommant le
-    # champ, ce qui est le comportement voulu et ne prouve rien sur Scaleway.
-    # feint#750 porte le défaut ; d'ici là, c'est le run réel qui tranche.
-    - name: Effacer la description
+    # Effacer ne demande donc aucun mécanisme : la valeur vide traverse le
+    # chemin ordinaire, et c'est ce que ces deux tâches vérifient.
+    - name: Effacer la description en écrivant la valeur vide
       stephrobert.scaleway.instance_security_group:
         zone: "{{ zone }}"
         security_group_id: "{{ groupe_web }}"
-        description: null
+        description: ""
       register: effacement
-      when: cible == 'reel'
 
     - name: L'effacement a eu lieu, et la relecture ne montre plus la description
       ansible.builtin.assert:
         that:
           - effacement is changed
-          - not (effacement.security_group.description | default('', true))
+          - effacement.security_group.description == ''
         fail_msg: >-
-          Le module a rendu {{ effacement }}. Un `null` explicite doit effacer
-          le champ, pas rendre `ok` sur une description toujours là.
+          Le module a rendu {{ effacement }}. La valeur vide doit effacer le
+          champ, et la relecture doit le montrer vide.
         quiet: true
-      when: cible == 'reel'
 
     # **Le second passage, et c'est lui la preuve.** Un module qui renverrait
-    # `changed` ici réécrirait `null` sur un champ déjà vide à chaque exécution,
-    # ce qui n'est pas de l'idempotence quoi qu'affiche `changed`.
+    # `changed` ici réécrirait la valeur vide à chaque exécution, ce qui n'est
+    # pas de l'idempotence quoi qu'affiche `changed`.
     - name: Effacer une seconde fois une description déjà vide
       stephrobert.scaleway.instance_security_group:
         zone: "{{ zone }}"
         security_group_id: "{{ groupe_web }}"
-        description: null
+        description: ""
       register: reeffacement
-      when: cible == 'reel'
 
     - name: Le second effacement ne change rien
       ansible.builtin.assert:
@@ -602,14 +593,33 @@
         success_msg: >-
           Effacement prouvé : premier passage `changed`, second inchangé.
         quiet: true
-      when: cible == 'reel'
 
-    - name: Ce que l'émulateur ne sert pas, dit plutôt que sauté en silence
-      ansible.builtin.debug:
-        msg: >-
-          Effacement non exercé : feint range un `null` explicite du côté des
-          clés absentes (feint#750). Seul le run réel prouve l'effacement.
-      when: cible != 'reel'
+    # **Un `null` explicite est refusé, et le refus dit quoi écrire.** Il ne
+    # peut pas effacer : l'API le lit « champ non fourni ». Le laisser passer
+    # ferait rendre `ok` sur un champ toujours là, ce qui est le faux succès
+    # d'origine. Le refus précède toute lecture, donc il est le même contre
+    # l'émulateur et contre le cloud.
+    - name: Demander l'effacement avec un null explicite
+      stephrobert.scaleway.instance_security_group:
+        zone: "{{ zone }}"
+        security_group_id: "{{ groupe_web }}"
+        description: null
+      register: refus
+      # `ignore_errors` et non `failed_when: false` : le second efface le
+      # statut d'échec, et l'assertion suivante ne mesurerait plus rien.
+      ignore_errors: true
+
+    - name: Le module refuse, nomme le champ, et dit quoi écrire à la place
+      ansible.builtin.assert:
+        that:
+          - refus is failed
+          - "'description' in refus.msg"
+          - refus is not changed
+        fail_msg: >-
+          Un `null` explicite a été ignoré au lieu d'être refusé : le module a
+          rendu {{ refus }}.
+        success_msg: "refus mesuré : {{ refus.msg }}"
+        quiet: true
 
     # **Le contre-exemple, sans lequel les tâches ci-dessus passeraient aussi
     # sur un module qui effacerait tout.** Cette écriture ne nomme que la
@@ -622,7 +632,6 @@
         security_group_id: "{{ groupe_web }}"
         description: "Réécrite après effacement"
       register: reecriture
-      when: cible == 'reel'
 
     - name: La description revient, et ce qui n'était pas nommé a survécu
       ansible.builtin.assert:
@@ -635,7 +644,6 @@
           Le module a rendu {{ reecriture }}. Une option omise n'est pas une
           demande d'effacement : `name` et `tags` n'ont pas été nommés.
         quiet: true
-      when: cible == 'reel'
 
     # ---- Les écritures, et leur idempotence -----------------------------
     #

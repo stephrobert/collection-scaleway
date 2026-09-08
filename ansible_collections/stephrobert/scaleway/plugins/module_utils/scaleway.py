@@ -1062,7 +1062,30 @@ def _postconditions_non_tenues(
     return ecarts
 
 
-def poser_les_temoins(argument_spec: dict[str, Any], noms: Iterable[str]) -> set[str]:
+#: Ce qu'il faut écrire pour vider un champ, par type d'option.
+#:
+#: **Mesuré sur le compte réel, jamais déduit du contrat.** Le contrat déclare
+#: `description` effaçable et le module envoyait `null` : l'API répond 200 et ne
+#: change rien. C'est la chaîne vide qui efface, et le tableau vide pour un
+#: tableau. Un type absent de cette table n'a pas de valeur vide : un `0` ou un
+#: `false` sont des valeurs qu'un playbook peut déjà écrire, pas des effacements.
+_VALEUR_VIDE: dict[str, str] = {"str": '""', "list": "[]", "dict": "{}"}
+
+
+@dataclass(frozen=True)
+class Omissions:
+    """Les champs effaçables que l'invocation n'a pas écrits, et leur type.
+
+    Le type vient de l'entrée que le module publie, lue au moment de poser le
+    témoin : le décrire une seconde fois dans le module ferait deux
+    descriptions du même type, qui finiraient par diverger.
+    """
+
+    absents: set[str]
+    types: dict[str, str]
+
+
+def poser_les_temoins(argument_spec: dict[str, Any], noms: Iterable[str]) -> Omissions:
     """Pose un témoin d'omission sur chaque champ effaçable, et rend ce qu'il notera.
 
     **Ansible n'appelle un `fallback` que sur une clé absente de l'invocation.**
@@ -1071,16 +1094,17 @@ def poser_les_temoins(argument_spec: dict[str, Any], noms: Iterable[str]) -> set
     présente, même à `null`, ne le déclenche pas.
 
     Ce que ça achète, et qu'ADR-016 porte : l'option garde son type naturel,
-    ses `choices` et ses `elements`, la page ne publie aucun marqueur, et
-    `mutually_exclusive` continue de compter les bonnes clés. Un `fallback` qui
-    **rendrait** une valeur casserait ce dernier point, et c'est ce qu'ADR-012
-    avait mesuré avant d'écarter la piste.
+    ses `choices` et ses `elements`, et la page ne publie aucun marqueur. Un
+    `fallback` qui **rendrait** une valeur casserait `mutually_exclusive`, parce
+    qu'Ansible compte les clés présentes, et c'est ce qu'ADR-012 avait mesuré
+    avant d'écarter la piste.
 
     L'ensemble rendu est vide au retour et se remplit pendant la construction
     d'`AnsibleModule` : c'est une vue, pas un résultat, et le module généré la
     lit après avoir construit son `AnsibleModule`.
     """
     absents: set[str] = set()
+    types: dict[str, str] = {}
 
     def temoin(nom: str) -> None:
         absents.add(nom)
@@ -1094,25 +1118,25 @@ def poser_les_temoins(argument_spec: dict[str, Any], noms: Iterable[str]) -> set
                 "le module a probablement été produit par un générateur qui ne "
                 "s'accorde plus avec ce runtime."
             )
+        types[nom] = str(entree.get("type", "str"))
         entree["fallback"] = (temoin, [nom])
 
-    return absents
+    return Omissions(absents=absents, types=types)
 
 
 def explicit_nulls(
-    spec: ManageModule, params: dict[str, Any], omissions: set[str] | None
+    spec: ManageModule, params: dict[str, Any], omissions: Omissions | None
 ) -> list[str]:
     """Les champs effaçables que le playbook a explicitement mis à `null`.
 
     `omissions` porte les noms que le témoin a notés, donc ceux que
     l'invocation **n'a pas** écrits. Un champ effaçable qui vaut `None` sans y
-    figurer a été écrit à `null` dans le playbook : c'est une demande
-    d'effacement (ADR-016).
+    figurer a été écrit à `null` dans le playbook.
 
     **Un `None` en guise d'omissions n'est pas un ensemble vide.** Le premier
     dit qu'aucun témoin n'a été posé, le second qu'aucune option n'a été omise,
-    et les confondre ferait passer chaque option omise pour un effacement
-    demandé. Un module qui déclare des champs effaçables sans poser de témoin
+    et les confondre ferait passer chaque option omise pour un `null` écrit à
+    la main. Un module qui déclare des champs effaçables sans poser de témoin
     ne s'accorde plus avec ce runtime, et il le dit.
     """
     if not spec.nullable_params:
@@ -1126,30 +1150,61 @@ def explicit_nulls(
     return [
         nom
         for nom in spec.nullable_params
-        if nom not in omissions and nom in params and params[nom] is None
+        if nom not in omissions.absents and nom in params and params[nom] is None
     ]
 
 
+def _refus_du_null(noms: list[str], omissions: Omissions) -> str:
+    """Le message qui nomme le champ et ce qu'il faut écrire à la place.
+
+    **Mesuré, pas supposé.** L'API accepte un `null` sur un champ que le contrat
+    déclare effaçable, répond 200, et ne change rien : le `oneOf: [T, null]` du
+    contrat vient des types d'enveloppe protobuf, où `null` veut dire « champ
+    non fourni » et non « efface » (ADR-016). Envoyer le `null` quand même
+    ferait échouer le module sur une vérification d'après écriture, avec un
+    message qui parlerait de normalisation là où il n'y en a pas.
+
+    Un refus qui n'en nommerait qu'un ferait corriger le playbook en autant de
+    fois qu'il y a de champs.
+    """
+    lignes = []
+    for nom in noms:
+        vide = _VALEUR_VIDE.get(omissions.types.get(nom, ""))
+        if vide is not None:
+            lignes.append(f"  {nom} : pour effacer, écrire `{nom}: {vide}`")
+        else:
+            lignes.append(
+                f"  {nom} : ce type n'a pas de valeur vide, et l'API ne sait pas "
+                "effacer ce champ"
+            )
+    return (
+        f"{', '.join(noms)} : `null` ne veut pas dire « efface » pour cette API. "
+        "Elle l'accepte, répond 200, et ne change rien : le contrat le déclare "
+        "effaçable au sens où le décodeur accepte `null`, ce qui signifie « champ "
+        "non fourni ».\n" + "\n".join(lignes) + "\n"
+        "  omettre l'option laisse la valeur actuelle en place."
+    )
+
+
 def run_manage_module(
-    module: AnsibleModule, spec: ManageModule, omissions: set[str] | None = None
+    module: AnsibleModule, spec: ManageModule, omissions: Omissions | None = None
 ) -> None:
     """Amène une ressource existante à l'état que le playbook décrit.
 
-    **Un `null` explicite est une demande d'effacement.** Il disparaissait dans
-    la construction de la demande, avant la lecture, la comparaison et la
-    vérification : le module rendait `ok` sur une description toujours là.
-    `omissions` porte ce que le témoin a noté, et sépare donc « omis » de
-    « écrit à null » ; le champ effacé part dans le corps avec la valeur `null`,
-    que le contrat sanctionne en le déclarant effaçable (ADR-016).
+    **Un `null` explicite est refusé, en nommant ce qu'il faut écrire.** Il
+    disparaissait dans la construction de la demande, avant la lecture, la
+    comparaison et la vérification : le module rendait `ok` sur une description
+    toujours là. `omissions` porte ce que le témoin a noté, et sépare donc
+    « omis » de « écrit à null ». Le refus précède toute lecture, ce qui le rend
+    identique contre l'émulateur et contre le vrai cloud.
 
-    **Ce que l'effacement produit n'est pas deviné, il est vérifié.** Le contrat
-    dit qu'un champ accepte `null` ; il ne dit pas ce que la relecture rendra
-    ensuite. La vérification d'après écriture le mesure sur chaque exécution et
-    nomme le champ quand l'API rend autre chose (ADR-010) : c'est le même
-    mécanisme que pour n'importe quelle valeur écrite, et il n'a pas fallu lui
-    inventer une exception.
+    **Effacer se fait avec la valeur vide du type**, mesuré sur le compte réel :
+    `description: ""` efface, `tags: []` efface, `description: null` est accepté
+    et ne change rien (ADR-016). Une valeur vide n'a besoin d'aucun mécanisme :
+    elle traverse le chemin ordinaire, se compare par la stratégie ordinaire, et
+    se vérifie par la postcondition ordinaire.
 
-    Cinq propriétés, et chacune répond à une façon connue de se tromper.
+    Quatre propriétés, et chacune répond à une façon connue de se tromper.
 
     **Lire d'abord.** Sans lecture, un module ne peut pas savoir s'il change
     quelque chose, et `changed` devient un mensonge poli. La ressource est donc
@@ -1182,9 +1237,13 @@ def run_manage_module(
     stricte.
     """
     try:
-        effacements = explicit_nulls(spec, module.params, omissions)
+        nuls = explicit_nulls(spec, module.params, omissions)
     except ValueError as erreur:
         module.fail_json(msg=str(erreur))
+        return
+    if nuls:
+        assert omissions is not None  # explicit_nulls l'a déjà exigé
+        module.fail_json(msg=_refus_du_null(nuls, omissions))
         return
 
     api = ScalewayApi(module)
@@ -1201,16 +1260,13 @@ def run_manage_module(
         )
         return
 
-    # **Un effacement demandé entre dans la demande, avec sa valeur `null`.**
-    # Sans lui, `description: null` retombait dans le trou d'origine : la clé
-    # était filtrée par `is not None`, et le module rendait `ok` sur un champ
-    # toujours là. `effacements` ne contient que des champs que le contrat
-    # déclare effaçables et que le playbook a écrits à `null` : un `None` venu
-    # d'une option omise n'y figure pas.
+    # **Un paramètre absent n'est pas « à vider », il n'est pas géré.** Sans
+    # cette règle, un playbook qui règle les tags effacerait le nom. Un `null`
+    # écrit à la main n'arrive jamais ici : il a été refusé plus haut, en
+    # nommant la valeur vide à écrire. Une valeur vide, elle, passe comme
+    # n'importe quelle autre valeur, et c'est ce qui efface.
     demande = {
-        nom: module.params[nom]
-        for nom in spec.managed_params
-        if module.params.get(nom) is not None or nom in effacements
+        nom: module.params[nom] for nom in spec.managed_params if module.params.get(nom) is not None
     }
 
     # **Un secret ne se compare pas, et il ne s'affiche pas non plus.** L'API ne
