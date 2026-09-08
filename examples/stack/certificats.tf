@@ -52,6 +52,18 @@ resource "tls_self_signed_cert" "mesure" {
     organization = "collection-scaleway"
   }
 
+  # **Scaleway exige des noms DNS, et le `common_name` n'en est pas un.**
+  # Mesuré sur le compte réel le 8 septembre 2026 : un certificat qui n'en porte
+  # aucun est refusé à la création, avec
+  #
+  #     certificate_chain does not respect constraint, this certificate chain
+  #     is invalid (DNS Names of public key certificate is empty)
+  #
+  # `.invalid` est le domaine que la RFC 2606 réserve précisément pour ça :
+  # il ne résout nulle part, donc ce certificat ne peut pas être pris pour un
+  # certificat de production égaré.
+  dns_names = ["mesure-${count.index + 1}.exemple.invalid"]
+
   validity_period_hours = 24
   allowed_uses          = ["key_encipherment", "digital_signature", "server_auth"]
 }
