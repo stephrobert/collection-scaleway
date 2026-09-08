@@ -1692,8 +1692,8 @@
       "name": "null-explicite-ignore",
       "why": "Sans le refus, `description: null` est filtré par `is not None` et le module rend `ok` sur une description toujours là : le faux succès d'origine, revenu. L'API accepte ce `null` et ne change rien, mesuré sur le compte réel.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "    if nuls:\n        assert omissions is not None",
-      "replace": "    if nuls and False:\n        assert omissions is not None",
+      "find": "    if nuls:\n        module.fail_json(msg=_refus_du_null(nuls))",
+      "replace": "    if nuls and False:\n        module.fail_json(msg=_refus_du_null(nuls))",
       "test": "tests/unit/collection/test_null_explicite.py::test_un_null_explicite_est_refuse_sans_rien_lire"
     },
     {
@@ -2020,7 +2020,7 @@
       "name": "refus-qui-ne-dit-pas-quoi-ecrire",
       "why": "Un refus qui ne nomme pas la valeur vide du type oblige à la chercher ailleurs, et rien sur la page ne la donne pour ce champ précis.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "        vide = _VALEUR_VIDE.get(omissions.types.get(nom, \"\"))",
+      "find": "        vide = _VALEUR_VIDE.get(type_option)",
       "replace": "        vide = None",
       "test": "tests/unit/collection/test_null_explicite.py::test_le_refus_nomme_la_valeur_vide_du_type"
     }

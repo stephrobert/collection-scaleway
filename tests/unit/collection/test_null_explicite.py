@@ -319,6 +319,18 @@ def test_un_module_sans_champ_effacable_na_pas_besoin_de_temoin(runtime: Any) ->
     assert runtime.explicit_nulls(_spec(runtime), {"description": None}, None) == []
 
 
+def test_un_null_sort_avec_le_type_de_son_option(runtime: Any) -> None:
+    """Le message de refus en a besoin, et le lui faire rechercher ensuite ferait
+    un second endroit où l'oublier."""
+    nuls = runtime.explicit_nulls(
+        _spec(runtime, "description"),
+        {"description": None},
+        _omissions(runtime, description="str"),
+    )
+
+    assert nuls == [("description", "str")]
+
+
 def test_le_temoin_retient_le_type_de_chaque_champ(runtime: Any) -> None:
     """Le type vient de l'entrée publiée, lu au moment de poser le témoin.
 

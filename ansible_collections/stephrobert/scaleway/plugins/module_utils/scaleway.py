@@ -1126,7 +1126,7 @@ def poser_les_temoins(argument_spec: dict[str, Any], noms: Iterable[str]) -> Omi
 
 def explicit_nulls(
     spec: ManageModule, params: dict[str, Any], omissions: Omissions | None
-) -> list[str]:
+) -> list[tuple[str, str]]:
     """Les champs effaçables que le playbook a explicitement mis à `null`.
 
     `omissions` porte les noms que le témoin a notés, donc ceux que
@@ -1138,6 +1138,10 @@ def explicit_nulls(
     et les confondre ferait passer chaque option omise pour un `null` écrit à
     la main. Un module qui déclare des champs effaçables sans poser de témoin
     ne s'accorde plus avec ce runtime, et il le dit.
+
+    Chaque nom sort avec le type de son option, lu là où le témoin l'a pris :
+    le message de refus en a besoin pour nommer la valeur vide, et le lui faire
+    rechercher ensuite ferait un second endroit où l'oublier.
     """
     if not spec.nullable_params:
         return []
@@ -1148,13 +1152,13 @@ def explicit_nulls(
             "générateur qui ne s'accorde plus avec ce runtime."
         )
     return [
-        nom
+        (nom, omissions.types.get(nom, ""))
         for nom in spec.nullable_params
         if nom not in omissions.absents and nom in params and params[nom] is None
     ]
 
 
-def _refus_du_null(noms: list[str], omissions: Omissions) -> str:
+def _refus_du_null(nuls: list[tuple[str, str]]) -> str:
     """Le message qui nomme le champ et ce qu'il faut écrire à la place.
 
     **Mesuré, pas supposé.** L'API accepte un `null` sur un champ que le contrat
@@ -1168,8 +1172,8 @@ def _refus_du_null(noms: list[str], omissions: Omissions) -> str:
     fois qu'il y a de champs.
     """
     lignes = []
-    for nom in noms:
-        vide = _VALEUR_VIDE.get(omissions.types.get(nom, ""))
+    for nom, type_option in nuls:
+        vide = _VALEUR_VIDE.get(type_option)
         if vide is not None:
             lignes.append(f"  {nom} : pour effacer, écrire `{nom}: {vide}`")
         else:
@@ -1178,7 +1182,8 @@ def _refus_du_null(noms: list[str], omissions: Omissions) -> str:
                 "effacer ce champ"
             )
     return (
-        f"{', '.join(noms)} : `null` ne veut pas dire « efface » pour cette API. "
+        f"{', '.join(nom for nom, _type in nuls)} : `null` ne veut pas dire « efface » "
+        "pour cette API. "
         "Elle l'accepte, répond 200, et ne change rien : le contrat le déclare "
         "effaçable au sens où le décodeur accepte `null`, ce qui signifie « champ "
         "non fourni ».\n" + "\n".join(lignes) + "\n"
@@ -1242,8 +1247,7 @@ def run_manage_module(
         module.fail_json(msg=str(erreur))
         return
     if nuls:
-        assert omissions is not None  # explicit_nulls l'a déjà exigé
-        module.fail_json(msg=_refus_du_null(nuls, omissions))
+        module.fail_json(msg=_refus_du_null(nuls))
         return
 
     api = ScalewayApi(module)
