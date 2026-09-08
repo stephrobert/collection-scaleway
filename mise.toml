@@ -482,6 +482,7 @@ depends = [
   "nullabilite",
   "admission",
   "introductions",
+  "api:privee",
 ]
 
 [tasks.qualifier]
@@ -548,6 +549,14 @@ description = "Le journal des apparitions dit-il encore la vérité sur ce qui e
 # bloquerait un produit entre son écriture et sa publication, et une porte qu'on
 # ne peut pas franchir est une porte qu'on désactive.
 run = "python scripts/introductions.py"
+
+[tasks."api:privee"]
+description = "Aucun attribut privé d'une bibliothèque tierce dans ce qui est livré"
+# **La règle était écrite, rien ne la mesurait.** Le runtime a quitté
+# `scaleway_core.api.API._request` parce que c'était privé, puis a écrit
+# `requests.Response._content` (ADR-014). Une règle qu'on énonce sans la mesurer
+# se réintroduit par la porte d'à côté, et c'est ce qui s'est passé.
+run = "python scripts/api_privee.py"
 
 [tasks.hooks]
 description = "Installer les crochets git qui refusent avant la poussée ce que la CI refuse après"
