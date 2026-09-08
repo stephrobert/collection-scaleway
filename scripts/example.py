@@ -703,6 +703,13 @@ def main(argv: list[str]) -> int:
     # exercices concurrents se détruiraient mutuellement par leurs `finally`.
     verrou_plateforme.poser(run_id, arguments.cible)
     code = 0
+    # **Le sort de la destruction, séparé du sort du run.** Les confondre a
+    # laissé un verrou debout sur une plateforme entièrement détruite : un
+    # playbook rouge suffisait, et le run suivant était refusé pour une
+    # plateforme qui n'existait plus. Un verrou qui refuse ce qu'il devrait
+    # laisser passer finit par se retirer à la main sans le lire, ce qui le
+    # ramène à zéro.
+    detruit = False
     try:
         if terraform("init", env, {}).returncode != 0:
             raise ExempleError("`terraform init` a échoué")
@@ -777,6 +784,8 @@ def main(argv: list[str]) -> int:
                     file=sys.stderr,
                 )
                 code = 1
+            else:
+                detruit = True
             if not cible["emulateur"]:
                 verifier = [sys.executable, str(ROOT / "scripts" / "residue.py"), "verify"]
                 if lancer(verifier).returncode != 0:
@@ -795,10 +804,10 @@ def main(argv: list[str]) -> int:
         # qui parle au cloud directement, mais un playbook interrompu peut
         # encore avoir un appel en vol. Couper le proxy trop tôt perdrait la
         # fin de la transcription, c'est-à-dire précisément ce qui a échoué.
-        # **Retiré seulement si la destruction a réussi.** Un verrou levé
-        # sur un échec dirait qu'il n'y a plus rien debout, ce qui est
-        # exactement le mensonge que l'incident a produit.
-        if not arguments.garder and code == 0:
+        # La décision est dans `verrou_plateforme`, avec sa raison et son test :
+        # elle a déjà été prise de travers ici, en liant le verrou au sort du
+        # run plutôt qu'à celui de la destruction.
+        if verrou_plateforme.a_retirer(detruit, arguments.garder):
             verrou_plateforme.retirer()
         if proxy is not None:
             proxy.terminate()

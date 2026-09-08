@@ -161,6 +161,26 @@ def retirer() -> None:
     VERROU.unlink(missing_ok=True)
 
 
+def a_retirer(detruit: bool, garder: bool) -> bool:
+    """Le verrou doit-il être retiré à la fin de ce run ?
+
+    **La destruction seule décide, pas le sort du run.** Les deux ont été
+    confondus une fois : le verrou n'était retiré que si le run entier avait
+    réussi, et un playbook rouge sur une plateforme entièrement détruite
+    laissait donc un verrou debout. Le run suivant était refusé au nom d'une
+    plateforme qui n'existait plus, et le seul geste possible était de retirer
+    le fichier à la main. Un verrou qu'on prend l'habitude de retirer sans le
+    lire ne protège plus rien.
+
+    La fonction existe pour que le sort du run ne puisse pas entrer dans la
+    décision : sa signature ne le porte pas.
+
+    `garder` est l'inverse : la plateforme est volontairement laissée debout,
+    donc le verrou reste, et c'est ce qu'il doit dire.
+    """
+    return detruit and not garder
+
+
 def main() -> int:
     plateforme = lire()
     if plateforme is None:

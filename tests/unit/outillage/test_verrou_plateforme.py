@@ -114,3 +114,27 @@ def test_lempreinte_couvre_ce_qui_nest_pas_commite() -> None:
     """
     assert "examples/stack" in verrou_plateforme.SUIVIS
     assert "|" in verrou_plateforme.empreinte(), "l'empreinte joint l'enregistré et l'en-cours"
+
+
+def test_le_verrou_se_retire_quand_la_destruction_a_reussi() -> None:
+    """Même si le run a échoué : c'est la destruction qui décide, pas le run.
+
+    Le cas mesuré : un playbook rouge sur une plateforme entièrement détruite
+    laissait un verrou debout, et le run suivant était refusé au nom d'une
+    plateforme qui n'existait plus.
+    """
+    assert verrou_plateforme.a_retirer(detruit=True, garder=False) is True
+
+
+def test_le_verrou_reste_quand_la_destruction_a_echoue() -> None:
+    """Le contre-exemple, et c'est lui la raison d'être du verrou.
+
+    Le lever alors que la destruction a échoué dirait qu'il n'y a plus rien
+    debout : c'est exactement le mensonge que l'incident a produit.
+    """
+    assert verrou_plateforme.a_retirer(detruit=False, garder=False) is False
+
+
+def test_une_plateforme_gardee_garde_son_verrou() -> None:
+    """`--garder` laisse la plateforme debout, donc le verrou doit le dire."""
+    assert verrou_plateforme.a_retirer(detruit=True, garder=True) is False

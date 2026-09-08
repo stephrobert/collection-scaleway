@@ -553,14 +553,23 @@
     # arrivaient au module sous la forme d'un `None` ; un témoin d'omission les
     # sépare, et Ansible ne le déclenche que sur une clé absente de
     # l'invocation (ADR-016). Ce que l'effacement produit n'est pas deviné : la
-    # vérification d'après écriture le mesure, et le module échouerait ici si
-    # l'API rendait la description intacte.
+    # vérification d'après écriture le mesure, et le module échoue si l'API
+    # rend la description intacte.
+    #
+    # **L'émulateur ne sert pas ce cas, et c'est mesuré.** feint décode le
+    # corps vers des pointeurs Go : `encoding/json` y rend le même `nil` pour
+    # une clé absente et pour une clé à `null`, donc la garde
+    # `if req.Description != nil` range le `null` du côté « le client n'a pas
+    # parlé de ce champ ». Le module a bien échoué contre lui, en nommant le
+    # champ, ce qui est le comportement voulu et ne prouve rien sur Scaleway.
+    # feint#750 porte le défaut ; d'ici là, c'est le run réel qui tranche.
     - name: Effacer la description
       stephrobert.scaleway.instance_security_group:
         zone: "{{ zone }}"
         security_group_id: "{{ groupe_web }}"
         description: null
       register: effacement
+      when: cible == 'reel'
 
     - name: L'effacement a eu lieu, et la relecture ne montre plus la description
       ansible.builtin.assert:
@@ -571,6 +580,7 @@
           Le module a rendu {{ effacement }}. Un `null` explicite doit effacer
           le champ, pas rendre `ok` sur une description toujours là.
         quiet: true
+      when: cible == 'reel'
 
     # **Le second passage, et c'est lui la preuve.** Un module qui renverrait
     # `changed` ici réécrirait `null` sur un champ déjà vide à chaque exécution,
@@ -581,6 +591,7 @@
         security_group_id: "{{ groupe_web }}"
         description: null
       register: reeffacement
+      when: cible == 'reel'
 
     - name: Le second effacement ne change rien
       ansible.builtin.assert:
@@ -591,24 +602,40 @@
         success_msg: >-
           Effacement prouvé : premier passage `changed`, second inchangé.
         quiet: true
+      when: cible == 'reel'
 
-    # **Le contre-exemple, sans lequel les deux tâches ci-dessus passeraient
-    # aussi sur un module qui effacerait tout.** L'option est omise, pas écrite
-    # à `null` : le tag part, la description reste vide, et rien d'autre ne
-    # bouge.
-    - name: Écrire un tag sans nommer la description
+    - name: Ce que l'émulateur ne sert pas, dit plutôt que sauté en silence
+      ansible.builtin.debug:
+        msg: >-
+          Effacement non exercé : feint range un `null` explicite du côté des
+          clés absentes (feint#750). Seul le run réel prouve l'effacement.
+      when: cible != 'reel'
+
+    # **Le contre-exemple, sans lequel les tâches ci-dessus passeraient aussi
+    # sur un module qui effacerait tout.** Cette écriture ne nomme que la
+    # description ; `name` et `tags` sont effaçables au contrat et restent
+    # omis. Un runtime qui prendrait toute option omise pour un effacement les
+    # viderait dans la même requête, et le groupe ressortirait sans nom.
+    - name: Réécrire la description sans nommer les autres champs effaçables
       stephrobert.scaleway.instance_security_group:
         zone: "{{ zone }}"
         security_group_id: "{{ groupe_web }}"
         description: "Réécrite après effacement"
       register: reecriture
+      when: cible == 'reel'
 
-    - name: La description se réécrit après avoir été effacée
+    - name: La description revient, et ce qui n'était pas nommé a survécu
       ansible.builtin.assert:
         that:
           - reecriture is changed
           - reecriture.security_group.description == 'Réécrite après effacement'
+          - reecriture.security_group.name | length > 0
+          - reecriture.security_group.tags | length > 0
+        fail_msg: >-
+          Le module a rendu {{ reecriture }}. Une option omise n'est pas une
+          demande d'effacement : `name` et `tags` n'ont pas été nommés.
         quiet: true
+      when: cible == 'reel'
 
     # ---- Les écritures, et leur idempotence -----------------------------
     #

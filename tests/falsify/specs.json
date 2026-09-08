@@ -2007,6 +2007,14 @@
       "find": "    except (ValueError, TypeError):",
       "replace": "    except (ValueError, TypeError):\n        return None\n    if False:",
       "test": "tests/unit/outillage/test_verrou_plateforme.py::test_un_verrou_illisible_est_signale"
+    },
+    {
+      "name": "verrou-lie-au-sort-du-run",
+      "why": "Lier le verrou au sort du run le laisse debout sur une plateforme entièrement détruite : le run suivant est refusé au nom d'une plateforme qui n'existe plus, et le fichier finit retiré à la main sans être lu.",
+      "file": "scripts/verrou_plateforme.py",
+      "find": "    return detruit and not garder",
+      "replace": "    return not garder",
+      "test": "tests/unit/outillage/test_verrou_plateforme.py::test_le_verrou_reste_quand_la_destruction_a_echoue"
     }
   ]
 }
