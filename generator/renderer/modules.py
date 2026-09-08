@@ -75,6 +75,7 @@ def render_module(spec: AnsibleModuleSpec, *, source: str) -> str:
         argument_spec=python_literal(spec.argument_spec()),
         module_literal=_module_literal(spec),
         run_call=_run_call(spec),
+        omission_declaration=_omission_declaration(spec),
         exclusive_declaration=_exclusive_declaration(spec),
         module_arguments=_module_arguments(spec),
     )
@@ -128,6 +129,8 @@ def _runtime_imports(spec: AnsibleModuleSpec) -> list[str]:
     }
     if spec.waitable:
         noms.add("scaleway_waitable_argument_spec")
+    if spec.nullable_params:
+        noms.add("poser_les_temoins")
     return sorted(noms)
 
 
@@ -173,7 +176,28 @@ def _module_arguments(spec: AnsibleModuleSpec) -> str:
     )
 
 
+def _omission_declaration(spec: AnsibleModuleSpec) -> str:
+    """La pose des témoins d'omission, ou rien quand aucun champ n'est effaçable.
+
+    Elle est dans le fichier généré, et pas cachée dans le runtime : un lecteur
+    du module doit voir que quelque chose est posé sur son `argument_spec` avant
+    qu'Ansible le lise. L'ensemble est vide à cette ligne et se remplit pendant
+    la construction d'`AnsibleModule` (ADR-016).
+    """
+    if not spec.nullable_params:
+        return ""
+    return (
+        "\n"
+        "#: Ce que le contrat déclare effaçable. Ansible n'appelle un `fallback`\n"
+        "#: que sur une clé absente de l'invocation : le témoin note le nom sans\n"
+        "#: rien injecter, ce qui sépare `champ: null` de `champ` omis.\n"
+        "OMISSIONS = poser_les_temoins(ARGUMENT_SPEC, MODULE.nullable_params)\n"
+    )
+
+
 def _run_call(spec: AnsibleModuleSpec) -> str:
+    if spec.nullable_params:
+        return f"{_RUN_FUNCTIONS[spec.kind]}(module, MODULE, OMISSIONS)"
     return f"{_RUN_FUNCTIONS[spec.kind]}(module, MODULE)"
 
 

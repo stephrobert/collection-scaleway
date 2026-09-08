@@ -61,22 +61,18 @@ options:
     description:
     - Beginning of the range of ports this rule applies to (inclusive). If 0 is provided,
       unset the parameter.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is int.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: int
   dest_port_to:
     description:
     - End of the range of ports this rule applies to (inclusive). If 0 is provided, unset
       the parameter.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is int.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: int
   direction:
     description:
     - Direction the rule applies to.
@@ -88,21 +84,17 @@ options:
   ip_range:
     description:
     - Range of IP addresses these rules apply to. (IP network)
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: str
   position:
     description:
     - Position of this rule in the security group rules list.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is int.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: int
   protocol:
     description:
     - Protocol family this rule applies to.
@@ -219,6 +211,7 @@ from ansible.module_utils.basic import AnsibleModule  # noqa: E402
 from ansible_collections.stephrobert.scaleway.plugins.module_utils.scaleway import (  # noqa: E402
     ManageModule,
     Operation,
+    poser_les_temoins,
     run_manage_module,
     scaleway_argument_spec,
 )
@@ -247,14 +240,14 @@ MODULE_ARGUMENT_SPEC = {
         "type": "str",
         "choices": ["unknown_action", "accept", "drop"],
     },
-    "dest_port_from": {"type": "raw", "default": "__unchanged__"},
-    "dest_port_to": {"type": "raw", "default": "__unchanged__"},
+    "dest_port_from": {"type": "int"},
+    "dest_port_to": {"type": "int"},
     "direction": {
         "type": "str",
         "choices": ["unknown_direction", "inbound", "outbound"],
     },
-    "ip_range": {"type": "raw", "default": "__unchanged__"},
-    "position": {"type": "raw", "default": "__unchanged__"},
+    "ip_range": {"type": "str"},
+    "position": {"type": "int"},
     "protocol": {
         "type": "str",
         "choices": ["unknown_protocol", "TCP", "UDP", "ICMP", "ANY"],
@@ -311,18 +304,18 @@ MODULE = ManageModule(
         ("position", "scalar"),
         ("protocol", "scalar"),
     ),
-    nullable_params=(
-        ("dest_port_from", {"type": "int"}),
-        ("dest_port_to", {"type": "int"}),
-        ("ip_range", {"type": "str"}),
-        ("position", {"type": "int"}),
-    ),
+    nullable_params=("dest_port_from", "dest_port_to", "ip_range", "position"),
 )
+
+#: Ce que le contrat déclare effaçable. Ansible n'appelle un `fallback`
+#: que sur une clé absente de l'invocation : le témoin note le nom sans
+#: rien injecter, ce qui sépare `champ: null` de `champ` omis.
+OMISSIONS = poser_les_temoins(ARGUMENT_SPEC, MODULE.nullable_params)
 
 
 def main() -> None:
     module = AnsibleModule(argument_spec=ARGUMENT_SPEC, supports_check_mode=True)
-    run_manage_module(module, MODULE)
+    run_manage_module(module, MODULE, OMISSIONS)
 
 
 if __name__ == "__main__":

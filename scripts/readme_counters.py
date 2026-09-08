@@ -534,16 +534,11 @@ def bloc_runtime_etat() -> str:
 
 
 def bloc_effacables() -> str:
-    """Combien de champs un module ne sait pas effacer, et sur combien de modules.
+    """Combien de champs un module sait effacer, et sur combien de modules.
 
-    Le contrat marque un champ effaçable, et aucun module ne sait l'effacer.
-    Un module de gestion refuse désormais `champ: null` plutôt que de l'ignorer
-    (ADR-012) ; un playbook qui veut effacer ne le peut toujours pas, mais il
-    le sait.
-
-    Le nombre est publié plutôt que décrit : c'est lui qui chiffre le travail
-    restant, et une phrase sans nombre laisserait croire que la limite est
-    anecdotique.
+    Le nombre est publié plutôt que décrit : il disait le travail restant tant
+    que rien ne s'effaçait, il dit maintenant la portée de ce qui s'efface, et
+    une phrase sans nombre laisserait croire que la question est anecdotique.
     """
     from nullabilite import auditer
 
@@ -557,10 +552,11 @@ def bloc_effacables() -> str:
     return (
         f"The contract marks **{len(champs)} writable fields** as clearable, "
         f"across {modules} modules.\n"
-        "No module can clear one yet. A managing module that receives `field: null`\n"
-        "fails and names the field rather than reporting `ok` without having cleared\n"
-        "anything; omitting the field leaves it unchanged. `mise run nullabilite`\n"
-        "names them one by one."
+        "A managing module clears one when the playbook writes `field: null`, and\n"
+        "leaves it untouched when the option is omitted. The two are told apart by\n"
+        "an omission witness, which publishes nothing on the page: the option keeps\n"
+        "its natural type, its choices and its elements. `mise run nullabilite`\n"
+        "names the fields one by one."
     )
 
 

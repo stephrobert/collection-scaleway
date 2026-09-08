@@ -52,12 +52,11 @@ options:
   tags:
     description:
     - Tags used to select private NIC/s.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is list of str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: list
+    elements: str
 attributes:
   check_mode:
     description: In check mode the module reads the resource and compares it, then reports
@@ -160,6 +159,7 @@ from ansible.module_utils.basic import AnsibleModule  # noqa: E402
 from ansible_collections.stephrobert.scaleway.plugins.module_utils.scaleway import (  # noqa: E402
     ManageModule,
     Operation,
+    poser_les_temoins,
     run_manage_module,
     scaleway_argument_spec,
 )
@@ -184,7 +184,7 @@ MODULE_ARGUMENT_SPEC = {
     },
     "server_id": {"type": "str", "required": True},
     "private_nic_id": {"type": "str", "required": True},
-    "tags": {"type": "raw", "default": "__unchanged__"},
+    "tags": {"type": "list", "elements": "str"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -214,15 +214,18 @@ MODULE = ManageModule(
     comparisons=(
         ("tags", "ordered_list"),
     ),
-    nullable_params=(
-        ("tags", {"type": "list", "elements": "str"}),
-    ),
+    nullable_params=("tags",),
 )
+
+#: Ce que le contrat déclare effaçable. Ansible n'appelle un `fallback`
+#: que sur une clé absente de l'invocation : le témoin note le nom sans
+#: rien injecter, ce qui sépare `champ: null` de `champ` omis.
+OMISSIONS = poser_les_temoins(ARGUMENT_SPEC, MODULE.nullable_params)
 
 
 def main() -> None:
     module = AnsibleModule(argument_spec=ARGUMENT_SPEC, supports_check_mode=True)
-    run_manage_module(module, MODULE)
+    run_manage_module(module, MODULE, OMISSIONS)
 
 
 if __name__ == "__main__":

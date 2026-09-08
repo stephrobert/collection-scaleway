@@ -1,23 +1,21 @@
-"""Ce qu'un module ne sait pas dire : « efface ce champ ».
+"""Les champs qu'un module sait effacer, comptés et nommés.
 
 Le contrat marque un champ effaçable de deux façons, `oneOf: [X, null]` ou
-`type: [X, "null"]`, et l'IR les porte toutes deux depuis ADR-008. Aucun module
-ne sait encore effacer un tel champ :
+`type: [X, "null"]`, et l'IR les porte toutes deux depuis ADR-008 :
 
 ```yaml
-description: null        # « efface la description » : refusé, en nommant le champ
+description: null        # « efface la description »
 # description absente    # « n'y touche pas »
 ```
 
 Les deux produisaient **la même requête**, et le module rendait `ok` sur un
-champ toujours là. Un module de gestion refuse désormais le `null` explicite
-et dit quoi faire à la place (ADR-012). Un playbook qui veut effacer ne le peut
-toujours pas, mais il le sait.
+champ toujours là. Un témoin d'omission les sépare désormais, et le `null` part
+dans le corps de la requête (ADR-016).
 
-**Mesurer avant d'abstraire.** Une sémantique d'effacement se conçoit mal sans
-savoir combien de champs la réclament, ni lesquels. Ce programme les compte et
-les nomme. Si le compte vaut zéro, il n'y a rien à faire et c'est écrit ; il ne
-vaut pas zéro, et le nombre chiffre le travail restant.
+**Mesurer avant d'abstraire, et continuer de mesurer après.** Ce programme a
+chiffré le travail tant que rien ne s'effaçait ; il dit maintenant la portée de
+ce qui s'efface, et sur quels modules. Si le compte vaut zéro, il n'y a rien à
+faire et c'est écrit.
 
 Ce programme ne juge pas : il ne rend jamais autre chose que 0, sauf quand il
 n'a rien pu examiner. Compter n'est pas refuser, et transformer ce compte en
@@ -133,10 +131,10 @@ def main(argv: list[str]) -> int:
         print("Aucun : la question de l'effacement ne se pose sur aucun module livré.")
         return 0
 
-    print("Pour chacun, un module de gestion refuse `champ: null` plutôt que de")
-    print("l'ignorer (ADR-012), et `champ` absent laisse la valeur en place. Un")
-    print("playbook qui veut effacer ne le peut toujours pas : l'effacement attend")
-    print("#114, et ce compte le chiffre.\n")
+    print("Pour chacun, `champ: null` efface et `champ` absent laisse la valeur")
+    print("en place (ADR-016). Ce que l'effacement produit n'est pas deviné : la")
+    print("vérification d'après écriture le mesure et nomme le champ quand l'API")
+    print("rend autre chose.\n")
     print(f"{'module':<38} {'opération':<24} {'champ':<28} type")
     for champ in champs:
         print(f"{champ.module:<38} {champ.operation:<24} {champ.champ:<28} {champ.type}")

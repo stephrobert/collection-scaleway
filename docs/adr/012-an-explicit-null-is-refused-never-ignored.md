@@ -1,6 +1,8 @@
 # ADR-012. An explicit null is refused, never ignored
 
-**Status**: accepted, 7 September 2026. Still in force.
+**Status**: superseded by [ADR-016](016-an-explicit-null-clears-the-field.md), 8 September 2026.
+
+The refusal below closed a false success and was right to. Its mechanism was ruled by a measurement whose scope was too narrow: it measured a `fallback` that returns a value, and never one that raises. ADR-016 carries the wider measurement, and the clearing this record could not do.
 
 ## Context
 

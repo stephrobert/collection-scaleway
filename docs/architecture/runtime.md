@@ -3,29 +3,36 @@
 What `plugins/module_utils/scaleway.py` carries, why, and what it costs.
 
 <!-- compteurs:runtime-etat:début, produits par scripts/readme_counters.py -->
-State: written, measured by 136 unit tests, judged by `ansible-test sanity`, and
+State: written, measured by 141 unit tests, judged by `ansible-test sanity`, and
 exercised end to end against a local emulator and against a real Scaleway
 account.
 <!-- compteurs:runtime-etat:fin -->
 
-## What a module cannot say: "clear this field"
+## Clearing a field
 
 <!-- compteurs:effacables:début, produits par scripts/readme_counters.py -->
 The contract marks **55 writable fields** as clearable, across 15 modules.
-No module can clear one yet. A managing module that receives `field: null`
-fails and names the field rather than reporting `ok` without having cleared
-anything; omitting the field leaves it unchanged. `mise run nullabilite`
-names them one by one.
+A managing module clears one when the playbook writes `field: null`, and
+leaves it untouched when the option is omitted. The two are told apart by
+an omission witness, which publishes nothing on the page: the option keeps
+its natural type, its choices and its elements. `mise run nullabilite`
+names the fields one by one.
 <!-- compteurs:effacables:fin -->
 
-This is a named debt, not an oversight. The IR carries the fact since
-[ADR-008](../adr/008-a-constraint-is-translated-or-named.md), and a managing
-module tells an explicit `null` apart from an omitted option and refuses it
-([ADR-012](../adr/012-an-explicit-null-is-refused-never-ignored.md)): those
-options are published as `raw` with a marker default, which is the only public
-mechanism Ansible offers for that. Clearing itself needs a clear/reset semantics
-the contract does not describe, and the number above is what sizes that work.
-Issue #114 carries it.
+The IR carries the fact since
+[ADR-008](../adr/008-a-constraint-is-translated-or-named.md). Ansible carries
+`None` in `module.params` for an omitted option and for an explicit `null`
+alike, so the two were indistinguishable and `field: null` silently did
+nothing. What separates them is an omission witness: Ansible calls a `fallback`
+only on a key absent from the invocation, and a fallback that raises records
+the name without injecting a value
+([ADR-016](../adr/016-an-explicit-null-clears-the-field.md)).
+
+What the clearing produces is not guessed. The contract says the field accepts
+`null`; it does not say what the reread will show. The postcondition check
+covers a cleared field like any other written value
+([ADR-010](../adr/010-postconditions-are-checked-not-announced.md)), and names
+it when the API returns something else.
 
 ## How the roles are split
 

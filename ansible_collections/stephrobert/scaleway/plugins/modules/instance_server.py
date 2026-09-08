@@ -52,12 +52,10 @@ options:
       The public_key value of this key is used to encrypt the admin password. When set to
       an empty string, reset this value and admin_password_encrypted_value to an empty string
       so a new password may be generated.'
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: str
   boot_type:
     description:
     - Instance boot type.
@@ -81,87 +79,71 @@ options:
       - Local storage requirements of the target commercial_types must be fulfilled (i.e.
       if an Instance has 80GB of local storage, it can be changed into a GP1-XS, which has
       a maximum of 150GB, but it cannot be changed into a DEV1-S, which has only 20GB).'
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: str
   dynamic_ip_required:
     description:
     - True if a dynamic IPv4 is required.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is bool.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: bool
   enable_ipv6:
     description:
     - True if IPv6 is enabled (deprecated and always `False` when `routed_ip_enabled` is `True`).
     - Deprecated by the Scaleway API contract.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is bool.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: bool
   name:
     description:
     - Name of the Instance.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: str
   placement_group:
     description:
     - Placement group ID if Instance must be part of a placement group.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: str
   private_nics:
     description:
     - Instance private NICs.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is list of str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: list
+    elements: str
   protected:
     description:
     - True to activate server protection option.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is bool.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: bool
   public_ips:
     description:
     - A list of reserved IP IDs to attach to the Instance.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is list of str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: list
+    elements: str
   routed_ip_enabled:
     description:
     - True to configure the instance so it uses the new routed IP mode (once this is set to
       True you cannot set it back to False).
     - Deprecated by the Scaleway API contract.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is bool.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: bool
   security_group:
     description:
     - Instance security group.
@@ -169,12 +151,11 @@ options:
   tags:
     description:
     - Tags of the Instance.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is list of str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: list
+    elements: str
   volumes:
     description:
     - Instance volumes.
@@ -431,6 +412,7 @@ from ansible.module_utils.basic import AnsibleModule  # noqa: E402
 from ansible_collections.stephrobert.scaleway.plugins.module_utils.scaleway import (  # noqa: E402
     ManageModule,
     Operation,
+    poser_les_temoins,
     run_manage_module,
     scaleway_argument_spec,
 )
@@ -454,22 +436,22 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "server_id": {"type": "str", "required": True},
-    "admin_password_encryption_ssh_key_id": {"type": "raw", "default": "__unchanged__", "no_log": False},
+    "admin_password_encryption_ssh_key_id": {"type": "str", "no_log": False},
     "boot_type": {
         "type": "str",
         "choices": ["local", "bootscript", "rescue"],
     },
-    "commercial_type": {"type": "raw", "default": "__unchanged__"},
-    "dynamic_ip_required": {"type": "raw", "default": "__unchanged__"},
-    "enable_ipv6": {"type": "raw", "default": "__unchanged__"},
-    "name": {"type": "raw", "default": "__unchanged__"},
-    "placement_group": {"type": "raw", "default": "__unchanged__"},
-    "private_nics": {"type": "raw", "default": "__unchanged__"},
-    "protected": {"type": "raw", "default": "__unchanged__"},
-    "public_ips": {"type": "raw", "default": "__unchanged__"},
-    "routed_ip_enabled": {"type": "raw", "default": "__unchanged__"},
+    "commercial_type": {"type": "str"},
+    "dynamic_ip_required": {"type": "bool"},
+    "enable_ipv6": {"type": "bool"},
+    "name": {"type": "str"},
+    "placement_group": {"type": "str"},
+    "private_nics": {"type": "list", "elements": "str"},
+    "protected": {"type": "bool"},
+    "public_ips": {"type": "list", "elements": "str"},
+    "routed_ip_enabled": {"type": "bool"},
     "security_group": {"type": "dict"},
-    "tags": {"type": "raw", "default": "__unchanged__"},
+    "tags": {"type": "list", "elements": "str"},
     "volumes": {"type": "dict"},
 }
 
@@ -545,24 +527,29 @@ MODULE = ManageModule(
         ("volumes", "mapping"),
     ),
     nullable_params=(
-        ("admin_password_encryption_ssh_key_id", {"type": "str"}),
-        ("commercial_type", {"type": "str"}),
-        ("dynamic_ip_required", {"type": "bool"}),
-        ("enable_ipv6", {"type": "bool"}),
-        ("name", {"type": "str"}),
-        ("placement_group", {"type": "str"}),
-        ("private_nics", {"type": "list", "elements": "str"}),
-        ("protected", {"type": "bool"}),
-        ("public_ips", {"type": "list", "elements": "str"}),
-        ("routed_ip_enabled", {"type": "bool"}),
-        ("tags", {"type": "list", "elements": "str"}),
+        "admin_password_encryption_ssh_key_id",
+        "commercial_type",
+        "dynamic_ip_required",
+        "enable_ipv6",
+        "name",
+        "placement_group",
+        "private_nics",
+        "protected",
+        "public_ips",
+        "routed_ip_enabled",
+        "tags",
     ),
 )
+
+#: Ce que le contrat déclare effaçable. Ansible n'appelle un `fallback`
+#: que sur une clé absente de l'invocation : le témoin note le nom sans
+#: rien injecter, ce qui sépare `champ: null` de `champ` omis.
+OMISSIONS = poser_les_temoins(ARGUMENT_SPEC, MODULE.nullable_params)
 
 
 def main() -> None:
     module = AnsibleModule(argument_spec=ARGUMENT_SPEC, supports_check_mode=True)
-    run_manage_module(module, MODULE)
+    run_manage_module(module, MODULE, OMISSIONS)
 
 
 if __name__ == "__main__":

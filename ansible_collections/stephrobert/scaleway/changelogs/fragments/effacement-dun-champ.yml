@@ -1,0 +1,10 @@
+minor_changes:
+  - "Managing modules can now clear a field the contract declares clearable.
+    Writing ``field: null`` sends the clearing request and checks that the reread
+    shows it; omitting the option leaves the current value untouched. The two are
+    told apart by an omission witness, which Ansible triggers only on a key absent
+    from the invocation. See ADR-016."
+  - "Options for clearable fields recover their natural type on the published
+    page. They were ``type: raw`` with the default ``__unchanged__``, and their
+    ``choices`` and ``elements`` had to be stated in prose; they now publish the
+    type, choices and elements of the contract, and no default at all."

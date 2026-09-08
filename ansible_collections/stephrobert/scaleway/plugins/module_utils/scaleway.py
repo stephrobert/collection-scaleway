@@ -40,8 +40,12 @@ from collections.abc import Iterable, Mapping
 from typing import Any, Callable
 from urllib.parse import quote
 
-from ansible.module_utils.basic import AnsibleModule, env_fallback, missing_required_lib
-from ansible.module_utils.common.arg_spec import ArgumentSpecValidator
+from ansible.module_utils.basic import (
+    AnsibleFallbackNotFound,
+    AnsibleModule,
+    env_fallback,
+    missing_required_lib,
+)
 
 try:
     import requests
@@ -98,17 +102,6 @@ MAX_PAGES = 1000
 #: 60 s est large pour une liste d'une page entière et court devant les 300 s
 #: de `wait_timeout`, qui borne une attente entière et non un appel.
 DEFAULT_REQUEST_TIMEOUT = 60
-
-#: La valeur qu'une option effaçable porte quand le playbook l'omet.
-#:
-#: Ansible ne distingue pas une clé absente d'une clé à `null` : `module.params`
-#: porte `None` dans les deux cas, et un `description: null` disparaissait
-#: avant toute la mécanique de preuve, en rendant `ok`. Le générateur pose ce
-#: marqueur en défaut d'une option `raw` sur chaque champ que le contrat déclare
-#: effaçable (ADR-012) : omise, l'option vaut le marqueur ; à `null`, elle vaut
-#: `None`, et le runtime refuse. Le générateur en porte une copie, et un test
-#: exige que les deux concordent.
-UNCHANGED = "__unchanged__"
 
 #: Correspondance des paramètres du module vers les champs du profil SDK.
 #: Elle est explicite : un paramètre commun ajouté ici sans être ajouté à
@@ -292,13 +285,11 @@ class ManageModule:
     #: valeur à `None` et à conclure « différent » à chaque exécution, ce qui
     #: ressemble à une mesure et n'en est pas une.
     secret_params: tuple[str, ...] = ()
-    #: Champs que le contrat déclare effaçables, avec l'entrée d'`argument_spec`
-    #: de leur type réel. Le module les expose en `raw` avec `UNCHANGED` pour
-    #: défaut, seul mécanisme public qui rende un `null` explicite visible
-    #: (ADR-012). Le runtime le refuse, parce qu'il ne sait pas encore effacer
-    #: (#114), puis revalide la valeur fournie contre l'entrée réelle : `raw` ne
-    #: doit rien coûter au playbook, ni conversion ni contrôle de type.
-    nullable_params: tuple[tuple[str, dict[str, Any]], ...] = ()
+    #: Champs que le contrat déclare effaçables. Le module les publie avec leur
+    #: type naturel et pose sur chacun un témoin d'omission, qu'Ansible ne
+    #: déclenche que sur une clé absente : `champ: null` devient une demande
+    #: d'effacement, `champ` omis laisse la valeur en place (ADR-016).
+    nullable_params: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1071,73 +1062,94 @@ def _postconditions_non_tenues(
     return ecarts
 
 
+def poser_les_temoins(argument_spec: dict[str, Any], noms: Iterable[str]) -> set[str]:
+    """Pose un témoin d'omission sur chaque champ effaçable, et rend ce qu'il notera.
+
+    **Ansible n'appelle un `fallback` que sur une clé absente de l'invocation.**
+    C'est la seule chose dont ce mécanisme a besoin : le témoin note le nom,
+    puis lève `AnsibleFallbackNotFound` pour n'injecter aucune valeur. Une clé
+    présente, même à `null`, ne le déclenche pas.
+
+    Ce que ça achète, et qu'ADR-016 porte : l'option garde son type naturel,
+    ses `choices` et ses `elements`, la page ne publie aucun marqueur, et
+    `mutually_exclusive` continue de compter les bonnes clés. Un `fallback` qui
+    **rendrait** une valeur casserait ce dernier point, et c'est ce qu'ADR-012
+    avait mesuré avant d'écarter la piste.
+
+    L'ensemble rendu est vide au retour et se remplit pendant la construction
+    d'`AnsibleModule` : c'est une vue, pas un résultat, et le module généré la
+    lit après avoir construit son `AnsibleModule`.
+    """
+    absents: set[str] = set()
+
+    def temoin(nom: str) -> None:
+        absents.add(nom)
+        raise AnsibleFallbackNotFound
+
+    for nom in noms:
+        entree = argument_spec.get(nom)
+        if entree is None:
+            raise ValueError(
+                f"{nom} est déclaré effaçable mais absent de l'`argument_spec` : "
+                "le module a probablement été produit par un générateur qui ne "
+                "s'accorde plus avec ce runtime."
+            )
+        entree["fallback"] = (temoin, [nom])
+
+    return absents
+
+
 def explicit_nulls(
-    spec: ManageModule, params: dict[str, Any], clearable: frozenset[str] = frozenset()
+    spec: ManageModule, params: dict[str, Any], omissions: set[str] | None
 ) -> list[str]:
     """Les champs effaçables que le playbook a explicitement mis à `null`.
 
-    Une option omise porte `UNCHANGED`, jamais `None` : un `None` est donc un
-    `null` écrit dans le playbook. `clearable` nomme ce que le runtime sait
-    effacer, et c'est vide aujourd'hui : le jour où un champ s'y trouvera
-    (#114), son `null` sera une demande à exécuter, pas une demande à refuser.
+    `omissions` porte les noms que le témoin a notés, donc ceux que
+    l'invocation **n'a pas** écrits. Un champ effaçable qui vaut `None` sans y
+    figurer a été écrit à `null` dans le playbook : c'est une demande
+    d'effacement (ADR-016).
+
+    **Un `None` en guise d'omissions n'est pas un ensemble vide.** Le premier
+    dit qu'aucun témoin n'a été posé, le second qu'aucune option n'a été omise,
+    et les confondre ferait passer chaque option omise pour un effacement
+    demandé. Un module qui déclare des champs effaçables sans poser de témoin
+    ne s'accorde plus avec ce runtime, et il le dit.
     """
+    if not spec.nullable_params:
+        return []
+    if omissions is None:
+        raise ValueError(
+            f"{len(spec.nullable_params)} champ(s) effaçable(s) déclaré(s) sans "
+            "témoin d'omission : le module a probablement été produit par un "
+            "générateur qui ne s'accorde plus avec ce runtime."
+        )
     return [
         nom
-        for nom, _entree in spec.nullable_params
-        if nom not in clearable and nom in params and params[nom] is None
+        for nom in spec.nullable_params
+        if nom not in omissions and nom in params and params[nom] is None
     ]
 
 
-def _refus_du_null(noms: list[str]) -> str:
-    """Le message qui nomme le champ, et dit quoi faire à la place."""
-    if len(noms) == 1:
-        return (
-            f"{noms[0]} est explicitement à null, mais ce module ne sait pas encore "
-            "effacer ce champ. Omettre l'option laisse la valeur actuelle inchangée."
-        )
-    return (
-        f"{', '.join(noms)} sont explicitement à null, mais ce module ne sait pas encore "
-        "effacer ces champs. Omettre les options laisse les valeurs actuelles inchangées."
-    )
-
-
-def _resolve_nullable(module: AnsibleModule, spec: ManageModule) -> None:
-    """Retire le marqueur des options omises, et revalide les valeurs fournies.
-
-    L'option est `raw` pour qu'Ansible laisse passer le marqueur ; il laisse
-    donc aussi passer `stateful: "no"` sous forme de chaîne, là où `bool` l'aurait
-    convertie. La valeur fournie repasse par le validateur d'Ansible, avec
-    l'entrée de son type réel : mêmes conversions, mêmes messages, et le
-    playbook ne voit aucune différence avec une option typée.
-
-    Le marqueur est remplacé par `None` dans `module.params` plutôt que
-    supprimé : c'est ce qu'Ansible publie dans `invocation`, et une option
-    omise doit s'y lire comme avant.
-    """
-    for nom, entree in spec.nullable_params:
-        valeur = module.params.get(nom)
-        if isinstance(valeur, str) and valeur == UNCHANGED:
-            module.params[nom] = None
-            continue
-        if valeur is None:
-            continue
-        resultat = ArgumentSpecValidator({nom: entree}).validate({nom: valeur})
-        if resultat.error_messages:
-            module.fail_json(msg="; ".join(resultat.error_messages))
-            return
-        module.params[nom] = resultat.validated_parameters[nom]
-
-
-def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
+def run_manage_module(
+    module: AnsibleModule, spec: ManageModule, omissions: set[str] | None = None
+) -> None:
     """Amène une ressource existante à l'état que le playbook décrit.
 
-    **Refuser un `null` explicite avant tout.** Il disparaissait dans la
-    construction de la demande, avant la lecture, la comparaison et la
+    **Un `null` explicite est une demande d'effacement.** Il disparaissait dans
+    la construction de la demande, avant la lecture, la comparaison et la
     vérification : le module rendait `ok` sur une description toujours là.
-    Un `null` sur un champ que le runtime ne sait pas effacer est une demande
-    qu'il ne peut pas tenir, et il le dit sans rien lire ni écrire (ADR-012).
+    `omissions` porte ce que le témoin a noté, et sépare donc « omis » de
+    « écrit à null » ; le champ effacé part dans le corps avec la valeur `null`,
+    que le contrat sanctionne en le déclarant effaçable (ADR-016).
 
-    Quatre propriétés, et chacune répond à une façon connue de se tromper.
+    **Ce que l'effacement produit n'est pas deviné, il est vérifié.** Le contrat
+    dit qu'un champ accepte `null` ; il ne dit pas ce que la relecture rendra
+    ensuite. La vérification d'après écriture le mesure sur chaque exécution et
+    nomme le champ quand l'API rend autre chose (ADR-010) : c'est le même
+    mécanisme que pour n'importe quelle valeur écrite, et il n'a pas fallu lui
+    inventer une exception.
+
+    Cinq propriétés, et chacune répond à une façon connue de se tromper.
 
     **Lire d'abord.** Sans lecture, un module ne peut pas savoir s'il change
     quelque chose, et `changed` devient un mensonge poli. La ressource est donc
@@ -1169,11 +1181,11 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
     runtime le fait échouer plutôt que retomber en silence sur l'égalité
     stricte.
     """
-    nuls = explicit_nulls(spec, module.params)
-    if nuls:
-        module.fail_json(msg=_refus_du_null(nuls))
+    try:
+        effacements = explicit_nulls(spec, module.params, omissions)
+    except ValueError as erreur:
+        module.fail_json(msg=str(erreur))
         return
-    _resolve_nullable(module, spec)
 
     api = ScalewayApi(module)
 
@@ -1189,8 +1201,16 @@ def run_manage_module(module: AnsibleModule, spec: ManageModule) -> None:
         )
         return
 
+    # **Un effacement demandé entre dans la demande, avec sa valeur `null`.**
+    # Sans lui, `description: null` retombait dans le trou d'origine : la clé
+    # était filtrée par `is not None`, et le module rendait `ok` sur un champ
+    # toujours là. `effacements` ne contient que des champs que le contrat
+    # déclare effaçables et que le playbook a écrits à `null` : un `None` venu
+    # d'une option omise n'y figure pas.
     demande = {
-        nom: module.params[nom] for nom in spec.managed_params if module.params.get(nom) is not None
+        nom: module.params[nom]
+        for nom in spec.managed_params
+        if module.params.get(nom) is not None or nom in effacements
     }
 
     # **Un secret ne se compare pas, et il ne s'affiche pas non plus.** L'API ne

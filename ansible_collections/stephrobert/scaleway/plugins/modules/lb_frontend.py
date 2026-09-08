@@ -53,40 +53,33 @@ options:
     description:
     - Certificate ID, deprecated in favor of certificate_ids array.
     - Deprecated by the Scaleway API contract.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: str
   certificate_ids:
     description:
     - List of SSL/TLS certificate IDs to bind to the frontend.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is list of str.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: list
+    elements: str
   connection_rate_limit:
     description:
     - Rate limit for new connections established on this frontend. Use 0 value to disable,
       else value is connections per second.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is int.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: int
   enable_access_logs:
     description:
     - Defines whether to enable access logs on the frontend.
-    - 'Omit this option to keep the current value: the published default is only the marker
-      of an omitted option, and the API type is bool.'
-    - An explicit null is refused, because clearing this field is not supported by the module
-      yet.
-    type: raw
-    default: __unchanged__
+    - 'Set this option to null to clear the field: the contract declares it clearable, and
+      the module sends the clearing request then checks that the reread shows it.'
+    - Omit this option to leave the current value untouched.
+    type: bool
   enable_http3:
     description:
     - Defines whether to enable HTTP/3 protocol on the frontend.
@@ -230,6 +223,7 @@ from ansible.module_utils.basic import AnsibleModule  # noqa: E402
 from ansible_collections.stephrobert.scaleway.plugins.module_utils.scaleway import (  # noqa: E402
     ManageModule,
     Operation,
+    poser_les_temoins,
     run_manage_module,
     scaleway_argument_spec,
 )
@@ -252,10 +246,10 @@ MODULE_ARGUMENT_SPEC = {
     },
     "frontend_id": {"type": "str", "required": True},
     "backend_id": {"type": "str", "required": True},
-    "certificate_id": {"type": "raw", "default": "__unchanged__"},
-    "certificate_ids": {"type": "raw", "default": "__unchanged__"},
-    "connection_rate_limit": {"type": "raw", "default": "__unchanged__"},
-    "enable_access_logs": {"type": "raw", "default": "__unchanged__"},
+    "certificate_id": {"type": "str"},
+    "certificate_ids": {"type": "list", "elements": "str"},
+    "connection_rate_limit": {"type": "int"},
+    "enable_access_logs": {"type": "bool"},
     "enable_http3": {"type": "bool"},
     "inbound_port": {"type": "int", "required": True},
     "name": {"type": "str", "required": True},
@@ -316,18 +310,18 @@ MODULE = ManageModule(
         ("name", "scalar"),
         ("timeout_client", "scalar"),
     ),
-    nullable_params=(
-        ("certificate_id", {"type": "str"}),
-        ("certificate_ids", {"type": "list", "elements": "str"}),
-        ("connection_rate_limit", {"type": "int"}),
-        ("enable_access_logs", {"type": "bool"}),
-    ),
+    nullable_params=("certificate_id", "certificate_ids", "connection_rate_limit", "enable_access_logs"),
 )
+
+#: Ce que le contrat déclare effaçable. Ansible n'appelle un `fallback`
+#: que sur une clé absente de l'invocation : le témoin note le nom sans
+#: rien injecter, ce qui sépare `champ: null` de `champ` omis.
+OMISSIONS = poser_les_temoins(ARGUMENT_SPEC, MODULE.nullable_params)
 
 
 def main() -> None:
     module = AnsibleModule(argument_spec=ARGUMENT_SPEC, supports_check_mode=True)
-    run_manage_module(module, MODULE)
+    run_manage_module(module, MODULE, OMISSIONS)
 
 
 if __name__ == "__main__":

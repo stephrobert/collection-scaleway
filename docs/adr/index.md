@@ -38,7 +38,8 @@ Code says the **current** invariant. This directory says what happened.
 | [ADR-009](009-how-a-managed-field-is-compared.md) | The type decides the comparison it can, an override decides the rest, nothing is guessed |
 | [ADR-010](010-postconditions-are-checked-not-announced.md) | After writing, what was asked is compared with what is observed, and a gap fails the module |
 | [ADR-011](011-a-product-is-admitted-not-merely-added.md) | A product passes a gate before entering the index, and enters with its price known |
-| [ADR-012](012-an-explicit-null-is-refused-never-ignored.md) | An explicit `null` on a clearable field fails the module, and never passes for an omitted option |
+| [ADR-012](012-an-explicit-null-is-refused-never-ignored.md) | An explicit `null` on a clearable field fails the module, and never passes for an omitted option (superseded by ADR-016) |
 | [ADR-013](013-when-a-module-appeared-is-recorded-not-computed.md) | When a module, option or return appeared is read from a journal, never from the current version |
 | [ADR-014](014-the-runtime-owns-its-http-transport.md) | The runtime composes its own HTTP request, and no private attribute of a third-party library is shipped |
 | [ADR-015](015-a-claim-about-the-real-api-is-a-recorded-exchange.md) | A claim about the real API is a recorded exchange, not a green assertion |
+| [ADR-016](016-an-explicit-null-clears-the-field.md) | An explicit `null` clears the field, an omitted option touches nothing, and the page publishes neither mechanism |
