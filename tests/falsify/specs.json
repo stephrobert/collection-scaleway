@@ -1967,6 +1967,22 @@
       "find": "    elif epinglee != sol:",
       "replace": "    elif epinglee != sol and False:",
       "test": "tests/unit/outillage/test_outillage_ci.py::test_une_divergence_entre_le_plancher_et_lepingle_est_refusee"
+    },
+    {
+      "name": "readme-publie-hors-du-controle-des-exemples",
+      "why": "Le README de la collection est ce que Galaxy publie, donc le premier playbook qu'un utilisateur copie. Il n'était analysé par rien : un module renommé y serait resté jusqu'à ce que quelqu'un essaie.",
+      "file": "scripts/doc_examples.py",
+      "find": "    for chemin in sorted(GUIDES.rglob(\"*.md\")) + [c for c in README if c.is_file()]:",
+      "replace": "    for chemin in sorted(GUIDES.rglob(\"*.md\")):",
+      "test": "tests/unit/outillage/test_doc_examples.py::test_le_readme_publie_est_analyse"
+    },
+    {
+      "name": "extrait-de-taches-envoye-tel-quel",
+      "why": "Un README publie des tâches, pas des playbooks. Les envoyer tels quels à `--syntax-check` les fait échouer pour la seule raison qu'ils sont bien écrits, et le contrôle se désactive.",
+      "file": "scripts/doc_examples.py",
+      "find": "    if not JEU.search(bloc):",
+      "replace": "    if not JEU.search(bloc) and False:",
+      "test": "tests/unit/outillage/test_doc_examples.py::test_un_extrait_de_taches_est_enveloppe_avant_analyse"
     }
   ]
 }

@@ -98,8 +98,25 @@ group_by:
 ansible-playbook -i production.scaleway.yml reboot.yml
 ```
 
-The inventory sets `scaleway_id`, `scaleway_zone` and `scaleway_product`, which
-is all any module needs behind `delegate_to: localhost`.
+The inventory sets `scaleway_id`, `scaleway_zone` and `scaleway_product`. That
+is enough for every module acting on the discovered machine itself, as above.
+
+A module acting on a **sub-resource** needs that resource's own identifier,
+which no machine discovery can supply. The matching `_info` module returns it:
+
+```yaml
+- name: Read the backend, then write it
+  stephrobert.scaleway.lb_backend_info:
+    zone: fr-par-1
+    lb_id: "{{ lb_id }}"
+  register: backends
+
+- name: The identifier comes from the read, never from a copied UUID
+  stephrobert.scaleway.lb_backend:
+    zone: fr-par-1
+    backend_id: "{{ (backends.backends | first).id }}"
+    forward_port: 8080
+```
 
 ### Query
 

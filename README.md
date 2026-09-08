@@ -54,8 +54,10 @@ group_by: [product, zone, tags]
 ```
 
 <!-- compteurs:modules:début, produits par scripts/readme_counters.py -->
-The inventory sets `scaleway_id` and `scaleway_zone`, which is all any of
-the 50 modules needs behind `delegate_to: localhost`.
+The inventory sets `scaleway_id` and `scaleway_zone`, which is what 25
+of the 50 modules need behind `delegate_to: localhost`. The other
+25 act on a sub-resource carrying its own identifier, which the
+matching `_info` module returns.
 <!-- compteurs:modules:fin -->
 
 The rest, requirements, module tables, compatibility and versioning, lives in
@@ -133,7 +135,7 @@ collection stephrobert.scaleway: 50 modules written out of 52 planned
   45 modules called by the example playbook out of 50 (90.0%), which is not the same as played
   51 published pages: 297/297 options and 70/70 returned keys documented
   108/108 examples copyable as is · 61/65 returned keys list their fields
-  826 unit tests · 246 mutations proven by /falsify
+  831 unit tests · 248 mutations proven by /falsify
   CI: 6 jobs, Générateur · collection · Image · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks and inventory against the emulator:
   reported by `mise run sanity` and `mise run integration`
