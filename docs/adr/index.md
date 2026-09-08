@@ -41,3 +41,4 @@ Code says the **current** invariant. This directory says what happened.
 | [ADR-012](012-an-explicit-null-is-refused-never-ignored.md) | An explicit `null` on a clearable field fails the module, and never passes for an omitted option |
 | [ADR-013](013-when-a-module-appeared-is-recorded-not-computed.md) | When a module, option or return appeared is read from a journal, never from the current version |
 | [ADR-014](014-the-runtime-owns-its-http-transport.md) | The runtime composes its own HTTP request, and no private attribute of a third-party library is shipped |
+| [ADR-015](015-a-claim-about-the-real-api-is-a-recorded-exchange.md) | A claim about the real API is a recorded exchange, not a green assertion |
