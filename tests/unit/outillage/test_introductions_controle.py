@@ -10,6 +10,7 @@ import dataclasses
 from types import MappingProxyType
 
 import introductions
+import pytest
 
 from generator.ansible.collection import load_collection
 from generator.ansible.introductions import load_introductions
@@ -51,13 +52,26 @@ def test_un_module_non_encore_date_est_publie_sans_etre_refuse() -> None:
     assert any("module lb_ip_info" in ligne for ligne in lignes)
 
 
-def test_une_version_en_preparation_qui_contredit_les_fragments_est_refusee() -> None:
+def test_une_version_en_preparation_qui_contredit_les_fragments_est_refusee(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Et seulement quand un nom en dépend.
 
     Sans rien en attente, la valeur ne publie aucune date, et refuser
     obligerait à corriger le journal chaque fois qu'un fragment change de
     portée sans qu'aucun module soit concerné.
+
+    **Ce que les fragments impliquent est posé, pas lu dans le dépôt.** La
+    composition d'une release les efface : ce test ne passait donc qu'entre
+    deux versions, et rougissait le jour de la publication, qui est le pire
+    jour possible pour un test qui ne mesure plus ce qu'il croit. C'est la
+    troisième fois dans ce fichier qu'un cas dépendait d'un état transitoire.
     """
+    monkeypatch.setattr(
+        introductions,
+        "implique",
+        lambda _chemin, _version: ("0.9.9", "les fragments impliquent une version mineure"),
+    )
     journal = load_introductions()
     ampute = dataclasses.replace(
         journal,

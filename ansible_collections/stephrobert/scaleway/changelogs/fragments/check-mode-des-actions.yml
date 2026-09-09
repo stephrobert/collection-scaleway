@@ -1,8 +1,0 @@
-bugfixes:
-  - "``--check`` on an action module now sees what a rehearsal is for. It exited
-    before building the API client, so it reported ``changed`` with no SDK, no
-    credentials and no check that the resource exists, while the same play
-    without ``--check`` failed cleanly. The client is now built, and the
-    resource read when the contract offers a unitary read, before returning
-    without sending anything. When no unitary read exists, the message says the
-    resource was not verified rather than implying it was. See #168."
