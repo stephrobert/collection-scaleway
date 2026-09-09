@@ -425,6 +425,15 @@ description = "Ce qui doit être vrai avant de publier sur Galaxy"
 # une fois la première publication faite à la main.
 run = "python scripts/release.py --check"
 
+[tasks."taches:dependances"]
+description = "Une tâche qui lit les modules générés attend la génération"
+# Hors ligne et instantané : il lit `mise.toml` et les scripts, jamais un
+# artefact. `mise` lance les tâches d'une porte en parallèle, et une lecture
+# concurrente tombe sur un fichier à moitié écrit : `main` est sorti rouge sur
+# deux défauts documentaires que le dépôt ne porte pas, après une pull request
+# verte. C'était déjà l'omission de #138.
+run = "python scripts/dependances_taches.py"
+
 [tasks.navigation]
 description = "Le site annonce ses deux parcours, et sert l'usage en premier"
 # Hors ligne et instantané, donc dans `check` : il lit `docs/index.md` et
@@ -502,6 +511,7 @@ depends = [
   "coverage:check",
   "cles:lues",
   "navigation",
+  "taches:dependances",
   # **Le job Archive de la CI en fait partie, donc `check` doit le porter.**
   # Il n'y était pas, et une pull request est passée localement sur un contrôle
   # qui interrogeait un plugin d'inventaire renommé la veille. `check` promet

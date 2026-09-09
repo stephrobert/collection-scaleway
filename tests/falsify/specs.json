@@ -2223,6 +2223,30 @@
       "find": "    if 'language = \"en\"' not in conf:",
       "replace": "    if False:",
       "test": "tests/unit/outillage/test_navigation.py::test_le_site_publie_est_en_anglais"
+    },
+    {
+      "name": "tache-qui-lit-pendant-la-generation-admise",
+      "why": "`mise` lance les tâches d'une porte en parallèle : une lecture concurrente tombe sur un fichier à moitié écrit, et le verdict invente des défauts que le dépôt ne porte pas. Le cas est arrivé deux fois.",
+      "file": "scripts/dependances_taches.py",
+      "find": "        if not attend_la_generation(nom, table):",
+      "replace": "        if False:",
+      "test": "tests/unit/outillage/test_dependances_taches.py::test_la_tache_qui_lisait_sans_attendre_est_refusee"
+    },
+    {
+      "name": "lecture-par-import-non-vue",
+      "why": "`admission` ne construit pas le chemin des modules : il importe `docs_quality`. Ne regarder que le script lancé laisserait passer le défaut d'origine.",
+      "file": "scripts/dependances_taches.py",
+      "find": "    importes = set(re.findall(r\"^\\s*(?:import|from) (\\w+)\", texte, re.MULTILINE))",
+      "replace": "    importes = set()",
+      "test": "tests/unit/outillage/test_dependances_taches.py::test_un_script_qui_lit_par_import_est_vu"
+    },
+    {
+      "name": "dependance-indirecte-refusee",
+      "why": "Exiger la dépendance directe ferait refuser des tâches déjà correctes, et un contrôle qui refuse ce qui va bien finit désactivé.",
+      "file": "scripts/dependances_taches.py",
+      "find": "        a_voir.extend(table.get(courant, (None, []))[1])",
+      "replace": "        pass",
+      "test": "tests/unit/outillage/test_dependances_taches.py::test_une_dependance_indirecte_suffit"
     }
   ]
 }
