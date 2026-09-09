@@ -59,13 +59,95 @@ EXAMPLES = r"""
 """
 
 RETURN = r"""
-result:
+servers:
   description:
   - List available Instance types and their technical details.
-  - 'The API contract names no payload field for this operation: the response body is returned
-    as is.'
   returned: success
   type: dict
+  version_added: 0.5.0
+  contains:
+    monthly_price:
+      description:
+      - Estimated monthly price, for a 30 days month, in Euro.
+      - Deprecated by the Scaleway API contract.
+      returned: when the API returns it
+      type: float
+    hourly_price:
+      description:
+      - Hourly price in Euro.
+      returned: when the API returns it
+      type: float
+    alt_names:
+      description:
+      - Alternative Instance name, if any.
+      returned: when the API returns it
+      type: list
+      elements: str
+    per_volume_constraint:
+      description:
+      - Additional volume constraints.
+      returned: when the API returns it
+      type: dict
+    volumes_constraint:
+      description:
+      - Initial volume constraints.
+      returned: when the API returns it
+      type: dict
+    ncpus:
+      description:
+      - Number of CPU.
+      returned: when the API returns it
+      type: int
+    gpu:
+      description:
+      - Number of GPU.
+      returned: when the API returns it
+      type: int
+    ram:
+      description:
+      - Available RAM in bytes.
+      returned: when the API returns it
+      type: int
+    gpu_info:
+      description:
+      - GPU information.
+      returned: when the API returns it
+      type: dict
+    arch:
+      description:
+      - CPU architecture.
+      returned: when the API returns it
+      type: str
+    network:
+      description:
+      - Network available for the Instance.
+      returned: when the API returns it
+      type: dict
+    capabilities:
+      description:
+      - Capabilities.
+      returned: when the API returns it
+      type: dict
+    scratch_storage_max_size:
+      description:
+      - Maximum available scratch storage. (in bytes)
+      returned: when the API returns it
+      type: int
+    scratch_storage_max_volumes_count:
+      description:
+      - Maximum supported number of scratch volumes.
+      returned: when the API returns it
+      type: int
+    block_bandwidth:
+      description:
+      - The maximum bandwidth allocated to block storage access (in bytes per second).
+      returned: when the API returns it
+      type: int
+    end_of_service:
+      description:
+      - True if this Instance type has reached end of service.
+      returned: when the API returns it
+      type: bool
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402
@@ -110,6 +192,7 @@ MODULE = InfoModule(
         path="/instance/v1/zones/{zone}/products/servers",
         path_params=("zone",),
         query_params=(),
+        payload_field="servers",
         page_param="page",
         per_page_param="per_page",
         retry="safe",

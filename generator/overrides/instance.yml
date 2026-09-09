@@ -447,3 +447,30 @@ returns:
       reason: >-
         Reformulation du nom. Le contrat ne dit ni l'encodage du contenu ni sa
         taille maximale, et l'un comme l'autre serait une invention.
+
+  scaleway.instance.v1.GetServerTypesAvailabilityResponse.Availability:
+    availability:
+      description: Availability of this Instance type in the requested zone.
+      reason: >-
+        Reformulation du nom, cadrée par l'enum que le contrat déclare :
+        `available`, `scarce`, `shortage`. Ce que « scarce » veut dire
+        exactement, et à partir de quel seuil il bascule en « shortage », le
+        contrat ne le dit nulle part, et le deviner serait promettre une
+        garantie de capacité que Scaleway ne donne pas. Ce champ n'était pas
+        publié avant que l'enveloppe en map soit lue.
+
+  scaleway.instance.v1.VolumeType:
+    display_name:
+      description: Human-readable name of the volume type.
+      reason: >-
+        Reformulation du nom, et rien d'autre. Le contrat ne dit ni la langue
+        de ce libellé ni s'il est stable, et l'affirmer serait en dire plus que
+        lui. Le champ apparaît avec la lecture de l'enveloppe en map de
+        `ListVolumesTypes`.
+    constraints:
+      description: Size constraints of this volume type, in bytes.
+      reason: >-
+        Reformulation de la forme déclarée : le contrat décrit `min` et `max`
+        par la seule mention « (in bytes) », sans dire de quoi. Le schéma ne
+        porte que ces deux champs, donc l'unité est celle de la taille ;
+        nommer autre chose serait une invention.

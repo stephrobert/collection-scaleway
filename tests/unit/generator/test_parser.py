@@ -23,6 +23,7 @@ def test_toutes_les_operations_du_contrat_sont_dans_lir(widget_service: ApiServi
         "DeleteWidget",
         "WidgetAction",
         "ListWidgetGizmos",
+        "ListWidgetTypes",
     }
 
 

@@ -180,6 +180,15 @@
       "default": "running"
     },
     {
+      "name": "scaleway.instance.v1.ServerTypesAvailability",
+      "values": [
+        "available",
+        "scarce",
+        "shortage"
+      ],
+      "default": "available"
+    },
+    {
       "name": "scaleway.instance.v1.Snapshot.State",
       "values": [
         "available",
@@ -313,6 +322,15 @@
           "type": "integer",
           "deprecated": true,
           "description": "(in bytes)"
+        }
+      ]
+    },
+    {
+      "name": "scaleway.instance.v1.GetServerTypesAvailabilityResponse.Availability",
+      "fields": [
+        {
+          "name": "availability",
+          "type": "enum"
         }
       ]
     },
@@ -917,6 +935,93 @@
       ]
     },
     {
+      "name": "scaleway.instance.v1.ServerType",
+      "fields": [
+        {
+          "name": "monthly_price",
+          "type": "number",
+          "deprecated": true,
+          "description": "Estimated monthly price, for a 30 days month, in Euro."
+        },
+        {
+          "name": "hourly_price",
+          "type": "number",
+          "description": "Hourly price in Euro."
+        },
+        {
+          "name": "alt_names",
+          "type": "array",
+          "item_type": "string",
+          "description": "Alternative Instance name, if any."
+        },
+        {
+          "name": "per_volume_constraint",
+          "type": "object",
+          "description": "Additional volume constraints."
+        },
+        {
+          "name": "volumes_constraint",
+          "type": "object",
+          "description": "Initial volume constraints."
+        },
+        {
+          "name": "ncpus",
+          "type": "integer",
+          "description": "Number of CPU."
+        },
+        {
+          "name": "gpu",
+          "type": "integer",
+          "description": "Number of GPU."
+        },
+        {
+          "name": "ram",
+          "type": "integer",
+          "description": "Available RAM in bytes."
+        },
+        {
+          "name": "gpu_info",
+          "type": "object",
+          "description": "GPU information."
+        },
+        {
+          "name": "arch",
+          "type": "enum",
+          "description": "CPU architecture."
+        },
+        {
+          "name": "network",
+          "type": "object",
+          "description": "Network available for the Instance."
+        },
+        {
+          "name": "capabilities",
+          "type": "object",
+          "description": "Capabilities."
+        },
+        {
+          "name": "scratch_storage_max_size",
+          "type": "integer",
+          "description": "Maximum available scratch storage. (in bytes)"
+        },
+        {
+          "name": "scratch_storage_max_volumes_count",
+          "type": "integer",
+          "description": "Maximum supported number of scratch volumes."
+        },
+        {
+          "name": "block_bandwidth",
+          "type": "integer",
+          "description": "The maximum bandwidth allocated to block storage access (in bytes per second)."
+        },
+        {
+          "name": "end_of_service",
+          "type": "boolean",
+          "description": "True if this Instance type has reached end of service."
+        }
+      ]
+    },
+    {
       "name": "scaleway.instance.v1.Snapshot",
       "fields": [
         {
@@ -1112,6 +1217,23 @@
           "name": "zone",
           "type": "string",
           "description": "Zone in which the volume is located."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.instance.v1.VolumeType",
+      "fields": [
+        {
+          "name": "display_name",
+          "type": "string"
+        },
+        {
+          "name": "capabilities",
+          "type": "object"
+        },
+        {
+          "name": "constraints",
+          "type": "object"
         }
       ]
     },
@@ -3653,7 +3775,9 @@
         }
       ],
       "response": {
-        "schema": "scaleway.instance.v1.GetServerTypesAvailabilityResponse"
+        "schema": "scaleway.instance.v1.GetServerTypesAvailabilityResponse",
+        "payload_field": "servers",
+        "payload_schema": "scaleway.instance.v1.GetServerTypesAvailabilityResponse.Availability"
       },
       "pagination": {
         "page_param": "page",
@@ -4719,7 +4843,9 @@
         }
       ],
       "response": {
-        "schema": "scaleway.instance.v1.ListServersTypesResponse"
+        "schema": "scaleway.instance.v1.ListServersTypesResponse",
+        "payload_field": "servers",
+        "payload_schema": "scaleway.instance.v1.ServerType"
       },
       "pagination": {
         "page_param": "page",
@@ -4982,7 +5108,9 @@
         }
       ],
       "response": {
-        "schema": "scaleway.instance.v1.ListVolumesTypesResponse"
+        "schema": "scaleway.instance.v1.ListVolumesTypesResponse",
+        "payload_field": "volumes",
+        "payload_schema": "scaleway.instance.v1.VolumeType"
       },
       "pagination": {
         "page_param": "page",

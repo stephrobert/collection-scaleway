@@ -834,6 +834,10 @@ def _parse_response(
             )
             is_list = True
             break
+        if _est_une_map(property_schema) and payload_field is None:
+            payload_field = name
+            payload_schema = _valeur_dune_map(property_schema)
+            continue
         if isinstance(property_schema.get("$ref"), str) and payload_field is None:
             payload_field = name
             payload_schema = property_schema["$ref"].rsplit("/", 1)[-1]
@@ -844,6 +848,41 @@ def _parse_response(
         payload_schema=payload_schema,
         is_list=is_list,
     )
+
+
+def _est_une_map(schema: dict[str, Any]) -> bool:
+    """Une propriété dont les clés ne sont pas connues à l'avance.
+
+    Le contrat la déclare `type: object` avec `additionalProperties`, et c'est
+    la seule marque sur laquelle s'appuyer : la présence d'`additionalProperties`
+    dit que d'autres clés que celles listées sont admises.
+    """
+    return schema.get("type") == "object" and "additionalProperties" in schema
+
+
+def _valeur_dune_map(schema: dict[str, Any]) -> str | None:
+    """Le schéma des **valeurs** d'une map, quand le contrat le nomme.
+
+    **Scaleway déclare la valeur sous une clé de gabarit**, `<serverKey>`,
+    `<volumeKey>`, entre chevrons. Ce n'est pas de l'OpenAPI, c'est une
+    convention de son générateur, et elle est régulière : mesuré sur les
+    contrats versionnés, toutes les maps en portent une, et aucune n'en porte
+    deux.
+
+    Rendre `None` quand la valeur est un scalaire est **correct** : il n'y a
+    alors aucun schéma à nommer, et la page dira `type: dict` sans prétendre
+    décrire ce qu'on y trouve. Le cas existe, `Dashboard.servers_by_types`
+    compte des entiers.
+    """
+    gabarits = [
+        valeur
+        for nom, valeur in _mapping(schema.get("properties")).items()
+        if nom.startswith("<") and nom.endswith(">") and isinstance(valeur, dict)
+    ]
+    if len(gabarits) != 1:
+        return None
+    reference = gabarits[0].get("$ref")
+    return reference.rsplit("/", 1)[-1] or None if isinstance(reference, str) else None
 
 
 #: Les noms sous lesquels Scaleway déclare une taille de page. Deux, mesurés :

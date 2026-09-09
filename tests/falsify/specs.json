@@ -2127,6 +2127,30 @@
       "find": "                if restriction.csv and parametre.location is not ParameterLocation.QUERY:",
       "replace": "                if False:",
       "test": "tests/unit/generator/test_overrides.py::test_un_csv_hors_dun_filtre_de_requete_est_inerte"
+    },
+    {
+      "name": "enveloppe-en-map-non-lue",
+      "why": "Le contrat nomme `servers`, et le parser rendait `None` : trois pages livrées affirmaient que le contrat ne nomme aucun champ porteur, ce qui est le contraire de ce qu'il dit, et publiaient `contains: {}`.",
+      "file": "generator/parser/openapi.py",
+      "find": "        if _est_une_map(property_schema) and payload_field is None:",
+      "replace": "        if False:",
+      "test": "tests/unit/generator/test_enveloppe_map.py::test_une_enveloppe_en_map_nomme_son_champ_porteur"
+    },
+    {
+      "name": "map-prise-pour-une-liste",
+      "why": "Une map est indexée par des clés, pas parcourue par rang. La confondre avec une liste ferait paginer une réponse qui n'a pas de pages, et rendre une liste là où l'API rend un dictionnaire.",
+      "file": "generator/parser/openapi.py",
+      "find": "            payload_schema = _valeur_dune_map(property_schema)\n            continue",
+      "replace": "            payload_schema = _valeur_dune_map(property_schema)\n            is_list = True\n            continue",
+      "test": "tests/unit/generator/test_enveloppe_map.py::test_une_map_nest_pas_une_liste"
+    },
+    {
+      "name": "valeur-de-map-inventee",
+      "why": "Une map de scalaires n'a aucun schéma à nommer. En inventer un ferait publier un `contains` qui décrit une ressource que l'API ne rend pas.",
+      "file": "generator/parser/openapi.py",
+      "find": "    if len(gabarits) != 1:\n        return None",
+      "replace": "    if len(gabarits) != 1:\n        return None\n    return \"scaleway.invente.Ressource\"",
+      "test": "tests/unit/generator/test_enveloppe_map.py::test_une_map_de_scalaires_nomme_le_champ_sans_inventer_un_schema"
     }
   ]
 }
