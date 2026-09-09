@@ -2151,6 +2151,22 @@
       "find": "    if len(gabarits) != 1:\n        return None",
       "replace": "    if len(gabarits) != 1:\n        return None\n    return \"scaleway.invente.Ressource\"",
       "test": "tests/unit/generator/test_enveloppe_map.py::test_une_map_de_scalaires_nomme_le_champ_sans_inventer_un_schema"
+    },
+    {
+      "name": "echeance-de-revue-jamais-atteinte",
+      "why": "Une échéance qu'aucun contrôle ne rattrape n'est pas une échéance : la dette vieillirait exactement comme avant, avec deux champs de plus pour faire croire le contraire.",
+      "file": "scripts/example_coverage.py",
+      "find": "        if _rang(publiee) >= _rang(exemption.revoir_en)",
+      "replace": "        if False",
+      "test": "tests/unit/outillage/test_couverture_exemple.py::test_une_echeance_atteinte_est_nommee"
+    },
+    {
+      "name": "versions-comparees-comme-des-chaines",
+      "why": "`\"0.10.0\" >= \"0.9.0\"` est faux : le défaut ne mordrait qu'à la dixième mineure, et il mordrait en silence, l'échéance passant sans que le contrôle la voie.",
+      "file": "scripts/example_coverage.py",
+      "find": "    return tuple(int(morceau) for morceau in version.split(\".\") if morceau.isdigit())",
+      "replace": "    return version",
+      "test": "tests/unit/outillage/test_couverture_exemple.py::test_les_versions_se_comparent_par_nombres"
     }
   ]
 }
