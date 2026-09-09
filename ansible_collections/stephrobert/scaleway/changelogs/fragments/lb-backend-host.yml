@@ -1,5 +1,0 @@
-minor_changes:
-  - "``lb_backend`` gains the ``host`` option, and ``lb_backend_info`` returns it.
-    Scaleway added the field upstream: it sets the HTTP Host header or the TLS SNI
-    used when connecting to backend servers. Nobody wrote this option by hand; the
-    drift was detected, the contract re-synced, and the generator produced it."

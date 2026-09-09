@@ -1,8 +1,0 @@
-bugfixes:
-  - "Three ``*_type_info`` pages claimed \"The API contract names no payload
-    field for this operation\", while the contract names ``servers`` or
-    ``volumes``. Their response wraps a map, which the parser read as neither a
-    list nor a single object, so the payload field was lost and the page
-    published ``contains: {}`` alongside a sentence that says the opposite of
-    what the contract says. The pages now return the field the contract names,
-    and describe what it holds."

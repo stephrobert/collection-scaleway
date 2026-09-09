@@ -1,6 +1,0 @@
-bugfixes:
-  - "The examples of an action module no longer say \"an Instance\" whatever the
-    product. The phrase was hard-coded, and it happened to be right only because
-    ``instance_server_action`` is the only module whose action carries an enum;
-    the next product with one would have published \"Migrate an Instance\" for a
-    load balancer. The examples now name the resource the page is about."
