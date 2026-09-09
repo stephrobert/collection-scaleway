@@ -239,12 +239,15 @@
     - name: Chaque appel a rendu ce que sa documentation annonce
       ansible.builtin.assert:
         that:
-          # `result` et non `server_types` : le contrat ne nomme aucun champ
-          # porteur pour ces opérations, donc le module rend le corps entier
-          # sous cette clé, et son `RETURN` le documente ainsi.
-          - types.result is defined or 'ListServersTypes' in non_emules
-          - dispo.result is defined or 'GetServerTypesAvailability' in non_emules
-          - types_volumes.result is defined or 'ListVolumesTypes' in non_emules
+          # **Chaque clé est celle que le contrat nomme.** Ces trois-là
+          # répondent par une enveloppe dont la valeur est une map, et le
+          # playbook creusait dans `result` faute que le générateur sache la
+          # lire : `servers` et `volumes` sont ce que le contrat déclare.
+          # `result` reste le nom de repli, pour les opérations dont la réponse
+          # **est** la ressource.
+          - types.servers is defined or 'ListServersTypes' in non_emules
+          - dispo.servers is defined or 'GetServerTypesAvailability' in non_emules
+          - types_volumes.volumes is defined or 'ListVolumesTypes' in non_emules
           - tableau.dashboard is defined or 'GetDashboard' in non_emules
           - compatibles.result is defined or 'GetServerCompatibleTypes' in non_emules
           - cartes.private_nics is defined or 'ListPrivateNICs' in non_emules
@@ -1209,7 +1212,7 @@
           {{ volumes.volumes | length }} volumes vus par instance/v1 ·
           {{ adresses.ips | selectattr('tags', 'contains', 'exemple')
              | list | length }} adresse publique ·
-          {{ (types.result | default({})).servers | default({}) | length }} types offerts ·
+          {{ types.servers | default({}) | length }} types offerts ·
           {{ cartes.private_nics | default([]) | length }} carte privée sur un worker ·
           {{ balanceurs.lbs | default([]) | length }} load balancer ·
           {{ backends.backends | default([]) | length }} backend

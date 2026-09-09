@@ -70,7 +70,28 @@ def test_une_version_en_preparation_qui_contredit_les_fragments_est_refusee() ->
     assert not conforme
     assert any("contredit ce que les fragments impliquent" in ligne for ligne in lignes)
 
-    # Le contre-exemple : la même version fausse, mais plus rien qui en dépende.
-    intacte = dataclasses.replace(journal, en_preparation="9.9.9")
-    conforme, _ = introductions.controler(intacte)
+    # **Le contre-exemple : la même version fausse, mais plus rien qui en
+    # dépende.** Il se construit, il ne se suppose pas. Le test passait
+    # autrefois parce que le journal réel n'avait aucun nom en attente ce
+    # jour-là ; il en a dès qu'un module gagne une option ou un retour, et le
+    # contre-exemple mesurait alors la même chose que le cas nominal.
+    modules, membres = introductions.noms_produits(journal)
+    sans_attente = dataclasses.replace(
+        journal,
+        en_preparation="9.9.9",
+        options=MappingProxyType(
+            {
+                **journal.options,
+                **{(m, n): "0.1.0" for genre, m, n in membres if genre == "option"},
+            }
+        ),
+        retours=MappingProxyType(
+            {
+                **journal.retours,
+                **{(m, n): "0.1.0" for genre, m, n in membres if genre == "retour"},
+            }
+        ),
+    )
+    assert introductions.non_dates(sans_attente, modules, membres) == []
+    conforme, _ = introductions.controler(sans_attente)
     assert conforme

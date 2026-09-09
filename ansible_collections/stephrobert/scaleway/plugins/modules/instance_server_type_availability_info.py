@@ -59,13 +59,18 @@ EXAMPLES = r"""
 """
 
 RETURN = r"""
-result:
+servers:
   description:
   - Get availability for all Instance types.
-  - 'The API contract names no payload field for this operation: the response body is returned
-    as is.'
   returned: success
   type: dict
+  version_added: 0.5.0
+  contains:
+    availability:
+      description:
+      - Availability of this Instance type in the requested zone.
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402
@@ -110,6 +115,7 @@ MODULE = InfoModule(
         path="/instance/v1/zones/{zone}/products/servers/availability",
         path_params=("zone",),
         query_params=(),
+        payload_field="servers",
         page_param="page",
         per_page_param="per_page",
         retry="safe",

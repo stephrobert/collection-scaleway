@@ -1,25 +1,25 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# Copyright: (c) Stéphane Robert (@stephrobert)
+# Copyright: (c) Contrat de laboratoire (@lab)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 # This file is generated.
 # Do not edit manually.
 #
-# Contrat    : specs/scaleway/instance.v1.yml
-# Opérations : ListVolumesTypes
+# Contrat    : tests/fixtures/widget/input/widget.v1.yml
+# Opérations : ListWidgetTypes
 # Régénérer  : mise run generate
 
 from __future__ import annotations
 
 DOCUMENTATION = r"""
-module: instance_volume_type_info
-short_description: Gather information about Scaleway Instance volume types
-version_added: 0.1.0
+module: widget_widget_type_info
+short_description: Gather information about Scaleway Widget types
+version_added: 9.9.9
 description:
-- List all volume types and their technical details.
+- Lister les types de widgets, sous forme de map.
 author:
-- Stéphane Robert (@stephrobert)
+- Contrat de laboratoire (@lab)
 options:
   zone:
     description:
@@ -28,15 +28,7 @@ options:
     required: true
     choices:
     - fr-par-1
-    - fr-par-2
-    - fr-par-3
     - nl-ams-1
-    - nl-ams-2
-    - nl-ams-3
-    - pl-waw-1
-    - pl-waw-2
-    - pl-waw-3
-    - it-mil-1
 attributes:
   check_mode:
     description: This module only reads, so check mode changes nothing about how it runs.
@@ -45,47 +37,41 @@ attributes:
     description: This module changes nothing, so it has no difference to report.
     support: none
 extends_documentation_fragment:
-- stephrobert.scaleway.scaleway
+- lab.widget.scaleway
 """
 
 EXAMPLES = r"""
 # This module only reads: it never changes anything, and check mode
 # is native.
 
-- name: List volume types
-  stephrobert.scaleway.instance_volume_type_info:
+- name: List widget types
+  lab.widget.widget_widget_type_info:
     zone: fr-par-1
   register: result
 """
 
 RETURN = r"""
-volumes:
+types:
   description:
-  - List all volume types and their technical details.
+  - Lister les types de widgets, sous forme de map.
   returned: success
   type: dict
-  version_added: 0.5.0
   contains:
-    display_name:
+    type_name:
       description:
-      - Human-readable name of the volume type.
+      - Name of the widget type.
       returned: when the API returns it
       type: str
-    capabilities:
+    gizmo_capacity:
       description:
-      - Capabilities.
+      - How many gizmos this type carries.
       returned: when the API returns it
-      type: dict
-    constraints:
-      description:
-      - Size constraints of this volume type, in bytes.
-      returned: when the API returns it
-      type: dict
+      type: int
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402
 
-from ansible_collections.stephrobert.scaleway.plugins.module_utils.scaleway import (  # noqa: E402
+from ansible_collections.lab.widget.plugins.module_utils.scaleway import (  # noqa: E402
     InfoModule,
     Operation,
     run_info_module,
@@ -97,18 +83,7 @@ MODULE_ARGUMENT_SPEC = {
     "zone": {
         "type": "str",
         "required": True,
-        "choices": [
-            "fr-par-1",
-            "fr-par-2",
-            "fr-par-3",
-            "nl-ams-1",
-            "nl-ams-2",
-            "nl-ams-3",
-            "pl-waw-1",
-            "pl-waw-2",
-            "pl-waw-3",
-            "it-mil-1",
-        ],
+        "choices": ["fr-par-1", "nl-ams-1"],
     },
 }
 
@@ -120,14 +95,12 @@ ARGUMENT_SPEC.update(MODULE_ARGUMENT_SPEC)
 #: Ce que le module exécute, et les décisions que le générateur a prises.
 MODULE = InfoModule(
     get_operation=Operation(
-        id="ListVolumesTypes",
+        id="ListWidgetTypes",
         method="GET",
-        path="/instance/v1/zones/{zone}/products/volumes",
+        path="/widget/v1/zones/{zone}/widget-types",
         path_params=("zone",),
         query_params=(),
-        payload_field="volumes",
-        page_param="page",
-        per_page_param="per_page",
+        payload_field="types",
         retry="safe",
     ),
 )
