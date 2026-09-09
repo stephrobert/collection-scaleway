@@ -403,6 +403,11 @@
           "name": "timeout_queue",
           "type": "string",
           "description": "Maximum time for a request to be left pending in queue when `max_connections` is reached. (in seconds)"
+        },
+        {
+          "name": "host",
+          "type": "string",
+          "description": "Host value to use when connecting to backend servers.\nWhen connecting to backend servers, use this value as the HTTP Host header or TLS SNI. This allows routing to specific services on the backend server that are configured to respond to particular hostnames."
         }
       ]
     },
@@ -1011,6 +1016,7 @@
     "frontend_id": "ID of the source frontend.",
     "frontends": "List of frontend objects of a given Load Balancer.",
     "health_check": "Object defining the health check to be carried out by the backend when checking the status and health of backend servers.",
+    "host": "Host value to use when connecting to backend servers.\nWhen connecting to backend servers, use this value as the HTTP Host header or TLS SNI. This allows routing to specific services on the backend server that are configured to respond to particular hostnames.",
     "http_config": "Object to configure an HTTP health check.",
     "http_filter": "Type of HTTP filter to match. Extracts the request's URL path, which starts at the first slash and ends before the question mark (without the host part). Defines where to filter for the http_filter_value. Only supported for HTTP backends.",
     "http_filter_option": "Name of the HTTP header to filter on if `http_header_match` was selected in `http_filter`.",
@@ -1521,6 +1527,14 @@
           "required": false,
           "location": "body",
           "description": "Maximum time for a request to be left pending in queue when `max_connections` is reached. (in seconds)",
+          "nullable": true
+        },
+        {
+          "name": "host",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Host value to use when connecting to backend servers.\nWhen connecting to backend servers, use this value as the HTTP Host header or TLS SNI. This allows routing to specific services on the backend server that are configured to respond to particular hostnames.",
           "nullable": true
         }
       ],
@@ -4495,6 +4509,14 @@
           "required": false,
           "location": "body",
           "description": "Maximum time for a request to be left pending in queue when `max_connections` is reached. (in seconds)",
+          "nullable": true
+        },
+        {
+          "name": "host",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Host value to use when connecting to backend servers.\nWhen connecting to backend servers, use this value as the HTTP Host header or TLS SNI. This allows routing to specific services on the backend server that are configured to respond to particular hostnames.",
           "nullable": true
         }
       ],

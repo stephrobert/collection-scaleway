@@ -494,6 +494,13 @@ components:
           description: Maximum time for a request to be left pending in queue when
             `max_connections` is reached. (in seconds)
           example: 2.5s
+        host:
+          type:
+          - string
+          - "null"
+          description: |-
+            Host value to use when connecting to backend servers.
+            When connecting to backend servers, use this value as the HTTP Host header or TLS SNI. This allows routing to specific services on the backend server that are configured to respond to particular hostnames.
       x-properties-order:
       - id
       - name
@@ -520,6 +527,7 @@ components:
       - max_retries
       - max_connections
       - timeout_queue
+      - host
     scaleway.lb.v1.BackendServerStats:
       type: object
       properties:
@@ -2097,6 +2105,13 @@ paths:
                   description: Maximum time for a request to be left pending in queue
                     when `max_connections` is reached. (in seconds)
                   example: 2.5s
+                host:
+                  type:
+                  - string
+                  - "null"
+                  description: |-
+                    Host value to use when connecting to backend servers.
+                    When connecting to backend servers, use this value as the HTTP Host header or TLS SNI. This allows routing to specific services on the backend server that are configured to respond to particular hostnames.
               required:
               - name
               - forward_protocol
@@ -2123,6 +2138,7 @@ paths:
               - max_retries
               - max_connections
               - timeout_queue
+              - host
       security:
       - scaleway: []
       x-codeSamples:
@@ -4533,6 +4549,13 @@ paths:
                   description: Maximum time for a request to be left pending in queue
                     when `max_connections` is reached. (in seconds)
                   example: 2.5s
+                host:
+                  type:
+                  - string
+                  - "null"
+                  description: |-
+                    Host value to use when connecting to backend servers.
+                    When connecting to backend servers, use this value as the HTTP Host header or TLS SNI. This allows routing to specific services on the backend server that are configured to respond to particular hostnames.
               required:
               - name
               - forward_protocol
@@ -4563,6 +4586,7 @@ paths:
               - max_retries
               - max_connections
               - timeout_queue
+              - host
       security:
       - scaleway: []
       x-codeSamples:

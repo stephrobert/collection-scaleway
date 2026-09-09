@@ -11,7 +11,7 @@ account.
 ## Clearing a field
 
 <!-- compteurs:effacables:début, produits par scripts/readme_counters.py -->
-The contract marks **55 writable fields** as clearable, across 15 modules.
+The contract marks **56 writable fields** as clearable, across 15 modules.
 Clearing one is writing the empty value of its type, `""` or `[]` or `{}`,
 measured against the real account. An explicit `null` is refused, naming
 that value, because the API reads `null` as "field not provided" and would
