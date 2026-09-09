@@ -640,13 +640,25 @@ def _resolve_type(
             schema=target, schemas=schemas, enums=enums, warnings=warnings, context=context
         )
         if resolved.type is ApiType.ENUM:
+            # **La description vient du schéma référencé, pas du site qui le
+            # référence.** `_deref` fusionne les clés sœurs d'un `$ref` dans ce
+            # qu'il rend, ce qui est juste pour lire un **champ** : sa
+            # description lui appartient. Elle ne décrit pas le **type** pour
+            # autant, et l'enum est un type, partagé par tous ses porteurs.
+            #
+            # Le contrat le montre : `scaleway.instance.v1.IpType` est décrit
+            # « IP type to reserve » sur un site et « Should have no effect. »
+            # sur un autre. Avec la fusion, `setdefault` faisait gagner le
+            # premier chemin parcouru, et l'IR changeait avec l'ordre des
+            # chemins du document, ce que la règle 6 du dépôt interdit.
+            declare = schemas.get(target_name)
             enums.setdefault(
                 target_name,
                 ApiEnum(
                     name=target_name,
                     values=resolved.enum_values,
-                    default=target.get("default"),
-                    description=_first_paragraph(target.get("description")),
+                    default=_mapping(declare).get("default"),
+                    description=_first_paragraph(_mapping(declare).get("description")),
                 ),
             )
             return _ResolvedType(

@@ -2167,6 +2167,14 @@
       "find": "    return tuple(int(morceau) for morceau in version.split(\".\") if morceau.isdigit())",
       "replace": "    return version",
       "test": "tests/unit/outillage/test_couverture_exemple.py::test_les_versions_se_comparent_par_nombres"
+    },
+    {
+      "name": "enum-decrit-par-le-site-qui-le-reference",
+      "why": "`_deref` fusionne les clés sœurs d'un `$ref`, ce qui est juste pour un champ et faux pour un type : deux sites décrivent `IpType` autrement, et le premier chemin parcouru gagnait. L'IR changeait alors avec l'ordre des chemins du document, ce que la règle 6 du dépôt interdit.",
+      "file": "generator/parser/openapi.py",
+      "find": "                    description=_first_paragraph(_mapping(declare).get(\"description\")),",
+      "replace": "                    description=_first_paragraph(target.get(\"description\")),",
+      "test": "tests/unit/generator/test_ordre_des_chemins.py::test_permuter_les_chemins_ne_change_pas_lir"
     }
   ]
 }
