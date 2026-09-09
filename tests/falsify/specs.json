@@ -2271,6 +2271,22 @@
       "find": "                \"Le contrat ne donne aucune lecture unitaire de cette ressource : \"\n                \"son existence n'a pas été vérifiée.\"",
       "replace": "                \"\"",
       "test": "tests/unit/collection/test_runtime.py::test_en_check_mode_labsence_de_lecture_est_dite"
+    },
+    {
+      "name": "reference-laissee-a-plat",
+      "why": "`antsibull` rend les modules par ordre alphabétique, et leur nombre ne cesse pas de croître. Ouvrir la section « Reference » sur cette liste, et non sur ce qui l'ordonne, est ce que l'issue #164 reproche au site.",
+      "file": "scripts/navigation.py",
+      "find": "    if reference and reference[0] != REFERENCE:",
+      "replace": "    if False:",
+      "test": "tests/unit/outillage/test_navigation.py::test_la_reference_ouvre_sur_ce_qui_ordonne"
+    },
+    {
+      "name": "reference-qui-oublie-un-module",
+      "why": "Une référence qui oublierait un module serait pire que l'ordre alphabétique : elle promettrait un classement complet sans l'être.",
+      "file": "scripts/docsite.py",
+      "find": "            if nom not in ecrits or not items:",
+      "replace": "            if nom not in ecrits or not items or nom.endswith('_info'):",
+      "test": "tests/unit/outillage/test_reference_groupee.py::test_tout_module_livre_figure_dans_la_reference"
     }
   ]
 }
