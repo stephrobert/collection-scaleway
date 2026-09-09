@@ -30,10 +30,16 @@ import argparse
 import json
 import sys
 from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+# **Le lecteur de la collection, pas un second.** `galaxy.yml` est déjà lu par
+# `load_collection`, et le relire ici avec `yaml` ferait deux lecteurs d'une
+# même identité, qui divergeraient au premier format inhabituel.
+from generator.ansible.collection import load_collection
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAYBOOKS = ROOT / "examples" / "playbooks"
@@ -45,42 +51,122 @@ ARTEFACTS = ROOT / "build" / "example"
 #: Préfixe complet d'un contenu de cette collection dans un playbook.
 PREFIXE = "stephrobert.scaleway."
 
+
 #: Les modules qu'aucune cible de la stack ne peut exercer, et **pourquoi**.
 #:
 #: Ce n'est pas une liste de dispenses : c'est le seul endroit où un écart a le
 #: droit d'exister, et il y est nommé. Le contrôle échoue sur un module absent
 #: d'ici comme d'un playbook, donc en ajouter un demande d'écrire sa raison.
 #: En retirer un demande de l'exercer.
-SANS_CIBLE: dict[str, str] = {
-    "instance_snapshot": (
-        "demande un instantané que l'API Instance liste. Celui de la stack passe par "
-        "l'API Block, seule à voir un volume SBS, et l'API Instance ne le liste pas. "
-        "En tailler un dans le volume `l_ssd` échoue : « cannot create a RO disk from "
-        "an empty disk », mesuré sur le compte réel."
+@dataclass(frozen=True)
+class SansCible:
+    """Un module que l'exemple n'exerce pas, et ce qu'il faudrait pour lever ça.
+
+    **Une raison seule vieillit sans que personne s'en aperçoive.** Elle décrit
+    l'obstacle du jour où elle a été écrite, et rien ne rappelle de vérifier
+    qu'il tient encore. Les champs qui l'accompagnent le rappellent :
+
+    * `preuve` dit **ce qu'il faudrait**, et c'est la partie actionnable : une
+      exemption qui n'attend qu'un changement de stack ne se traite pas comme
+      une qui attend l'amont ;
+    * `revoir_en` dit **quand rouvrir**, et le contrôle sort en 2 quand la
+      version publiée l'a atteinte. Une échéance qu'on peut ignorer n'est pas
+      une échéance ;
+    * `issue` renvoie à l'endroit où la discussion vit, quand il y en a un.
+
+    L'issue qui a demandé ça le disait elle-même : « bureaucratique à six
+    exemptions, précieux à deux cents ». C'est écrit maintenant parce que le
+    coût est bas maintenant.
+    """
+
+    raison: str
+    #: Ce qu'il faudrait pour exercer le module. `stack` : étendre la
+    #: topologie Terraform. `reel` : une décision sur le compte, coût ou
+    #: résidu. `amont` : quelque chose que ni la stack ni nous ne contrôlons.
+    preuve: str
+    #: Version de la collection à partir de laquelle l'exemption se rouvre.
+    revoir_en: str
+    issue: int | None = None
+
+
+#: Ce que `preuve` peut valoir. Fermée, pour qu'une faute de frappe ne produise
+#: pas une exemption dont personne ne sait ce qu'elle attend.
+PREUVES: frozenset[str] = frozenset({"stack", "reel", "amont"})
+
+SANS_CIBLE: dict[str, SansCible] = {
+    "instance_snapshot": SansCible(
+        raison=(
+            "demande un instantané que l'API Instance liste. Celui de la stack passe par "
+            "l'API Block, seule à voir un volume SBS, et l'API Instance ne le liste pas. "
+            "En tailler un dans le volume `l_ssd` échoue : « cannot create a RO disk from "
+            "an empty disk », mesuré sur le compte réel."
+        ),
+        preuve="stack",
+        revoir_en="0.6.0",
     ),
-    "instance_snapshot_action": (
-        "exporte un instantané, donc il lui en faut un : même raison que "
-        "`instance_snapshot`, et le même volume vide."
+    "instance_snapshot_action": SansCible(
+        raison=(
+            "exporte un instantané, donc il lui en faut un : même raison que "
+            "`instance_snapshot`, et le même volume vide."
+        ),
+        preuve="stack",
+        revoir_en="0.6.0",
     ),
-    "instance_ip_action": (
-        "rend une adresse à l'IPAM. Toutes les adresses de la stack appartiennent à "
-        "Terraform : en rendre une laisserait son état en désaccord avec le compte, "
-        "et c'est exactement le résidu que la règle du dépôt interdit."
+    "instance_ip_action": SansCible(
+        raison=(
+            "rend une adresse à l'IPAM. Toutes les adresses de la stack appartiennent à "
+            "Terraform : en rendre une laisserait son état en désaccord avec le compte, "
+            "et c'est exactement le résidu que la règle du dépôt interdit."
+        ),
+        preuve="stack",
+        revoir_en="0.6.0",
     ),
-    "lb_load_balancer_action": (
-        "migre un load balancer vers un autre type commercial, et **refuse le "
-        "non-changement** : migrer vers le type courant rend 400 `invalid_arguments`, "
-        "mesuré sur le compte réel. Le seul appel que l'API accepte change donc la "
-        "facture du compte pour la durée de l'exercice, et ce n'est pas une décision "
-        "que l'exemple prend à la place de qui le lance. feint ne sert pas cette "
-        "route non plus (501), donc aucune des deux cibles ne l'exerce."
+    "lb_load_balancer_action": SansCible(
+        raison=(
+            "migre un load balancer vers un autre type commercial, et **refuse le "
+            "non-changement** : migrer vers le type courant rend 400 `invalid_arguments`, "
+            "mesuré sur le compte réel. Le seul appel que l'API accepte change donc la "
+            "facture du compte pour la durée de l'exercice, et ce n'est pas une décision "
+            "que l'exemple prend à la place de qui le lance. feint ne sert pas cette "
+            "route non plus (501), donc aucune des deux cibles ne l'exerce."
+        ),
+        preuve="reel",
+        revoir_en="0.7.0",
     ),
-    "lb_subscriber": (
-        "demande un destinataire d'alertes, et le provider Terraform ne déclare "
-        "aucune ressource `scaleway_lb_subscriber` : il n'existe aucun moyen d'en "
-        "créer un que la destruction emporte."
+    "lb_subscriber": SansCible(
+        raison=(
+            "demande un destinataire d'alertes, et le provider Terraform ne déclare "
+            "aucune ressource `scaleway_lb_subscriber` : il n'existe aucun moyen d'en "
+            "créer un que la destruction emporte."
+        ),
+        preuve="amont",
+        revoir_en="0.7.0",
     ),
 }
+
+
+def echeances_depassees(publiee: str) -> list[str]:
+    """Les exemptions que la version publiée a rattrapées.
+
+    **Une échéance qu'on peut ignorer n'est pas une échéance.** Le contrôle sort
+    en 2 sur celles-là : soit l'obstacle tient toujours et la ligne se réécrit
+    avec une échéance neuve et la mesure qui la justifie, soit il est tombé et
+    le module rejoint l'exemple.
+
+    Repousser en changeant le nombre est permis, et c'est le but : ce qui est
+    refusé, c'est de ne rien décider.
+    """
+    return sorted(
+        f"{nom} : à revoir depuis {exemption.revoir_en}, "
+        f"attend {exemption.preuve} · {exemption.raison}"
+        for nom, exemption in SANS_CIBLE.items()
+        if _rang(publiee) >= _rang(exemption.revoir_en)
+    )
+
+
+def _rang(version: str) -> tuple[int, ...]:
+    """`0.10.0` est postérieure à `0.9.0`, ce qu'une comparaison de chaînes nie."""
+    return tuple(int(morceau) for morceau in version.split(".") if morceau.isdigit())
 
 
 def non_modules() -> set[str]:
@@ -372,11 +458,32 @@ def main(argv: list[str]) -> int:
             )
             return 1
 
+        # **L'échéance est le dernier contrôle, et pas le premier.** Un module
+        # qu'aucun playbook n'appelle est un défaut ; une exemption à rouvrir
+        # est une décision qui attend. Les deux ne se lisent pas de la même
+        # façon, et les mélanger ferait passer la seconde pour la première.
+        rattrapees = echeances_depassees(load_collection().version)
+        if rattrapees:
+            print(
+                f"{len(rattrapees)} exemption(s) que la version publiée a rattrapées :\n"
+                + "\n".join(f"  {ligne}" for ligne in rattrapees)
+                + "\n\nSoit l'obstacle tient toujours, et la ligne se réécrit avec une\n"
+                "échéance neuve et la mesure qui la justifie ; soit il est tombé, et le\n"
+                "module rejoint `examples/playbooks/`. Repousser est permis, ne rien\n"
+                "décider ne l'est pas.",
+                file=sys.stderr,
+            )
+            return 2
+
         exerces = len(mesure["appeles_par_lexemple"])
         total = len(mesure["modules_ecrits"])
         print(f"{exerces} module(s) sur {total} appelés par l'exemple")
         for nom in mesure["sans_cible_declaree"]:
-            print(f"  sans cible, déclaré : {nom} · {SANS_CIBLE[nom]}")
+            exemption = SANS_CIBLE[nom]
+            print(
+                f"  sans cible, déclaré : {nom} · à revoir en {exemption.revoir_en}, "
+                f"attend {exemption.preuve} · {exemption.raison}"
+            )
         return 0
 
     print(json.dumps(mesure, indent=2, ensure_ascii=False) if arguments.json else rendre(mesure))

@@ -163,7 +163,13 @@ def test_un_module_sans_cible_declaree_ne_fait_pas_echouer(
 ) -> None:
     """Un écart se déclare avec sa raison, et alors seulement il passe."""
     monkeypatch.setattr(
-        example_coverage, "SANS_CIBLE", {"instance_server_info": "aucune cible, pour la mesure"}
+        example_coverage,
+        "SANS_CIBLE",
+        {
+            "instance_server_info": example_coverage.SansCible(
+                raison="aucune cible, pour la mesure", preuve="stack", revoir_en="9.9.9"
+            )
+        },
     )
     _playbook(
         faux_depot,
@@ -181,3 +187,79 @@ def test_un_module_non_couvert_et_non_declare_est_refuse(faux_depot: Path) -> No
         "- stephrobert.scaleway.instance_server:\n- stephrobert.scaleway.lb_ip:\n",
     )
     assert example_coverage.mesurer()["non_couverts"] == ["instance_server_info"]
+
+
+# --- l'échéance de revue d'une exemption -------------------------------------
+
+
+def _exemption(revoir_en: str, preuve: str = "stack") -> example_coverage.SansCible:
+    return example_coverage.SansCible(raison="pour la mesure", preuve=preuve, revoir_en=revoir_en)
+
+
+def test_une_echeance_atteinte_est_nommee(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Une échéance qu'on peut ignorer n'est pas une échéance.
+
+    L'exemption dit ce qu'elle attend et quand la rouvrir ; sans le contrôle,
+    ces deux champs seraient de la décoration, et la dette vieillirait comme
+    avant.
+    """
+    monkeypatch.setattr(example_coverage, "SANS_CIBLE", {"un_module": _exemption("0.4.0")})
+
+    rattrapees = example_coverage.echeances_depassees("0.4.0")
+
+    assert len(rattrapees) == 1
+    assert "un_module" in rattrapees[0]
+    assert "0.4.0" in rattrapees[0]
+    assert "stack" in rattrapees[0], "ce qu'elle attend est la partie actionnable"
+
+
+def test_une_echeance_a_venir_ne_dit_rien(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Le contre-exemple, sans lequel le contrôle refuserait toute exemption."""
+    monkeypatch.setattr(example_coverage, "SANS_CIBLE", {"un_module": _exemption("0.9.0")})
+
+    assert example_coverage.echeances_depassees("0.4.0") == []
+
+
+def test_une_version_depassee_est_rattrapee(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Dépassée, pas seulement atteinte : une release sautée ne doit rien effacer."""
+    monkeypatch.setattr(example_coverage, "SANS_CIBLE", {"un_module": _exemption("0.5.0")})
+
+    assert example_coverage.echeances_depassees("0.7.0") != []
+
+
+def test_les_versions_se_comparent_par_nombres(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`0.10.0` est postérieure à `0.9.0`, ce qu'une comparaison de chaînes nie.
+
+    Le défaut ne mordrait qu'à la dixième mineure, et il mordrait en silence :
+    l'échéance passerait sans que le contrôle la voie.
+    """
+    monkeypatch.setattr(example_coverage, "SANS_CIBLE", {"un_module": _exemption("0.9.0")})
+
+    assert example_coverage.echeances_depassees("0.10.0") != []
+
+
+def test_toutes_les_exemptions_du_depot_attendent_une_preuve_connue() -> None:
+    """Une faute de frappe ferait une exemption dont personne ne sait ce qu'elle attend.
+
+    Le seul test du fichier qui regarde le dépôt, et c'est voulu : les autres
+    prouvent que la règle décide bien.
+    """
+    inconnues = {
+        nom: exemption.preuve
+        for nom, exemption in example_coverage.SANS_CIBLE.items()
+        if exemption.preuve not in example_coverage.PREUVES
+    }
+
+    assert example_coverage.SANS_CIBLE, "aucune exemption : le test ne mesure plus rien"
+    assert inconnues == {}
+
+
+def test_aucune_echeance_du_depot_nest_deja_depassee() -> None:
+    """Ce que le contrôle dit du dépôt aujourd'hui.
+
+    Il rougira le jour où une version publiée rattrapera une exemption, et
+    c'est exactement ce jour-là qu'il faut rouvrir la question.
+    """
+    from generator.ansible.collection import load_collection
+
+    assert example_coverage.echeances_depassees(load_collection().version) == []
