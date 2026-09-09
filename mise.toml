@@ -565,6 +565,14 @@ description = "Le verdict d'admission d'un produit, et le prix qu'il coûte"
 # sur chaque mesure refuserait les deux produits déjà livrés, donc personne ne la
 # lancerait. Les bloquantes sont celles dont l'échec produit un module faux ; les
 # autres publient un nombre, qui est le prix d'admission et non un défaut.
+#
+# **`depends` et pas seulement `run`.** L'étape « couverture documentaire »
+# appelle `docs_quality.mesurer()`, qui lit `plugins/modules/*.py`. Sans cette
+# dépendance, `mise` peut lancer cette tâche pendant que `generate` réécrit ces
+# fichiers : la lecture tombe sur un fichier à moitié écrit, et le verdict
+# invente des défauts. C'est arrivé sur `main`, en vert sur la pull request et
+# en rouge à la fusion, ce qui est la signature d'une course.
+depends = ["generate"]
 run = "python scripts/admission.py --tous"
 
 [tasks.nullabilite]
