@@ -244,8 +244,8 @@
       "name": "check-mode-qui-agit",
       "why": "Un module qui declenche en check mode rend le mode inutile, et personne ne s'en apercoit avant le jour ou ca compte.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "    if module.check_mode:\n        module.exit_json(\n            changed=True,\n            action=action,",
-      "replace": "    if module.check_mode and False:\n        module.exit_json(\n            changed=True,\n            action=action,",
+      "find": "    if module.check_mode:\n        _repeter_laction(module, spec, api, action, attendu)\n        return",
+      "replace": "    if module.check_mode and False:\n        _repeter_laction(module, spec, api, action, attendu)\n        return",
       "test": "tests/unit/collection/test_runtime.py::test_en_check_mode_rien_nest_declenche"
     },
     {
@@ -1876,8 +1876,8 @@
       "name": "action-qui-declenche-en-check-mode",
       "why": "Le module annonce `check_mode: full`. Un module qui agit en check mode rend le mode inutile, et personne ne s'en aperçoit avant le jour où ça compte.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "    if module.check_mode:\n        module.exit_json(\n            changed=True,\n            action=action,",
-      "replace": "    if module.check_mode and False:\n        module.exit_json(\n            changed=True,\n            action=action,",
+      "find": "    if module.check_mode:\n        _repeter_laction(module, spec, api, action, attendu)\n        return",
+      "replace": "    if module.check_mode and False:\n        _repeter_laction(module, spec, api, action, attendu)\n        return",
       "test": "tests/unit/collection/test_attributs.py::test_un_module_daction_annonce_un_check_mode_plein_et_ne_declenche_rien"
     },
     {
@@ -2247,6 +2247,30 @@
       "find": "        a_voir.extend(table.get(courant, (None, []))[1])",
       "replace": "        pass",
       "test": "tests/unit/outillage/test_dependances_taches.py::test_une_dependance_indirecte_suffit"
+    },
+    {
+      "name": "check-mode-daction-sans-client",
+      "why": "Construire le client après la sortie en check mode faisait passer au vert un `--check` sans SDK et sans identifiants, là où le même play sans `--check` échouait proprement.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    api = ScalewayApi(module)\n\n    if module.check_mode:\n        _repeter_laction(module, spec, api, action, attendu)",
+      "replace": "    if module.check_mode:\n        _repeter_laction(module, spec, None, action, attendu)",
+      "test": "tests/unit/collection/test_runtime.py::test_en_check_mode_une_dependance_absente_se_voit"
+    },
+    {
+      "name": "check-mode-daction-sans-lecture",
+      "why": "Sans la lecture, `--check` annonce le redémarrage d'une machine qui n'existe pas, et le dit en `changed`.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        courant = api.fetch_one(spec.read_operation)\n    except ScalewayApiError as error:\n        module.fail_json(msg=error.message, **error.details())\n        return\n\n    depart = (",
+      "replace": "        courant = {}\n    except ScalewayApiError as error:\n        module.fail_json(msg=error.message, **error.details())\n        return\n\n    depart = (",
+      "test": "tests/unit/collection/test_runtime.py::test_en_check_mode_une_ressource_inexistante_se_voit"
+    },
+    {
+      "name": "absence-de-lecture-tue-en-check-mode",
+      "why": "Quand le contrat ne donne aucune lecture unitaire, le taire ferait croire à une vérification qui n'a pas eu lieu.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "                \"Le contrat ne donne aucune lecture unitaire de cette ressource : \"\n                \"son existence n'a pas été vérifiée.\"",
+      "replace": "                \"\"",
+      "test": "tests/unit/collection/test_runtime.py::test_en_check_mode_labsence_de_lecture_est_dite"
     }
   ]
 }

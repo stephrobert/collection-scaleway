@@ -1536,14 +1536,72 @@ def run_manage_module(
     )
 
 
+def _repeter_laction(
+    module: AnsibleModule,
+    spec: ActionModule,
+    api: "ScalewayApi",
+    action: object,
+    attendu: str | None,
+) -> None:
+    """Ce qu'un module d'action fait en check mode : vérifier, et ne rien envoyer.
+
+    **Une lecture, et rien d'autre.** Elle n'a aucun effet de bord, donc la
+    promesse « rien n'a été envoyé » tient, et elle fait remonter la troisième
+    erreur qu'une répétition doit attraper : un identifiant de ressource qui ne
+    désigne rien. Sans elle, `--check` annonçait le redémarrage d'une machine
+    qui n'existe pas.
+
+    **Quand le contrat ne donne aucune lecture unitaire, le message le dit.**
+    C'est le seul comportement possible, et le taire ferait croire à une
+    vérification qui n'a pas eu lieu.
+    """
+    if spec.read_operation is None:
+        module.exit_json(
+            changed=True,
+            action=action,
+            expected_state=attendu,
+            msg=(
+                f"{action} serait déclenché ; rien n'a été envoyé (check mode). "
+                "Le contrat ne donne aucune lecture unitaire de cette ressource : "
+                "son existence n'a pas été vérifiée."
+            ),
+        )
+        return
+
+    try:
+        courant = api.fetch_one(spec.read_operation)
+    except ScalewayApiError as error:
+        module.fail_json(msg=error.message, **error.details())
+        return
+
+    depart = (
+        str(courant.get(spec.state_field, "")) or None if isinstance(courant, dict) else None
+    )
+    champ = spec.read_operation.payload_field or "resource"
+    module.exit_json(
+        changed=True,
+        action=action,
+        current_state=depart,
+        expected_state=attendu,
+        msg=f"{action} serait déclenché ; rien n'a été envoyé (check mode)",
+        **{champ: courant},
+    )
+
+
 def run_action_module(module: AnsibleModule, spec: ActionModule) -> None:
     """Déclenche une action ponctuelle, et rend compte de ce qu'elle a produit.
 
     Trois choses qu'un module d'action doit tenir, et que celui-ci tient :
 
-    * **en check mode, ne rien déclencher.** Il annonce le changement attendu
-      et sort. Un module qui agit en check mode rend le mode inutile, et
-      personne ne s'en aperçoit avant le jour où ça compte ;
+    * **en check mode, ne rien déclencher, mais tout vérifier.** Le module
+      construisait sa réponse avant même de construire son client : un
+      `--check` passait au vert sans SDK, sans identifiants et sur une
+      ressource inexistante, là où le même play sans `--check` échouait
+      proprement. `--check` est la façon dont un exploitant répète une action
+      sur la production ; il ne voyait aucune des trois erreurs qu'une
+      répétition sert à voir (#168). Le client est donc construit, et la
+      ressource lue quand une lecture existe, avant de sortir sans rien
+      envoyer ;
     * **`changed` est vrai quand l'API a accepté**, pas quand on a envoyé ;
     * **attendre, si on sait quoi attendre.** L'état visé vient d'un override ;
       sans lui le module rend la main tout de suite, et le dit.
@@ -1559,15 +1617,15 @@ def run_action_module(module: AnsibleModule, spec: ActionModule) -> None:
     )
     attendu = spec.wait_states.get(str(action))
 
-    if module.check_mode:
-        module.exit_json(
-            changed=True,
-            action=action,
-            expected_state=attendu,
-            msg=f"{action} serait déclenché ; rien n'a été envoyé (check mode)",
-        )
-
+    # **Construire le client d'abord, même en check mode.** C'est lui qui fait
+    # remonter un SDK absent et des identifiants manquants, et ce sont deux des
+    # trois erreurs qu'une répétition doit attraper. Il n'envoie rien.
     api = ScalewayApi(module)
+
+    if module.check_mode:
+        _repeter_laction(module, spec, api, action, attendu)
+        return
+
     attente = bool(attendu and spec.read_operation is not None and module.params.get("wait"))
 
     # L'état avant l'action, et une seule raison de le lire : savoir si l'état
