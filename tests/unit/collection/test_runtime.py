@@ -429,18 +429,41 @@ class _ModuleFactice:
         raise SystemExit(1)
 
 
+class _ApiDeRepetition:
+    """Un client qui note ce qu'on lui demande, et ne déclenche rien.
+
+    Propre à ces tests : `_ApiFactice`, plus bas dans ce fichier, sert les
+    tests d'attente et rend un état plutôt qu'une ressource.
+    """
+
+    def __init__(self, lecture: object = None, erreur: Exception | None = None) -> None:
+        self.lecture = lecture if lecture is not None else {"id": "c1", "state": "running"}
+        self.erreur = erreur
+        self.appels: list[str] = []
+
+    def fabrique(self, _module: Any) -> _ApiDeRepetition:
+        return self
+
+    def fetch_one(self, operation: Any) -> object:
+        if self.erreur is not None:
+            raise self.erreur
+        return self.lecture
+
+    def request(self, operation: Any, **_kwargs: Any) -> dict[str, Any]:
+        self.appels.append(operation.id)
+        return {}
+
+
 def test_en_check_mode_rien_nest_declenche(runtime: Any, monkeypatch: Any) -> None:
     """Un module qui agit en check mode rend le mode inutile.
 
-    La preuve est structurelle : le client d'API est construit **après** la
-    branche de check mode, donc le faire exploser suffit à montrer qu'il n'est
-    pas atteint.
+    La preuve porte sur ce qui est **envoyé**, et non sur ce qui est construit.
+    Le client l'est désormais, parce que c'est lui qui fait remonter un SDK
+    absent et des identifiants manquants (#168) ; ce qu'il ne fait pas, c'est
+    appeler l'opération.
     """
-
-    def interdit(_module: Any) -> None:
-        raise AssertionError("le client d'API ne doit pas être construit en check mode")
-
-    monkeypatch.setattr(runtime, "ScalewayApi", interdit)
+    api = _ApiDeRepetition()
+    monkeypatch.setattr(runtime, "ScalewayApi", api.fabrique)
 
     spec = runtime.ActionModule(
         operation=runtime.Operation(id="ServerAction", method="POST", path="/x"),
@@ -451,10 +474,80 @@ def test_en_check_mode_rien_nest_declenche(runtime: Any, monkeypatch: Any) -> No
     with pytest.raises(SystemExit):
         runtime.run_action_module(module, spec)
 
+    assert api.appels == [], "aucune opération ne doit être déclenchée"
     assert module.resultat is not None
     assert module.resultat["changed"] is True
     assert module.resultat["action"] == "poweroff"
     assert module.resultat["expected_state"] == "stopped"
+
+
+def test_en_check_mode_une_dependance_absente_se_voit(runtime: Any, monkeypatch: Any) -> None:
+    """Le cas de l'issue : `--check` était le seul à ne pas voir le SDK manquant.
+
+    Un playbook de redémarrage validé en check mode sur un poste sans SDK
+    passait au vert, et échouait au premier lancement réel.
+    """
+
+    def sans_sdk(_module: Any) -> None:
+        raise SystemExit("Failed to import the required Python library (scaleway)")
+
+    monkeypatch.setattr(runtime, "ScalewayApi", sans_sdk)
+
+    spec = runtime.ActionModule(
+        operation=runtime.Operation(id="ServerAction", method="POST", path="/x")
+    )
+    module = _ModuleFactice(action="poweroff", _check_mode=True)
+
+    with pytest.raises(SystemExit, match="scaleway"):
+        runtime.run_action_module(module, spec)
+
+
+def test_en_check_mode_une_ressource_inexistante_se_voit(runtime: Any, monkeypatch: Any) -> None:
+    """La troisième erreur qu'une répétition doit attraper.
+
+    Sans la lecture, `--check` annonçait le redémarrage d'une machine qui
+    n'existe pas, et le disait en `changed`.
+    """
+
+    api = _ApiDeRepetition(
+        erreur=runtime.ScalewayApiError(operation="GetServer", message="404", status_code=404)
+    )
+    monkeypatch.setattr(runtime, "ScalewayApi", api.fabrique)
+
+    spec = runtime.ActionModule(
+        operation=runtime.Operation(id="ServerAction", method="POST", path="/x"),
+        read_operation=runtime.Operation(
+            id="GetServer", method="GET", path="/x", payload_field="server"
+        ),
+    )
+    module = _ModuleFactice(action="poweroff", _check_mode=True)
+
+    with pytest.raises(SystemExit):
+        runtime.run_action_module(module, spec)
+
+    assert module.resultat is not None
+    assert module.resultat.get("changed") is not True
+    assert "404" in module.resultat["msg"]
+
+
+def test_en_check_mode_labsence_de_lecture_est_dite(runtime: Any, monkeypatch: Any) -> None:
+    """Le contre-exemple : sans lecture unitaire, le comportement d'avant reste
+    le seul possible, et le taire ferait croire à une vérification qui n'a pas
+    eu lieu."""
+    api = _ApiDeRepetition()
+    monkeypatch.setattr(runtime, "ScalewayApi", api.fabrique)
+
+    spec = runtime.ActionModule(
+        operation=runtime.Operation(id="MigrateLb", method="POST", path="/x"),
+        action_parameter=None,
+    )
+    module = _ModuleFactice(lb_id="abc", _check_mode=True)
+
+    with pytest.raises(SystemExit):
+        runtime.run_action_module(module, spec)
+
+    assert module.resultat is not None
+    assert "n'a pas été vérifiée" in module.resultat["msg"]
 
 
 # --- ce que l'attente doit observer avant de conclure ----------------------
@@ -1146,10 +1239,8 @@ def test_une_action_implicite_rend_le_nom_de_loperation(
     `action` vide ne le lui dit pas.
     """
 
-    def interdit(_module: Any) -> None:
-        raise AssertionError("le client d'API ne doit pas être construit en check mode")
-
-    monkeypatch.setattr(runtime, "ScalewayApi", interdit)
+    api = _ApiDeRepetition()
+    monkeypatch.setattr(runtime, "ScalewayApi", api.fabrique)
 
     spec = runtime.ActionModule(
         operation=runtime.Operation(id="MigrateLb", method="POST", path="/lbs/{lb_id}/migrate"),

@@ -124,16 +124,16 @@ def test_un_module_dinformation_nannonce_aucun_diff_et_nen_rend_aucun(
 def test_un_module_daction_annonce_un_check_mode_plein_et_ne_declenche_rien(
     runtime: Any, monkeypatch: Any
 ) -> None:
-    """La preuve est structurelle : le client est construit après la branche.
+    """La preuve porte sur ce qui est **envoyé**, pas sur ce qui est construit.
 
-    Le faire exploser suffit donc à montrer qu'elle n'est pas franchie.
+    Le client l'est désormais, parce que c'est lui qui fait remonter un SDK
+    absent et des identifiants manquants : `--check` était le seul des deux
+    modes à ne pas les voir (#168). Ce qu'il ne fait pas, c'est écrire.
     """
     assert pour(OperationKind.ACTION)["check_mode"]["support"] == "full"
 
-    def interdit(_module: Any) -> None:
-        raise AssertionError("le client d'API ne doit pas être construit en check mode")
-
-    monkeypatch.setattr(runtime, "ScalewayApi", interdit)
+    api = _Api({"id": "c1", "state": "running"})
+    monkeypatch.setattr(runtime, "ScalewayApi", lambda _module: api)
     spec = runtime.ActionModule(
         operation=runtime.Operation(id="ServerAction", method="POST", path="/x"),
         wait_states={"poweroff": "stopped"},
@@ -143,6 +143,7 @@ def test_un_module_daction_annonce_un_check_mode_plein_et_ne_declenche_rien(
     with pytest.raises(SystemExit):
         runtime.run_action_module(module, spec)
 
+    assert api.ecritures == [], "aucune opération ne doit être déclenchée"
     assert module.resultat is not None
     assert module.resultat["changed"] is True
     assert module.resultat["expected_state"] == "stopped"
