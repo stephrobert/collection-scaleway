@@ -425,6 +425,15 @@ description = "Ce qui doit être vrai avant de publier sur Galaxy"
 # une fois la première publication faite à la main.
 run = "python scripts/release.py --check"
 
+[tasks.navigation]
+description = "Le site annonce ses deux parcours, et sert l'usage en premier"
+# Hors ligne et instantané, donc dans `check` : il lit `docs/index.md` et
+# `docs/conf.py`, jamais le site construit. Il ne juge pas le goût, seulement
+# quatre faits binaires ; un ratio de pages avec un seuil serait un nombre
+# inventé, et le refuser au nom d'une porte ferait ce que ce dépôt reproche
+# ailleurs.
+run = "python scripts/navigation.py"
+
 [tasks."cles:lues"]
 description = "Refuser une clé lue par un playbook qu'aucun module ne publie"
 # Dans `check`, parce qu'une porte qui ne tourne qu'en CI ne protège pas la
@@ -492,6 +501,7 @@ depends = [
   "readme:check",
   "coverage:check",
   "cles:lues",
+  "navigation",
   # **Le job Archive de la CI en fait partie, donc `check` doit le porter.**
   # Il n'y était pas, et une pull request est passée localement sur un contrôle
   # qui interrogeait un plugin d'inventaire renommé la veille. `check` promet

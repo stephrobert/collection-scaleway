@@ -2199,6 +2199,30 @@
       "find": "        if re.search(_INDIRECT.format(re.escape(variable)), texte):",
       "replace": "        if False:",
       "test": "tests/unit/outillage/test_cles_lues.py::test_un_index_calcule_est_compte_et_nomme"
+    },
+    {
+      "name": "usage-relegue-apres-larchitecture",
+      "why": "L'ordre des sections n'est pas une préférence de mise en page : c'est le parcours qu'un lecteur suit sans le choisir. Le site ouvrait sur l'architecture du générateur, et quelqu'un qui venait d'installer la collection y tombait.",
+      "file": "scripts/navigation.py",
+      "find": "    if titre != PREMIERE_SECTION:",
+      "replace": "    if False:",
+      "test": "tests/unit/outillage/test_navigation.py::test_lusage_doit_venir_en_premier"
+    },
+    {
+      "name": "section-dusage-qui-ne-sert-pas-le-readme",
+      "why": "Une section d'usage qui ne sert pas le README ne sert rien : c'était le cas d'avant, où elle ne portait que le guide de l'inventaire.",
+      "file": "scripts/navigation.py",
+      "find": "    if USAGE not in pages:",
+      "replace": "    if False:",
+      "test": "tests/unit/outillage/test_navigation.py::test_la_page_dusage_doit_etre_servie"
+    },
+    {
+      "name": "habillage-francais-sur-un-site-anglais",
+      "why": "La frontière de langue du dépôt est ce qui est publié. Laisser `fr` mettait « Rechercher docs » et « Compilé avec » autour d'un contenu anglais.",
+      "file": "scripts/navigation.py",
+      "find": "    if 'language = \"en\"' not in conf:",
+      "replace": "    if False:",
+      "test": "tests/unit/outillage/test_navigation.py::test_le_site_publie_est_en_anglais"
     }
   ]
 }
