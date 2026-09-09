@@ -107,3 +107,29 @@ def test_la_navigation_du_depot_est_conforme() -> None:
         )
         == []
     )
+
+
+def test_la_reference_ouvre_sur_ce_qui_ordonne() -> None:
+    """`antsibull` rend les modules à plat, par ordre alphabétique.
+
+    La section « Reference » doit ouvrir sur la page qui les groupe, pas sur
+    cette liste : c'est elle qu'un lecteur voit en premier.
+    """
+    avec = (
+        INDEX
+        + """
+```{toctree}
+:caption: Reference
+:maxdepth: 2
+
+guides/module-reference
+collections/stephrobert/scaleway/index
+```
+"""
+    )
+    assert navigation.refus(avec, CONF) == []
+
+    sans = avec.replace("guides/module-reference\n", "")
+    manques = navigation.refus(sans, CONF)
+
+    assert any("Reference" in ligne for ligne in manques)

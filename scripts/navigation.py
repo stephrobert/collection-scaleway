@@ -32,6 +32,12 @@ CONF = ROOT / "docs" / "conf.py"
 #: La page d'usage, assemblée depuis le README de la collection par `docsite`.
 USAGE = "guides/using-the-collection"
 
+#: La référence groupée par produit, assemblée depuis le plan par `docsite`.
+#:
+#: `antsibull` rend les modules à plat, et la section « Reference » doit ouvrir
+#: sur ce qui les ordonne, pas sur la liste alphabétique.
+REFERENCE = "guides/module-reference"
+
 #: Ce que la première section doit annoncer. Le mot compte : « Use » seul
 #: décrivait déjà l'ancienne section, celle qui ne portait qu'une page.
 PREMIERE_SECTION = "Use the collection"
@@ -78,6 +84,13 @@ def refus(index: str, conf: str) -> list[str]:
         manques.append(
             f"la première section ne sert pas `{USAGE}`, la page assemblée depuis le "
             "README que Galaxy publie"
+        )
+    reference = next((pages for titre, pages in ordonnees if titre == "Reference"), [])
+    if reference and reference[0] != REFERENCE:
+        manques.append(
+            f"la section « Reference » n'ouvre pas sur `{REFERENCE}` : un lecteur y "
+            "tombe sur la liste alphabétique que rend antsibull, et non sur ce qui "
+            "l'ordonne"
         )
     if "Use the collection" not in index or "Build the collection" not in index:
         manques.append(

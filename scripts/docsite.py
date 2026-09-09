@@ -46,6 +46,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sync_specs import read_products
 
 from generator.ansible.collection import load_collection
+from generator.ir.enums import OperationKind
+from generator.plan import build_plan
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
@@ -137,43 +139,129 @@ def _liens_absolus(texte: str) -> str:
     return _LIEN_RELATIF.sub(lambda trouve: f"]({base}{trouve.group(1)})", texte)
 
 
-def write_usage_page() -> str:
-    """La page d'usage, tirée du README que Galaxy publie.
+def _page_depuis_readme(source: Path, nom: str, titre: str, phrase: str) -> str:
+    """Assemble une page du site depuis un README de la collection.
 
-    **Le parcours existait déjà, le site ne le servait pas.** Installation,
-    authentification, « Sixty seconds », inventaire, playbooks livrés : le
-    README de la collection les porte, et Galaxy les affiche. Le site, lui,
-    ouvrait sur l'architecture du générateur, et sa section d'usage tenait en
-    une page (#164).
-
-    **Assemblée, jamais versionnée.** Recopier ce texte dans `docs/` en ferait
-    une seconde source, qui divergerait du README au premier changement, et
-    c'est exactement ce que cet assemblage existe pour éviter. Le titre de
-    premier niveau du README est remplacé : sur le site, cette page s'appelle
-    par ce qu'elle sert, pas par le nom du paquet.
+    **Assemblée, jamais versionnée.** Recopier ces textes dans `docs/` en
+    ferait une seconde source, qui divergerait du README au premier
+    changement, et c'est exactement ce que cet assemblage existe pour éviter.
+    Le titre de premier niveau est remplacé : sur le site, une page s'appelle
+    par ce qu'elle sert, pas par le nom du dossier qui la porte.
     """
-    source = COLLECTION.path / "README.md"
     if not source.is_file():
-        raise SiteError(
-            f"{source.relative_to(ROOT)} est absent : c'est lui que Galaxy publie, "
-            "et le site n'invente pas le parcours d'usage."
-        )
+        # `relative_to` lève quand le chemin sort de la racine, et un message
+        # d'erreur qui lève ne dit plus rien : le nom suffit à s'y retrouver.
+        nom_lisible = source.name if ROOT not in source.parents else source.relative_to(ROOT)
+        raise SiteError(f"{nom_lisible} est absent : le site n'invente pas ce qu'il sert.")
     lignes = _liens_absolus(source.read_text(encoding="utf-8")).splitlines()
     corps = [ligne for ligne in lignes if not ligne.startswith("# ")]
 
     dossier = SITE_SRC / "guides"
     dossier.mkdir(parents=True, exist_ok=True)
-    (dossier / "using-the-collection.md").write_text(
-        "# Using the collection\n"
-        "\n"
-        "```{note}\n"
-        "This page is the collection's README, the one Galaxy publishes. It is\n"
-        "assembled here rather than copied, so the two cannot diverge.\n"
-        "```\n"
-        "\n" + "\n".join(corps).lstrip("\n") + "\n",
+    (dossier / f"{nom}.md").write_text(
+        f"# {titre}\n\n```{{note}}\n{phrase}\n```\n\n" + "\n".join(corps).lstrip("\n") + "\n",
         encoding="utf-8",
     )
-    return "guides/using-the-collection"
+    return f"guides/{nom}"
+
+
+#: Ce que chaque classe d'opération donne comme module, dit en anglais parce
+#: que cette page est publiée. L'ordre est celui de la lecture : on cherche
+#: d'abord ce qu'on peut lire, puis ce qu'on peut changer, puis ce qu'on
+#: déclenche.
+_CLASSES: tuple[tuple[OperationKind, str], ...] = (
+    (OperationKind.INFO, "read"),
+    (OperationKind.MANAGE, "manage"),
+    (OperationKind.ACTION, "trigger"),
+)
+
+
+def write_reference_page() -> str:
+    """La référence, groupée par produit puis par ressource.
+
+    **antsibull rend les modules à plat**, par ordre alphabétique. C'est déjà
+    pénible à cinquante ; à cent cinquante ce serait inutilisable, et le nombre
+    ne cesse pas de croître puisque personne ne suit l'API à la main (#164).
+
+    Cette page ne remplace pas les pages générées, elle les ordonne : chaque
+    entrée renvoie à celle qu'antsibull écrit, qui reste la référence. Elle est
+    **générée depuis le plan**, donc depuis la décision du générateur lui-même :
+    la ressource et la classe sont celles qui ont nommé le module, pas une
+    seconde lecture de son nom qui divergerait le jour où la règle change.
+    """
+    lignes = [
+        "# Module reference",
+        "",
+        "Every module the collection ships, grouped by product and by resource.",
+        "Each entry links to its generated page, which stays the reference.",
+        "",
+    ]
+    ecrits = set(expected_modules())
+    for produit, version in expected_products():
+        plan = build_plan(produit, version, spec_root=ROOT / "specs" / "scaleway")
+        par_ressource: dict[str, dict[OperationKind, str]] = {}
+        for nom, items in plan.modules().items():
+            # Un module porte plusieurs opérations, `GetServer` et `ListServers`
+            # par exemple, et toutes partagent sa ressource et sa classe : la
+            # première suffit, et c'est le plan qui les a nommées.
+            if nom not in ecrits or not items:
+                continue
+            par_ressource.setdefault(items[0].resource, {})[items[0].kind] = nom
+
+        lignes.append(f"## {plan.service.title or produit}")
+        lignes.append("")
+        for ressource in sorted(par_ressource):
+            lignes.append(f"### {ressource.replace('_', ' ')}")
+            lignes.append("")
+            for classe, verbe in _CLASSES:
+                module = par_ressource[ressource].get(classe)
+                if module is None:
+                    continue
+                lignes.append(
+                    f"- {{ansplugin}}`{module} <stephrobert.scaleway.{module}#module>` -- {verbe}"
+                )
+            lignes.append("")
+
+    (SITE_SRC / "guides").mkdir(parents=True, exist_ok=True)
+    (SITE_SRC / "guides" / "module-reference.md").write_text(
+        "\n".join(lignes) + "\n", encoding="utf-8"
+    )
+    return "guides/module-reference"
+
+
+def write_usage_page() -> str:
+    """La page d'usage, tirée du README que Galaxy publie.
+
+    **Le parcours existait déjà, le site ne le servait pas.** Installation,
+    authentification, « Sixty seconds », inventaire : le README de la collection
+    les porte, et Galaxy les affiche. Le site ouvrait sur l'architecture du
+    générateur, et sa section d'usage tenait en une page (#164).
+    """
+    return _page_depuis_readme(
+        COLLECTION.path / "README.md",
+        "using-the-collection",
+        "Using the collection",
+        "This page is the collection's README, the one Galaxy publishes. It is\n"
+        "assembled here rather than copied, so the two cannot diverge.",
+    )
+
+
+def write_playbooks_page() -> str:
+    """Les playbooks livrés, qui sont les pages de tâches de ce site.
+
+    **Ils tournent.** `mise run integration` les joue contre un émulateur à
+    chaque exécution de cette cible : ce sont des tâches éprouvées, pas des
+    extraits qui illustrent. Écrire des pages de tâches à la main à côté ferait
+    une seconde source, que rien n'exécuterait et qui pourrirait.
+    """
+    return _page_depuis_readme(
+        COLLECTION.path / "playbooks" / "README.md",
+        "shipped-playbooks",
+        "Task playbooks",
+        "These playbooks ship with the collection and are played by\n"
+        "`mise run integration` on every run. This page is their README,\n"
+        "assembled here rather than copied.",
+    )
 
 
 def write_measure_pages() -> tuple[str, ...]:
@@ -331,6 +419,8 @@ def assemble() -> tuple[tuple[str, ...], tuple[str, ...]]:
     copy_tree(DOCS, SITE_SRC)
     copy_tree(ANTSIBULL, SITE_SRC / "collections")
     write_usage_page()
+    write_playbooks_page()
+    write_reference_page()
     produits = write_measure_pages()
     paquets = write_api_pages()
     return produits, paquets

@@ -10,9 +10,9 @@ Two paths, and they do not need each other.
 **[Use the collection](guides/using-the-collection.md)**
 : Install it, authenticate, list your resources, run a Day-2 operation, and
   check that a second run reports no change. The
+  [task playbooks](guides/shipped-playbooks.md), the
   [dynamic inventory](guides/dynamic-inventory.md) and the
-  [module reference](collections/stephrobert/scaleway/index.rst) continue from
-  there.
+  [module reference](guides/module-reference.md) continue from there.
 
 **[Build the collection](architecture/generator.md)**
 : The pipeline from contract to module, the [runtime](architecture/runtime.md),
@@ -36,6 +36,7 @@ hand-written collection is stale before it is published.
 :maxdepth: 2
 
 guides/using-the-collection
+guides/shipped-playbooks
 guides/dynamic-inventory
 ```
 
@@ -43,6 +44,7 @@ guides/dynamic-inventory
 :caption: Reference
 :maxdepth: 2
 
+guides/module-reference
 collections/stephrobert/scaleway/index
 ```
 
