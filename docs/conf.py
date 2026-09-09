@@ -21,7 +21,11 @@ author = "Stéphane Robert"
 #: La langue du site, celle du projet. Elle décide aussi de la segmentation de
 #: l'index de recherche : un site français indexé en anglais ne trouve pas
 #: « générateur » quand on tape « generateur ».
-language = "fr"
+#: **Le site est publié, donc il est en anglais**, habillage compris. La règle
+#: du dépôt tranche la frontière de langue par ce qui est publié, pas par le
+#: fichier qui le produit : laisser `fr` ici mettait « Rechercher docs » et
+#: « Compilé avec » autour d'un contenu anglais (#164).
+language = "en"
 
 extensions = [
     # Les guides et les pages de mesure sont en Markdown.

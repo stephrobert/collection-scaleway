@@ -35,6 +35,7 @@ ne garde.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -107,6 +108,72 @@ def expected_products() -> tuple[tuple[str, str], ...]:
 
 def copy_tree(source: Path, destination: Path) -> None:
     shutil.copytree(source, destination, dirs_exist_ok=True)
+
+
+#: Un lien Markdown dont la cible est un chemin relatif du dépôt.
+#:
+#: `http`, `#` et `mailto:` sont laissés tels quels : les premiers sortent déjà
+#: du dépôt, le deuxième vise la page elle-même.
+_LIEN_RELATIF = re.compile(r"\]\((?!https?://|#|mailto:)([^)]+)\)")
+
+
+def _liens_absolus(texte: str) -> str:
+    """Les liens relatifs du README, repointés vers le dépôt.
+
+    Le README vit dans le dossier de la collection : `playbooks/README.md` y
+    est juste, et ne l'est plus une fois la page servie ailleurs. Sphinx le dit
+    en avertissement, et `-W` en fait un échec, ce qui est le comportement
+    voulu : un lien mort sur une page publiée est un défaut.
+
+    Ils partent vers GitHub plutôt que vers une page du site, parce que ce
+    qu'ils désignent, `LICENSE` ou `changelogs/`, n'est pas publié ici. La
+    référence est la version publiée, comme le reste des liens que le README
+    écrit déjà en absolu.
+    """
+    base = (
+        f"https://github.com/stephrobert/collection-scaleway/blob/"
+        f"{COLLECTION.version}/{COLLECTION.path.relative_to(ROOT).as_posix()}/"
+    )
+    return _LIEN_RELATIF.sub(lambda trouve: f"]({base}{trouve.group(1)})", texte)
+
+
+def write_usage_page() -> str:
+    """La page d'usage, tirée du README que Galaxy publie.
+
+    **Le parcours existait déjà, le site ne le servait pas.** Installation,
+    authentification, « Sixty seconds », inventaire, playbooks livrés : le
+    README de la collection les porte, et Galaxy les affiche. Le site, lui,
+    ouvrait sur l'architecture du générateur, et sa section d'usage tenait en
+    une page (#164).
+
+    **Assemblée, jamais versionnée.** Recopier ce texte dans `docs/` en ferait
+    une seconde source, qui divergerait du README au premier changement, et
+    c'est exactement ce que cet assemblage existe pour éviter. Le titre de
+    premier niveau du README est remplacé : sur le site, cette page s'appelle
+    par ce qu'elle sert, pas par le nom du paquet.
+    """
+    source = COLLECTION.path / "README.md"
+    if not source.is_file():
+        raise SiteError(
+            f"{source.relative_to(ROOT)} est absent : c'est lui que Galaxy publie, "
+            "et le site n'invente pas le parcours d'usage."
+        )
+    lignes = _liens_absolus(source.read_text(encoding="utf-8")).splitlines()
+    corps = [ligne for ligne in lignes if not ligne.startswith("# ")]
+
+    dossier = SITE_SRC / "guides"
+    dossier.mkdir(parents=True, exist_ok=True)
+    (dossier / "using-the-collection.md").write_text(
+        "# Using the collection\n"
+        "\n"
+        "```{note}\n"
+        "This page is the collection's README, the one Galaxy publishes. It is\n"
+        "assembled here rather than copied, so the two cannot diverge.\n"
+        "```\n"
+        "\n" + "\n".join(corps).lstrip("\n") + "\n",
+        encoding="utf-8",
+    )
+    return "guides/using-the-collection"
 
 
 def write_measure_pages() -> tuple[str, ...]:
@@ -263,6 +330,7 @@ def assemble() -> tuple[tuple[str, ...], tuple[str, ...]]:
 
     copy_tree(DOCS, SITE_SRC)
     copy_tree(ANTSIBULL, SITE_SRC / "collections")
+    write_usage_page()
     produits = write_measure_pages()
     paquets = write_api_pages()
     return produits, paquets
