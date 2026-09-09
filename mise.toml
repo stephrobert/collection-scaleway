@@ -425,6 +425,15 @@ description = "Ce qui doit être vrai avant de publier sur Galaxy"
 # une fois la première publication faite à la main.
 run = "python scripts/release.py --check"
 
+[tasks."cles:lues"]
+description = "Refuser une clé lue par un playbook qu'aucun module ne publie"
+# Dans `check`, parce qu'une porte qui ne tourne qu'en CI ne protège pas la
+# poussée. Le cas est arrivé : un correctif du parser a renommé la clé rendue
+# par trois modules, le playbook lisait l'ancienne, et c'est le job
+# « Plateforme d'exemple » qui l'a dit, plusieurs minutes plus tard.
+depends = ["generate"]
+run = "python scripts/cles_lues.py --check"
+
 [tasks."coverage:check"]
 description = "Refuser un module livré qu'aucun playbook d'exemple n'appelle"
 # Dans `check`, donc à chaque issue traitée : hors ligne, déterministe, il lit
@@ -482,6 +491,7 @@ depends = [
   "falsify",
   "readme:check",
   "coverage:check",
+  "cles:lues",
   # **Le job Archive de la CI en fait partie, donc `check` doit le porter.**
   # Il n'y était pas, et une pull request est passée localement sur un contrôle
   # qui interrogeait un plugin d'inventaire renommé la veille. `check` promet

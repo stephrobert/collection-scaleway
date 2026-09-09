@@ -2175,6 +2175,30 @@
       "find": "                    description=_first_paragraph(_mapping(declare).get(\"description\")),",
       "replace": "                    description=_first_paragraph(target.get(\"description\")),",
       "test": "tests/unit/generator/test_ordre_des_chemins.py::test_permuter_les_chemins_ne_change_pas_lir"
+    },
+    {
+      "name": "cle-lue-que-rien-ne-publie-admise",
+      "why": "Sans la comparaison, un playbook qui lit une clé qu'un module ne publie plus reste vert hors ligne, et c'est le run contre l'émulateur qui le dit, plusieurs minutes après la poussée. Le cas est arrivé.",
+      "file": "scripts/cles_lues.py",
+      "find": "            if cle not in publiees:",
+      "replace": "            if False:",
+      "test": "tests/unit/outillage/test_cles_lues.py::test_une_cle_que_le_module_ne_publie_pas_est_refusee"
+    },
+    {
+      "name": "cles-derreur-du-runtime-recopiees",
+      "why": "Une seconde liste des clés d'erreur vieillirait sans que personne s'en aperçoive, et la porte refuserait alors `resultat.api_type`, qui est une lecture parfaitement légitime.",
+      "file": "scripts/cles_lues.py",
+      "find": "        publiees = cles_publiees(module) | RESULTAT_ANSIBLE | erreur_du_runtime()",
+      "replace": "        publiees = cles_publiees(module) | RESULTAT_ANSIBLE",
+      "test": "tests/unit/outillage/test_cles_lues.py::test_les_cles_derreur_du_runtime_ne_sont_pas_refusees"
+    },
+    {
+      "name": "expression-illisible-comptee-comme-verifiee",
+      "why": "Compter une expression qu'on n'a pas su lire comme vérifiée est la différence entre une porte et une décoration, et le dépôt a déjà payé pour l'apprendre.",
+      "file": "scripts/cles_lues.py",
+      "find": "        if re.search(_INDIRECT.format(re.escape(variable)), texte):",
+      "replace": "        if False:",
+      "test": "tests/unit/outillage/test_cles_lues.py::test_un_index_calcule_est_compte_et_nomme"
     }
   ]
 }
