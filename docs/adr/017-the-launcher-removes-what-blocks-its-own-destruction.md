@@ -43,9 +43,23 @@ attached. Two things were measured while cleaning up:
   With the five cards removed by hand, `terraform destroy` finished on its own,
   destroying the remaining 18 resources, and the residue check returned to zero.
 
-Why the provider fails where the direct call succeeds is not explained by these
-measurements, and this record does not claim to explain it. What is established
-is the sequence that works.
+**Why the provider fails where the direct call succeeds was left open here,
+and has since been answered.** The recorded transcript of that same run carries
+the five failed calls, and they are not the same route:
+
+```text
+DELETE /instance/v2alpha1/zones/fr-par-1/private-network-interfaces/<nic>
+  -> 412  precondition is not respected
+```
+
+The provider imports `scaleway-sdk-go/api/instance/v2alpha1` and calls
+`DeletePrivateNetworkInterface` with the card alone, no server. The `scw` call
+above uses the v1 route nested under the server,
+`/instance/v1/zones/<zone>/servers/<server>/private_nics/<nic>`, which answers
+204 on the same attached card. Two endpoints, two preconditions.
+
+The remedy this record decides was therefore not lucky: it uses the route that
+accepts an attached card, and it is the only one that does.
 
 ## Decision
 
@@ -94,7 +108,9 @@ help, the residue check will still name what is standing.
 
 ## What this record does not decide
 
-Why the Terraform provider fails where the direct API call succeeds, and whether
-the right long-term fix is upstream, in the stack topology, or here. Issue #153
-carries that question. This record covers the guarantee the repository already
-made, which is that nothing survives a run, and which had no owner in this case.
+Whether the right long-term fix is upstream, in the stack topology, or here.
+The v2alpha1 route refusing an attached card may well be deliberate, and the v1
+nested route may be the one that will go away: nothing measured here says which
+of the two Scaleway intends to keep. This record covers the guarantee the
+repository already made, which is that nothing survives a run, and which had no
+owner in this case.

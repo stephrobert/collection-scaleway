@@ -8,10 +8,14 @@ Error: scaleway-sdk-go: precondition failed: ,
 ```
 
 `scaleway_instance_private_nic` porte un `server_id`, donc Terraform la détruit
-**avant** le serveur, et l'API refuse. Arrêter les serveurs n'y change rien ;
-l'appel direct, lui, passe, et la destruction reprend ensuite toute seule. Ce
-module automatise cette séquence. ADR-017 porte l'incident, son compte et sa
-date.
+**avant** le serveur. Arrêter les serveurs n'y change rien.
+
+**Ce ne sont pas deux façons d'appeler la même route, mais deux routes.** Le
+provider passe par `instance/v2alpha1`, qui prend la carte seule et refuse en
+412 tant qu'elle est attachée ; `scw instance private-nic delete` passe par la
+route v1 imbriquée sous le serveur, qui rend 204 sur la même carte attachée.
+C'est celle-là qu'on appelle ici, et c'est la seule qui accepte. ADR-017 porte
+l'incident, la transcription qui l'établit, et sa date.
 
 **Il ne s'exécute que sur un échec de destruction.** Le chemin heureux ne le
 traverse jamais, donc un défaut ici ne peut pas casser une destruction qui
