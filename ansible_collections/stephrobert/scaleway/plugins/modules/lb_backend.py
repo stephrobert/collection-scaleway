@@ -75,6 +75,18 @@ options:
     choices:
     - tcp
     - http
+  host:
+    description:
+    - 'Host value to use when connecting to backend servers.
+
+      When connecting to backend servers, use this value as the HTTP Host header or TLS SNI.
+      This allows routing to specific services on the backend server that are configured to
+      respond to particular hostnames.'
+    - 'To clear this field, write `host: ""`; omit the option to leave the current value untouched.'
+    - 'Setting it to null is refused: this API reads null as "field not provided" and would
+      change nothing.'
+    type: str
+    version_added: 0.5.0
   ignore_ssl_server_verify:
     description:
     - Defines whether the server certificate verification should be ignored.
@@ -368,6 +380,15 @@ resource:
         (in seconds)
       returned: when the API returns it
       type: str
+    host:
+      description:
+      - 'Host value to use when connecting to backend servers.
+
+        When connecting to backend servers, use this value as the HTTP Host header or TLS
+        SNI. This allows routing to specific services on the backend server that are configured
+        to respond to particular hostnames.'
+      returned: when the API returns it
+      type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402
@@ -409,6 +430,7 @@ MODULE_ARGUMENT_SPEC = {
         "required": True,
         "choices": ["tcp", "http"],
     },
+    "host": {"type": "str"},
     "ignore_ssl_server_verify": {"type": "bool"},
     "max_connections": {"type": "int"},
     "max_retries": {"type": "int"},
@@ -484,6 +506,7 @@ MODULE = ManageModule(
             "max_retries",
             "max_connections",
             "timeout_queue",
+            "host",
         ),
         retry="limited",
     ),
@@ -507,12 +530,14 @@ MODULE = ManageModule(
         "max_retries",
         "max_connections",
         "timeout_queue",
+        "host",
     ),
     comparisons=(
         ("failover_host", "scalar"),
         ("forward_port", "scalar"),
         ("forward_port_algorithm", "scalar"),
         ("forward_protocol", "scalar"),
+        ("host", "scalar"),
         ("ignore_ssl_server_verify", "scalar"),
         ("max_connections", "scalar"),
         ("max_retries", "scalar"),
@@ -531,6 +556,7 @@ MODULE = ManageModule(
     ),
     nullable_params=(
         "failover_host",
+        "host",
         "ignore_ssl_server_verify",
         "max_connections",
         "max_retries",

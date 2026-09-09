@@ -244,6 +244,15 @@ result:
         (in seconds)
       returned: when the API returns it
       type: str
+    host:
+      description:
+      - 'Host value to use when connecting to backend servers.
+
+        When connecting to backend servers, use this value as the HTTP Host header or TLS
+        SNI. This allows routing to specific services on the backend server that are configured
+        to respond to particular hostnames.'
+      returned: when the API returns it
+      type: str
 backends:
   description:
   - List all the backends of a Load Balancer, specified by its Load Balancer ID. By default,
@@ -389,6 +398,15 @@ backends:
       description:
       - Maximum time for a request to be left pending in queue when `max_connections` is reached.
         (in seconds)
+      returned: when the API returns it
+      type: str
+    host:
+      description:
+      - 'Host value to use when connecting to backend servers.
+
+        When connecting to backend servers, use this value as the HTTP Host header or TLS
+        SNI. This allows routing to specific services on the backend server that are configured
+        to respond to particular hostnames.'
       returned: when the API returns it
       type: str
 """
