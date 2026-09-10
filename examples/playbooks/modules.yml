@@ -404,6 +404,98 @@
       failed_when: acls.failed | default(false)
         and acls.api_type | default('') != 'not_emulated'
 
+    # ---- Le même parc, atteint par les noms plutôt que par les UUID -----
+    #
+    # **Ce bloc double les tâches ci-dessus, il ne les remplace pas.** Elles
+    # pêchent chaque identifiant dans la réponse du module précédent, et c'est
+    # ce qu'un utilisateur devait écrire jusqu'ici. Le lookup refait le même
+    # chemin depuis le nom que la stack Terraform a donné.
+    #
+    # L'assertion est le sujet : les deux chemins doivent désigner **la même**
+    # ressource. C'est ce qui prouve que la table dérivée des contrats décrit le
+    # parc réel, et pas seulement le document OpenAPI dont elle sort. Un test
+    # unitaire ne peut pas dire ça.
+    #
+    # La chaîne est imbriquée exprès. `lb_id` se cherche dans la zone,
+    # `backend_id` dans un load balancer, `acl_id` dans un frontend : trois
+    # portées, et le lookup les exige avant d'appeler plutôt que de laisser
+    # l'API répondre 404 sur un chemin troué.
+
+    - name: Le load balancer, résolu par son nom
+      ansible.builtin.set_fact:
+        lb_par_nom: "{{ lookup('stephrobert.scaleway.resource_id', 'lb_id',
+          zone=zone, name=prefixe ~ '-web') }}"
+      when: notre_lb | length > 0
+
+    - name: Le backend et le frontend, résolus dans ce load balancer
+      ansible.builtin.set_fact:
+        backend_par_nom: "{{ lookup('stephrobert.scaleway.resource_id', 'backend_id',
+          zone=zone, lb_id=lb_par_nom, name=prefixe ~ '-web') }}"
+        frontend_par_nom: "{{ lookup('stephrobert.scaleway.resource_id', 'frontend_id',
+          zone=zone, lb_id=lb_par_nom, name=prefixe ~ '-web') }}"
+      when: notre_lb | length > 0
+
+    - name: L'ACL, résolue dans ce frontend
+      ansible.builtin.set_fact:
+        acl_par_nom: "{{ lookup('stephrobert.scaleway.resource_id', 'acl_id',
+          zone=zone, frontend_id=frontend_par_nom, name=prefixe ~ '-web') }}"
+      when: notre_lb | length > 0
+
+    - name: Les identifiants pêchés à la main, rassemblés pour la comparaison
+      ansible.builtin.set_fact:
+        uuid_a_la_main:
+          lb_id: "{{ notre_lb }}"
+          backend_id: "{{ (backends.backends | default([])
+            | selectattr('name', 'search', prefixe) | list
+            | first | default({})).id | default('') }}"
+          frontend_id: "{{ (frontends.frontends | default([])
+            | selectattr('name', 'search', prefixe) | list
+            | first | default({})).id | default('') }}"
+          acl_id: "{{ (acls.acls | default([])
+            | selectattr('name', 'search', prefixe) | list
+            | first | default({})).id | default('') }}"
+      when: notre_lb | length > 0
+
+    # **La première assertion refuse un identifiant vide**, et elle est là parce
+    # que la version précédente de ce bloc portait ces conditions dans son
+    # `when` : la comparaison était alors *sautée* quand une liste n'avait pas
+    # la forme attendue, ce qui se lit dans un run exactement comme une
+    # comparaison réussie. Mesuré au premier passage contre l'émulateur.
+    - name: Les noms et les UUID désignent les mêmes ressources
+      ansible.builtin.assert:
+        that:
+          - uuid_a_la_main.values() | select('equalto', '') | list | length == 0
+          - lb_par_nom == uuid_a_la_main.lb_id
+          - backend_par_nom == uuid_a_la_main.backend_id
+          - frontend_par_nom == uuid_a_la_main.frontend_id
+          - acl_par_nom == uuid_a_la_main.acl_id
+        fail_msg: >-
+          Le nom et l'UUID ne désignent pas la même ressource. Pêchés à la main :
+          {{ uuid_a_la_main }}. Résolus par le nom : {{ lb_par_nom }},
+          {{ backend_par_nom }}, {{ frontend_par_nom }}, {{ acl_par_nom }}.
+        quiet: true
+      when: notre_lb | length > 0
+
+    # **Le refus se joue ici aussi, et pas seulement en test unitaire.** Une
+    # résolution qui n'a jamais échoué contre une vraie API est une résolution
+    # dont on ignore ce qu'elle fait d'une liste qu'elle a réellement reçue.
+    - name: Un nom que la stack n'a donné à personne
+      ansible.builtin.set_fact:
+        jamais_rendu: "{{ lookup('stephrobert.scaleway.resource_id', 'lb_id',
+          zone=zone, name=prefixe ~ '-ce-nom-nexiste-pas') }}"
+      register: refus_de_resolution
+      ignore_errors: true
+      when: notre_lb | length > 0
+
+    - name: Le refus dit ce qu'il a trouvé à la place, plutôt que de rendre le premier
+      ansible.builtin.assert:
+        that:
+          - refus_de_resolution is failed
+          - "'aucune ressource nommée exactement' in (refus_de_resolution.msg | default(''))"
+          - prefixe ~ '-web' in (refus_de_resolution.msg | default(''))
+        quiet: true
+      when: notre_lb | length > 0
+
     # Les trois catalogues du Load Balancer que la stack ne peuple pas. Ils
     # rendent une liste vide, et c'est une réponse : un module qui répond `[]`
     # sur un parc sans certificat dit la vérité. Les appeler prouve qu'ils

@@ -126,6 +126,72 @@ def test_le_filtre_n_est_pas_envoye_quand_le_contrat_ne_le_declare_pas(runtime: 
     assert "name" not in api.appels[0]["params"]
 
 
+class _ApiQuiFiltre(_ApiFausse):
+    """Une API qui **applique** le filtre `name`, par préfixe, comme la vraie.
+
+    `_ApiFausse` l'ignore, ce qui est le cas facile. Celle-ci reproduit ce que
+    le contrat déclare et ce que l'émulateur fait : demander un nom absent rend
+    une liste vide, donc il n'y a plus rien à citer à l'utilisateur.
+    """
+
+    def request(self, operation, **kwargs):
+        params = kwargs.get("params") or {}
+        filtre = params.get("name")
+        retenus = (
+            [e for e in self.elements if str(e.get("name", "")).startswith(filtre)]
+            if filtre
+            else list(self.elements)
+        )
+        self.appels.append(
+            {"params": dict(params), "path_values": dict(kwargs.get("path_values") or {})}
+        )
+        return {operation.payload_field: retenus, "total_count": len(retenus)}
+
+
+def test_un_refus_relit_sans_le_filtre_pour_avoir_de_quoi_citer(runtime) -> None:
+    """Mesuré contre l'émulateur : le filtre retire ce que le message doit dire.
+
+    Sans cette relecture, « aucune ressource nommée exactement X » était suivi
+    de « la liste est vide », alors que la portée contenait des voisins. Le
+    message perdait sa partie utile exactement quand elle sert.
+    """
+    api = _ApiQuiFiltre([{"id": "a", "name": "web-01"}, {"id": "b", "name": "web-02"}])
+
+    with pytest.raises(runtime.ResolutionError) as erreur:
+        runtime.resolve_resource_id(api, _lookup(runtime), name="base", values={"zone": "fr-par-1"})
+
+    message = str(erreur.value)
+    assert "web-01" in message and "web-02" in message
+    assert "La liste est vide" not in message
+    # Deux appels : le filtré qui décide, puis le complet qui explique.
+    assert len(api.appels) == 2
+    assert api.appels[0]["params"].get("name") == "base"
+    assert "name" not in api.appels[1]["params"]
+
+
+def test_une_portee_reellement_vide_le_dit_encore(runtime) -> None:
+    """La relecture ne doit pas transformer un vide en silence."""
+    api = _ApiQuiFiltre([])
+
+    with pytest.raises(runtime.ResolutionError) as erreur:
+        runtime.resolve_resource_id(api, _lookup(runtime), name="web", values={"zone": "fr-par-1"})
+
+    assert "La liste est vide" in str(erreur.value)
+
+
+def test_un_prefixe_rendu_par_une_api_qui_filtre_reste_un_refus(runtime) -> None:
+    """Le cas exact du contrat : « server1 » rend « server100 » et rien d'autre."""
+    api = _ApiQuiFiltre([{"id": "uuid-100", "name": "server100"}])
+
+    with pytest.raises(runtime.ResolutionError) as erreur:
+        runtime.resolve_resource_id(
+            api, _lookup(runtime), name="server1", values={"zone": "fr-par-1"}
+        )
+
+    assert "aucune ressource nommée exactement" in str(erreur.value)
+    assert "server100" in str(erreur.value)
+
+
 # --- les deux refus ---------------------------------------------------------
 
 

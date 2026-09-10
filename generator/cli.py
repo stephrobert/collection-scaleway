@@ -136,6 +136,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="racine de la collection (défaut : découverte sous ansible_collections/)",
     )
+    resolve.add_argument(
+        "--report-dir",
+        type=Path,
+        default=Path("build/reports"),
+        help="répertoire où verser le compte rendu de résolution",
+    )
     return parser
 
 
@@ -267,6 +273,15 @@ def _resolve(arguments: argparse.Namespace) -> int:
             classifications=classifications,
             sources=sources,
         ),
+        encoding="utf-8",
+    )
+
+    # Les refus ne vivaient que sur la sortie standard, donc ils mouraient avec
+    # le terminal. Ce sont eux qu'un lecteur cherche : pourquoi son identifiant
+    # ne se résout pas.
+    arguments.report_dir.mkdir(parents=True, exist_ok=True)
+    (arguments.report_dir / "resolution.md").write_text(
+        render.to_resolution_markdown(gardees, refus, sources),
         encoding="utf-8",
     )
 

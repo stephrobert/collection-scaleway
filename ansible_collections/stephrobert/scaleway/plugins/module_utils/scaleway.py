@@ -1056,28 +1056,40 @@ def resolve_resource_id(
     operation = lookup.operation
     per_page = DEFAULT_PAGE_SIZE
 
-    def fetch_page(page: int) -> dict[str, Any]:
-        params: dict[str, Any] = {}
-        if operation.page_param:
-            params[operation.page_param] = page
-        if operation.per_page_param:
-            params[operation.per_page_param] = per_page
-        # Un raccourci, jamais un verdict : voir la docstring.
-        if lookup.filters_by_name and "name" in operation.query_params:
-            params["name"] = name
-        return api.request(operation, params=params, path_values=values)
+    filtre_disponible = lookup.filters_by_name and "name" in operation.query_params
 
-    elements = paginate(
-        fetch_page,
-        payload_field=operation.payload_field or "",
-        per_page=per_page,
-    )
+    def lister(*, filtrer: bool) -> list[Any]:
+        def fetch_page(page: int) -> dict[str, Any]:
+            params: dict[str, Any] = {}
+            if operation.page_param:
+                params[operation.page_param] = page
+            if operation.per_page_param:
+                params[operation.per_page_param] = per_page
+            # Un raccourci, jamais un verdict : voir la docstring.
+            if filtrer:
+                params["name"] = name
+            return api.request(operation, params=params, path_values=values)
+
+        return paginate(
+            fetch_page,
+            payload_field=operation.payload_field or "",
+            per_page=per_page,
+        )
+
+    elements = lister(filtrer=filtre_disponible)
 
     exacts = [
         element for element in elements if isinstance(element, dict) and element.get("name") == name
     ]
 
     if not exacts:
+        # **Le message a besoin de ce que le filtre vient d'écarter.** Mesuré
+        # contre l'émulateur : demander un nom absent rend une liste vide, donc
+        # « trouvé à proximité » n'avait rien à citer au moment précis où c'est
+        # utile. On relit sans le filtre, une seule fois, et seulement sur le
+        # chemin qui va de toute façon échouer.
+        if filtre_disponible:
+            elements = lister(filtrer=False)
         voisins = sorted(
             str(element.get("name"))
             for element in elements

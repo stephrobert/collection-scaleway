@@ -325,6 +325,54 @@ def to_generation_markdown(
     return "\n".join(lines) + "\n"
 
 
+def to_resolution_markdown(
+    resolutions: Sequence[Any],
+    refus: Sequence[Any],
+    sources: Sequence[str],
+) -> str:
+    """Ce qu'un nom permet de retrouver, et ce que le contrat ne permet pas.
+
+    Les deux listes dans le même document, et jamais l'une sans l'autre : un
+    identifiant absent parce que le contrat est muet et un identifiant absent
+    parce que personne n'y a pensé se ressemblent trop pour être distingués par
+    une absence.
+    """
+    lines = [
+        "# Résolution d'un nom en identifiant",
+        "",
+        "Dérivé des contrats versionnés, jamais écrit à la main.",
+        "",
+        "Contrats lus :",
+        "",
+    ]
+    lines += [f"- `{source}`" for source in sorted(sources)]
+    lines += [
+        "",
+        "## Ce qu'un nom suffit à retrouver",
+        "",
+        "| identifiant | opération de liste | portée exigée |",
+        "|---|---|---|",
+    ]
+    for resolution in sorted(resolutions, key=lambda item: item.parameter):
+        portee = ", ".join(f"`{nom}`" for nom in resolution.scope) or "la zone seule"
+        lines.append(f"| `{resolution.parameter}` | `{resolution.list_operation}` | {portee} |")
+
+    lines += [
+        "",
+        "## Ce que le contrat ne permet pas de retrouver",
+        "",
+        "Signalé plutôt que comblé par une supposition. Ces identifiants se lisent",
+        "sur le module d'information correspondant.",
+        "",
+        "| identifiant | pourquoi |",
+        "|---|---|",
+    ]
+    for refuse in sorted(refus, key=lambda item: item.parameter):
+        lines.append(f"| `{refuse.parameter}` | {refuse.reason} |")
+
+    return "\n".join(lines) + "\n"
+
+
 def _ratio(value: float | None, denominator: int) -> str:
     """Un pourcentage **et** sa fraction, parce que le dénominateur fait le sens.
 

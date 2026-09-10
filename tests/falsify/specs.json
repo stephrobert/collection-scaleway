@@ -2359,6 +2359,14 @@
       "find": "        if len(terms) != 1:",
       "replace": "        if len(terms) < 1:",
       "test": "tests/unit/collection/test_lookup_resource_id.py::test_deux_identifiants_dans_un_appel_sont_refuses"
+    },
+    {
+      "name": "resolution-relecture-sans-filtre",
+      "why": "Quand l'API applique le filtre `name`, elle retire de la liste exactement ce que le message de refus doit citer. Mesuré contre l'émulateur : « aucune ressource nommée exactement X » était suivi de « la liste est vide » alors que la portée contenait des voisins. Le message perdait sa partie utile au moment précis où elle sert.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        if filtre_disponible:\n            elements = lister(filtrer=False)",
+      "replace": "        if filtre_disponible and False:\n            elements = lister(filtrer=False)",
+      "test": "tests/unit/collection/test_resolution_runtime.py::test_un_refus_relit_sans_le_filtre_pour_avoir_de_quoi_citer"
     }
   ]
 }
