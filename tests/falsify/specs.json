@@ -2343,6 +2343,22 @@
       "find": "    manquants = [besoin for besoin in lookup.scope if not values.get(besoin)]",
       "replace": "    manquants = [besoin for besoin in lookup.scope if not values.get(besoin) and False]",
       "test": "tests/unit/collection/test_resolution_runtime.py::test_une_portee_manquante_est_refusee_avant_l_appel"
+    },
+    {
+      "name": "lookup-refus-motive-par-le-contrat",
+      "why": "`ip_id` est correctement orthographié, existe, et ne se résout pas : c'est l'objet `Ip` qui ne porte pas de champ `name`. Le ranger avec les inconnus enverrait l'utilisateur chercher une faute de frappe dans un nom correct, et la liste des résolubles ne lui dirait pas pourquoi le sien n'y est pas.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/lookup/resource_id.py",
+      "find": "        if parametre in UNRESOLVABLE:",
+      "replace": "        if parametre in UNRESOLVABLE and False:",
+      "test": "tests/unit/collection/test_lookup_resource_id.py::test_un_identifiant_non_resoluble_rend_la_raison_du_contrat"
+    },
+    {
+      "name": "lookup-un-seul-identifiant-par-appel",
+      "why": "Deux identifiants dans un appel ne pourraient pas dire quelle portée appartient auquel : `lb_id` vaut pour le backend et pas pour le serveur. Prendre le premier terme en silence résoudrait autre chose que ce qui a été demandé.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/lookup/resource_id.py",
+      "find": "        if len(terms) != 1:",
+      "replace": "        if len(terms) < 1:",
+      "test": "tests/unit/collection/test_lookup_resource_id.py::test_deux_identifiants_dans_un_appel_sont_refuses"
     }
   ]
 }
