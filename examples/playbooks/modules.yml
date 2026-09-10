@@ -393,14 +393,19 @@
       failed_when: reseaux_lb.failed | default(false)
         and reseaux_lb.api_type | default('') != 'not_emulated'
 
+    # **Le frontend est nommé, pas deviné.** La stack en déclare deux là où
+    # les certificats sont servis, `web` et `tls`, et l'ACL est portée par le
+    # premier. Sélectionner par préfixe rendait l'un des deux selon l'ordre de
+    # l'API, et le `when` qui exigeait un frontend unique **sautait la tâche**
+    # sur le compte réel : ce module n'y a jamais été exercé.
     - name: Les ACL du frontend
       stephrobert.scaleway.lb_frontend_acl_info:
         zone: "{{ zone }}"
         frontend_id: "{{ (frontends.frontends | default([])
-          | selectattr('name', 'search', prefixe) | first).id }}"
+          | selectattr('name', 'equalto', prefixe ~ '-web') | list | first).id }}"
       register: acls
-      when: frontends.frontends | default([]) | selectattr('name', 'search', prefixe)
-        | list | length == 1
+      when: frontends.frontends | default([])
+        | selectattr('name', 'equalto', prefixe ~ '-web') | list | length == 1
       failed_when: acls.failed | default(false)
         and acls.api_type | default('') != 'not_emulated'
 
@@ -446,13 +451,13 @@
         uuid_a_la_main:
           lb_id: "{{ notre_lb }}"
           backend_id: "{{ (backends.backends | default([])
-            | selectattr('name', 'search', prefixe) | list
+            | selectattr('name', 'equalto', prefixe ~ '-web') | list
             | first | default({})).id | default('') }}"
           frontend_id: "{{ (frontends.frontends | default([])
-            | selectattr('name', 'search', prefixe) | list
+            | selectattr('name', 'equalto', prefixe ~ '-web') | list
             | first | default({})).id | default('') }}"
           acl_id: "{{ (acls.acls | default([])
-            | selectattr('name', 'search', prefixe) | list
+            | selectattr('name', 'equalto', prefixe ~ '-web') | list
             | first | default({})).id | default('') }}"
       when: notre_lb | length > 0
 
@@ -583,10 +588,13 @@
     # Seul un vrai serveur peut le dire. C'est donc ici, sur un groupe de
     # sécurité que la stack possède et que la destruction emportera.
 
-    - name: Le groupe de sécurité du tier web, choisi parmi ceux de la stack
+    # Trois groupes portent le préfixe, `app`, `bastion` et `web` : par
+    # préfixe, cette tâche écrivait sa description dans celui que l'API rendait
+    # en premier, et son nom disait autre chose.
+    - name: Le groupe de sécurité du tier web, nommé plutôt que deviné
       ansible.builtin.set_fact:
         groupe_web: "{{ (groupes.security_groups
-          | selectattr('name', 'search', prefixe) | list | first).id }}"
+          | selectattr('name', 'equalto', prefixe ~ '-web') | list | first).id }}"
 
     - name: Écrire une description, en check mode d'abord
       stephrobert.scaleway.instance_security_group:
