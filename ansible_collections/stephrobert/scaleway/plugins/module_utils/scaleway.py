@@ -1475,7 +1475,8 @@ def _refus_du_null(nuls: list[tuple[str, str]]) -> str:
             lignes.append(f"  {nom} : pour effacer, écrire `{nom}: {vide}`")
         else:
             lignes.append(
-                f"  {nom} : ce type n'a pas de valeur vide, et l'API ne sait pas effacer ce champ"
+                f"  {nom} : ce type n'a pas de valeur vide, et l'API ne sait pas "
+                "effacer ce champ"
             )
     return (
         f"{', '.join(nom for nom, _type in nuls)} : `null` ne veut pas dire « efface » "
@@ -1744,7 +1745,9 @@ def _repeter_laction(
         module.fail_json(msg=error.message, **error.details())
         return
 
-    depart = str(courant.get(spec.state_field, "")) or None if isinstance(courant, dict) else None
+    depart = (
+        str(courant.get(spec.state_field, "")) or None if isinstance(courant, dict) else None
+    )
     champ = spec.read_operation.payload_field or "resource"
     module.exit_json(
         changed=True,

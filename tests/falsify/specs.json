@@ -2324,8 +2324,8 @@
       "name": "resolution-comparaison-exacte",
       "why": "Le contrat déclare que le filtre `name` de l'API est un préfixe : « \"server1\" will return \"server100\" and \"server1\" ». Comparer par préfixe rendrait `server100` à qui demande `server1`, sans un mot. C'est le défaut de `| first` déplacé dans le plugin, en moins visible.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
-      "find": "        if isinstance(element, dict) and element.get(\"name\") == name",
-      "replace": "        if isinstance(element, dict) and str(element.get(\"name\") or \"\").startswith(name)",
+      "find": "        element for element in elements if isinstance(element, dict) and element.get(\"name\") == name",
+      "replace": "        element\n        for element in elements\n        if isinstance(element, dict) and str(element.get(\"name\") or \"\").startswith(name)",
       "test": "tests/unit/collection/test_resolution_runtime.py::test_un_prefixe_rendu_par_l_api_n_est_pas_une_correspondance"
     },
     {
