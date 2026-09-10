@@ -215,6 +215,11 @@ python -m generator generate $PRODUCT $flags
 flags_lb=""
 for module in $MODULES_LB; do flags_lb="$flags_lb --module $module"; done
 python -m generator generate lb $flags_lb
+
+# La table de résolution est fondue entre tous les contrats générés, donc elle
+# s'écrit une fois, après eux. Un identifiant revendiqué par deux produits ne
+# se voit pas depuis un seul.
+python -m generator resolve
 """
 
 [tasks."sync:api"]

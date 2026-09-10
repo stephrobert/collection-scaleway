@@ -38,6 +38,7 @@ rapport ; ils ne deviennent pas un contournement.
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from generator.ir.models import ApiOperation, ApiService
@@ -64,8 +65,13 @@ class Resolution:
     schema: str
     #: L'opération de liste, et de quoi l'exécuter sans rien redemander au contrat.
     list_operation: str
+    http_method: str
     path: str
     payload_field: str
+    #: Les paramètres de requête que la liste accepte, dans l'ordre du contrat.
+    #: Le runtime en a besoin pour envoyer le filtre et la pagination sans
+    #: réinterroger le contrat.
+    query_params: tuple[str, ...]
     #: Ce que la liste exige en plus de la zone ou de la région, dans l'ordre du
     #: contrat : `('lb_id',)` pour un backend.
     scope: tuple[str, ...]
@@ -178,8 +184,12 @@ def build_resolutions(
                 service=service.name,
                 schema=reponse.payload_schema or "",
                 list_operation=operation.id,
+                http_method=operation.http_method.value,
                 path=operation.path,
                 payload_field=reponse.payload_field,
+                query_params=tuple(
+                    p.name for p in operation.parameters if p.location.value == "query"
+                ),
                 scope=tuple(
                     p.name
                     for p in operation.parameters
@@ -196,6 +206,26 @@ def build_resolutions(
         )
 
     return tuple(resolutions), tuple(refus)
+
+
+def merge_refus(refus: Sequence[Refus]) -> tuple[Refus, ...]:
+    """Un refus par identifiant, sans en perdre aucun en chemin.
+
+    `ip_id` est refusé par `instance` et par `lb`. Les empiler tels quels
+    produirait un dictionnaire généré portant deux fois la même clé : Python
+    l'accepte et garde la dernière, donc une raison disparaîtrait sans que rien
+    ne le dise. Deux raisons identiques n'en font qu'une ; deux raisons
+    différentes sont **toutes les deux** publiées, parce qu'aucune ne vaut pour
+    l'autre produit.
+    """
+    par_parametre: dict[str, list[str]] = defaultdict(list)
+    for refuse in refus:
+        if refuse.reason not in par_parametre[refuse.parameter]:
+            par_parametre[refuse.parameter].append(refuse.reason)
+    return tuple(
+        Refus(parameter, " ; ".join(sorted(raisons)))
+        for parameter, raisons in sorted(par_parametre.items())
+    )
 
 
 def merge_resolutions(

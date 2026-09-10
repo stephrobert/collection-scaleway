@@ -2319,6 +2319,30 @@
       "find": "        if len(candidates) == 1:",
       "replace": "        if len(candidates) >= 1:",
       "test": "tests/unit/generator/test_resolution.py::test_un_identifiant_revendique_par_deux_produits_est_refuse"
+    },
+    {
+      "name": "resolution-comparaison-exacte",
+      "why": "Le contrat déclare que le filtre `name` de l'API est un préfixe : « \"server1\" will return \"server100\" and \"server1\" ». Comparer par préfixe rendrait `server100` à qui demande `server1`, sans un mot. C'est le défaut de `| first` déplacé dans le plugin, en moins visible.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        if isinstance(element, dict) and element.get(\"name\") == name",
+      "replace": "        if isinstance(element, dict) and str(element.get(\"name\") or \"\").startswith(name)",
+      "test": "tests/unit/collection/test_resolution_runtime.py::test_un_prefixe_rendu_par_l_api_n_est_pas_une_correspondance"
+    },
+    {
+      "name": "resolution-ambiguite-de-nom",
+      "why": "Scaleway n'impose pas l'unicité des noms. Rendre le premier de deux homonymes ferait agir le playbook sur une ressource que personne n'a désignée, et le second passage pourrait choisir l'autre.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    if len(exacts) > 1:",
+      "replace": "    if len(exacts) > 2:",
+      "test": "tests/unit/collection/test_resolution_runtime.py::test_deux_noms_identiques_sont_une_ambiguite_pas_un_choix"
+    },
+    {
+      "name": "resolution-portee-manquante",
+      "why": "Lister des backends sans `lb_id` ne rend pas moins de résultats : le chemin n'est pas rendable et l'API répond 404. Vérifier après l'appel changerait un refus lisible en erreur HTTP que le runtime ne sait pas interpréter.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    manquants = [besoin for besoin in lookup.scope if not values.get(besoin)]",
+      "replace": "    manquants = [besoin for besoin in lookup.scope if not values.get(besoin) and False]",
+      "test": "tests/unit/collection/test_resolution_runtime.py::test_une_portee_manquante_est_refusee_avant_l_appel"
     }
   ]
 }
