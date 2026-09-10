@@ -1404,9 +1404,10 @@
                        == (certificats_mesure | reverse | list)
                        else 'NORMALISÉ PAR L API' }}
 
-        # **Le second passage est la preuve, pas le premier.** Un module qui
-        # écrit rend `changed` la première fois quoi qu'il arrive ; ce qui dit
-        # si la comparaison est juste, c'est ce qu'il fait la seconde.
+        # **Le second passage confirme, il ne décide plus.** Sous `set`, le
+        # premier ne change rien non plus : c'est tout l'intérêt. Le rejouer
+        # prouve que ce silence est stable et non le fruit d'un état de
+        # transition.
         - name: Redemander exactement le même ordre
           stephrobert.scaleway.lb_frontend:
             zone: "{{ zone }}"
@@ -1417,16 +1418,32 @@
             certificate_ids: "{{ certificats_mesure | reverse | list }}"
           register: second_passage
 
-        - name: L'ordre demandé est celui que l'API tient
+        # **Ce que ce bloc mesure a changé de nature, et il faut le dire.**
+        #
+        # Il a été écrit pour trancher : `ordered_list` convient-il à une liste
+        # de références ? La réponse est arrivée deux jours après, mesurée sur
+        # ce même compte et inscrite dans `generator/overrides/lb.yml` :
+        # `certificate_ids` se compare en `set`, parce que l'API rend la liste
+        # dans un autre ordre que celui qu'elle accepte. Le bloc, lui, n'avait
+        # jamais tourné jusqu'ici, donc il exigeait encore le contraire.
+        #
+        # Sous `set`, réordonner **ne peut pas** produire `changed` : la
+        # prémisse de l'ancienne assertion était vide. Ce qui se mesure
+        # désormais est l'inverse, et c'est ce qui compte pour un opérateur :
+        # un playbook qui redemande la même liste dans un autre ordre ne
+        # réécrit rien, donc il ne bat pas la mesure du parc à chaque passage.
+        - name: Réordonner un ensemble n'est pas un changement
           ansible.builtin.assert:
             that:
-              - inverse.changed
+              - not inverse.changed
               - not second_passage.changed
             fail_msg: >-
-              second passage {{ 'changed' if second_passage.changed else 'ok' }} :
-              si le premier a changé et pas le second, la comparaison est juste ;
-              sinon l'API ne tient pas l'ordre demandé et `ordered_list` est le
-              mauvais repli pour ce champ.
+              premier passage {{ 'changed' if inverse.changed else 'ok' }},
+              second {{ 'changed' if second_passage.changed else 'ok' }} :
+              sous `comparison: set`, réordonner `certificate_ids` ne doit rien
+              écrire. Un `changed` ici veut dire que la stratégie mesurée le
+              8 septembre 2026 ne s'applique plus, et l'override doit être
+              remesuré avant d'être cru.
 
       always:
         # Remettre l'ordre d'origine, pour que la plateforme finisse comme
