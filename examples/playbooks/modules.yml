@@ -1383,6 +1383,8 @@
             zone: "{{ zone }}"
             frontend_id: "{{ frontend_tls }}"
             backend_id: "{{ certificat_backend }}"
+            name: "{{ cree.result.name }}"
+            inbound_port: "{{ cree.result.inbound_port }}"
             certificate_ids: "{{ certificats_mesure | reverse | list }}"
           register: inverse
 
@@ -1410,6 +1412,8 @@
             zone: "{{ zone }}"
             frontend_id: "{{ frontend_tls }}"
             backend_id: "{{ certificat_backend }}"
+            name: "{{ cree.result.name }}"
+            inbound_port: "{{ cree.result.inbound_port }}"
             certificate_ids: "{{ certificats_mesure | reverse | list }}"
           register: second_passage
 
@@ -1429,8 +1433,11 @@
         # Terraform la décrit. Un état laissé de travers ferait diverger le
         # `destroy` de ce qu'il croit détruire.
         - name: Rétablir l'ordre de création
+          when: cree.result is defined
           stephrobert.scaleway.lb_frontend:
             zone: "{{ zone }}"
             frontend_id: "{{ frontend_tls }}"
             backend_id: "{{ certificat_backend }}"
+            name: "{{ cree.result.name }}"
+            inbound_port: "{{ cree.result.inbound_port }}"
             certificate_ids: "{{ certificats_mesure }}"

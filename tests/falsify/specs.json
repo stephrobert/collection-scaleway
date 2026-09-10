@@ -2367,6 +2367,14 @@
       "find": "        if filtre_disponible:\n            elements = lister(filtrer=False)",
       "replace": "        if filtre_disponible and False:\n            elements = lister(filtrer=False)",
       "test": "tests/unit/collection/test_resolution_runtime.py::test_un_refus_relit_sans_le_filtre_pour_avoir_de_quoi_citer"
+    },
+    {
+      "name": "sortie-terraform-portee",
+      "why": "Le provider Terraform préfixe ses identifiants par la portée, `fr-par-1/<uuid>`. Un module qui en reçoit un compose `/frontends/fr-par-1/<uuid>`, et ce qui revient n'est pas une erreur d'API mais le 404 du serveur web devant elle. Mesuré le 2026-09-10 : quatre sorties sur cinq gardaient leur portée, et le bloc de mesure #119 n'a jamais tourné jusqu'au bout là où il est le seul à pouvoir tourner.",
+      "file": "scripts/example.py",
+      "find": "            if isinstance(element, str) and PORTEE_COLLEE.match(element):",
+      "replace": "            if isinstance(element, str) and PORTEE_COLLEE.match(element) and False:",
+      "test": "tests/unit/outillage/test_sortie_portee.py::test_une_sortie_zonale_est_refusee"
     }
   ]
 }
