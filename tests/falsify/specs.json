@@ -2287,6 +2287,38 @@
       "find": "            if nom not in ecrits or not items:",
       "replace": "            if nom not in ecrits or not items or nom.endswith('_info'):",
       "test": "tests/unit/outillage/test_reference_groupee.py::test_tout_module_livre_figure_dans_la_reference"
+    },
+    {
+      "name": "resolution-casse-de-la-jointure",
+      "why": "Le contrat porte `PrivateNIC` et `Ip` dans le même document. Une jointure sensible à la casse ne rate pas seulement le rattachement : elle publie « aucun schéma nommé PrivateNic » là où le contrat en porte un. Un refus mal motivé envoie l'utilisateur chercher un schéma qui existe.",
+      "file": "generator/ansible/resolution.py",
+      "find": "        index[_nom_court(reponse.payload_schema).lower()].append(operation)",
+      "replace": "        index[_nom_court(reponse.payload_schema)].append(operation)",
+      "test": "tests/unit/generator/test_resolution.py::test_la_jointure_ignore_la_casse_du_contrat"
+    },
+    {
+      "name": "resolution-objet-sans-name",
+      "why": "`Ip`, `Route`, `PrivateNIC` et `SecurityGroupRule` ne portent pas de champ `name` : il n'y a rien à chercher par nom. Sans ce refus, le lookup listerait et ne trouverait jamais, en rendant une erreur qui accuse l'utilisateur au lieu du contrat.",
+      "file": "generator/ansible/resolution.py",
+      "find": "            if \"name\" in champs.get(_schema_rendu(operation) or \"\", set())",
+      "replace": "            if True or \"name\" in champs.get(_schema_rendu(operation) or \"\", set())",
+      "test": "tests/unit/generator/test_resolution.py::test_un_objet_sans_champ_name_est_refuse_avec_sa_raison"
+    },
+    {
+      "name": "resolution-portee-ambigue",
+      "why": "Deux listes rendant le même objet ne disent pas dans quelle portée chercher. Trancher en silence rendrait l'identifiant trouvé par la première, qui n'est pas forcément celle que l'utilisateur visait.",
+      "file": "generator/ansible/resolution.py",
+      "find": "        if len(nommables) > 1:",
+      "replace": "        if len(nommables) > 2:",
+      "test": "tests/unit/generator/test_resolution.py::test_deux_listes_du_meme_objet_nommable_sont_une_portee_ambigue"
+    },
+    {
+      "name": "resolution-identifiant-de-deux-produits",
+      "why": "`ip_id` existe dans `instance` et dans `lb`, et ces deux `ip` ne sont pas la même chose. Garder le premier venu donnerait à l'utilisateur l'identifiant du mauvais produit, ce qui est pire que de ne rien lui donner.",
+      "file": "generator/ansible/resolution.py",
+      "find": "        if len(candidates) == 1:",
+      "replace": "        if len(candidates) >= 1:",
+      "test": "tests/unit/generator/test_resolution.py::test_un_identifiant_revendique_par_deux_produits_est_refuse"
     }
   ]
 }
