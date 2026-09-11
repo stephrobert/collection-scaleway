@@ -2431,6 +2431,22 @@
       "find": "    if inconnus:\n        raise ExempleError(",
       "replace": "    if inconnus and False:\n        raise ExempleError(",
       "test": "tests/unit/outillage/test_livres_joues.py::test_un_playbook_livre_inconnu_fait_echouer_la_cible"
+    },
+    {
+      "name": "projet-non-designe",
+      "why": "Sans projet désigné, le fournisseur retombe sur `SCW_DEFAULT_PROJECT_ID` puis sur le fichier de configuration : quarante-cinq ressources facturées s'installent dans le projet par défaut du profil, qui peut être celui d'une production. Le projet est la seule frontière qu'IAM sache exprimer, donc la seule qui borne cet exercice.",
+      "file": "scripts/example.py",
+      "find": "    if not identifiant:\n        raise ExempleError(",
+      "replace": "    if not identifiant and False:\n        raise ExempleError(",
+      "test": "tests/unit/outillage/test_projet_dedie.py::test_aucun_projet_designe_est_refuse"
+    },
+    {
+      "name": "projet-illisible",
+      "why": "Ne pas savoir n'est pas savoir que ça va. Un projet que l'API ne sait pas nommer est un projet dont on ignore ce qu'il contient, et déployer dedans revient à choisir sa cible au hasard. C'est la règle que le contrôle de résidu applique déjà à `scw` : une commande qui ne répond pas ne prouve pas qu'il ne reste rien.",
+      "file": "scripts/example.py",
+      "find": "        raise ExempleError(\n            f\"le projet {identifiant} n'a pas pu être lu ({erreur}). L'exercice \"",
+      "replace": "        raise RuntimeError(\n            f\"le projet {identifiant} n'a pas pu être lu ({erreur}). L'exercice \"",
+      "test": "tests/unit/outillage/test_projet_dedie.py::test_un_projet_illisible_est_refuse"
     }
   ]
 }
