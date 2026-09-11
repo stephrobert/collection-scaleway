@@ -162,6 +162,72 @@ def refuser_emulateur_habite(_env: dict[str, str]) -> None:
         )
 
 
+#: Ce que `feint status` rend pour chaque mode de démarrage. **Mesuré le
+#: 2026-09-11**, en démarrant un émulateur dans chaque mode et en lisant sa
+#: sortie : `--vm off` se déclare `none`, les autres se déclarent sous leur
+#: propre nom. Supposer la table ferait refuser une cible parfaitement valide,
+#: ce qui est pire que l'absence de garde.
+MODES_DECLARES: dict[str, str] = {"off": "none"}
+
+
+def mode_servi(adresse: str) -> str | None:
+    """Le mode de machines de l'émulateur qui écoute, tel qu'il le déclare.
+
+    `None` quand la question n'a pas de réponse : l'émulateur ne répond pas à
+    `status`, ou répond quelque chose qui n'est pas du JSON. L'appelant refuse
+    alors, plutôt que de supposer.
+    """
+    resultat = lancer(
+        [binaire("feint"), "status", "--addr", adresse, "--format", "json"], capture=True
+    )
+    if resultat.returncode != 0:
+        return None
+    try:
+        declare = json.loads(resultat.stdout or "{}").get("machines")
+    except ValueError:
+        return None
+    return None if declare is None else str(declare)
+
+
+def refuser_un_mode_incompatible(cible: dict[str, Any], adresse: str) -> None:
+    """Refuse d'adopter un émulateur qui ne sert pas le mode que la cible exige.
+
+    **La garde voisine contrôle une propriété et laissait passer celle-ci.**
+    `refuser_emulateur_habite` demande si l'émulateur contient quelque chose ;
+    un émulateur vide en `--vm off` lui convient donc, et `machines` l'aurait
+    adopté avant de jouer des playbooks SSH contre des machines qui ne démarrent
+    jamais. L'échec serait arrivé après plusieurs minutes d'attente, et il
+    aurait accusé les playbooks : `wait_for_connection` sur un hôte injoignable
+    ne dit rien du mode de l'émulateur (#187).
+
+    **Refuser n'est pas bloquer.** L'exercice reste lançable pendant qu'un autre
+    émulateur tourne, sur une autre adresse, et le message le dit plutôt que
+    d'arrêter le processus de quelqu'un d'autre : c'est exactement ce que la
+    garde voisine existe pour empêcher.
+    """
+    attendu = MODES_DECLARES.get(cible["vm"], cible["vm"])
+    servi = mode_servi(adresse)
+
+    if servi is None:
+        raise ExempleError(
+            f"un émulateur écoute sur {adresse} et ne dit pas dans quel mode. "
+            "L'exercice refuse de l'adopter : il ne sait pas si les machines "
+            "qu'il va demander démarreront.\n"
+            f"Choisir une autre adresse avec FEINT_ADDR, ou arrêter cet émulateur."
+        )
+
+    if servi != attendu:
+        raise ExempleError(
+            f"un émulateur écoute sur {adresse} et sert les machines en "
+            f"« {servi} », quand cette cible demande « {attendu} ». L'exercice "
+            "refuse de l'adopter : les playbooks qui se connectent aux machines "
+            "attendraient des hôtes que personne ne démarre, et l'échec "
+            "accuserait les playbooks.\n"
+            "Choisir une autre adresse avec FEINT_ADDR, et l'exercice démarrera "
+            "le sien dans le bon mode."
+        )
+
+
 def environnement_emulateur() -> dict[str, str]:
     """Les identifiants que l'émulateur accepte, dits par lui et non inventés."""
     resultat = lancer([binaire("feint"), "env", "scaleway", "--endpoint", ENDPOINT], capture=True)
@@ -544,27 +610,58 @@ def artefact(journal: dict[str, Any], cible: str, run_id: str, residu: str) -> d
     Un module joué une fois et sauté ailleurs compte comme joué : ce qui est
     demandé est « a-t-il tourné contre cette API », pas « toutes ses tâches
     ont-elles tourné ».
+
+    **Quatre sorts, et les mélanger envoie un rapport chez le mauvais projet.**
+    Un champ unique les confondait, et la comparaison publiait « chacun a été
+    appelé des deux côtés » sur un ensemble qui contenait des tâches sautées.
+    Mesuré le 2026-09-11 : l'émulateur n'avait décliné que
+    `GetServerTypesAvailability` et `ListVolumesTypes`, et la liste publiée y
+    ajoutait `instance_image` et `lb_certificate`, que le playbook saute faute
+    de ressource à viser, plus `instance_server_action`, qu'aucune tâche n'y
+    nommait. Une issue déposée sur cette base part chez le mauvais projet
+    (#189).
+
+        joué      l'API a répondu, et c'est une preuve de couverture
+        décliné   l'API a été appelée et a dit qu'elle ne sert pas cette route
+        en échec  l'API a été appelée et a refusé
+        sauté     `when` l'a écartée : personne n'a rien appelé
     """
     joues: set[str] = set()
-    vus: set[str] = set()
+    declines: set[str] = set()
+    echoues: set[str] = set()
+    sautes: set[str] = set()
     for tache in journal.get("taches", []):
         module = str(tache.get("module", ""))
         if not module.startswith(PREFIXE_COLLECTION):
             continue
         court = module[len(PREFIXE_COLLECTION) :]
-        vus.add(court)
-        # Une route non émulée a bien été appelée, mais l'API n'a rien fait :
-        # la compter comme jouée ferait passer une limite de l'émulateur pour
-        # une preuve de couverture.
-        if tache.get("verdict") in ("ok", "changed") and tache.get("api_type") != "not_emulated":
+        if tache.get("verdict") == "skipped":
+            sautes.add(court)
+        elif tache.get("api_type") == "not_emulated":
+            # Une route non émulée a bien été appelée, mais l'API n'a rien fait :
+            # la compter comme jouée ferait passer une limite de l'émulateur pour
+            # une preuve de couverture.
+            declines.add(court)
+        elif tache.get("verdict") in ("ok", "changed"):
             joues.add(court)
+        else:
+            echoues.add(court)
+
+    # Un appel l'emporte sur une absence d'appel, et une réponse sur un refus :
+    # un module joué quelque part a tourné, quoi qu'il soit devenu ailleurs.
+    declines -= joues
+    echoues -= joues | declines
+    sautes -= joues | declines | echoues
+
     faits = journal.get("faits", {})
     return {
         "cible": cible,
         "run_id": run_id,
         "horodatage": datetime.now(UTC).isoformat(timespec="seconds"),
         "modules_joues": sorted(joues),
-        "modules_appeles_sans_reponse": sorted(vus - joues),
+        "modules_declines": sorted(declines),
+        "modules_en_echec": sorted(echoues),
+        "modules_sautes": sorted(sautes),
         "taches_jouees": len(journal.get("taches", [])),
         "routes_non_emulees": sorted(faits.get("non_emules", [])),
         "idempotence_prouvee": sorted(faits.get("idempotences_prouvees", [])),
@@ -667,6 +764,9 @@ def main(argv: list[str]) -> int:
         if adopte:
             refuser_emulateur_habite(env_probe := dict(os.environ))
             del env_probe
+            # Deux questions, et la première ne répond pas à la seconde : un
+            # émulateur vide peut très bien ne pas servir le mode demandé.
+            refuser_un_mode_incompatible(cible, ADRESSE)
         if not adopte:
             demarrage = lancer(
                 [

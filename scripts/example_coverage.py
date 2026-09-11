@@ -277,6 +277,12 @@ def mesurer() -> dict[str, Any]:
         "sans_cible_declaree": sorted(ecrits & set(SANS_CIBLE)),
         "non_couverts": sorted(ecrits - appeles - set(SANS_CIBLE)),
         "ratio_appeles": _ratio(len(appeles), len(ecrits)),
+        # **La projection décide de ce que la comparaison pourra dire.** Elle
+        # ne retenait que le compte des modules joués, si bien que
+        # `routes_non_emulees` n'arrivait jamais jusqu'au rapport : la section
+        # « routes que feint déclare ne pas servir » cherchait dans le vide et
+        # ne s'est jamais affichée. Ce qui sert à distinguer un refus d'un saut
+        # traverse donc, et `test_projection_comparaison` le tient (#189).
         "runs": {
             cible: {
                 "horodatage": run.get("horodatage"),
@@ -285,6 +291,16 @@ def mesurer() -> dict[str, Any]:
                 "ratio_joues": _ratio(len(run.get("modules_joues", [])), len(ecrits)),
                 "idempotence_prouvee": len(run.get("idempotence_prouvee", [])),
                 "residu": run.get("residu"),
+                **{
+                    champ: sorted(run[champ])
+                    for champ in (
+                        "modules_declines",
+                        "modules_sautes",
+                        "modules_en_echec",
+                        "routes_non_emulees",
+                    )
+                    if champ in run
+                },
             }
             for cible, run in runs.items()
         },
@@ -330,8 +346,15 @@ def comparer(mesure: dict[str, Any]) -> dict[str, Any]:
 
     **C'est le matériau d'une issue de feint**, et il n'a rien d'une impression :
     les deux listes viennent de deux exécutions du même playbook, sur la même
-    stack, chacune ayant laissé son artefact. Un module qui figure d'un côté et
-    pas de l'autre a été appelé des deux côtés, et n'a répondu que d'un.
+    stack, chacune ayant laissé son artefact.
+
+    **Un manque de feint est ce que feint a décliné, pas une différence
+    d'ensembles.** La version précédente soustrayait les modules joués et
+    affirmait sous sa liste que chacun avait été appelé des deux côtés. Mesuré
+    le 2026-09-11 : deux sur cinq l'avaient été, les autres étaient des tâches
+    que le playbook saute faute de ressource à viser, ou un module qu'aucune
+    tâche ne nommait de ce côté. Une issue déposée sur cette base part chez le
+    mauvais projet (#189).
 
     `machines` plutôt qu'`emulateur` : c'est la cible qui démarre de vraies
     machines, donc la seule comparable au réel sur autre chose que le plan de
@@ -345,11 +368,26 @@ def comparer(mesure: dict[str, Any]) -> dict[str, Any]:
     cible_feint = "machines" if "machines" in runs else "emulateur"
     joues_reel = set(reel["modules_joues"])
     joues_feint = set(feint["modules_joues"])
+    manquants = joues_reel - joues_feint
+
+    # Un artefact écrit avant #189 ne porte pas ces champs. Les traiter comme
+    # vides rendrait « feint ne décline rien », ce qui est une affirmation et
+    # non une absence de mesure.
+    detaille = "modules_declines" in feint
+    declines = set(feint.get("modules_declines", []))
+    sautes = set(feint.get("modules_sautes", []))
+    echoues = set(feint.get("modules_en_echec", []))
+
     return {
         "reel": reel,
         "feint": feint,
         "cible_feint": cible_feint,
-        "servis_par_le_reel_seul": sorted(joues_reel - joues_feint),
+        "detaille": detaille,
+        "manques_de_feint": sorted(manquants & declines),
+        "sautes_cote_feint": sorted(manquants & sautes),
+        "en_echec_cote_feint": sorted(manquants & echoues),
+        "jamais_nommes_cote_feint": sorted(manquants - declines - sautes - echoues),
+        "servis_par_le_reel_seul": sorted(manquants),
         "servis_par_feint_seul": sorted(joues_feint - joues_reel),
         "routes_non_emulees": feint.get("routes_non_emulees", []),
     }
@@ -370,18 +408,59 @@ def rendre_comparaison(ecart: dict[str, Any]) -> str:
         f"{len(feint['modules_joues'])} modules joués",
         "",
     ]
-    seuls = ecart["servis_par_le_reel_seul"]
-    if seuls:
+    if not ecart["detaille"]:
         lignes += [
-            f"servis par le cloud réel et pas par feint ({len(seuls)}) :",
-            *(f"  {nom}" for nom in seuls),
+            "l'artefact de feint est antérieur au découpage : il ne dit pas lesquels",
+            "il a déclinés et lesquels le playbook a sautés. Relancer la cible pour",
+            f"comparer. En attendant, joués par le réel seul : "
+            f"{', '.join(ecart['servis_par_le_reel_seul']) or 'aucun'}.",
             "",
-            "  Chacun a été appelé des deux côtés. C'est le matériau d'une issue feint :",
+        ]
+        return "\n".join(lignes) + "\n"
+
+    manques = ecart["manques_de_feint"]
+    if manques:
+        lignes += [
+            f"appelés des deux côtés, et déclinés par feint ({len(manques)}) :",
+            *(f"  {nom}" for nom in manques),
+            "",
+            "  C'est le matériau d'une issue feint, et rien d'autre ici ne l'est :",
             "  mesuré le même jour, sur la même stack, avec le même playbook.",
             "",
         ]
     else:
-        lignes += ["feint sert tout ce que le cloud réel a servi.", ""]
+        lignes += ["feint n'a décliné aucun module que le cloud réel a servi.", ""]
+
+    # Les trois listes suivantes ne sont pas des manques de l'émulateur, et les
+    # publier à part est tout l'objet de #189.
+    for cle, titre, note in (
+        (
+            "sautes_cote_feint",
+            "joués par le réel, sautés côté feint",
+            "La tâche n'a appelé personne : la stack ne bâtit pas la ressource visée\n"
+            "  contre cette cible. Ce n'est pas un manque de l'émulateur.",
+        ),
+        (
+            "en_echec_cote_feint",
+            "joués par le réel, en échec côté feint",
+            "Appelés, et refusés autrement que par un `not_emulated`. À lire avant\n"
+            "  de conclure : l'échec peut venir de la stack comme de l'émulateur.",
+        ),
+        (
+            "jamais_nommes_cote_feint",
+            "joués par le réel, nommés par aucune tâche côté feint",
+            "Aucune tâche ne les a nommés de ce côté. C'est un défaut du playbook\n"
+            "  ou de ses conditions, pas de l'émulateur.",
+        ),
+    ):
+        if ecart[cle]:
+            lignes += [
+                f"{titre} ({len(ecart[cle])}) :",
+                *(f"  {nom}" for nom in ecart[cle]),
+                "",
+                f"  {note}",
+                "",
+            ]
     if ecart["servis_par_feint_seul"]:
         lignes += [
             "servis par feint et pas par le cloud réel :",

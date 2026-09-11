@@ -37,7 +37,9 @@ def test_un_module_joue_est_compte() -> None:
         _journal(_tache("stephrobert.scaleway.instance_server_info")), "reel", "abc", "aucun"
     )
     assert resultat["modules_joues"] == ["instance_server_info"]
-    assert resultat["modules_appeles_sans_reponse"] == []
+    assert resultat["modules_declines"] == []
+    assert resultat["modules_sautes"] == []
+    assert resultat["modules_en_echec"] == []
 
 
 def test_une_route_non_emulee_est_appelee_mais_pas_jouee() -> None:
@@ -51,7 +53,8 @@ def test_une_route_non_emulee_est_appelee_mais_pas_jouee() -> None:
         "sans objet (émulateur)",
     )
     assert resultat["modules_joues"] == []
-    assert resultat["modules_appeles_sans_reponse"] == ["instance_dashboard_info"]
+    assert resultat["modules_declines"] == ["instance_dashboard_info"]
+    assert resultat["modules_sautes"] == [], "un appel décliné n'est pas un saut"
 
 
 def test_une_tache_sautee_nest_pas_une_couverture() -> None:
@@ -63,7 +66,8 @@ def test_une_tache_sautee_nest_pas_une_couverture() -> None:
         "aucun",
     )
     assert resultat["modules_joues"] == []
-    assert resultat["modules_appeles_sans_reponse"] == ["lb_certificate_info"]
+    assert resultat["modules_sautes"] == ["lb_certificate_info"]
+    assert resultat["modules_declines"] == [], "sauter n'est pas se faire décliner"
 
 
 def test_un_module_joue_une_fois_et_saute_ailleurs_compte_comme_joue() -> None:
@@ -78,7 +82,7 @@ def test_un_module_joue_une_fois_et_saute_ailleurs_compte_comme_joue() -> None:
         "aucun",
     )
     assert resultat["modules_joues"] == ["instance_ip"]
-    assert resultat["modules_appeles_sans_reponse"] == []
+    assert resultat["modules_sautes"] == []
 
 
 def test_les_modules_dailleurs_ne_gonflent_pas_le_compte() -> None:
@@ -132,3 +136,70 @@ def test_lartefact_ecrit_porte_un_nom_stable_en_plus_du_sien(
     assert ecrit == tmp_path / "reel-abc.json"
     stable = tmp_path / "dernier-reel.json"
     assert json.loads(stable.read_text(encoding="utf-8"))["modules_joues"] == ["lb_ip_info"]
+
+
+# --- quatre sorts, et les confondre envoie un rapport chez le mauvais projet ---
+
+
+def test_un_appel_decline_et_une_tache_sautee_ne_vont_pas_dans_la_meme_liste() -> None:
+    """C'est le défaut de #189, en une assertion.
+
+    Les deux finissaient dans `modules_appeles_sans_reponse`, et la comparaison
+    publiait « chacun a été appelé des deux côtés » sur l'ensemble.
+    """
+    resultat = example.artefact(
+        _journal(
+            _tache("stephrobert.scaleway.instance_volume_type_info", api_type="not_emulated"),
+            _tache("stephrobert.scaleway.lb_certificate", verdict="skipped"),
+        ),
+        "emulateur",
+        "abc",
+        "sans objet (émulateur)",
+    )
+    assert resultat["modules_declines"] == ["instance_volume_type_info"]
+    assert resultat["modules_sautes"] == ["lb_certificate"]
+
+
+def test_une_tache_en_echec_est_appelee_et_nest_pas_un_refus_de_la_route() -> None:
+    """Un échec peut venir de la stack : le ranger avec les refus accuse à tort."""
+    resultat = example.artefact(
+        _journal(_tache("stephrobert.scaleway.lb_frontend", verdict="failed")),
+        "reel",
+        "abc",
+        "aucun",
+    )
+    assert resultat["modules_en_echec"] == ["lb_frontend"]
+    assert resultat["modules_declines"] == []
+    assert resultat["modules_sautes"] == []
+
+
+def test_un_appel_l_emporte_sur_un_saut_ailleurs() -> None:
+    """Sauté ici, décliné là : il a bien été appelé une fois."""
+    resultat = example.artefact(
+        _journal(
+            _tache("stephrobert.scaleway.instance_image", verdict="skipped"),
+            _tache("stephrobert.scaleway.instance_image", api_type="not_emulated"),
+        ),
+        "emulateur",
+        "abc",
+        "sans objet (émulateur)",
+    )
+    assert resultat["modules_declines"] == ["instance_image"]
+    assert resultat["modules_sautes"] == []
+
+
+def test_un_module_joue_ailleurs_ne_figure_dans_aucune_autre_liste() -> None:
+    resultat = example.artefact(
+        _journal(
+            _tache("stephrobert.scaleway.instance_ip", api_type="not_emulated"),
+            _tache("stephrobert.scaleway.instance_ip", verdict="skipped"),
+            _tache("stephrobert.scaleway.instance_ip", verdict="changed"),
+        ),
+        "reel",
+        "abc",
+        "aucun",
+    )
+    assert resultat["modules_joues"] == ["instance_ip"]
+    assert resultat["modules_declines"] == []
+    assert resultat["modules_sautes"] == []
+    assert resultat["modules_en_echec"] == []
