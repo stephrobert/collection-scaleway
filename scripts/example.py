@@ -44,6 +44,9 @@ import verrou_plateforme
 ROOT = Path(__file__).resolve().parents[1]
 STACK = ROOT / "examples" / "stack"
 PLAYBOOKS = ROOT / "examples" / "playbooks"
+#: Les playbooks que la collection **livre**, ceux qu'un utilisateur appelle
+#: par leur nom complet une fois la collection installée.
+LIVRES_DIR = ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "playbooks"
 RAPPELS = ROOT / "examples" / "callback_plugins"
 TRAVAIL = ROOT / "build" / "example"
 CLE = TRAVAIL / "cle"
@@ -719,6 +722,92 @@ def jouer(playbook: str, env: dict[str, str], variables: dict[str, Any]) -> int:
     return code
 
 
+#: Ce que chaque playbook **livré** demande pour être joué contre la plateforme
+#: de l'exercice. Une entrée par playbook, et un playbook sans entrée fait
+#: échouer le contrôle : un playbook écrit n'est pas un playbook qui a tourné,
+#: et le déclarer sans cible se fait avec sa raison, jamais en silence.
+#:
+#: **Le groupe vient du run, jamais d'un défaut.** `etage=charge` est l'étiquette
+#: que la stack pose sur le tier web et applicatif ; le bastion n'en est pas, et
+#: c'est voulu : l'éteindre couperait la route que les playbooks SSH empruntent.
+LIVRES: dict[str, dict[str, Any]] = {
+    "doctor.yml": {"variables": {}},
+    "fleet_report.yml": {"variables": {"zones": "{zone}"}},
+    "list_servers.yml": {"variables": {"zone": "{zone}"}},
+    # Sans `server_id` il prend la première machine de la zone, ce qui est
+    # exactement ce qu'on veut ici : la stack en déclare cinq.
+    "server_details.yml": {"variables": {"zone": "{zone}"}},
+    "stop_server.yml": {
+        "sans_cible": (
+            "il arrête une machine et la laisse arrêtée ; la jouer ici priverait "
+            "les playbooks suivants du parc qu'ils mesurent. `power_schedule` "
+            "exerce la même écriture et la remet en place."
+        )
+    },
+    "power_schedule.yml": {
+        "variables": {"group": "scw_tag_etage_charge", "desired_state": "off"},
+        # Ce que l'exercice a éteint, il le rallume : la plateforme doit finir
+        # comme Terraform la décrit, sinon le `destroy` diverge de ce qu'il
+        # croit détruire.
+        "puis": {"group": "scw_tag_etage_charge", "desired_state": "on"},
+    },
+    "rolling_reboot.yml": {
+        "variables": {"group": "scw_tag_etage_charge", "batch_size": 1},
+    },
+}
+
+
+def jouer_les_livres(env: dict[str, str], contexte: dict[str, Any]) -> int:
+    """Joue les playbooks livrés contre la plateforme, et dit ce qu'il a sauté.
+
+    **C'est la seule cible qui les emmène sur la vraie API.** `integration.py`
+    les joue contre l'émulateur, ce qui prouve leur forme et pas leur fond :
+    `rolling_reboot` y voit une transition d'état instantanée, alors qu'un
+    redémarrage réel prend des minutes, et une attente correcte ne se distingue
+    d'un `sleep` que le jour où la machine est lente (#196).
+    """
+    livres = sorted(chemin.name for chemin in LIVRES_DIR.glob("*.yml"))
+    inconnus = [nom for nom in livres if nom not in LIVRES]
+    if inconnus:
+        raise ExempleError(
+            f"playbook(s) livré(s) sans entrée dans LIVRES : {', '.join(inconnus)}. "
+            "Un playbook qu'aucune cible ne joue se déclare avec sa raison, "
+            "pas en silence."
+        )
+
+    code = 0
+    for nom in livres:
+        entree = LIVRES[nom]
+        if "sans_cible" in entree:
+            print(f"\n--- {nom} --- sans cible : {entree['sans_cible']}", flush=True)
+            continue
+        for variables in (entree["variables"], entree.get("puis")):
+            if variables is None:
+                continue
+            rendues = {
+                cle: valeur.format(**contexte) if isinstance(valeur, str) else valeur
+                for cle, valeur in variables.items()
+            }
+            code = code or jouer_livre(nom, env, rendues)
+    return code
+
+
+def jouer_livre(playbook: str, env: dict[str, str], variables: dict[str, Any]) -> int:
+    """Même mécanique que `jouer`, sur le répertoire des playbooks livrés."""
+    binaire_ansible = str(Path(sys.executable).parent / "ansible-playbook")
+    commande = [
+        binaire_ansible,
+        "-i",
+        str(PLAYBOOKS / "inventaire.scaleway.yml"),
+        str(LIVRES_DIR / playbook),
+    ]
+    if variables:
+        commande += ["-e", json.dumps(variables)]
+    print(f"\n--- livré : {playbook} {variables or ''} ---", flush=True)
+    code: int = lancer(commande, env=env).returncode
+    return code
+
+
 def main(argv: list[str]) -> int:
     parseur = argparse.ArgumentParser(description=__doc__)
     parseur.add_argument("cible", choices=sorted(CIBLES))
@@ -897,11 +986,19 @@ def main(argv: list[str]) -> int:
         if cible["ssh"]:
             controler_sortie_internet(bastion_ip)
             code = code or jouer("site.yml", env, extra) or jouer("verifier.yml", env, extra)
+
         else:
             print(
                 "cible sans machines : les playbooks SSH ne sont pas joués, et c'est "
                 "dit plutôt que sauté en silence. Utiliser `machines` ou `reel` pour eux."
             )
+
+        # **Après les playbooks SSH, et sur toutes les cibles.** Après, parce que
+        # `power_schedule` éteint le tier web et `rolling_reboot` le redémarre :
+        # les jouer plus tôt couperait sous les pieds de `site.yml` le parc
+        # qu'il déploie. Sur toutes, parce que l'écart entre les deux cibles est
+        # précisément ce qu'on cherche à mesurer (#196).
+        code = code or jouer_les_livres(env, {"zone": env.get("SCW_DEFAULT_ZONE", "fr-par-1")})
         return code
     finally:
         if arguments.garder:
