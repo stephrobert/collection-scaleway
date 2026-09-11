@@ -1,0 +1,10 @@
+bugfixes:
+  - "Cutting a release whose cycle added no module, option or return value left
+    the appearance journal pointing at the version just published, and the next
+    check refused with ``a release went out without the journal being frozen``.
+    The journal had been frozen; the freeze had returned early, skipping the
+    part that moves the preparation version on. The message was right about the
+    fact and wrong about the culprit, which costs more than a silent refusal.
+    What is skipped when there is nothing to date is the block, because an empty
+    one would publish a version badge on nothing. Found while cutting this
+    release, whose contents are playbooks, a lookup plugin and documentation."
