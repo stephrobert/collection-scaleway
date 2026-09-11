@@ -95,8 +95,6 @@
               if lookup('env', 'SCW_ACCESS_KEY') else [])
            + (['SCW_SECRET_KEY (environment)']
               if lookup('env', 'SCW_SECRET_KEY') else [])
-           + (['SCW_API_URL=' ~ lookup('env', 'SCW_API_URL')]
-              if lookup('env', 'SCW_API_URL') else [])
            + ([config_path ~ ' (configuration file)']
               if config_path is exists else []) }}
       vars:
@@ -136,12 +134,19 @@
           {{ 'ok' if sonde_api.servers is defined
              else ('ko' if sonde_api.status_code is defined else '?') }}
         detail_api: >-
-          {{ (zone ~ ' reachable, ' ~ (sonde_api.servers | length) ~ ' Instance(s)')
+          {{ (zone ~ ' at ' ~ point_dentree ~ ' reachable, '
+              ~ (sonde_api.servers | length) ~ ' Instance(s)')
              if sonde_api.servers is defined
              else ((zone ~ ': the API refused, HTTP ' ~ (sonde_api.status_code | string)
                     ~ (' (' ~ sonde_api.api_type ~ ')' if sonde_api.api_type | default('') else ''))
                    if sonde_api.status_code is defined
-                   else (zone ~ ': the API could not be reached, so nothing is known')) }}
+                   else (zone ~ ' at ' ~ point_dentree
+                         ~ ': the API could not be reached, so nothing is known')) }}
+      vars:
+        # Nommer l'endroit interrogé règle la moitié des diagnostics : viser un
+        # émulateur en croyant viser Scaleway ressemble à une panne d'API.
+        point_dentree: >-
+          {{ lookup('env', 'SCW_API_URL') | default('https://api.scaleway.com', true) }}
       when: verdict_sdk == 'ok'
 
     - name: The API is not asked when the SDK cannot import
