@@ -1,0 +1,18 @@
+minor_changes:
+  - "New ``stephrobert.scaleway.rolling_reboot`` playbook: reboot a named
+    inventory group in batches, waiting for each batch to come back before
+    touching the next. A lot of work went into making the ``reboot`` action and
+    its check mode trustworthy, and none of it showed: someone wanting to restart
+    production progressively wrote ``action: reboot`` over a group and hoped."
+  - "``rolling_reboot`` waits on what it observes, never on a duration. The
+    action module already watches a machine leave ``running`` before accepting
+    that it came back, and refuses to conclude when it never saw it change; the
+    playbook puts that wait inside an async job so a batch waits for jobs rather
+    than for a delay. A test reads both files and fails on any ``pause``,
+    ``sleep`` or timed ``wait_for``, because a fixed delay that works today is
+    indistinguishable from a correct wait until the day it is not."
+  - "``rolling_reboot`` records the state before touching anything: a machine
+    that is not running is left alone and named, because a rolling reboot that
+    starts machines has done something nobody asked for. A batch that does not
+    come back stops the roll and names what was left to do, rather than
+    continuing over a fleet a third of which may be down."
