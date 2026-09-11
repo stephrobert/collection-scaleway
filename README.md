@@ -147,7 +147,7 @@ collection stephrobert.scaleway: 50 modules written out of 52 planned
   45 modules called by the example playbook out of 50 (90.0%), which is not the same as played
   51 published pages: 298/298 options and 70/70 returned keys documented
   108/108 examples copyable as is · 64/65 returned keys list their fields
-  1077 unit tests · 311 mutations proven by /falsify
+  1087 unit tests · 312 mutations proven by /falsify
   CI: 7 jobs, Générateur · collection · Image · Archive · Intégration · Plateforme d'exemple · Parcours d'accueil
   ansible-test sanity, playbooks and inventory against the emulator:
   reported by `mise run sanity` and `mise run integration`
@@ -163,6 +163,21 @@ it: no layer of the core names a product in its code.
 Elastic Metal and Apple Silicon are proven against simulated responses: the
 emulator serves neither, and will not soon (feint#631, feint#632). Instance is
 proven end to end.
+
+## Adoption, and what is not known about it
+
+<!-- compteurs:adoption:début, produits par scripts/readme_counters.py -->
+Recorded uses: none yet, which is not the same as none existing.
+Chains contributed by other people: none yet.
+The Galaxy download counter is deliberately absent: it counts reinstalls,
+so a pipeline weighs as much there as a team. `ADOPTERS.md` holds the list
+and what it cannot know.
+<!-- compteurs:adoption:fin -->
+
+If you run this against a real account, say so in
+[Show and tell](https://github.com/stephrobert/collection-scaleway/discussions/categories/show-and-tell).
+One sentence is enough. It is worth more to this project than a download,
+because a download says nothing about whether the thing worked.
 
 ## Developing the generator
 

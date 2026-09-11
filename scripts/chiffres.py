@@ -82,6 +82,9 @@ SURVEILLES: tuple[Path, ...] = (
     ROOT / "CONTRIBUTING.md",
     ROOT / "RELEASING.md",
     ROOT / "SECURITY.md",
+    # Il publie ce que le dépôt sait de son adoption. Un compte y vieillirait
+    # comme les autres, et celui-là se lirait comme une mesure d'usage.
+    ROOT / "ADOPTERS.md",
     ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "README.md",
     # **Publiée, et pourtant absente d'ici jusqu'à #183.** Le site l'assemble
     # sous « Task playbooks », et elle a porté deux comptes que le temps avait
