@@ -274,6 +274,53 @@ class Operation:
 
 
 @dataclass(frozen=True)
+class ResourceLookup:
+    """Comment retrouver un identifiant depuis un nom, tel que le contrat le permet.
+
+    Le générateur la calcule depuis les contrats versionnés ; ce runtime ne
+    décide rien de plus que ce qu'elle déclare.
+    """
+
+    #: Le paramètre que l'utilisateur cherche à remplir, `backend_id`.
+    parameter: str
+    service: str
+    schema: str
+    #: L'opération de liste, prête à exécuter.
+    operation: Operation
+    #: Ce que la liste exige en plus de la zone ou de la région.
+    scope: tuple[str, ...] = ()
+    #: L'API sait-elle filtrer sur le nom. **Ce n'est jamais une sélection.**
+    #: Le contrat le déclare lui-même pour Instance : « "server1" will return
+    #: "server100" and "server1" ». Le filtre réduit la pagination, la
+    #: comparaison exacte reste locale et s'exécute dans tous les cas.
+    filters_by_name: bool = False
+
+
+class ScalewayConfigurationError(Exception):
+    """La configuration ne permet pas d'appeler l'API, et le message le dit.
+
+    Un module sort par `fail_json` ; un plugin de lookup n'a pas ce luxe et doit
+    rendre l'erreur à Ansible. C'est la seule différence, et elle vit ici plutôt
+    que dans deux constructions divergentes du client.
+    """
+
+
+class _ContexteDePlugin:
+    """Ce que `ScalewayApi` attend d'un module, pour ce qui n'en est pas un.
+
+    Le couplage à `AnsibleModule` tenait en deux choses, et elles sont mesurées :
+    un dictionnaire de valeurs (`params`) et une façon d'échouer (`fail_json`).
+    Rien d'autre du runtime ne touche au module.
+    """
+
+    def __init__(self, values: dict[str, Any]) -> None:
+        self.params = values
+
+    def fail_json(self, **kwargs: Any) -> None:
+        raise ScalewayConfigurationError(kwargs.get("msg", "configuration refusée"))
+
+
+@dataclass(frozen=True)
 class InfoModule:
     """Ce qu'un module d'information exécute, et comment il choisit.
 
@@ -695,15 +742,32 @@ class ScalewayApi:
     def client(self) -> Client:
         return self._client
 
+    @classmethod
+    def from_values(cls, values: dict[str, Any]) -> "ScalewayApi":
+        """Le même point d'exécution, pour un plugin qui n'a pas d'AnsibleModule.
+
+        Passe par `_ContexteDePlugin` plutôt que par une seconde construction du
+        client : la collection officielle en a deux qui divergent, et c'est
+        exactement ce que ce runtime existe pour ne pas refaire.
+        """
+        return cls(_ContexteDePlugin(values))  # type: ignore[arg-type]
+
     def request(
         self,
         operation: Operation,
         *,
         params: dict[str, Any] | None = None,
         body: dict[str, Any] | None = None,
+        path_values: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Exécute une opération et rend la charge utile JSON de la réponse."""
-        path = render_path(operation.path, self._module.params)
+        """Exécute une opération et rend la charge utile JSON de la réponse.
+
+        `path_values` sert à qui n'a pas de paramètres de module à offrir : le
+        chemin se rend alors depuis ce qu'on lui donne, et le reste ne bouge pas.
+        """
+        path = render_path(
+            operation.path, self._module.params if path_values is None else path_values
+        )
         response = self._send(operation, path, params or {}, body)
 
         if response.status_code >= 400:
@@ -941,6 +1005,125 @@ def _error_from_response(operation: Operation, response: Any) -> ScalewayApiErro
         request_id=response.headers.get("x-request-id"),
         api_type=api_type,
     )
+
+
+class ResolutionError(Exception):
+    """Un nom ne désigne pas exactement une ressource, et le message dit laquelle.
+
+    Trois situations distinctes, et les confondre est le défaut que ce lookup
+    existe pour supprimer : `| first` rend le premier de trois candidats sans
+    rien dire, et le playbook agit sur la mauvaise ressource.
+    """
+
+
+#: Combien de noms voisins citer quand aucun ne correspond exactement. Au-delà,
+#: le message cesse d'aider et devient un déversoir : la question de
+#: l'utilisateur est « ai-je fait une faute de frappe », pas « donne-moi le parc ».
+VOISINS_CITES = 10
+
+
+def resolve_resource_id(
+    api: "ScalewayApi",
+    lookup: ResourceLookup,
+    *,
+    name: str,
+    values: dict[str, Any],
+) -> str:
+    """L'identifiant de la ressource qui porte **exactement** ce nom.
+
+    Trois verdicts, et ils ne se confondent jamais :
+
+        aucune correspondance exacte  -> refus, en citant ce qui a été trouvé
+        une seule                     -> son identifiant
+        plusieurs                     -> refus d'ambiguïté, en les citant
+
+    **Le filtre de l'API n'est pas une sélection.** Le contrat le déclare pour
+    Instance : « "server1" will return "server100" and "server1" but not "foo" ».
+    On l'envoie parce qu'il évite de paginer un parc entier, et on compare
+    localement à l'égalité stricte de toute façon. La comparaison locale
+    s'exécute donc dans tous les cas, y compris quand l'API a filtré : un chemin
+    de code qui n'existerait que pour un contrat futur ne serait pas éprouvé.
+    """
+    manquants = [besoin for besoin in lookup.scope if not values.get(besoin)]
+    if manquants:
+        raise ResolutionError(
+            f"{lookup.parameter} se cherche dans une portée : "
+            f"{', '.join(manquants)} n'{'est' if len(manquants) == 1 else 'ont'} pas "
+            f"été fourni{'' if len(manquants) == 1 else 's'}. "
+            f"{lookup.operation.id} les exige pour lister."
+        )
+
+    operation = lookup.operation
+    per_page = DEFAULT_PAGE_SIZE
+
+    filtre_disponible = lookup.filters_by_name and "name" in operation.query_params
+
+    def lister(*, filtrer: bool) -> list[Any]:
+        def fetch_page(page: int) -> dict[str, Any]:
+            params: dict[str, Any] = {}
+            if operation.page_param:
+                params[operation.page_param] = page
+            if operation.per_page_param:
+                params[operation.per_page_param] = per_page
+            # Un raccourci, jamais un verdict : voir la docstring.
+            if filtrer:
+                params["name"] = name
+            return api.request(operation, params=params, path_values=values)
+
+        return paginate(
+            fetch_page,
+            payload_field=operation.payload_field or "",
+            per_page=per_page,
+        )
+
+    elements = lister(filtrer=filtre_disponible)
+
+    exacts = [
+        element for element in elements if isinstance(element, dict) and element.get("name") == name
+    ]
+
+    if not exacts:
+        # **Le message a besoin de ce que le filtre vient d'écarter.** Mesuré
+        # contre l'émulateur : demander un nom absent rend une liste vide, donc
+        # « trouvé à proximité » n'avait rien à citer au moment précis où c'est
+        # utile. On relit sans le filtre, une seule fois, et seulement sur le
+        # chemin qui va de toute façon échouer.
+        if filtre_disponible:
+            elements = lister(filtrer=False)
+        voisins = sorted(
+            str(element.get("name"))
+            for element in elements
+            if isinstance(element, dict) and element.get("name")
+        )
+        if voisins:
+            cites = ", ".join(voisins[:VOISINS_CITES])
+            reste = (
+                f" et {len(voisins) - VOISINS_CITES} autre(s)"
+                if len(voisins) > VOISINS_CITES
+                else ""
+            )
+            proximite = f" Trouvé à proximité : {cites}{reste}."
+        else:
+            proximite = " La liste est vide dans cette portée."
+        raise ResolutionError(
+            f"aucune ressource nommée exactement « {name} » pour {lookup.parameter}.{proximite}"
+        )
+
+    if len(exacts) > 1:
+        identifiants = ", ".join(sorted(str(element.get("id")) for element in exacts))
+        raise ResolutionError(
+            f"{len(exacts)} ressources portent exactement le nom « {name} » pour "
+            f"{lookup.parameter} : {identifiants}. Le nom ne suffit pas à choisir, "
+            "et en choisir une reviendrait à décider à la place de l'appelant."
+        )
+
+    identifiant = exacts[0].get("id")
+    if not identifiant:
+        raise ResolutionError(
+            f"la ressource nommée « {name} » ne porte pas d'identifiant dans la "
+            f"réponse de {operation.id} : le contrat en déclare un, l'API n'en rend pas."
+        )
+    return str(identifiant)
 
 
 def run_info_module(module: AnsibleModule, spec: InfoModule) -> None:

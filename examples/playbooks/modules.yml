@@ -393,16 +393,113 @@
       failed_when: reseaux_lb.failed | default(false)
         and reseaux_lb.api_type | default('') != 'not_emulated'
 
+    # **Le frontend est nommé, pas deviné.** La stack en déclare deux là où
+    # les certificats sont servis, `web` et `tls`, et l'ACL est portée par le
+    # premier. Sélectionner par préfixe rendait l'un des deux selon l'ordre de
+    # l'API, et le `when` qui exigeait un frontend unique **sautait la tâche**
+    # sur le compte réel : ce module n'y a jamais été exercé.
     - name: Les ACL du frontend
       stephrobert.scaleway.lb_frontend_acl_info:
         zone: "{{ zone }}"
         frontend_id: "{{ (frontends.frontends | default([])
-          | selectattr('name', 'search', prefixe) | first).id }}"
+          | selectattr('name', 'equalto', prefixe ~ '-web') | list | first).id }}"
       register: acls
-      when: frontends.frontends | default([]) | selectattr('name', 'search', prefixe)
-        | list | length == 1
+      when: frontends.frontends | default([])
+        | selectattr('name', 'equalto', prefixe ~ '-web') | list | length == 1
       failed_when: acls.failed | default(false)
         and acls.api_type | default('') != 'not_emulated'
+
+    # ---- Le même parc, atteint par les noms plutôt que par les UUID -----
+    #
+    # **Ce bloc double les tâches ci-dessus, il ne les remplace pas.** Elles
+    # pêchent chaque identifiant dans la réponse du module précédent, et c'est
+    # ce qu'un utilisateur devait écrire jusqu'ici. Le lookup refait le même
+    # chemin depuis le nom que la stack Terraform a donné.
+    #
+    # L'assertion est le sujet : les deux chemins doivent désigner **la même**
+    # ressource. C'est ce qui prouve que la table dérivée des contrats décrit le
+    # parc réel, et pas seulement le document OpenAPI dont elle sort. Un test
+    # unitaire ne peut pas dire ça.
+    #
+    # La chaîne est imbriquée exprès. `lb_id` se cherche dans la zone,
+    # `backend_id` dans un load balancer, `acl_id` dans un frontend : trois
+    # portées, et le lookup les exige avant d'appeler plutôt que de laisser
+    # l'API répondre 404 sur un chemin troué.
+
+    - name: Le load balancer, résolu par son nom
+      ansible.builtin.set_fact:
+        lb_par_nom: "{{ lookup('stephrobert.scaleway.resource_id', 'lb_id',
+          zone=zone, name=prefixe ~ '-web') }}"
+      when: notre_lb | length > 0
+
+    - name: Le backend et le frontend, résolus dans ce load balancer
+      ansible.builtin.set_fact:
+        backend_par_nom: "{{ lookup('stephrobert.scaleway.resource_id', 'backend_id',
+          zone=zone, lb_id=lb_par_nom, name=prefixe ~ '-web') }}"
+        frontend_par_nom: "{{ lookup('stephrobert.scaleway.resource_id', 'frontend_id',
+          zone=zone, lb_id=lb_par_nom, name=prefixe ~ '-web') }}"
+      when: notre_lb | length > 0
+
+    - name: L'ACL, résolue dans ce frontend
+      ansible.builtin.set_fact:
+        acl_par_nom: "{{ lookup('stephrobert.scaleway.resource_id', 'acl_id',
+          zone=zone, frontend_id=frontend_par_nom, name=prefixe ~ '-web') }}"
+      when: notre_lb | length > 0
+
+    - name: Les identifiants pêchés à la main, rassemblés pour la comparaison
+      ansible.builtin.set_fact:
+        uuid_a_la_main:
+          lb_id: "{{ notre_lb }}"
+          backend_id: "{{ (backends.backends | default([])
+            | selectattr('name', 'equalto', prefixe ~ '-web') | list
+            | first | default({})).id | default('') }}"
+          frontend_id: "{{ (frontends.frontends | default([])
+            | selectattr('name', 'equalto', prefixe ~ '-web') | list
+            | first | default({})).id | default('') }}"
+          acl_id: "{{ (acls.acls | default([])
+            | selectattr('name', 'equalto', prefixe ~ '-web') | list
+            | first | default({})).id | default('') }}"
+      when: notre_lb | length > 0
+
+    # **La première assertion refuse un identifiant vide**, et elle est là parce
+    # que la version précédente de ce bloc portait ces conditions dans son
+    # `when` : la comparaison était alors *sautée* quand une liste n'avait pas
+    # la forme attendue, ce qui se lit dans un run exactement comme une
+    # comparaison réussie. Mesuré au premier passage contre l'émulateur.
+    - name: Les noms et les UUID désignent les mêmes ressources
+      ansible.builtin.assert:
+        that:
+          - uuid_a_la_main.values() | select('equalto', '') | list | length == 0
+          - lb_par_nom == uuid_a_la_main.lb_id
+          - backend_par_nom == uuid_a_la_main.backend_id
+          - frontend_par_nom == uuid_a_la_main.frontend_id
+          - acl_par_nom == uuid_a_la_main.acl_id
+        fail_msg: >-
+          Le nom et l'UUID ne désignent pas la même ressource. Pêchés à la main :
+          {{ uuid_a_la_main }}. Résolus par le nom : {{ lb_par_nom }},
+          {{ backend_par_nom }}, {{ frontend_par_nom }}, {{ acl_par_nom }}.
+        quiet: true
+      when: notre_lb | length > 0
+
+    # **Le refus se joue ici aussi, et pas seulement en test unitaire.** Une
+    # résolution qui n'a jamais échoué contre une vraie API est une résolution
+    # dont on ignore ce qu'elle fait d'une liste qu'elle a réellement reçue.
+    - name: Un nom que la stack n'a donné à personne
+      ansible.builtin.set_fact:
+        jamais_rendu: "{{ lookup('stephrobert.scaleway.resource_id', 'lb_id',
+          zone=zone, name=prefixe ~ '-ce-nom-nexiste-pas') }}"
+      register: refus_de_resolution
+      ignore_errors: true
+      when: notre_lb | length > 0
+
+    - name: Le refus dit ce qu'il a trouvé à la place, plutôt que de rendre le premier
+      ansible.builtin.assert:
+        that:
+          - refus_de_resolution is failed
+          - "'aucune ressource nommée exactement' in (refus_de_resolution.msg | default(''))"
+          - prefixe ~ '-web' in (refus_de_resolution.msg | default(''))
+        quiet: true
+      when: notre_lb | length > 0
 
     # Les trois catalogues du Load Balancer que la stack ne peuple pas. Ils
     # rendent une liste vide, et c'est une réponse : un module qui répond `[]`
@@ -491,10 +588,13 @@
     # Seul un vrai serveur peut le dire. C'est donc ici, sur un groupe de
     # sécurité que la stack possède et que la destruction emportera.
 
-    - name: Le groupe de sécurité du tier web, choisi parmi ceux de la stack
+    # Trois groupes portent le préfixe, `app`, `bastion` et `web` : par
+    # préfixe, cette tâche écrivait sa description dans celui que l'API rendait
+    # en premier, et son nom disait autre chose.
+    - name: Le groupe de sécurité du tier web, nommé plutôt que deviné
       ansible.builtin.set_fact:
         groupe_web: "{{ (groupes.security_groups
-          | selectattr('name', 'search', prefixe) | list | first).id }}"
+          | selectattr('name', 'equalto', prefixe ~ '-web') | list | first).id }}"
 
     - name: Écrire une description, en check mode d'abord
       stephrobert.scaleway.instance_security_group:
@@ -1283,6 +1383,8 @@
             zone: "{{ zone }}"
             frontend_id: "{{ frontend_tls }}"
             backend_id: "{{ certificat_backend }}"
+            name: "{{ cree.result.name }}"
+            inbound_port: "{{ cree.result.inbound_port }}"
             certificate_ids: "{{ certificats_mesure | reverse | list }}"
           register: inverse
 
@@ -1302,35 +1404,57 @@
                        == (certificats_mesure | reverse | list)
                        else 'NORMALISÉ PAR L API' }}
 
-        # **Le second passage est la preuve, pas le premier.** Un module qui
-        # écrit rend `changed` la première fois quoi qu'il arrive ; ce qui dit
-        # si la comparaison est juste, c'est ce qu'il fait la seconde.
+        # **Le second passage confirme, il ne décide plus.** Sous `set`, le
+        # premier ne change rien non plus : c'est tout l'intérêt. Le rejouer
+        # prouve que ce silence est stable et non le fruit d'un état de
+        # transition.
         - name: Redemander exactement le même ordre
           stephrobert.scaleway.lb_frontend:
             zone: "{{ zone }}"
             frontend_id: "{{ frontend_tls }}"
             backend_id: "{{ certificat_backend }}"
+            name: "{{ cree.result.name }}"
+            inbound_port: "{{ cree.result.inbound_port }}"
             certificate_ids: "{{ certificats_mesure | reverse | list }}"
           register: second_passage
 
-        - name: L'ordre demandé est celui que l'API tient
+        # **Ce que ce bloc mesure a changé de nature, et il faut le dire.**
+        #
+        # Il a été écrit pour trancher : `ordered_list` convient-il à une liste
+        # de références ? La réponse est arrivée deux jours après, mesurée sur
+        # ce même compte et inscrite dans `generator/overrides/lb.yml` :
+        # `certificate_ids` se compare en `set`, parce que l'API rend la liste
+        # dans un autre ordre que celui qu'elle accepte. Le bloc, lui, n'avait
+        # jamais tourné jusqu'ici, donc il exigeait encore le contraire.
+        #
+        # Sous `set`, réordonner **ne peut pas** produire `changed` : la
+        # prémisse de l'ancienne assertion était vide. Ce qui se mesure
+        # désormais est l'inverse, et c'est ce qui compte pour un opérateur :
+        # un playbook qui redemande la même liste dans un autre ordre ne
+        # réécrit rien, donc il ne bat pas la mesure du parc à chaque passage.
+        - name: Réordonner un ensemble n'est pas un changement
           ansible.builtin.assert:
             that:
-              - inverse.changed
+              - not inverse.changed
               - not second_passage.changed
             fail_msg: >-
-              second passage {{ 'changed' if second_passage.changed else 'ok' }} :
-              si le premier a changé et pas le second, la comparaison est juste ;
-              sinon l'API ne tient pas l'ordre demandé et `ordered_list` est le
-              mauvais repli pour ce champ.
+              premier passage {{ 'changed' if inverse.changed else 'ok' }},
+              second {{ 'changed' if second_passage.changed else 'ok' }} :
+              sous `comparison: set`, réordonner `certificate_ids` ne doit rien
+              écrire. Un `changed` ici veut dire que la stratégie mesurée le
+              8 septembre 2026 ne s'applique plus, et l'override doit être
+              remesuré avant d'être cru.
 
       always:
         # Remettre l'ordre d'origine, pour que la plateforme finisse comme
         # Terraform la décrit. Un état laissé de travers ferait diverger le
         # `destroy` de ce qu'il croit détruire.
         - name: Rétablir l'ordre de création
+          when: cree.result is defined
           stephrobert.scaleway.lb_frontend:
             zone: "{{ zone }}"
             frontend_id: "{{ frontend_tls }}"
             backend_id: "{{ certificat_backend }}"
+            name: "{{ cree.result.name }}"
+            inbound_port: "{{ cree.result.inbound_port }}"
             certificate_ids: "{{ certificats_mesure }}"

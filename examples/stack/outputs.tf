@@ -54,12 +54,18 @@ output "image_doree" {
 
 output "volume_instance" {
   description = "Le volume que l'API Instance voit, cible de `instance_volume`."
-  value       = scaleway_instance_volume.vu_par_instance.id
+  # Dépouillée de sa portée : voir `image_doree`, qui porte la mesure. Le
+  # provider préfixe ses identifiants par `fr-par-1/`, et un module qui le
+  # reçoit tel quel compose une URL que l'API refuse.
+  value = reverse(split("/", scaleway_instance_volume.vu_par_instance.id))[0]
 }
 
 output "route_lb" {
   description = "La route du frontend, cible de `lb_route`."
-  value       = scaleway_lb_route.secondaire.id
+  # Dépouillée de sa portée : voir `image_doree`, qui porte la mesure. Le
+  # provider préfixe ses identifiants par `fr-par-1/`, et un module qui le
+  # reçoit tel quel compose une URL que l'API refuse.
+  value = reverse(split("/", scaleway_lb_route.secondaire.id))[0]
 }
 
 # --- ce que la mesure d'ordre de #119 vise, vide hors du cloud réel ---------
@@ -71,15 +77,25 @@ output "route_lb" {
 
 output "frontend_tls" {
   description = "Le frontend TLS, cible de la mesure d'ordre de `certificate_ids`."
-  value       = join("", [for f in scaleway_lb_frontend.tls : f.id])
+  # Dépouillée de sa portée : voir `image_doree`, qui porte la mesure. Le
+  # provider préfixe ses identifiants par `fr-par-1/`, et un module qui le
+  # reçoit tel quel compose une URL que l'API refuse.
+  value = join("", [for f in scaleway_lb_frontend.tls : reverse(split("/", f.id))[0]])
 }
 
 output "certificats_mesure" {
   description = "Les deux certificats, dans l'ordre où la création les a envoyés."
-  value       = [for c in scaleway_lb_certificate.mesure : c.id]
+  # Dépouillés, et pour une raison de plus : ces identifiants sont comparés
+  # à ce que `GetFrontend` rend dans `certificate_ids`, que l'API écrit en
+  # UUID nus. Portée comprise, la comparaison échouerait même sur un GET
+  # qui aboutit.
+  value = [for c in scaleway_lb_certificate.mesure : reverse(split("/", c.id))[0]]
 }
 
 output "certificat_backend" {
   description = "Le backend du frontend TLS, que sa réécriture doit conserver."
-  value       = join("", [for f in scaleway_lb_frontend.tls : f.backend_id])
+  # Dépouillée de sa portée : voir `image_doree`, qui porte la mesure. Le
+  # provider préfixe ses identifiants par `fr-par-1/`, et un module qui le
+  # reçoit tel quel compose une URL que l'API refuse.
+  value = join("", [for f in scaleway_lb_frontend.tls : reverse(split("/", f.backend_id))[0]])
 }

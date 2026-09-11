@@ -2287,6 +2287,94 @@
       "find": "            if nom not in ecrits or not items:",
       "replace": "            if nom not in ecrits or not items or nom.endswith('_info'):",
       "test": "tests/unit/outillage/test_reference_groupee.py::test_tout_module_livre_figure_dans_la_reference"
+    },
+    {
+      "name": "resolution-casse-de-la-jointure",
+      "why": "Le contrat porte `PrivateNIC` et `Ip` dans le même document. Une jointure sensible à la casse ne rate pas seulement le rattachement : elle publie « aucun schéma nommé PrivateNic » là où le contrat en porte un. Un refus mal motivé envoie l'utilisateur chercher un schéma qui existe.",
+      "file": "generator/ansible/resolution.py",
+      "find": "        index[_nom_court(reponse.payload_schema).lower()].append(operation)",
+      "replace": "        index[_nom_court(reponse.payload_schema)].append(operation)",
+      "test": "tests/unit/generator/test_resolution.py::test_la_jointure_ignore_la_casse_du_contrat"
+    },
+    {
+      "name": "resolution-objet-sans-name",
+      "why": "`Ip`, `Route`, `PrivateNIC` et `SecurityGroupRule` ne portent pas de champ `name` : il n'y a rien à chercher par nom. Sans ce refus, le lookup listerait et ne trouverait jamais, en rendant une erreur qui accuse l'utilisateur au lieu du contrat.",
+      "file": "generator/ansible/resolution.py",
+      "find": "            if \"name\" in champs.get(_schema_rendu(operation) or \"\", set())",
+      "replace": "            if True or \"name\" in champs.get(_schema_rendu(operation) or \"\", set())",
+      "test": "tests/unit/generator/test_resolution.py::test_un_objet_sans_champ_name_est_refuse_avec_sa_raison"
+    },
+    {
+      "name": "resolution-portee-ambigue",
+      "why": "Deux listes rendant le même objet ne disent pas dans quelle portée chercher. Trancher en silence rendrait l'identifiant trouvé par la première, qui n'est pas forcément celle que l'utilisateur visait.",
+      "file": "generator/ansible/resolution.py",
+      "find": "        if len(nommables) > 1:",
+      "replace": "        if len(nommables) > 2:",
+      "test": "tests/unit/generator/test_resolution.py::test_deux_listes_du_meme_objet_nommable_sont_une_portee_ambigue"
+    },
+    {
+      "name": "resolution-identifiant-de-deux-produits",
+      "why": "`ip_id` existe dans `instance` et dans `lb`, et ces deux `ip` ne sont pas la même chose. Garder le premier venu donnerait à l'utilisateur l'identifiant du mauvais produit, ce qui est pire que de ne rien lui donner.",
+      "file": "generator/ansible/resolution.py",
+      "find": "        if len(candidates) == 1:",
+      "replace": "        if len(candidates) >= 1:",
+      "test": "tests/unit/generator/test_resolution.py::test_un_identifiant_revendique_par_deux_produits_est_refuse"
+    },
+    {
+      "name": "resolution-comparaison-exacte",
+      "why": "Le contrat déclare que le filtre `name` de l'API est un préfixe : « \"server1\" will return \"server100\" and \"server1\" ». Comparer par préfixe rendrait `server100` à qui demande `server1`, sans un mot. C'est le défaut de `| first` déplacé dans le plugin, en moins visible.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        element for element in elements if isinstance(element, dict) and element.get(\"name\") == name",
+      "replace": "        element\n        for element in elements\n        if isinstance(element, dict) and str(element.get(\"name\") or \"\").startswith(name)",
+      "test": "tests/unit/collection/test_resolution_runtime.py::test_un_prefixe_rendu_par_l_api_n_est_pas_une_correspondance"
+    },
+    {
+      "name": "resolution-ambiguite-de-nom",
+      "why": "Scaleway n'impose pas l'unicité des noms. Rendre le premier de deux homonymes ferait agir le playbook sur une ressource que personne n'a désignée, et le second passage pourrait choisir l'autre.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    if len(exacts) > 1:",
+      "replace": "    if len(exacts) > 2:",
+      "test": "tests/unit/collection/test_resolution_runtime.py::test_deux_noms_identiques_sont_une_ambiguite_pas_un_choix"
+    },
+    {
+      "name": "resolution-portee-manquante",
+      "why": "Lister des backends sans `lb_id` ne rend pas moins de résultats : le chemin n'est pas rendable et l'API répond 404. Vérifier après l'appel changerait un refus lisible en erreur HTTP que le runtime ne sait pas interpréter.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "    manquants = [besoin for besoin in lookup.scope if not values.get(besoin)]",
+      "replace": "    manquants = [besoin for besoin in lookup.scope if not values.get(besoin) and False]",
+      "test": "tests/unit/collection/test_resolution_runtime.py::test_une_portee_manquante_est_refusee_avant_l_appel"
+    },
+    {
+      "name": "lookup-refus-motive-par-le-contrat",
+      "why": "`ip_id` est correctement orthographié, existe, et ne se résout pas : c'est l'objet `Ip` qui ne porte pas de champ `name`. Le ranger avec les inconnus enverrait l'utilisateur chercher une faute de frappe dans un nom correct, et la liste des résolubles ne lui dirait pas pourquoi le sien n'y est pas.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/lookup/resource_id.py",
+      "find": "        if parametre in UNRESOLVABLE:",
+      "replace": "        if parametre in UNRESOLVABLE and False:",
+      "test": "tests/unit/collection/test_lookup_resource_id.py::test_un_identifiant_non_resoluble_rend_la_raison_du_contrat"
+    },
+    {
+      "name": "lookup-un-seul-identifiant-par-appel",
+      "why": "Deux identifiants dans un appel ne pourraient pas dire quelle portée appartient auquel : `lb_id` vaut pour le backend et pas pour le serveur. Prendre le premier terme en silence résoudrait autre chose que ce qui a été demandé.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/lookup/resource_id.py",
+      "find": "        if len(terms) != 1:",
+      "replace": "        if len(terms) < 1:",
+      "test": "tests/unit/collection/test_lookup_resource_id.py::test_deux_identifiants_dans_un_appel_sont_refuses"
+    },
+    {
+      "name": "resolution-relecture-sans-filtre",
+      "why": "Quand l'API applique le filtre `name`, elle retire de la liste exactement ce que le message de refus doit citer. Mesuré contre l'émulateur : « aucune ressource nommée exactement X » était suivi de « la liste est vide » alors que la portée contenait des voisins. Le message perdait sa partie utile au moment précis où elle sert.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/scaleway.py",
+      "find": "        if filtre_disponible:\n            elements = lister(filtrer=False)",
+      "replace": "        if filtre_disponible and False:\n            elements = lister(filtrer=False)",
+      "test": "tests/unit/collection/test_resolution_runtime.py::test_un_refus_relit_sans_le_filtre_pour_avoir_de_quoi_citer"
+    },
+    {
+      "name": "sortie-terraform-portee",
+      "why": "Le provider Terraform préfixe ses identifiants par la portée, `fr-par-1/<uuid>`. Un module qui en reçoit un compose `/frontends/fr-par-1/<uuid>`, et ce qui revient n'est pas une erreur d'API mais le 404 du serveur web devant elle. Mesuré le 2026-09-10 : quatre sorties sur cinq gardaient leur portée, et le bloc de mesure #119 n'a jamais tourné jusqu'au bout là où il est le seul à pouvoir tourner.",
+      "file": "scripts/example.py",
+      "find": "            if isinstance(element, str) and PORTEE_COLLEE.match(element):",
+      "replace": "            if isinstance(element, str) and PORTEE_COLLEE.match(element) and False:",
+      "test": "tests/unit/outillage/test_sortie_portee.py::test_une_sortie_zonale_est_refusee"
     }
   ]
 }

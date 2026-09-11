@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import secrets
 import shutil
 import subprocess
@@ -322,6 +323,43 @@ def api(env: dict[str, str], chemin: str) -> Any:
     reponse = requests.get(f"{base}{chemin}", headers=entetes, timeout=30)
     reponse.raise_for_status()
     return reponse.json()
+
+
+#: Un identifiant que le provider Terraform a préfixé par sa portée,
+#: `fr-par-1/<uuid>` ou `fr-par/<uuid>`. Le module qui le reçoit tel quel
+#: compose `/frontends/fr-par-1/<uuid>`, et ce que rend l'API n'est pas une
+#: erreur d'API : c'est le 404 du serveur web devant elle, que le runtime ne
+#: sait pas interpréter.
+PORTEE_COLLEE = re.compile(r"^[a-z]{2}-[a-z]+(?:-\d+)?/[0-9a-f]{8}-[0-9a-f-]{27}$")
+
+
+def refuser_une_sortie_portee(sorties: dict[str, Any]) -> None:
+    """Refuse une sortie Terraform qui a gardé sa portée.
+
+    `CLAUDE.md` pose la règle : « toute sortie Terraform qui traverse vers un
+    module se dépouille de sa portée, et c'est la sortie qui s'en charge, pas
+    le playbook ». Elle était écrite et rien ne l'exécutait.
+
+    Mesuré sur le compte réel le 2026-09-10 : quatre sorties sur cinq la
+    violaient, `GetFrontend` rendait 400 sur l'une d'elles, et le bloc de
+    mesure #119 n'a jamais tourné jusqu'au bout là où il est le seul à pouvoir
+    tourner. Deux d'entre elles ne traversaient encore vers aucun module : la
+    garde ne distingue pas, parce que le jour où elles traverseront, personne
+    ne relira ce commentaire.
+    """
+    fautives = []
+    for nom, contenu in sorties.items():
+        valeur = contenu.get("value") if isinstance(contenu, dict) else contenu
+        for element in valeur if isinstance(valeur, list) else [valeur]:
+            if isinstance(element, str) and PORTEE_COLLEE.match(element):
+                fautives.append(f"{nom} = {element}")
+    if fautives:
+        raise ExempleError(
+            "sortie(s) Terraform portant encore leur portée :\n  "
+            + "\n  ".join(sorted(fautives))
+            + "\nUn module qui les reçoit compose une URL que l'API refuse. "
+            'Les dépouiller dans `outputs.tf` : reverse(split("/", ...))[0].'
+        )
 
 
 def controler_plan_de_controle(env: dict[str, str], sorties: dict[str, Any]) -> None:
@@ -723,6 +761,7 @@ def main(argv: list[str]) -> int:
         application_url = sorties["application_url"]["value"]
         print(f"plateforme déployée : {attendu['total']} machines, bastion {bastion_ip}")
 
+        refuser_une_sortie_portee(sorties)
         controler_plan_de_controle(env, sorties)
         controler_inventaire(inventaire(env), attendu)
 

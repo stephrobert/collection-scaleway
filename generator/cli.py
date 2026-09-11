@@ -23,10 +23,19 @@ from pathlib import Path
 from generator.ansible.collection import CollectionError, load_collection
 from generator.ansible.introductions import IntroductionsError, load_introductions
 from generator.ansible.models import ModuleModelError, build_module_specs
+from generator.ansible.resolution import (
+    Refus,
+    Resolution,
+    build_resolutions,
+    merge_refus,
+    merge_resolutions,
+)
+from generator.ir.enums import OperationKind
 from generator.overrides.loader import DEFAULT_OVERRIDES_ROOT, OverrideError
 from generator.parser.openapi import ParseError, parse_document
 from generator.plan import ProductPlan, build_plan
 from generator.renderer.modules import write_modules
+from generator.renderer.resolution import render_resolution
 from generator.report import render
 from generator.source.base import DEFAULT_SPEC_ROOT, SpecNotFoundError, VendoredSpecSource
 
@@ -114,11 +123,38 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="racine de la collection (défaut : découverte sous ansible_collections/)",
     )
+
+    # Sans produit, délibérément : la table est fondue entre tous les contrats
+    # générés. En écrire une par produit laisserait passer un identifiant
+    # revendiqué deux fois, et publierait celui du premier lu.
+    resolve = subcommands.add_parser(
+        "resolve", help="écrire la table de résolution dans module_utils"
+    )
+    resolve.add_argument(
+        "--collection-root",
+        type=Path,
+        default=None,
+        help="racine de la collection (défaut : découverte sous ansible_collections/)",
+    )
+    resolve.add_argument(
+        "--report-dir",
+        type=Path,
+        default=Path("build/reports"),
+        help="répertoire où verser le compte rendu de résolution",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     arguments = build_parser().parse_args(argv)
+
+    if arguments.command == "resolve":
+        try:
+            return _resolve(arguments)
+        except (SpecNotFoundError, ParseError, OverrideError, CollectionError) as error:
+            print(f"erreur : {error}", file=sys.stderr)
+            return EXIT_ERROR
+
     version = arguments.api_version or DEFAULT_VERSIONS.get(arguments.product, "v1")
 
     try:
@@ -181,6 +217,85 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return EXIT_UNDECIDED
+    return EXIT_OK
+
+
+def _resolve(arguments: argparse.Namespace) -> int:
+    """Écrit la table de résolution, et dit ce qu'elle ne résout pas.
+
+    Les refus sont écrits dans le même fichier que les résolutions : un
+    identifiant absent parce que le contrat est muet et un identifiant absent
+    parce que personne n'y a pensé se ressemblent trop pour être distingués par
+    une absence.
+    """
+    collection = load_collection(arguments.collection_root)
+    source = VendoredSpecSource(root=arguments.spec_root)
+
+    tables: list[tuple[Resolution, ...]] = []
+    refus: list[Refus] = []
+    # `Classification.kind` porte l'`OperationKind` : la table de réessai se
+    # calcule avec la même règle que les modules, sinon deux politiques
+    # cohabiteraient pour une seule opération.
+    classifications: dict[str, OperationKind] = {}
+    sources: list[str] = []
+
+    for produit, version in source.available():
+        plan = build_plan(
+            produit,
+            version,
+            spec_root=arguments.spec_root,
+            overrides_root=arguments.overrides_root,
+        )
+        service = plan.service
+        sources.append(f"specs/scaleway/{service.source}")
+        for entree in plan.operations:
+            classifications[entree.operation.id] = entree.classification.kind
+
+        identifiants = {
+            parametre.name
+            for operation in service.operations
+            for parametre in operation.parameters
+            if parametre.location.value == "path" and parametre.name.endswith("_id")
+        }
+        resolutions, refuses = build_resolutions(service, identifiants)
+        tables.append(resolutions)
+        refus.extend(refuses)
+
+    gardees, conflits = merge_resolutions(tables)
+    refus.extend(conflits)
+    refus = list(merge_refus(refus))
+
+    cible = collection.path / "plugins" / "module_utils" / "resolution.py"
+    cible.write_text(
+        render_resolution(
+            gardees,
+            refus,
+            classifications=classifications,
+            sources=sources,
+        ),
+        encoding="utf-8",
+    )
+
+    # Les refus ne vivaient que sur la sortie standard, donc ils mouraient avec
+    # le terminal. Ce sont eux qu'un lecteur cherche : pourquoi son identifiant
+    # ne se résout pas.
+    arguments.report_dir.mkdir(parents=True, exist_ok=True)
+    (arguments.report_dir / "resolution.md").write_text(
+        render.to_resolution_markdown(gardees, refus, sources),
+        encoding="utf-8",
+    )
+
+    affichage = cible.relative_to(ROOT) if cible.is_relative_to(ROOT) else cible
+    print(f"table de résolution -> {affichage}")
+    print()
+    for resolution in sorted(gardees, key=lambda item: item.parameter):
+        portee = ", ".join(resolution.scope) or "la zone seule"
+        print(f"  résolu   {resolution.parameter:<26} {resolution.list_operation:<24} {portee}")
+    if refus:
+        print()
+        for refuse in sorted(refus, key=lambda item: item.parameter):
+            print(f"  refusé   {refuse.parameter:<26} {refuse.reason}")
+    print(f"\n{len(gardees)} identifiant(s) résoluble(s), {len(refus)} refus.")
     return EXIT_OK
 
 
