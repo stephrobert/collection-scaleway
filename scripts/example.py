@@ -231,6 +231,62 @@ def refuser_un_mode_incompatible(cible: dict[str, Any], adresse: str) -> None:
         )
 
 
+#: La variable qui désigne le projet de l'exercice. **Distincte de
+#: `SCW_DEFAULT_PROJECT_ID` exprès** : retomber sur le défaut du profil est
+#: précisément le danger, et une variable à part fait de la désignation un acte
+#: plutôt qu'un héritage.
+PROJET_ENV = "SCW_EXAMPLE_PROJECT_ID"
+
+MARCHE_A_SUIVRE = """  scw account project create name=collection-scaleway-lab -o json
+  export SCW_EXAMPLE_PROJECT_ID=<son id>
+
+Puis bornez la clé dessus, comme le fait le parcours Scaleway : une application
+IAM, une politique de portée `projects`, et une clé d'API qui n'en sort pas. Le
+projet se crée hors bande et une seule fois : une clé capable de créer un projet
+vit à l'échelle de l'organisation, donc un run ne peut pas se donner sa propre
+frontière."""
+
+
+def projet_vise(env: dict[str, str], arguments: argparse.Namespace) -> tuple[str, str]:
+    """Le projet où l'exercice s'installe, désigné et jamais deviné.
+
+    **Une politique IAM a besoin d'une frontière, et le projet est la seule qui
+    existe.** Sans projet séparé, borner cet exercice revient à lui ouvrir tout
+    le compte : les jeux de permissions ont une portée `projects`, et rien
+    d'autre.
+
+    Ce que ça n'isole pas est dit plutôt que promis : `iam` est à l'échelle de
+    l'**organisation**, pas du projet. Une clé SSH créée ici survit à la
+    frontière, et c'est le contrôle de résidu différentiel qui la couvre, comme
+    il le faisait déjà (#191).
+    """
+    identifiant = (arguments.projet or env.get(PROJET_ENV) or "").strip()
+    if not identifiant:
+        raise ExempleError(
+            "aucun projet Scaleway désigné. Cet exercice crée quarante-cinq "
+            "ressources facturées, et il refuse de choisir pour vous où : sans "
+            f"`--projet` ni `{PROJET_ENV}`, il s'installerait dans le projet par "
+            "défaut de votre profil, qui peut être celui de votre production.\n\n"
+            f"{MARCHE_A_SUIVRE}"
+        )
+
+    # Le nommer coûte un appel et change ce que l'opérateur voit avant de payer :
+    # un identifiant ne dit pas dans quoi on s'apprête à déployer.
+    try:
+        projet = api(env, f"/account/v3/projects/{identifiant}")
+    except Exception as erreur:
+        raise ExempleError(
+            f"le projet {identifiant} n'a pas pu être lu ({erreur}). L'exercice "
+            "refuse de déployer dans un projet qu'il ne sait pas nommer : ne pas "
+            "savoir n'est pas savoir que ça va."
+        ) from erreur
+
+    nom = str(projet.get("name") or "")
+    if not nom:
+        raise ExempleError(f"le projet {identifiant} ne porte pas de nom dans la réponse de l'API.")
+    return identifiant, nom
+
+
 def environnement_emulateur() -> dict[str, str]:
     """Les identifiants que l'émulateur accepte, dits par lui et non inventés."""
     resultat = lancer([binaire("feint"), "env", "scaleway", "--endpoint", ENDPOINT], capture=True)
@@ -813,6 +869,15 @@ def main(argv: list[str]) -> int:
     parseur.add_argument("cible", choices=sorted(CIBLES))
     parseur.add_argument("--garder", action="store_true", help="ne pas détruire à la fin")
     parseur.add_argument(
+        "--projet",
+        metavar="ID",
+        help=(
+            "projet Scaleway où déployer, cible `reel` seulement. À défaut, "
+            f"`{PROJET_ENV}`. Jamais le défaut du profil : c'est ce que cette "
+            "option existe pour empêcher."
+        ),
+    )
+    parseur.add_argument(
         "--enregistrer",
         metavar="FICHIER",
         help=(
@@ -877,6 +942,12 @@ def main(argv: list[str]) -> int:
         env.update(environnement_emulateur())
         env["SCW_CONFIG_PATH"] = str(TRAVAIL / "absent.yaml")
     else:
+        # **Avant tout déploiement**, et avant la prise de référence de résidu :
+        # un exercice qui découvrirait sa cible après avoir créé la première
+        # ressource l'aurait déjà créée au mauvais endroit.
+        identifiant_projet, nom_projet = projet_vise(env, arguments)
+        variables["project_id"] = identifiant_projet
+        print(f"projet visé : {nom_projet} ({identifiant_projet})")
         variables["endpoint"] = ""
         # **Enregistrer ce que l'API répond, et pas seulement si l'assertion
         # passe.** Une assertion rend un booléen ; quand elle échoue, elle dit
