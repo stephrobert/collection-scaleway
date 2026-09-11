@@ -29,6 +29,18 @@ pip install 'scaleway>=2.9.0'
 export SCW_ACCESS_KEY=... SCW_SECRET_KEY=...
 ```
 
+Then check the setup before anything else fails halfway through it:
+
+```bash
+ansible-playbook stephrobert.scaleway.doctor
+```
+
+It reports the ansible-core that will run the modules, the SDK the interpreter
+can import, where the credentials come from, and whether the API answers. Every
+check runs, so one run names every problem rather than the first one, and it
+prints `Ready.` only when everything was checked **and** everything passed. It
+never prints a credential, only where it came from.
+
 An inventory discovers the fleet, a playbook acts on it:
 
 ```yaml
