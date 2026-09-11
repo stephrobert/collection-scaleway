@@ -58,6 +58,9 @@ def extract(chemin: Path) -> list[str]:
 README: tuple[Path, ...] = (
     ROOT / "README.md",
     ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "README.md",
+    # Elle porte les recettes depuis #183 : ce qu'on y écrit s'analyse comme
+    # le reste, sinon une recette fausse se lit comme une recette.
+    ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "playbooks" / "README.md",
 )
 
 
