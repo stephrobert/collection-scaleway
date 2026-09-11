@@ -163,11 +163,18 @@
 
         # ---- What happened ---------------------------------------------
 
+        # **A rehearsal that reports like a run is worse than no rehearsal.**
+        # In check mode the action module announces the change without sending
+        # it, so `changed` here counts what *would* move. Reporting that as
+        # `acted on` told the operator their machines were off while they were
+        # still running, and the fleet report said otherwise a minute later.
         - name: The result
           ansible.builtin.debug:
             msg: >-
               {{ agi.results | default([]) | selectattr('changed') | list | length }}
-              acted on, {{ deja | length }} already {{ desired_state }},
+              {{ 'would be acted on (check mode: nothing was sent)'
+                 if ansible_check_mode else 'acted on' }},
+              {{ deja | length }} already {{ desired_state }},
               {{ en_vol | length }} left alone,
               {{ illisibles | length }} unreadable.
 

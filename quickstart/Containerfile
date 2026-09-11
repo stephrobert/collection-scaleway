@@ -1,0 +1,60 @@
+# L'émulateur, depuis le binaire que son dépôt publie et signe.
+#
+# **Pourquoi construire plutôt que tirer une image.** feint ne publie pas
+# d'image : sa release publie quatre binaires, leurs empreintes, une nomenclature
+# et une attestation de provenance. Construire ici avec l'empreinte épinglée
+# donne la même garantie qu'un condensat d'image, et sur l'artefact que le
+# projet publie vraiment.
+#
+# **Pourquoi l'empreinte est écrite ici et pas téléchargée.** Vérifier un
+# binaire contre le `checksums.txt` téléchargé à côté ne prouve que leur
+# cohérence mutuelle. L'empreinte épinglée dans ce fichier prouve que c'est
+# **cet octet-là** qui entre dans l'image, et un changement se voit dans un diff.
+FROM docker.io/library/debian:bookworm-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171
+
+ARG FEINT_VERSION=v0.13.0
+ARG TARGETARCH
+# Relevées sur `checksums.txt` de la release, qui porte elle-même un faisceau
+# cosign. Deux architectures : un poste Apple Silicon n'est pas un cas rare.
+ARG FEINT_SHA256_amd64=35509e97339dd03903c77cb0a3ba1c2aa03e7e7ce460bd4b6d853c28424c9c2e
+ARG FEINT_SHA256_arm64=3633217b102c126fd28ad166023744b04e61600449f4294a18247da2711bfdc9
+
+LABEL org.opencontainers.image.title="feint for the stephrobert.scaleway quickstart"
+LABEL org.opencontainers.image.description="Local Scaleway emulator, so the collection can be tried without an account."
+LABEL org.opencontainers.image.source="https://github.com/stephrobert/collection-scaleway"
+
+# `set -eux` et une empreinte choisie par architecture : une architecture sans
+# empreinte déclarée doit **échouer**, jamais installer sans vérifier.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates curl; \
+    rm -rf /var/lib/apt/lists/*; \
+    case "${TARGETARCH}" in \
+      amd64) attendu="${FEINT_SHA256_amd64}" ;; \
+      arm64) attendu="${FEINT_SHA256_arm64}" ;; \
+      *) echo "architecture ${TARGETARCH} sans empreinte déclarée" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL -o /usr/local/bin/feint \
+      "https://github.com/stephrobert/feint/releases/download/${FEINT_VERSION}/feint-linux-${TARGETARCH}"; \
+    echo "${attendu}  /usr/local/bin/feint" | sha256sum -c -; \
+    chmod +x /usr/local/bin/feint; \
+    apt-get purge -y --auto-remove curl; \
+    feint version || feint --help >/dev/null
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+
+# Le répertoire appartient à l'utilisateur non privilégié **avant** que le
+# volume nommé s'y monte : Docker recopie l'appartenance du chemin de l'image,
+# et un `/env` appartenant à root rendrait l'écriture impossible sans que rien
+# ne le dise à la construction.
+RUN mkdir -p /env /state \
+ && chown 65534:65534 /env /state \
+ && chmod +x /usr/local/bin/entrypoint.sh
+
+# Sans privilèges : cet émulateur accepte n'importe quel identifiant, et rien
+# ici n'a besoin de root.
+USER 65534:65534
+
+EXPOSE 4599
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

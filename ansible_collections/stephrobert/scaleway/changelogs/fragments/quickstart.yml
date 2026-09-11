@@ -1,0 +1,14 @@
+minor_changes:
+  - "A quickstart now lets anyone try the collection without a Scaleway
+    account, without credentials, and without spending anything. ``docker
+    compose up -d`` starts a local emulator and creates a small fictional
+    fleet; from there the shipped playbooks run exactly as they would against
+    a real account, and switching over changes the endpoint and the credentials
+    and nothing else. The page says what the emulator does not prove, because
+    an emulator that lies without saying so teaches a false green. The whole
+    journey is replayed on every CI run, so it cannot go stale quietly."
+bugfixes:
+  - "playbooks - ``power_schedule`` reported ``acted on`` in check mode, where
+    the action module announces a change without sending it. An operator
+    rehearsing a shutdown read that their machines were off while they were
+    still running. The report now distinguishes a rehearsal from a run."

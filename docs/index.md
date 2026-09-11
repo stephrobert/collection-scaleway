@@ -35,6 +35,7 @@ hand-written collection is stale before it is published.
 :caption: Use the collection
 :maxdepth: 2
 
+guides/quickstart
 guides/using-the-collection
 guides/shipped-playbooks
 guides/dynamic-inventory

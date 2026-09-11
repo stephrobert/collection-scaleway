@@ -1,0 +1,37 @@
+# Write a tag, then run it again and watch nothing happen.
+#
+# This is the half of a collection that is easy to claim and hard to hold: a
+# module that reads, compares, and writes only the difference. The second run
+# reports `changed=0` because the machine already carries what was asked, not
+# because the module skipped it.
+#
+# Play it with `--check` first: it compares and reports without writing.
+- name: Give one machine a tag, and prove the second run is quiet
+  hosts: localhost
+  gather_facts: false
+  vars:
+    zone: fr-par-1
+    machine: cache-1
+    nouvelles: ["role=cache", "env=lab", "office-hours", "owner=quickstart"]
+  tasks:
+    - name: Find the machine by name
+      stephrobert.scaleway.instance_server_info:
+        zone: "{{ zone }}"
+      register: parc
+
+    - name: Keep its identifier
+      ansible.builtin.set_fact:
+        cible: "{{ (parc.servers | selectattr('name', 'eq', machine) | first).id }}"
+
+    - name: Set the tags
+      stephrobert.scaleway.instance_server:
+        zone: "{{ zone }}"
+        server_id: "{{ cible }}"
+        tags: "{{ nouvelles }}"
+      register: ecriture
+
+    - name: Say what the run did
+      ansible.builtin.debug:
+        msg: >-
+          {{ 'The tags were written.' if ecriture.changed
+             else 'Nothing to write: the machine already carried these tags.' }}

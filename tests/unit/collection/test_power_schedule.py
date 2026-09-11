@@ -18,6 +18,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
 RACINE = Path(__file__).resolve().parents[3]
 PLAYBOOK = RACINE / "ansible_collections/stephrobert/scaleway/playbooks/power_schedule.yml"
@@ -120,6 +121,29 @@ def test_aucune_valeur_par_defaut_ne_designe_une_cible(ansible_disponible: None)
         )
 
 
+def _tache(chemin: Path, nom: str) -> dict:
+    """La tâche portant ce nom, lue dans le YAML plutôt que cherchée au texte.
+
+    Un `grep` sur le message rendrait vert une reformulation qui perdrait la
+    distinction : c'est la structure qu'on tient, pas la présence d'une chaîne
+    quelque part dans le fichier.
+    """
+    jeu = yaml.safe_load(chemin.read_text(encoding="utf-8"))[0]
+
+    def _parcourir(taches: list) -> dict | None:
+        for tache in taches:
+            if tache.get("name") == nom:
+                return tache
+            trouvee = _parcourir(tache.get("block", []))
+            if trouvee is not None:
+                return trouvee
+        return None
+
+    tache = _parcourir(jeu["tasks"])
+    assert tache is not None, f"la tâche « {nom} » a disparu du playbook"
+    return tache
+
+
 def test_une_seule_tache_ecrit(ansible_disponible: None) -> None:
     """Tout le reste lit. Une écriture ajoutée hors du chemin gardé rougit ici."""
     texte = PLAYBOOK.read_text(encoding="utf-8")
@@ -128,3 +152,25 @@ def test_une_seule_tache_ecrit(ansible_disponible: None) -> None:
 
     ecritures = [nom for nom in appels if not nom.endswith("_info")]
     assert ecritures == ["instance_server_action"], ecritures
+
+
+def test_le_compte_rendu_distingue_une_repetition_dun_vrai_passage() -> None:
+    """Une répétition qui rend compte comme un vrai passage est pire que rien.
+
+    En mode check, le module d'action annonce le changement sans l'envoyer :
+    `changed` compte alors ce qui **bougerait**. Le compte rendu disait « acted
+    on », donc l'opérateur lisait que ses machines étaient éteintes pendant
+    qu'elles tournaient encore. Mesuré en jouant le playbook contre l'émulateur
+    du quickstart : `--check` annonçait trois extinctions, et l'inventaire
+    montrait les trois machines toujours `running`.
+    """
+    compte_rendu = _tache(PLAYBOOK, "The result")
+    message = compte_rendu["ansible.builtin.debug"]["msg"]
+
+    assert "ansible_check_mode" in message, (
+        "le compte rendu ne distingue pas une répétition d'un vrai passage : "
+        "il dit avoir agi dans les deux cas"
+    )
+    assert "would be acted on" in message and "acted on" in message, (
+        "les deux formulations doivent exister, sinon la distinction n'en est pas une"
+    )
