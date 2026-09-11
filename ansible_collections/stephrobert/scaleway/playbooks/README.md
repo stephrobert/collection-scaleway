@@ -13,6 +13,7 @@ documentation costs more than no documentation at all.
 |---|---|
 | [doctor.yml](doctor.yml) | what is wrong with a setup, all of it at once, before anything else fails halfway |
 | [fleet_report.yml](fleet_report.yml) | the whole fleet in one read-only command, and the zones it could not read named rather than counted as empty |
+| [power_schedule.yml](power_schedule.yml) | bringing a named group to a power state, twice a day, and refusing every target it was not given |
 | [list_servers.yml](list_servers.yml) | listing a whole zone, split by state and by type |
 | [server_details.yml](server_details.yml) | the same module in unit read, and the `changed=false` of an information module |
 | [stop_server.yml](stop_server.yml) | stopping a named Instance, waiting for the target state, then reading it back |

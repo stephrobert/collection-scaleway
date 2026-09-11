@@ -1,0 +1,185 @@
+# Bring a named group of Instances to a power state, and nothing else.
+#
+#   ansible-playbook stephrobert.scaleway.power_schedule \
+#     -i production.scaleway.yml -e group=scw_tag_office_hours -e desired_state=off
+#
+#   08:00  -e desired_state=on
+#   20:00  -e desired_state=off
+#
+# **This is the playbook that pays for itself twice a day.** Machines running at
+# night that nobody uses are the most ordinary waste there is, and the collection
+# already had every piece: the inventory groups by tag, the action module powers
+# on and off. Nothing joined them, so everyone wrote the loop again.
+#
+# **The action module is not idempotent, and it is not supposed to be.** An
+# action is a trigger, not a state: `stop_server.yml` says so, and running it
+# twice reports `changed` twice. So idempotence lives here, in the playbook: the
+# current state is read first, and only the machines that are not already where
+# they should be are acted on. A second run reports nothing changed because
+# nothing needed to change, not because a module pretended.
+#
+# **Three refusals, before anything is sent.**
+#
+#   no group named        no default means "the whole fleet". A schedule that
+#                         guesses its target powers off production one evening
+#   an empty selection    finding nothing does not authorise acting on
+#                         everything, and the playbook says what it searched
+#   a machine in flight   `starting`, `stopping` and `locked` are not states to
+#                         act from. They are named, not silently swept up
+- name: Bring a named group of Instances to a power state
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    # No default, deliberately. See the refusals above.
+    group: ""
+    desired_state: ""
+
+  tasks:
+    # **Rien demandé n'est pas une erreur.** Sans groupe, le playbook ne fait
+    # rien et le dit : c'est la convention de `stop_server.yml`, et c'est ce qui
+    # permet à `mise run integration` de le jouer sans argument. Un exemple qui
+    # choisirait à votre place quelles machines éteindre est un piège, pas une
+    # documentation.
+    - name: With no group named, do nothing and say so
+      ansible.builtin.debug:
+        msg: >-
+          No group named. Run again with
+          `-i <name>.scaleway.yml -e group=<inventory group> -e desired_state=on|off`
+          to act. The playbook stops here without touching anything.
+      when: group | length == 0
+
+    - name: Bring the named group where it should be
+      when: group | length > 0
+      block:
+        # ---- What the playbook refuses to guess ------------------------
+
+        - name: A desired state comes with the group
+          ansible.builtin.assert:
+            that:
+              - desired_state in ['on', 'off']
+            fail_msg: >-
+              group `{{ group }}` was named without `-e desired_state=on|off`.
+              A schedule that guesses which way to move a fleet is how a
+              production fleet goes down one evening.
+            quiet: true
+
+        - name: What the named group holds, read from the inventory
+          ansible.builtin.set_fact:
+            selection: "{{ groups[group] | default([]) | sort }}"
+
+        # **Un groupe nommé et vide est une erreur, pas un silence.** À 20:00,
+        # un planificateur qui ne trouve rien et sort en 0 est un planificateur
+        # qui échoue sans que personne ne le sache.
+        - name: The selection is not empty
+          ansible.builtin.assert:
+            that:
+              - selection | length > 0
+            fail_msg: >-
+              the group `{{ group }}` holds no host.
+              {{ ('No inventory was parsed: run with `-i <name>.scaleway.yml`.
+                   That missing option is the likeliest cause.')
+                 if groupes_construits | length == 0
+                 else ('Groups the inventory built: '
+                       ~ (groupes_construits | join(', ')) ~ '.') }}
+              Finding nothing does not authorise acting on everything.
+            quiet: true
+          vars:
+            groupes_construits: >-
+              {{ groups.keys() | reject('equalto', 'all')
+                 | reject('equalto', 'ungrouped') | list | sort }}
+
+        # ---- What the machines are, read rather than remembered --------
+
+        # The inventory can be served from its cache, and a cached state is not
+        # a state: a decision to power a machine off is worth one read.
+        - name: Read each selected machine, now
+          stephrobert.scaleway.instance_server_info:
+            zone: "{{ hostvars[item].scaleway_zone }}"
+            server_id: "{{ hostvars[item].scaleway_id }}"
+          loop: "{{ selection }}"
+          register: lecture
+          failed_when: false
+
+        - name: Sort the machines by what is to be done with them
+          ansible.builtin.set_fact:
+            # `server is defined` rather than `failed`: `failed_when: false`
+            # rewrites that field, measured, so a machine that could not be read
+            # would pass for one that answered.
+            lues: "{{ lecture.results | selectattr('server', 'defined') | list }}"
+            illisibles: >-
+              {{ lecture.results | rejectattr('server', 'defined')
+                 | map(attribute='item') | list | sort }}
+
+        - name: Separate what is already there, what moves, and what cannot
+          ansible.builtin.set_fact:
+            deja: >-
+              {{ lues | selectattr('server.state', 'equalto', etat_vise)
+                 | map(attribute='server.name') | list | sort }}
+            a_agir: >-
+              {{ lues | selectattr('server.state', 'in', etats_de_depart) | list }}
+            en_vol: >-
+              {{ lues | rejectattr('server.state', 'equalto', etat_vise)
+                 | rejectattr('server.state', 'in', etats_de_depart)
+                 | map(attribute='server') | list }}
+          vars:
+            etat_vise: "{{ 'running' if desired_state == 'on' else 'stopped' }}"
+            # `stopped in place` keeps the hypervisor slot; both count as off,
+            # and both are a legitimate starting point for a power-on.
+            etats_de_depart: >-
+              {{ ['stopped', 'stopped in place'] if desired_state == 'on'
+                 else ['running'] }}
+
+        # ---- What is about to happen, said before it happens ------------
+
+        - name: What this run would change
+          ansible.builtin.debug:
+            msg: >-
+              {{ group }} -> {{ desired_state }} :
+              {{ a_agir | length }} to act on
+              ({{ a_agir | map(attribute='server.name') | list | sort
+                  | join(', ') or 'none' }}),
+              {{ deja | length }} already there
+              {{ ('· in flight or locked, left alone: '
+                  ~ (en_vol | map(attribute='name') | list | sort | join(', ')))
+                 if en_vol else '' }}
+              {{ ('· unreadable: ' ~ (illisibles | join(', '))) if illisibles else '' }}
+
+        # ---- The only thing that writes --------------------------------
+
+        # `check_mode` is honoured by the action module, which reads the
+        # resource before announcing a change rather than announcing one
+        # blind (#168).
+        - name: Bring each machine that is not already there
+          stephrobert.scaleway.instance_server_action:
+            zone: "{{ item.server.zone }}"
+            server_id: "{{ item.server.id }}"
+            action: "{{ 'poweron' if desired_state == 'on' else 'poweroff' }}"
+          loop: "{{ a_agir }}"
+          loop_control:
+            label: "{{ item.server.name }}"
+          register: agi
+
+        # ---- What happened ---------------------------------------------
+
+        - name: The result
+          ansible.builtin.debug:
+            msg: >-
+              {{ agi.results | default([]) | selectattr('changed') | list | length }}
+              acted on, {{ deja | length }} already {{ desired_state }},
+              {{ en_vol | length }} left alone,
+              {{ illisibles | length }} unreadable.
+
+        # A machine that could not be read is not a machine that is fine. The
+        # run stops on it, after having done what it could for the others:
+        # hiding it would let the next schedule act on a fleet it does not know.
+        - name: Every selected machine was readable
+          ansible.builtin.assert:
+            that:
+              - illisibles | length == 0
+            fail_msg: >-
+              {{ illisibles | length }} machine(s) could not be read:
+              {{ illisibles | join(', ') }}. Their power state is unknown, so
+              this run does not claim the group is where it should be.
+            quiet: true
