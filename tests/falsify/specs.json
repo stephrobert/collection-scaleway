@@ -2407,6 +2407,22 @@
       "find": "                        \"routes_non_emulees\",",
       "replace": "                        \"routes_non_emulees_desactive\",",
       "test": "tests/unit/outillage/test_comparaison_cibles.py::test_la_projection_laisse_passer_ce_que_la_comparaison_lit"
+    },
+    {
+      "name": "emulateur-mode-incompatible",
+      "why": "L'exercice adopte un émulateur qui répond, et `cible[\"vm\"]` ne servait qu'au démarrage d'un neuf. Mesuré le 2026-09-11 : un émulateur vide en `--vm off` écoutait sur le port de l'exercice, et `machines` l'aurait adopté avant de jouer des playbooks SSH contre des machines que personne ne démarre. L'échec serait arrivé après plusieurs minutes d'attente, en accusant les playbooks.",
+      "file": "scripts/example.py",
+      "find": "    if servi != attendu:",
+      "replace": "    if servi != attendu and False:",
+      "test": "tests/unit/outillage/test_mode_emulateur.py::test_le_cas_mesure_du_2026_09_11_est_refuse"
+    },
+    {
+      "name": "emulateur-mode-inconnu",
+      "why": "Ne pas savoir n'est pas savoir que ça va. Un émulateur qui ne répond pas à `status`, ou qui répond autre chose que du JSON, ne prouve pas qu'il sert le bon mode : la garde refuse plutôt que de supposer, comme la garde voisine refuse d'adopter ce qu'elle ne sait pas lire.",
+      "file": "scripts/example.py",
+      "find": "    if servi is None:\n        raise ExempleError(",
+      "replace": "    if servi is None and False:\n        raise ExempleError(",
+      "test": "tests/unit/outillage/test_mode_emulateur.py::test_un_emulateur_qui_ne_dit_pas_son_mode_est_refuse"
     }
   ]
 }

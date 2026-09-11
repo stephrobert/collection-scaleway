@@ -162,6 +162,72 @@ def refuser_emulateur_habite(_env: dict[str, str]) -> None:
         )
 
 
+#: Ce que `feint status` rend pour chaque mode de démarrage. **Mesuré le
+#: 2026-09-11**, en démarrant un émulateur dans chaque mode et en lisant sa
+#: sortie : `--vm off` se déclare `none`, les autres se déclarent sous leur
+#: propre nom. Supposer la table ferait refuser une cible parfaitement valide,
+#: ce qui est pire que l'absence de garde.
+MODES_DECLARES: dict[str, str] = {"off": "none"}
+
+
+def mode_servi(adresse: str) -> str | None:
+    """Le mode de machines de l'émulateur qui écoute, tel qu'il le déclare.
+
+    `None` quand la question n'a pas de réponse : l'émulateur ne répond pas à
+    `status`, ou répond quelque chose qui n'est pas du JSON. L'appelant refuse
+    alors, plutôt que de supposer.
+    """
+    resultat = lancer(
+        [binaire("feint"), "status", "--addr", adresse, "--format", "json"], capture=True
+    )
+    if resultat.returncode != 0:
+        return None
+    try:
+        declare = json.loads(resultat.stdout or "{}").get("machines")
+    except ValueError:
+        return None
+    return None if declare is None else str(declare)
+
+
+def refuser_un_mode_incompatible(cible: dict[str, Any], adresse: str) -> None:
+    """Refuse d'adopter un émulateur qui ne sert pas le mode que la cible exige.
+
+    **La garde voisine contrôle une propriété et laissait passer celle-ci.**
+    `refuser_emulateur_habite` demande si l'émulateur contient quelque chose ;
+    un émulateur vide en `--vm off` lui convient donc, et `machines` l'aurait
+    adopté avant de jouer des playbooks SSH contre des machines qui ne démarrent
+    jamais. L'échec serait arrivé après plusieurs minutes d'attente, et il
+    aurait accusé les playbooks : `wait_for_connection` sur un hôte injoignable
+    ne dit rien du mode de l'émulateur (#187).
+
+    **Refuser n'est pas bloquer.** L'exercice reste lançable pendant qu'un autre
+    émulateur tourne, sur une autre adresse, et le message le dit plutôt que
+    d'arrêter le processus de quelqu'un d'autre : c'est exactement ce que la
+    garde voisine existe pour empêcher.
+    """
+    attendu = MODES_DECLARES.get(cible["vm"], cible["vm"])
+    servi = mode_servi(adresse)
+
+    if servi is None:
+        raise ExempleError(
+            f"un émulateur écoute sur {adresse} et ne dit pas dans quel mode. "
+            "L'exercice refuse de l'adopter : il ne sait pas si les machines "
+            "qu'il va demander démarreront.\n"
+            f"Choisir une autre adresse avec FEINT_ADDR, ou arrêter cet émulateur."
+        )
+
+    if servi != attendu:
+        raise ExempleError(
+            f"un émulateur écoute sur {adresse} et sert les machines en "
+            f"« {servi} », quand cette cible demande « {attendu} ». L'exercice "
+            "refuse de l'adopter : les playbooks qui se connectent aux machines "
+            "attendraient des hôtes que personne ne démarre, et l'échec "
+            "accuserait les playbooks.\n"
+            "Choisir une autre adresse avec FEINT_ADDR, et l'exercice démarrera "
+            "le sien dans le bon mode."
+        )
+
+
 def environnement_emulateur() -> dict[str, str]:
     """Les identifiants que l'émulateur accepte, dits par lui et non inventés."""
     resultat = lancer([binaire("feint"), "env", "scaleway", "--endpoint", ENDPOINT], capture=True)
@@ -698,6 +764,9 @@ def main(argv: list[str]) -> int:
         if adopte:
             refuser_emulateur_habite(env_probe := dict(os.environ))
             del env_probe
+            # Deux questions, et la première ne répond pas à la seconde : un
+            # émulateur vide peut très bien ne pas servir le mode demandé.
+            refuser_un_mode_incompatible(cible, ADRESSE)
         if not adopte:
             demarrage = lancer(
                 [
