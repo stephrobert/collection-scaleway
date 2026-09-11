@@ -4,7 +4,7 @@
 # `server_id` omitted lists the zone. That is the only choice the module makes,
 # and the playbook shows it.
 #
-#   ansible-playbook stephrobert.scaleway.detail_dun_serveur \
+#   ansible-playbook stephrobert.scaleway.server_details \
 #     -e zone=fr-par-1 -e server_id=<uuid>
 #
 # Without `server_id`, the playbook takes the first Instance in the zone, so it

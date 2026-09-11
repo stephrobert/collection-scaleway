@@ -3,7 +3,7 @@
 # The Day-2 case par excellence: acting on a machine that exists, without ever
 # creating or deleting one.
 #
-#   ansible-playbook stephrobert.scaleway.arreter_un_serveur \
+#   ansible-playbook stephrobert.scaleway.stop_server \
 #     -e zone=fr-par-1 -e server_id=<uuid>
 #
 # Without `server_id` the playbook does nothing and says so: an example that

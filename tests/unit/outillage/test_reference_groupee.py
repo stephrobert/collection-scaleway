@@ -81,7 +81,7 @@ def test_les_playbooks_livres_ont_leur_page(site: Path) -> None:
     texte = (site / "guides" / "shipped-playbooks.md").read_text(encoding="utf-8")
 
     assert texte.startswith("# Task playbooks")
-    assert "arreter_un_serveur.yml" in texte
+    assert "stop_server.yml" in texte
 
 
 def test_un_readme_absent_est_une_erreur_pas_une_page_vide(site: Path) -> None:
