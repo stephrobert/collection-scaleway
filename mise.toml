@@ -324,6 +324,13 @@ description = "Construire l'archive installable, et la vérifier"
 depends = ["generate"]
 run = "python scripts/package.py"
 
+[tasks.quickstart]
+description = "Rejouer le parcours d'accueil (docker compose, sans compte Scaleway)"
+# Hors de `check`, comme `integration` et pour la même raison : docker est un
+# backend de test, pas une dépendance du produit. La CI le joue, parce qu'une
+# page d'accueil qui périme est ce qu'un visiteur découvre en premier.
+run = "python scripts/quickstart.py"
+
 [tasks.integration]
 description = "Jouer les playbooks contre un émulateur local (FEINT_VM=off)"
 # Volontairement hors de `check` : l'émulateur est un backend de test, pas une

@@ -1,0 +1,96 @@
+# Essayer la collection sans compte Scaleway.
+#
+# Trois services, et la frontière entre eux est celle du produit : `emulateur`
+# sert l'API, `parc` crée ce qu'un vrai compte contiendrait déjà, `ansible`
+# l'exploite. Rien ici ne parle à Scaleway, rien n'est facturé, et aucun
+# identifiant réel n'est nécessaire.
+#
+# **La collection jouée est celle du dépôt cloné**, montée dans l'image
+# d'exécution. L'image fournit ansible-core et le SDK ; le dépôt fournit la
+# collection. C'est ce qui fait de ce parcours une mesure du code présent
+# plutôt qu'une démonstration d'une version publiée il y a des mois.
+#
+# **Les identifiants viennent de l'émulateur**, par `feint env scaleway`, écrit
+# dans un volume que les deux autres services lisent. Les inventer ici créerait
+# une seconde source de ce que l'émulateur accepte.
+
+x-ee: &ee
+  # Épinglée par condensat : une étiquette se réécrit, un condensat non. C'est
+  # la règle que `.plumber.yaml` applique à toute image de ce dépôt.
+  image: ghcr.io/stephrobert/collection-scaleway/ee@sha256:cedb42172910b03468c42ae39da319c8312108261efef0ae17830919aba70b90
+  working_dir: /quickstart
+  environment:
+    ANSIBLE_CONFIG: /quickstart/ansible.cfg
+
+services:
+  emulateur:
+    build:
+      context: .
+      dockerfile: Containerfile
+    # Vers l'hôte, la boucle locale seulement : cet émulateur accepte n'importe
+    # quel identifiant, et ce n'est pas un service à exposer.
+    #
+    # Le port 4877 est celui de la plateforme d'exemple de ce dépôt ; celui-ci
+    # en prend un autre, pour ne jamais marcher sur la session de quelqu'un.
+    ports:
+      - "127.0.0.1:4899:4599"
+    volumes:
+      - identifiants:/env
+      # La flotte fictive, qui survit au conteneur. `docker compose down -v`
+      # l'efface, et c'est ce que la page annonce.
+      - flotte:/state
+    healthcheck:
+      test: ["CMD", "feint", "wait", "--addr", "127.0.0.1:4599", "--timeout", "5s"]
+      interval: 2s
+      timeout: 6s
+      retries: 15
+      start_period: 2s
+
+  # Le parc fictif, créé une fois au démarrage. **C'est ce que Terraform ferait
+  # sur un vrai compte.** La collection ne crée rien : elle exploite ce qui
+  # existe, et ce parcours a donc besoin que quelque chose ait créé d'abord.
+  parc:
+    <<: *ee
+    depends_on:
+      emulateur:
+        condition: service_healthy
+    volumes:
+      - ./:/quickstart:ro
+      - identifiants:/env:ro
+    command: ["sh", "-c", ". /env/scaleway.sh && exec ansible-playbook parc.yml"]
+
+  # Ce que l'opérateur lance :
+  #   docker compose run --rm ansible ansible-playbook stephrobert.scaleway.doctor
+  # La commande par défaut est le rapport de parc.
+  ansible:
+    <<: *ee
+    # **Hors du `up`, et lancé à la demande.** Sans profil, `docker compose up`
+    # jouerait un playbook en arrière-plan, dont la sortie irait dans un journal
+    # que personne ne lit : le résultat visible en moins de cinq minutes
+    # deviendrait un résultat invisible tout de suite.
+    profiles: ["outil"]
+    # L'émulateur, pas le parc : `run` relancerait le peuplement avant chaque
+    # commande, et dix secondes à chaque fois pour ne rien créer.
+    depends_on:
+      emulateur:
+        condition: service_healthy
+    volumes:
+      - ./:/quickstart
+      - identifiants:/env:ro
+      # La collection du dépôt cloné passe devant celle de l'image : un cran
+      # au-dessus de `quickstart/`, c'est la racine du dépôt.
+      - ../ansible_collections:/collections/ansible_collections:ro
+    environment:
+      ANSIBLE_CONFIG: /quickstart/ansible.cfg
+      # Les deux chemins, dans cet ordre : la collection du dépôt d'abord, puis
+      # ce que l'image porte, pour que `ansible.builtin` et les dépendances de
+      # l'image restent joignables.
+      ANSIBLE_COLLECTIONS_PATH: /collections:/usr/share/ansible/collections
+    command:
+      - "sh"
+      - "-c"
+      - ". /env/scaleway.sh && exec ansible-playbook stephrobert.scaleway.fleet_report"
+
+volumes:
+  identifiants:
+  flotte:

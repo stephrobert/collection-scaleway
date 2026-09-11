@@ -1,0 +1,29 @@
+# The fictional fleet, discovered rather than listed.
+#
+# Not one machine is named here. That is the point: the inventory plugin asks
+# the API what exists, and the same file works against the emulator and against
+# a real account. Switching targets changes `SCW_API_URL` and the credentials,
+# and nothing in this file.
+plugin: stephrobert.scaleway.compute
+
+products:
+  - instance
+
+zones:
+  - fr-par-1
+  - fr-par-2
+
+group_by:
+  - product
+  - zone
+  - state
+  - tags
+
+hostnames:
+  - name
+  - id
+
+# `strict` on its own writes the reason and stops nothing: Ansible downgrades
+# an inventory failure to a warning. `ansible.cfg` carries the other half.
+strict: true
+cache: false

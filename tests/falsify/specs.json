@@ -2463,6 +2463,22 @@
       "find": "        stop a run, set C(ANSIBLE_INVENTORY_ANY_UNPARSED_IS_FAILED=True) in the",
       "replace": "        stop a run, set C(ANSIBLE_INVENTORY_STRICT_IS_FATAL=True) in the",
       "test": "tests/unit/inventory/test_strict_dit_son_prix.py::test_la_description_nomme_la_variable_qui_rend_le_refus_visible"
+    },
+    {
+      "name": "repetition-rendue-comme-un-vrai-passage",
+      "why": "En mode check, le module d'action annonce le changement sans l'envoyer : `changed` compte ce qui bougerait. Le compte rendu disait « acted on » dans les deux cas, donc une répétition annonçait trois extinctions pendant que les trois machines tournaient encore. Mesuré en jouant le playbook contre l'émulateur du quickstart.",
+      "file": "ansible_collections/stephrobert/scaleway/playbooks/power_schedule.yml",
+      "find": "              {{ 'would be acted on (check mode: nothing was sent)'\n                 if ansible_check_mode else 'acted on' }},",
+      "replace": "              {{ 'would be acted on (check mode: nothing was sent)'\n                 if false else 'acted on' }},",
+      "test": "tests/unit/collection/test_power_schedule.py::test_le_compte_rendu_distingue_une_repetition_dun_vrai_passage"
+    },
+    {
+      "name": "flotte-qui-ne-survit-pas-au-conteneur",
+      "why": "Sans état dans un volume, la flotte du quickstart vit en mémoire et disparaît avec le conteneur. Mesuré en CI : le peuplement annonçait cinq machines créées, et le diagnostic suivant voyait zéro Instance dans la même zone, sur le même émulateur. Un visiteur qui redémarre docker aurait découvert la même chose, et aurait accusé la collection.",
+      "file": "quickstart/entrypoint.sh",
+      "find": "--state /state/fleet.json",
+      "replace": "--state /tmp/fleet.json",
+      "test": "tests/unit/outillage/test_quickstart.py::test_la_flotte_survit_au_conteneur"
     }
   ]
 }

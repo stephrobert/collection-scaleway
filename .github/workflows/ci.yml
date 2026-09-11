@@ -362,3 +362,45 @@ jobs:
 
       - name: La plateforme d'exemple se déploie et se détruit
         run: mise run example
+
+  quickstart:
+    # **La porte d'entrée gratuite se rejoue, sinon elle périme en silence.**
+    # C'est la première chose qu'un visiteur exécute : une commande qui ne
+    # marche plus lui coûte la visite, et personne ne le saura jamais.
+    #
+    # Ce job ne prouve pas la même chose que `Intégration` : celui-là joue les
+    # playbooks contre un émulateur démarré par l'action, celui-ci joue le
+    # parcours **tel qu'un visiteur le tape**, avec docker compose, l'image
+    # d'exécution publiée, et la collection du dépôt montée dedans. Un parcours
+    # qui marcherait sur le poste du mainteneur et pas dans un conteneur neuf
+    # est exactement ce qu'on veut voir rougir.
+    #
+    # Ce qu'il ne prouve pas : l'émulateur n'applique pas les ACL de VPC et ne
+    # pousse pas de route par défaut. Tout ce qui dépend du filtrage ou du
+    # routage reste au run réel.
+    name: Parcours d'accueil
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          # L'image de base, l'image d'exécution et le binaire de l'émulateur
+          # se téléchargent : `audit` documente ce trafic.
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Installer mise
+        uses: ./.github/actions/mise
+
+      - name: Installer
+        run: mise run setup
+
+      - name: Le parcours d'accueil tient sans compte Scaleway
+        run: mise run quickstart

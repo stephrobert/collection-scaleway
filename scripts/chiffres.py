@@ -89,6 +89,9 @@ SURVEILLES: tuple[Path, ...] = (
     # l'exemple appelle. Les deux se lisaient comme des mesures. Une page qu'on
     # publie se surveille.
     ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "playbooks" / "README.md",
+    # Publiée aussi, sous « Try it without an account » : c'est la première
+    # page qu'un visiteur lit, et un compte faux s'y lirait comme une mesure.
+    ROOT / "quickstart" / "README.md",
     *sorted(chemin for chemin in (ROOT / "docs").rglob("*.md") if _suivi(chemin)),
 )
 

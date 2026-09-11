@@ -1,0 +1,108 @@
+# The fictional fleet, created once, through the emulator's public API.
+#
+# **This is the part Terraform does on a real account.** The collection never
+# creates: it operates what already exists. So something has to create first,
+# and here it is `ansible.builtin.uri` rather than a collection module, on
+# purpose. A quickstart that created its fleet with the collection would teach
+# the opposite of what the collection is.
+#
+# Nothing here is billed, and no credential is real: the emulator accepts the
+# ones `feint env scaleway` printed.
+- name: Create the fleet a real account would already have
+  hosts: localhost
+  gather_facts: false
+  vars:
+    api: "{{ lookup('ansible.builtin.env', 'SCW_API_URL') }}"
+    token: "{{ lookup('ansible.builtin.env', 'SCW_SECRET_KEY') }}"
+    project: "{{ lookup('ansible.builtin.env', 'SCW_DEFAULT_PROJECT_ID') }}"
+    # Four machines, two zones, three roles, and one of them left stopped.
+    # A fleet where everything is identical and everything is running shows
+    # nothing: the report has nothing to group, and the power playbook has
+    # nothing to leave alone.
+    fleet:
+      - {name: web-1, zone: fr-par-1, type: DEV1-S, tags: ["role=web", "env=lab", "office-hours"], running: true}
+      - {name: web-2, zone: fr-par-1, type: DEV1-S, tags: ["role=web", "env=lab", "office-hours"], running: true}
+      - {name: db-1, zone: fr-par-1, type: DEV1-M, tags: ["role=db", "env=lab"], running: true}
+      - {name: cache-1, zone: fr-par-1, type: DEV1-S, tags: ["role=cache", "env=lab", "office-hours"], running: false}
+      - {name: web-3, zone: fr-par-2, type: DEV1-S, tags: ["role=web", "env=lab", "office-hours"], running: true}
+  tasks:
+    - name: Read what the emulator already holds
+      ansible.builtin.uri:
+        url: "{{ api }}/instance/v1/zones/{{ item }}/servers"
+        headers: {X-Auth-Token: "{{ token }}"}
+      loop: [fr-par-1, fr-par-2]
+      register: existant
+
+    - name: Name the machines already there
+      ansible.builtin.set_fact:
+        deja: "{{ existant.results | map(attribute='json.servers') | flatten | map(attribute='name') | list }}"
+
+    # Running it twice must not double the fleet. The emulator is a long-lived
+    # container: `docker compose up` after a restart finds it populated.
+    - name: Create the missing machines
+      ansible.builtin.uri:
+        url: "{{ api }}/instance/v1/zones/{{ item.zone }}/servers"
+        method: POST
+        headers: {X-Auth-Token: "{{ token }}"}
+        body_format: json
+        body:
+          name: "{{ item.name }}"
+          commercial_type: "{{ item.type }}"
+          image: ubuntu_noble
+          project: "{{ project }}"
+          tags: "{{ item.tags }}"
+        status_code: [200, 201]
+      loop: "{{ fleet | rejectattr('name', 'in', deja) | list }}"
+      loop_control: {label: "{{ item.name }} in {{ item.zone }}"}
+      register: crees
+
+    # A created machine is stopped, on the emulator as on Scaleway. Powering
+    # some of them on is what gives the fleet report two states to tell apart.
+    - name: Power on the ones the fleet is meant to have running
+      ansible.builtin.uri:
+        url: "{{ api }}/instance/v1/zones/{{ item.item.zone }}/servers/{{ item.json.server.id }}/action"
+        method: POST
+        headers: {X-Auth-Token: "{{ token }}"}
+        body_format: json
+        body: {action: poweron}
+        status_code: [200, 202]
+      loop: "{{ crees.results | default([]) | selectattr('item.running') | list }}"
+      loop_control: {label: "{{ item.item.name }}" }
+
+    # **A POST that answered is not a fleet that exists.** Saying `created`
+    # on the strength of a response leaves the next step to discover the
+    # truth, and it did: the seeding reported five machines while the very
+    # next command found none. Reading them back is what turns the claim into
+    # a measurement.
+    - name: Read the fleet back, from the API that will serve it
+      ansible.builtin.uri:
+        url: "{{ api }}/instance/v1/zones/{{ item }}/servers"
+        headers: {X-Auth-Token: "{{ token }}"}
+      loop: [fr-par-1, fr-par-2]
+      register: relecture
+
+    - name: Name what the API now holds
+      ansible.builtin.set_fact:
+        presentes: >-
+          {{ relecture.results | map(attribute='json.servers') | flatten
+             | map(attribute='name') | list | sort }}
+
+    - name: Every machine of the fleet is there
+      ansible.builtin.assert:
+        that:
+          - fleet | map(attribute='name') | reject('in', presentes) | list | length == 0
+        fail_msg: >-
+          the API does not serve what was just created:
+          {{ fleet | map(attribute='name') | reject('in', presentes) | list | join(', ') }}
+          missing, {{ presentes | join(', ') or 'nothing' }} present. The fleet
+          did not survive its own creation, so nothing downstream would measure
+          the collection.
+        quiet: true
+
+    - name: Say what the fleet holds
+      ansible.builtin.debug:
+        msg: >-
+          {{ deja | length }} machine(s) were already there,
+          {{ crees.results | default([]) | length }} created,
+          {{ presentes | length }} served by the API now.
+          The collection reads this fleet, it never created it.

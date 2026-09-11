@@ -119,22 +119,27 @@ def copy_tree(source: Path, destination: Path) -> None:
 _LIEN_RELATIF = re.compile(r"\]\((?!https?://|#|mailto:)([^)]+)\)")
 
 
-def _liens_absolus(texte: str) -> str:
+def _liens_absolus(texte: str, depuis: Path) -> str:
     """Les liens relatifs du README, repointés vers le dépôt.
 
-    Le README vit dans le dossier de la collection : `playbooks/README.md` y
-    est juste, et ne l'est plus une fois la page servie ailleurs. Sphinx le dit
-    en avertissement, et `-W` en fait un échec, ce qui est le comportement
-    voulu : un lien mort sur une page publiée est un défaut.
+    Le README vit dans un dossier du dépôt : `playbooks/README.md` y est juste,
+    et ne l'est plus une fois la page servie ailleurs. Sphinx le dit en
+    avertissement, et `-W` en fait un échec, ce qui est le comportement voulu :
+    un lien mort sur une page publiée est un défaut.
 
     Ils partent vers GitHub plutôt que vers une page du site, parce que ce
     qu'ils désignent, `LICENSE` ou `changelogs/`, n'est pas publié ici. La
     référence est la version publiée, comme le reste des liens que le README
     écrit déjà en absolu.
+
+    **Le dossier d'origine est un paramètre, et pas la collection.** Il l'était,
+    tant que toutes les pages venaient de là ; le quickstart vit à la racine du
+    dépôt, et un lien y aurait pointé dans la collection sans que rien ne le
+    dise : Sphinx ne vérifie pas ce qui part vers GitHub.
     """
     base = (
         f"https://github.com/stephrobert/collection-scaleway/blob/"
-        f"{COLLECTION.version}/{COLLECTION.path.relative_to(ROOT).as_posix()}/"
+        f"{COLLECTION.version}/{depuis.relative_to(ROOT).as_posix()}/"
     )
     return _LIEN_RELATIF.sub(lambda trouve: f"]({base}{trouve.group(1)})", texte)
 
@@ -153,7 +158,7 @@ def _page_depuis_readme(source: Path, nom: str, titre: str, phrase: str) -> str:
         # d'erreur qui lève ne dit plus rien : le nom suffit à s'y retrouver.
         nom_lisible = source.name if ROOT not in source.parents else source.relative_to(ROOT)
         raise SiteError(f"{nom_lisible} est absent : le site n'invente pas ce qu'il sert.")
-    lignes = _liens_absolus(source.read_text(encoding="utf-8")).splitlines()
+    lignes = _liens_absolus(source.read_text(encoding="utf-8"), source.parent).splitlines()
     corps = [ligne for ligne in lignes if not ligne.startswith("# ")]
 
     dossier = SITE_SRC / "guides"
@@ -261,6 +266,23 @@ def write_playbooks_page() -> str:
         "These playbooks ship with the collection and are played by\n"
         "`mise run integration` on every run. This page is their README,\n"
         "assembled here rather than copied.",
+    )
+
+
+def write_quickstart_page() -> str:
+    """La porte d'entrée gratuite, qui n'était signalée nulle part.
+
+    `SCW_API_URL` est honoré de bout en bout, et c'était présenté comme une
+    propriété du runtime. C'est aussi le seul moyen d'essayer la collection
+    sans compte Scaleway, et rien ne le disait (#182).
+    """
+    return _page_depuis_readme(
+        ROOT / "quickstart" / "README.md",
+        "quickstart",
+        "Try it without an account",
+        "This page is the quickstart's README, the one someone reads after\n"
+        "cloning. It is assembled here rather than copied, so the page and the\n"
+        "files it describes cannot diverge.",
     )
 
 
@@ -420,6 +442,7 @@ def assemble() -> tuple[tuple[str, ...], tuple[str, ...]]:
     copy_tree(ANTSIBULL, SITE_SRC / "collections")
     write_usage_page()
     write_playbooks_page()
+    write_quickstart_page()
     write_reference_page()
     produits = write_measure_pages()
     paquets = write_api_pages()
