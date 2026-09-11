@@ -1,0 +1,55 @@
+# One batch of a rolling reboot: fire, then wait for every member to conclude.
+#
+# **The wait is not written here, and that is the point.** The action module
+# already observes the machine leave `running` before accepting that it came
+# back, and refuses to conclude when it never saw it change. Re-implementing
+# that in a `until` loop would reintroduce the exact defect the runtime
+# documents: a first read satisfies the wait in zero seconds, and the next task
+# runs while the machine is still rebooting.
+#
+# So each reboot is fired into an async job that carries the module's own wait,
+# and the batch waits for the jobs. `async_status` observes a job, it does not
+# sleep for a duration.
+- name: Fire the reboots of this batch
+  stephrobert.scaleway.instance_server_action:
+    zone: "{{ item.server.zone }}"
+    server_id: "{{ item.server.id }}"
+    action: reboot
+    wait: true
+    wait_timeout: "{{ wait_timeout }}"
+  loop: "{{ lot }}"
+  loop_control:
+    label: "{{ item.server.name }}"
+  # Le travail asynchrone vit plus longtemps que l'attente du module, sinon il
+  # serait tué en plein redémarrage et le verdict viendrait du harnais.
+  async: "{{ (wait_timeout | int) + 60 }}"
+  poll: 0
+  register: jetons
+
+- name: Wait for every machine of this batch to be back
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ jetons.results }}"
+  loop_control:
+    label: "{{ lot[ansible_loop.index0].server.name }}"
+    extended: true
+  register: retours
+  until: retours.finished
+  # Les tentatives couvrent l'attente du module plus sa marge, à un sondage par
+  # seconde : c'est une observation répétée, pas une durée supposée.
+  retries: "{{ (wait_timeout | int) + 60 }}"
+  delay: 1
+  failed_when: false
+
+- name: This batch came back, or the roll stops here
+  ansible.builtin.assert:
+    that:
+      - retours.results | rejectattr('failed', 'equalto', false) | list | length == 0
+    fail_msg: >-
+      batch {{ numero }} did not come back:
+      {{ retours.results | selectattr('failed', 'defined') | selectattr('failed')
+         | map(attribute='item.item.server.name') | list | join(', ') }}.
+      The roll stops here rather than continuing on a fleet a third of which
+      may be down. Machines not yet rebooted:
+      {{ restants | join(', ') or 'none' }}.
+    quiet: true
