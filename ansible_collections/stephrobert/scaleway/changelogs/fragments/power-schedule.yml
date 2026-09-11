@@ -1,0 +1,20 @@
+minor_changes:
+  - "New ``stephrobert.scaleway.power_schedule`` playbook: bring a named
+    inventory group to a power state, which is the schedule that pays for itself
+    twice a day. Machines running at night that nobody uses are the most
+    ordinary waste there is, and the collection already had every piece: the
+    inventory groups by tag, the action module powers on and off. Nothing joined
+    them, so everyone wrote the loop again."
+  - "``power_schedule`` is idempotent, and the idempotence lives in the playbook
+    rather than in the module. An action is a trigger and not a state, so
+    ``instance_server_action`` reports ``changed`` every time by design. The
+    playbook reads each machine first and acts only on those not already where
+    they should be: measured against a fleet, the first pass acts on three and
+    the second reports none changed."
+  - "``power_schedule`` refuses before it writes. It has no default target,
+    because a schedule that guesses which machines to power off is how a fleet
+    goes down one evening; a named group that holds no host fails rather than
+    exiting quietly; and machines in ``starting``, ``stopping`` or ``locked`` are
+    named and left alone rather than swept up. With no group named at all it does
+    nothing and says so, which is the convention the other shipped playbooks
+    follow."
