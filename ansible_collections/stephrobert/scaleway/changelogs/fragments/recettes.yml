@@ -1,0 +1,8 @@
+minor_changes:
+  - "The shipped playbooks now carry a recipe chapter, organised by need rather
+    than by module: what someone tells themselves before they go looking. Each
+    recipe gives the command, what to check first, and **what the playbook does
+    not do**, which is the half that is missing everywhere else and the one that
+    keeps a tool from misleading. The recipes live in the playbooks README, which
+    the documentation site assembles as its task page, so there is one source and
+    it is the one that runs."

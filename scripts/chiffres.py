@@ -83,6 +83,12 @@ SURVEILLES: tuple[Path, ...] = (
     ROOT / "RELEASING.md",
     ROOT / "SECURITY.md",
     ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "README.md",
+    # **Publiée, et pourtant absente d'ici jusqu'à #183.** Le site l'assemble
+    # sous « Task playbooks », et elle a porté deux comptes que le temps avait
+    # démentis : le nombre de playbooks livrés, et celui des modules que
+    # l'exemple appelle. Les deux se lisaient comme des mesures. Une page qu'on
+    # publie se surveille.
+    ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "playbooks" / "README.md",
     *sorted(chemin for chemin in (ROOT / "docs").rglob("*.md") if _suivi(chemin)),
 )
 

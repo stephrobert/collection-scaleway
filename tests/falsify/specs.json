@@ -2447,6 +2447,14 @@
       "find": "        raise ExempleError(\n            f\"le projet {identifiant} n'a pas pu être lu ({erreur}). L'exercice \"",
       "replace": "        raise RuntimeError(\n            f\"le projet {identifiant} n'a pas pu être lu ({erreur}). L'exercice \"",
       "test": "tests/unit/outillage/test_projet_dedie.py::test_un_projet_illisible_est_refuse"
+    },
+    {
+      "name": "page-des-recettes-non-surveillee",
+      "why": "Le site assemble sa page de tâches depuis ce README : c'est une page publiée, et elle n'était surveillée par rien. Elle a porté deux comptes que le temps avait démentis, celui des playbooks livrés et celui des modules que l'exemple appelle, sans qu'aucun contrôle ne les relise. Une page qu'on publie se surveille comme les autres.",
+      "file": "scripts/chiffres.py",
+      "find": "    ROOT / \"ansible_collections\" / \"stephrobert\" / \"scaleway\" / \"playbooks\" / \"README.md\",",
+      "replace": "    ROOT / \"ansible_collections\" / \"stephrobert\" / \"scaleway\" / \"README.md\",",
+      "test": "tests/unit/outillage/test_recettes.py::test_la_page_des_recettes_est_surveillee"
     }
   ]
 }
