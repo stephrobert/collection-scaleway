@@ -764,16 +764,16 @@
       "name": "artefact-compte-une-route-non-emulee",
       "why": "Un 501 `not_emulated` n'exerce rien. Le compter comme joué ferait passer une limite déclarée de l'émulateur pour une preuve de couverture, et l'artefact deviendrait un compteur de bonnes intentions.",
       "file": "scripts/example.py",
-      "find": "        if tache.get(\"verdict\") in (\"ok\", \"changed\") and tache.get(\"api_type\") != \"not_emulated\":",
-      "replace": "        if tache.get(\"verdict\") in (\"ok\", \"changed\") and tache.get(\"api_type\") != \"jamais_rendu_par_un_module\":",
+      "find": "        elif tache.get(\"api_type\") == \"not_emulated\":",
+      "replace": "        elif tache.get(\"api_type\") == \"not_emulated\" and False:",
       "test": "tests/unit/outillage/test_artefact_exemple.py::test_une_route_non_emulee_est_appelee_mais_pas_jouee"
     },
     {
       "name": "artefact-compte-une-tache-sautee",
       "why": "Une tâche que `when` a écartée n'a parlé à personne. La compter revient à mesurer ce que le playbook nomme plutôt que ce qu'il joue, c'est-à-dire exactement ce que le plugin de rappel existe pour éviter.",
       "file": "scripts/example.py",
-      "find": "        if tache.get(\"verdict\") in (\"ok\", \"changed\") ",
-      "replace": "        if tache.get(\"verdict\") in (\"ok\", \"changed\", \"skipped\") ",
+      "find": "        if tache.get(\"verdict\") == \"skipped\":\n            sautes.add(court)",
+      "replace": "        if tache.get(\"verdict\") == \"skipped\":\n            joues.add(court)",
       "test": "tests/unit/outillage/test_artefact_exemple.py::test_une_tache_sautee_nest_pas_une_couverture"
     },
     {
@@ -2375,6 +2375,38 @@
       "find": "            if isinstance(element, str) and PORTEE_COLLEE.match(element):",
       "replace": "            if isinstance(element, str) and PORTEE_COLLEE.match(element) and False:",
       "test": "tests/unit/outillage/test_sortie_portee.py::test_une_sortie_zonale_est_refusee"
+    },
+    {
+      "name": "couverture-decline-nest-pas-saute",
+      "why": "Une route déclinée a été appelée, une tâche sautée n'a appelé personne. Les ranger ensemble a produit une liste de cinq « manques de feint » dont trois n'en étaient pas, mesuré le 2026-09-11. Une issue déposée sur cette base part chez le mauvais projet, ce qui est déjà arrivé avec feint#750.",
+      "file": "scripts/example.py",
+      "find": "        if tache.get(\"verdict\") == \"skipped\":\n            sautes.add(court)",
+      "replace": "        if tache.get(\"verdict\") == \"skipped\" and False:\n            sautes.add(court)",
+      "test": "tests/unit/outillage/test_artefact_exemple.py::test_un_appel_decline_et_une_tache_sautee_ne_vont_pas_dans_la_meme_liste"
+    },
+    {
+      "name": "couverture-manque-vient-du-refus",
+      "why": "Un manque de feint est ce que feint a décliné, pas une différence d'ensembles. Croiser avec les refus est ce qui empêche une tâche sautée de passer pour une route absente.",
+      "file": "scripts/example_coverage.py",
+      "find": "        \"manques_de_feint\": sorted(manquants & declines),",
+      "replace": "        \"manques_de_feint\": sorted(manquants),",
+      "test": "tests/unit/outillage/test_comparaison_cibles.py::test_un_module_saute_cote_feint_nest_pas_un_manque_de_feint"
+    },
+    {
+      "name": "couverture-artefact-sans-decoupage",
+      "why": "Un artefact écrit avant le découpage ne porte pas les trois champs. Les lire comme vides publierait « feint ne décline rien », qui est une affirmation et non une absence de mesure. Rien n'a été mesuré n'est pas rien n'a manqué.",
+      "file": "scripts/example_coverage.py",
+      "find": "    detaille = \"modules_declines\" in feint",
+      "replace": "    detaille = True",
+      "test": "tests/unit/outillage/test_comparaison_cibles.py::test_un_artefact_anterieur_au_decoupage_le_dit_plutot_que_de_rendre_une_liste_vide"
+    },
+    {
+      "name": "couverture-projection-perd-les-refus",
+      "why": "`mesurer` projette chaque run sur une liste fixe de clés. Elle ne retenait pas `routes_non_emulees`, si bien que la section « routes que feint déclare ne pas servir » cherchait dans le vide et ne s'est jamais affichée. La donnée était collectée, projetée hors du dictionnaire, et le rapport la réclamait sans jamais la recevoir.",
+      "file": "scripts/example_coverage.py",
+      "find": "                        \"routes_non_emulees\",",
+      "replace": "                        \"routes_non_emulees_desactive\",",
+      "test": "tests/unit/outillage/test_comparaison_cibles.py::test_la_projection_laisse_passer_ce_que_la_comparaison_lit"
     }
   ]
 }

@@ -544,27 +544,58 @@ def artefact(journal: dict[str, Any], cible: str, run_id: str, residu: str) -> d
     Un module joué une fois et sauté ailleurs compte comme joué : ce qui est
     demandé est « a-t-il tourné contre cette API », pas « toutes ses tâches
     ont-elles tourné ».
+
+    **Quatre sorts, et les mélanger envoie un rapport chez le mauvais projet.**
+    Un champ unique les confondait, et la comparaison publiait « chacun a été
+    appelé des deux côtés » sur un ensemble qui contenait des tâches sautées.
+    Mesuré le 2026-09-11 : l'émulateur n'avait décliné que
+    `GetServerTypesAvailability` et `ListVolumesTypes`, et la liste publiée y
+    ajoutait `instance_image` et `lb_certificate`, que le playbook saute faute
+    de ressource à viser, plus `instance_server_action`, qu'aucune tâche n'y
+    nommait. Une issue déposée sur cette base part chez le mauvais projet
+    (#189).
+
+        joué      l'API a répondu, et c'est une preuve de couverture
+        décliné   l'API a été appelée et a dit qu'elle ne sert pas cette route
+        en échec  l'API a été appelée et a refusé
+        sauté     `when` l'a écartée : personne n'a rien appelé
     """
     joues: set[str] = set()
-    vus: set[str] = set()
+    declines: set[str] = set()
+    echoues: set[str] = set()
+    sautes: set[str] = set()
     for tache in journal.get("taches", []):
         module = str(tache.get("module", ""))
         if not module.startswith(PREFIXE_COLLECTION):
             continue
         court = module[len(PREFIXE_COLLECTION) :]
-        vus.add(court)
-        # Une route non émulée a bien été appelée, mais l'API n'a rien fait :
-        # la compter comme jouée ferait passer une limite de l'émulateur pour
-        # une preuve de couverture.
-        if tache.get("verdict") in ("ok", "changed") and tache.get("api_type") != "not_emulated":
+        if tache.get("verdict") == "skipped":
+            sautes.add(court)
+        elif tache.get("api_type") == "not_emulated":
+            # Une route non émulée a bien été appelée, mais l'API n'a rien fait :
+            # la compter comme jouée ferait passer une limite de l'émulateur pour
+            # une preuve de couverture.
+            declines.add(court)
+        elif tache.get("verdict") in ("ok", "changed"):
             joues.add(court)
+        else:
+            echoues.add(court)
+
+    # Un appel l'emporte sur une absence d'appel, et une réponse sur un refus :
+    # un module joué quelque part a tourné, quoi qu'il soit devenu ailleurs.
+    declines -= joues
+    echoues -= joues | declines
+    sautes -= joues | declines | echoues
+
     faits = journal.get("faits", {})
     return {
         "cible": cible,
         "run_id": run_id,
         "horodatage": datetime.now(UTC).isoformat(timespec="seconds"),
         "modules_joues": sorted(joues),
-        "modules_appeles_sans_reponse": sorted(vus - joues),
+        "modules_declines": sorted(declines),
+        "modules_en_echec": sorted(echoues),
+        "modules_sautes": sorted(sautes),
         "taches_jouees": len(journal.get("taches", [])),
         "routes_non_emulees": sorted(faits.get("non_emules", [])),
         "idempotence_prouvee": sorted(faits.get("idempotences_prouvees", [])),
