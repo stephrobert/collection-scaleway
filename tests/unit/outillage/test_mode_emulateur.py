@@ -25,13 +25,21 @@ MACHINES = {"emulateur": True, "vm": "incus-ovn", "ssh": True}
 
 
 def _declare(monkeypatch: pytest.MonkeyPatch, charge: Any, code: int = 0) -> None:
-    """Fait dire à `feint status` ce que le test veut mesurer."""
+    """Fait dire à `feint status` ce que le test veut mesurer.
+
+    **`binaire` est remplacé aussi, et c'est le point.** `mode_servi` le résout
+    avant d'appeler `lancer`, et il refuse quand `feint` n'est pas sur le
+    `PATH` : la première version de ce test passait sur un poste où feint est
+    installé et rougissait sur le runner. Un test qui mesure la machine plutôt
+    que la fonction ne mesure pas ce qu'il annonce.
+    """
 
     def _lancer(commande: list[str], **_: Any) -> Any:
         assert "status" in commande, "la garde doit interroger `feint status`"
         sortie = charge if isinstance(charge, str) else json.dumps(charge)
         return type("Resultat", (), {"returncode": code, "stdout": sortie})()
 
+    monkeypatch.setattr(example, "binaire", lambda nom: f"/introuvable/{nom}")
     monkeypatch.setattr(example, "lancer", _lancer)
 
 
