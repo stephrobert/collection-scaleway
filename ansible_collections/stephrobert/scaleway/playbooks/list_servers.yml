@@ -4,7 +4,7 @@
 # module walks **every** page, so the count is the real count, not the first
 # hundred.
 #
-#   ansible-playbook stephrobert.scaleway.inventaire_serveurs -e zone=fr-par-1
+#   ansible-playbook stephrobert.scaleway.list_servers -e zone=fr-par-1
 #
 # Credentials come from the environment (SCW_ACCESS_KEY, SCW_SECRET_KEY) or
 # from the Scaleway configuration file. To try this without an account, point

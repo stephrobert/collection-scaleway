@@ -29,6 +29,18 @@ pip install 'scaleway>=2.9.0'
 export SCW_ACCESS_KEY=... SCW_SECRET_KEY=...
 ```
 
+Then check the setup before anything else fails halfway through it:
+
+```bash
+ansible-playbook stephrobert.scaleway.doctor
+```
+
+It reports the ansible-core that will run the modules, the SDK the interpreter
+can import, where the credentials come from, and whether the API answers. Every
+check runs, so one run names every problem rather than the first one, and it
+prints `Ready.` only when everything was checked **and** everything passed. It
+never prints a credential, only where it came from.
+
 An inventory discovers the fleet, a playbook acts on it:
 
 ```yaml
@@ -135,7 +147,7 @@ collection stephrobert.scaleway: 50 modules written out of 52 planned
   45 modules called by the example playbook out of 50 (90.0%), which is not the same as played
   51 published pages: 298/298 options and 70/70 returned keys documented
   108/108 examples copyable as is · 64/65 returned keys list their fields
-  1009 unit tests · 303 mutations proven by /falsify
+  1015 unit tests · 303 mutations proven by /falsify
   CI: 6 jobs, Générateur · collection · Image · Archive · Intégration · Plateforme d'exemple
   ansible-test sanity, playbooks and inventory against the emulator:
   reported by `mise run sanity` and `mise run integration`

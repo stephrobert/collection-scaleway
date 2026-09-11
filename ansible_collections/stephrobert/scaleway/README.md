@@ -237,9 +237,9 @@ collisions, and Ansible's trap around strict mode:
 They are called by their fully qualified name once the collection is installed:
 
 ```bash
-ansible-playbook stephrobert.scaleway.inventaire_serveurs -e zone=fr-par-1
-ansible-playbook stephrobert.scaleway.detail_dun_serveur -e zone=fr-par-1
-ansible-playbook stephrobert.scaleway.arreter_un_serveur -e zone=fr-par-1 -e server_id=<uuid>
+ansible-playbook stephrobert.scaleway.list_servers -e zone=fr-par-1
+ansible-playbook stephrobert.scaleway.server_details -e zone=fr-par-1
+ansible-playbook stephrobert.scaleway.stop_server -e zone=fr-par-1 -e server_id=<uuid>
 ```
 
 See [playbooks/README.md](playbooks/README.md).

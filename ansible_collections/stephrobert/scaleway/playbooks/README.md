@@ -11,9 +11,22 @@ documentation costs more than no documentation at all.
 
 | playbook | what it shows |
 |---|---|
-| [inventaire_serveurs.yml](inventaire_serveurs.yml) | listing a whole zone, split by state and by type |
-| [detail_dun_serveur.yml](detail_dun_serveur.yml) | the same module in unit read, and the `changed=false` of an information module |
-| [arreter_un_serveur.yml](arreter_un_serveur.yml) | stopping a named Instance, waiting for the target state, then reading it back |
+| [doctor.yml](doctor.yml) | what is wrong with a setup, all of it at once, before anything else fails halfway |
+| [list_servers.yml](list_servers.yml) | listing a whole zone, split by state and by type |
+| [server_details.yml](server_details.yml) | the same module in unit read, and the `changed=false` of an information module |
+| [stop_server.yml](stop_server.yml) | stopping a named Instance, waiting for the target state, then reading it back |
+
+## Start here
+
+```bash
+ansible-playbook stephrobert.scaleway.doctor
+```
+
+It checks the ansible-core that will run the modules, the SDK the interpreter
+can import, where the credentials come from, and whether the API answers. Every
+check runs: finding one problem per run is how a first contact is spent on
+nothing. It prints `Ready.` only when everything was checked **and** everything
+passed, and it never prints a credential, only where it came from.
 
 ## Running them
 
@@ -24,10 +37,10 @@ configuration file:
 export SCW_ACCESS_KEY=... SCW_SECRET_KEY=...
 
 # from the repository
-ansible-playbook playbooks/inventaire_serveurs.yml -e zone=fr-par-1
+ansible-playbook playbooks/list_servers.yml -e zone=fr-par-1
 
 # from the installed collection, by its fully qualified name
-ansible-playbook stephrobert.scaleway.inventaire_serveurs -e zone=fr-par-1
+ansible-playbook stephrobert.scaleway.list_servers -e zone=fr-par-1
 ```
 
 With no account and no spend, against a local emulator:
@@ -47,6 +60,6 @@ The full set is exercised elsewhere: `examples/playbooks/modules.yml` in the
 repository plays 39 of the 46 modules against the same platform, on an emulator
 and on a real account, and publishes what each run actually played.
 
-`arreter_un_serveur.yml` never chooses on its own which machine to stop:
+`stop_server.yml` never chooses on its own which machine to stop:
 without `-e server_id=<uuid>` it does nothing and says so. An example playbook
 that decides for you is a trap, not documentation.

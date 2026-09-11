@@ -46,7 +46,7 @@ REQUIRED: tuple[str, ...] = (
     "meta/runtime.yml",
     "meta/execution-environment.yml",
     "meta/ee-requirements.txt",
-    "playbooks/inventaire_serveurs.yml",
+    "playbooks/list_servers.yml",
     "plugins/modules/instance_server_info.py",
     "plugins/module_utils/scaleway.py",
     "plugins/doc_fragments/scaleway.py",
@@ -287,7 +287,7 @@ def check_playbooks(collections_path: Path, collection: Collection) -> None:
 
     C'est tout l'intérêt de `playbooks/` plutôt que d'un répertoire d'exemples :
     une fois la collection installée, `ansible-playbook
-    stephrobert.scaleway.inventaire_serveurs` résout sans chemin. Le contrôle
+    stephrobert.scaleway.list_servers` résout sans chemin. Le contrôle
     n'exécute rien, il exige que la résolution aboutisse.
     """
     racine = collections_path / "ansible_collections" / collection.namespace / collection.name
