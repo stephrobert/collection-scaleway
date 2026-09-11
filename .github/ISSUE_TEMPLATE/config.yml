@@ -1,5 +1,14 @@
 blank_issues_enabled: false
 contact_links:
+  # En premier, et c'est délibéré : le tracker d'issues n'est pas l'endroit où
+  # dire qu'on se sert de quelque chose, et sans cette ligne la seule façon de
+  # se manifester était d'ouvrir un défaut.
+  - name: I use this, and here is what for
+    url: https://github.com/stephrobert/collection-scaleway/discussions/categories/show-and-tell
+    about: One sentence about what you automate with it. It is worth more than a download, and it is what ADOPTERS.md records.
+  - name: A question about using it
+    url: https://github.com/stephrobert/collection-scaleway/discussions/categories/q-a
+    about: A question from someone using this for real tells the project more than any counter.
   - name: What the collection covers, and what it excludes
     url: https://github.com/stephrobert/collection-scaleway#state-and-coverage
     about: Terraform provisions, Ansible operates. Every excluded operation carries its reason in generator/overrides/, so check there before reporting a missing module.

@@ -560,6 +560,67 @@ def bloc_effacables() -> str:
     )
 
 
+#: Ce qui fait d'une ligne d'adoption une mesure plutôt qu'une affirmation :
+#: un endroit où quelqu'un l'a dit, et que le lecteur peut ouvrir.
+_SOURCE = re.compile(r"https?://\S+")
+
+
+def _lignes_declarees(marqueur: str, texte: str | None = None) -> list[str]:
+    """Les entrées d'une section d'`ADOPTERS.md`, chacune avec sa provenance.
+
+    La section est délimitée plutôt que devinée : un fichier qui se lirait par
+    ses titres changerait de sens le jour où quelqu'un en ajoute un.
+
+    **Une entrée sans source est refusée ici**, sur le chemin de publication.
+    Le compteur de Galaxy est déjà un chiffre qu'on ne sait pas lire ; une
+    liste d'usages que personne ne peut pointer serait le même défaut avec une
+    apparence de rigueur en plus.
+    """
+    texte = (ROOT / "ADOPTERS.md").read_text(encoding="utf-8") if texte is None else texte
+    debut = texte.index(f"<!-- {marqueur}:début -->") + len(f"<!-- {marqueur}:début -->")
+    corps = texte[debut : texte.index(f"<!-- {marqueur}:fin -->")]
+    entrees = [ligne.strip() for ligne in corps.splitlines() if ligne.strip().startswith("- ")]
+
+    sans_source = [entree for entree in entrees if not _SOURCE.search(entree)]
+    if sans_source:
+        raise CompteursError(
+            "ADOPTERS.md porte des entrées sans source : "
+            + " · ".join(sans_source)
+            + ". Une ligne que personne ne peut ouvrir est une affirmation, pas "
+            "une mesure, et elle coûte plus cher qu'une liste vide."
+        )
+    return entrees
+
+
+def bloc_adoption() -> str:
+    """Ce que le dépôt sait de son adoption, et ce qu'il n'en sait pas.
+
+    **Aucun compte de téléchargements n'entre ici.** Ce n'est pas un oubli : le
+    compteur mesure des réinstallations, et le publier à côté d'un compte de
+    personnes ferait passer l'un pour l'autre. Le dire coûte une phrase, et
+    c'est la phrase qui empêche de piloter un jalon sur un chiffre illisible.
+
+    Zéro entrée ne s'écrit pas « 0 utilisateur » : personne ne l'a dit n'est
+    pas personne ne s'en sert. C'est la même distinction que
+    `coverage:example` fait entre « aucun run enregistré » et « 0 % ».
+    """
+    usages = _lignes_declarees("adoptants")
+    chaines = _lignes_declarees("enchainements")
+
+    su = "Recorded uses: " + (
+        f"{len(usages)}, each naming where it was said"
+        if usages
+        else "none yet, which is not the same as none existing"
+    )
+    sc = "Chains contributed by other people: " + (f"{len(chaines)}" if chaines else "none yet")
+    return (
+        f"{su}.\n{sc}.\n"
+        "The Galaxy download counter is deliberately absent: it counts "
+        "reinstalls,\nso a pipeline weighs as much there as a team. "
+        "`ADOPTERS.md` holds the list\nand what it cannot know."
+    )
+
+
 def bloc_tests_badge() -> str:
     """La phrase du questionnaire OpenSSF qui compte les tests."""
     return (
@@ -660,6 +721,7 @@ NOMMES = {
     "effacables": lambda: bloc_effacables(),
     "tests-badge": lambda: bloc_tests_badge(),
     "modules": lambda: bloc_nombre_de_modules(),
+    "adoption": lambda: bloc_adoption(),
 }
 
 #: Les blocs nommés, et le fichier de chacun. Un fichier, pas une catégorie :
@@ -674,6 +736,7 @@ BLOCS_NOMMES: tuple[tuple[str, Path], ...] = (
     ("effacables", ROOT / "docs" / "architecture" / "runtime.md"),
     ("tests-badge", ROOT / "docs" / "best-practices.md"),
     ("modules", README),
+    ("adoption", README),
 )
 
 

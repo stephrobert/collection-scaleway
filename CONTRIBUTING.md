@@ -138,6 +138,34 @@ reason, in `generator/overrides/`.
 fails `report --strict`. Never filter it out, never widen a rule to make it fit
 somewhere.
 
+## From your chain to the recipe chapter
+
+If you automate something with this collection, the shortest useful thing you
+can do is say so in
+[Show and tell](https://github.com/stephrobert/collection-scaleway/discussions/categories/show-and-tell).
+That costs a sentence and it is how `ADOPTERS.md` gets its lines.
+
+If the chain is worth other people running, it can ship. The route, in order:
+
+1. **Say what it is for, in one sentence that starts from a need.** Not "a
+   playbook that calls X", but the thing someone tells themselves before they
+   go looking. That sentence becomes the recipe's heading;
+2. **It ships as a playbook** under `ansible_collections/stephrobert/scaleway/`
+   `playbooks/`, named in English like the rest, and callable by its full name;
+3. **`mise run integration` plays it** on every run, against a local emulator.
+   That is what keeps it correct after you stop using it. A chain that ships
+   without being replayed is a chain that will be wrong and look fine;
+4. **Its recipe says what it does not do**, in the playbooks README. That half
+   is the one missing everywhere else, and it is where a tool misleads: no
+   default target, no waiting on a duration, no choosing a machine for you;
+5. **`scripts/example.py` either plays it against a real account or declares
+   why not**, with the reason in its table. Being written is not being run.
+
+Steps 3 to 5 are held by tests rather than by goodwill, so a playbook that
+skips one of them fails the build rather than shipping quietly. Open the pull
+request even if you have only done the first two: the rest is a conversation,
+not a barrier.
+
 ## Issues
 
 Before opening one about a missing module, run `mise run report` and look: the

@@ -2487,6 +2487,14 @@
       "find": "    (\"l'extinction planifiée\", etape_extinction),\n",
       "replace": "",
       "test": "tests/unit/outillage/test_planification.py::test_le_chemin_annonce_eprouve_est_celui_que_le_depot_rejoue"
+    },
+    {
+      "name": "adoption-sans-source-acceptee",
+      "why": "Le compteur de Galaxy mesure des réinstallations, pas des personnes, et c'est pour ça que ce dépôt tient sa propre liste. Une liste dont les lignes ne renvoient à rien serait le même chiffre illisible avec une apparence de rigueur en plus : personne ne pourrait vérifier qu'un usage a été dit, ni par qui, ni quand.",
+      "file": "scripts/readme_counters.py",
+      "find": "    if sans_source:\n        raise CompteursError(",
+      "replace": "    if sans_source and False:\n        raise CompteursError(",
+      "test": "tests/unit/outillage/test_adoption.py::test_une_ligne_dadoption_sans_source_est_refusee"
     }
   ]
 }
