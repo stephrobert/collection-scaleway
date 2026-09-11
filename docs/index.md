@@ -38,6 +38,7 @@ hand-written collection is stale before it is published.
 guides/quickstart
 guides/using-the-collection
 guides/shipped-playbooks
+guides/scheduling
 guides/dynamic-inventory
 ```
 

@@ -1,0 +1,10 @@
+minor_changes:
+  - "A scheduling guide now says how a shipped playbook gets called twice a day
+    rather than by hand: a scheduled pipeline, ``ansible-navigator``, and AWX.
+    All three start from ``power_schedule``, take their credentials from the
+    platform rather than from a file, and use the published execution
+    environment instead of explaining how to build one. The page says which
+    path has actually run: the scheduled pipeline is replayed here on every
+    run, ``ansible-navigator`` was measured once by hand, and the AWX shapes
+    have never been executed. Presenting the three as equivalent would be
+    claiming three things and having measured one."

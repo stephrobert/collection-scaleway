@@ -14,7 +14,11 @@ parcours qui marche d'un parcours qui se contente de ne pas échouer :
 * le second passage du playbook d'étiquettes rend `changed=0`. C'est toute la
   démonstration : un module qui lit, compare, et n'écrit que la différence ;
 * le redémarrage progressif a **observé** chaque machine partir et revenir. Un
-  redémarrage qui n'attendrait pas sortirait en 0 lui aussi.
+  redémarrage qui n'attendrait pas sortirait en 0 lui aussi ;
+* l'extinction planifiée est lue **dans l'inventaire** après coup, et pas dans
+  le compte rendu du playbook. Demander à un playbook s'il a bien fait ce qu'il
+  dit revient à le laisser se juger, et c'est exactement le défaut que son mode
+  check portait.
 
 Codes de sortie : `0` le parcours tient, `1` le lanceur n'a pas pu le jouer,
 `2` il l'a joué et le verdict est non.
@@ -23,6 +27,7 @@ Codes de sortie : `0` le parcours tient, `1` le lanceur n'a pas pu le jouer,
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import shutil
 import subprocess
@@ -189,6 +194,87 @@ def etape_idempotence() -> None:
     print(f"  étiquettes : changed={premier} puis changed={second}")
 
 
+def etats_du_groupe(groupe: str) -> dict[str, str]:
+    """Ce que l'inventaire dit de chaque machine du groupe, maintenant.
+
+    Lu plutôt que déduit du compte rendu : un playbook qui annonce une
+    extinction et une machine qui tourne encore est précisément le défaut que
+    le mode check portait, et le mesurer sur le playbook lui-même reviendrait à
+    lui demander de se juger.
+    """
+    sortie = jouer("ansible-inventory --list")
+    parc = json.loads(sortie[sortie.index("{") : sortie.rindex("}") + 1])
+    machines = parc.get(groupe, {}).get("hosts", [])
+    variables = parc.get("_meta", {}).get("hostvars", {})
+    return {nom: variables.get(nom, {}).get("scaleway_state", "inconnu") for nom in machines}
+
+
+def etape_extinction() -> None:
+    """L'enchaînement qui se planifie, joué dans les deux sens.
+
+    C'est le seul des trois chemins de planification que ce dépôt rejoue, et
+    `docs/guides/scheduling.md` le donne comme tel. Un chemin annoncé comme
+    éprouvé et jamais rejoué serait une affirmation que rien ne vérifie.
+
+    Le parc est remis comme il a été trouvé : la suite du parcours compte sur
+    des machines allumées, et une étape qui laisse la plateforme de travers
+    fait échouer la suivante pour une raison qui n'est pas la sienne.
+    """
+    groupe = "scw_tag_office_hours"
+    avant = etats_du_groupe(groupe)
+    if "running" not in avant.values():
+        raise Verdict(
+            f"aucune machine de {groupe} ne tourne avant l'extinction : "
+            f"l'étape mesurerait un changement qui n'en est pas un ({avant})"
+        )
+
+    repetition = jouer(
+        f"ansible-playbook stephrobert.scaleway.power_schedule "
+        f"-e group={groupe} -e desired_state=off --check"
+    )
+    if "would be acted on" not in repetition:
+        raise Verdict(
+            "la répétition rend compte comme un vrai passage : c'est ce qui a "
+            "fait lire « machines éteintes » sur des machines qui tournaient.\n"
+            f"{repetition[-1500:]}"
+        )
+    pendant = etats_du_groupe(groupe)
+    if pendant != avant:
+        raise Verdict(
+            f"`--check` a changé l'état du parc : {avant} puis {pendant}. Une "
+            "répétition qui agit n'est pas une répétition."
+        )
+
+    jouer(
+        f"ansible-playbook stephrobert.scaleway.power_schedule "
+        f"-e group={groupe} -e desired_state=off"
+    )
+    eteintes = etats_du_groupe(groupe)
+    if "running" in eteintes.values():
+        raise Verdict(f"l'extinction laisse des machines allumées : {eteintes}")
+
+    # Le second passage ne doit rien avoir à faire : l'idempotence vit dans le
+    # playbook, pas dans le module d'action, qui est un déclencheur.
+    second = jouer(
+        f"ansible-playbook stephrobert.scaleway.power_schedule "
+        f"-e group={groupe} -e desired_state=off"
+    )
+    if "0 acted on" not in second:
+        raise Verdict(
+            "un second passage agit encore alors que tout est déjà éteint : "
+            f"l'idempotence du planificateur ne tient pas.\n{second[-1500:]}"
+        )
+
+    jouer(
+        f"ansible-playbook stephrobert.scaleway.power_schedule "
+        f"-e group={groupe} -e desired_state=on"
+    )
+    apres = etats_du_groupe(groupe)
+    if "running" not in apres.values():
+        raise Verdict(f"le rallumage n'a pas rendu le parc à son état : {apres}")
+    print(f"  extinction planifiée : {len(avant)} machine(s), éteintes puis rallumées")
+
+
 def etape_redemarrage() -> None:
     sortie = jouer(
         "ansible-playbook stephrobert.scaleway.rolling_reboot "
@@ -210,6 +296,7 @@ ETAPES = (
     ("le rapport de parc", etape_rapport),
     ("l'inventaire dynamique", etape_inventaire),
     ("l'idempotence", etape_idempotence),
+    ("l'extinction planifiée", etape_extinction),
     ("le redémarrage progressif", etape_redemarrage),
 )
 
