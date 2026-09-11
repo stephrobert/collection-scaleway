@@ -2479,6 +2479,14 @@
       "find": "--state /state/fleet.json",
       "replace": "--state /tmp/fleet.json",
       "test": "tests/unit/outillage/test_quickstart.py::test_la_flotte_survit_au_conteneur"
+    },
+    {
+      "name": "chemin-annonce-eprouve-et-jamais-rejoue",
+      "why": "Le guide de planification donne trois chemins et dit lequel est rejoué. C'est sa seule affirmation qui puisse devenir fausse en silence : l'étape sort du parcours, la fonction reste écrite, et la page continue d'annoncer un chemin éprouvé que plus rien n'éprouve. Un guide qui dit « mesuré » sans mesure vaut moins qu'un guide qui dit « non éprouvé ».",
+      "file": "scripts/quickstart.py",
+      "find": "    (\"l'extinction planifiée\", etape_extinction),\n",
+      "replace": "",
+      "test": "tests/unit/outillage/test_planification.py::test_le_chemin_annonce_eprouve_est_celui_que_le_depot_rejoue"
     }
   ]
 }

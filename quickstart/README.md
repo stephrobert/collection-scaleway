@@ -87,6 +87,10 @@ docker compose run --rm ansible ansible-playbook stephrobert.scaleway.power_sche
 whatever is already in the target state, and names the machines caught in a
 transient state rather than acting on them.
 
+This is the one that pays for itself, and only if something calls it twice a
+day. The scheduling guide gives three ways to get there, and says which of them
+has actually been run.
+
 ### Restart production progressively
 
 ```bash
