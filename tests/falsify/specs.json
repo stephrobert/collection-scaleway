@@ -2423,6 +2423,14 @@
       "find": "    if servi is None:\n        raise ExempleError(",
       "replace": "    if servi is None and False:\n        raise ExempleError(",
       "test": "tests/unit/outillage/test_mode_emulateur.py::test_un_emulateur_qui_ne_dit_pas_son_mode_est_refuse"
+    },
+    {
+      "name": "livres-sans-entree",
+      "why": "Le mécanisme qui va sur le compte réel ne visitait pas le répertoire des playbooks livrés : aucun des sept n'y avait jamais été joué, et le gabarit de pull request l'exige avant de clore. Sans cette garde, un playbook ajouté demain échapperait au run réel exactement comme les sept précédents, et personne ne le saurait.",
+      "file": "scripts/example.py",
+      "find": "    if inconnus:\n        raise ExempleError(",
+      "replace": "    if inconnus and False:\n        raise ExempleError(",
+      "test": "tests/unit/outillage/test_livres_joues.py::test_un_playbook_livre_inconnu_fait_echouer_la_cible"
     }
   ]
 }
