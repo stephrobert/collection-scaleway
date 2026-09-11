@@ -178,7 +178,15 @@ options:
     default: false
   strict:
     description:
-      - Fail the inventory when a provider fails, instead of warning.
+      - Fail the inventory when a provider fails, instead of returning an
+        incomplete fleet. Refused credentials are fatal immediately; a product
+        absent from a zone stays a warning, because that is not an outage.
+      - Ansible downgrades an inventory failure to a warning and exits zero, so
+        on its own this option writes the reason and stops nothing. To make it
+        stop a run, set C(ANSIBLE_INVENTORY_ANY_UNPARSED_IS_FAILED=True) in the
+        environment, or C(any_unparsed_is_failed = True) under C([inventory])
+        in C(ansible.cfg). Without it, a revoked key produces a green run on an
+        empty fleet.
     type: bool
     default: true
 """

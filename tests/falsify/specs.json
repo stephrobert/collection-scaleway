@@ -2455,6 +2455,14 @@
       "find": "    ROOT / \"ansible_collections\" / \"stephrobert\" / \"scaleway\" / \"playbooks\" / \"README.md\",",
       "replace": "    ROOT / \"ansible_collections\" / \"stephrobert\" / \"scaleway\" / \"README.md\",",
       "test": "tests/unit/outillage/test_recettes.py::test_la_page_des_recettes_est_surveillee"
+    },
+    {
+      "name": "strict-promet-un-arret-quil-ne-produit-pas",
+      "why": "`strict: true` est le défaut, et Ansible rétrograde l'échec d'un plugin d'inventaire en avertissement : sans `any_unparsed_is_failed`, une clé révoquée rend une chaîne d'intégration verte sur zéro machine. Le guide le disait, la page courte promettait un arrêt, et c'est la page courte qu'`ansible-doc` imprime et que Galaxy rend.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/inventory/compute.py",
+      "find": "        stop a run, set C(ANSIBLE_INVENTORY_ANY_UNPARSED_IS_FAILED=True) in the",
+      "replace": "        stop a run, set C(ANSIBLE_INVENTORY_STRICT_IS_FATAL=True) in the",
+      "test": "tests/unit/inventory/test_strict_dit_son_prix.py::test_la_description_nomme_la_variable_qui_rend_le_refus_visible"
     }
   ]
 }
