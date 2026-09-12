@@ -85,15 +85,20 @@ SEVERITES = ("warn", "fail")
 #: laisserait croire que l'audit couvre ce qu'il ne regarde pas.
 SANS_SOURCE = {
     "unused_reserved_ip": (
-        "demande la forme d'une adresse réservée détachée, et aucune cible "
-        "disponible n'en porte : ni le parc du quickstart, ni la plateforme "
-        "d'exemple. Une règle écrite sur la forme supposée d'un objet jamais "
-        "vu juge à partir d'une invention."
+        "demande la forme d'une adresse réservée détachée, et **aucun parc "
+        "disponible n'en porte** : ni celui du quickstart, ni la plateforme "
+        "d'exemple. L'obstacle n'est pas l'émulateur, qui sert la route : "
+        "mesuré, `POST /instance/v1/zones/{zone}/ips` rend 201 avec une "
+        "adresse. Ce qui fermerait la ligne est donc du travail ici, pas en "
+        "amont : que le parc fictif en réserve une, et la règle se mesure."
     ),
     "healthy_backend": (
-        "demande la forme que `lb_backend_stat_info` rend, et le parc du "
-        "quickstart ne porte aucun load balancer. La route existe dans le "
-        "contrat suivi ; c'est sa réponse qui n'a pas été mesurée."
+        "demande la forme que `lb_backend_stat_info` rend, et **aucun parc "
+        "disponible ne porte de load balancer**. L'obstacle n'est pas non plus "
+        "l'émulateur : sur `backend-stats` il rend `not_found` sur la "
+        "ressource, pas `not_emulated` sur la route, et il distingue les deux "
+        "explicitement. Ce qui fermerait la ligne : un load balancer dans le "
+        "parc fictif, puis la mesure de ce que la route rend."
     ),
 }
 

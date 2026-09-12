@@ -107,7 +107,7 @@ SANS_CIBLE: dict[str, SansCible] = {
             "plutôt que de remesurer le refus connu."
         ),
         preuve="stack",
-        revoir_en="0.7.0",
+        revoir_en="0.8.0",
     ),
     "instance_snapshot_action": SansCible(
         raison=(
@@ -116,7 +116,7 @@ SANS_CIBLE: dict[str, SansCible] = {
             "l'autre ou ne se ferme pas : elle n'a pas d'obstacle propre."
         ),
         preuve="stack",
-        revoir_en="0.7.0",
+        revoir_en="0.8.0",
     ),
     "instance_ip_action": SansCible(
         raison=(
@@ -131,7 +131,7 @@ SANS_CIBLE: dict[str, SansCible] = {
             "impossibilité, et le dire évite de rouvrir la question par le mauvais bout."
         ),
         preuve="stack",
-        revoir_en="0.7.0",
+        revoir_en="0.8.0",
     ),
     "lb_load_balancer_action": SansCible(
         raison=(
@@ -140,19 +140,29 @@ SANS_CIBLE: dict[str, SansCible] = {
             "mesuré sur le compte réel. Le seul appel que l'API accepte change donc la "
             "facture du compte pour la durée de l'exercice, et ce n'est pas une décision "
             "que l'exemple prend à la place de qui le lance. feint ne sert pas cette "
-            "route non plus (501), donc aucune des deux cibles ne l'exerce."
+            "route non plus, donc aucune des deux cibles ne l'exerce. Revu à la coupe "
+            "de la 0.7.0 : l'émulateur rend toujours 501 `not_emulated` sur "
+            "`/lb/v1/zones/{zone}/lbs/{id}/migrate`, mesuré, et l'API refuse "
+            "toujours le non-changement. **Ce qui fermerait la ligne** : que "
+            "l'exercice accepte de payer une migration, ce qui est une décision "
+            "de facture et non une décision technique."
         ),
         preuve="reel",
-        revoir_en="0.7.0",
+        revoir_en="0.8.0",
     ),
     "lb_subscriber": SansCible(
         raison=(
             "demande un destinataire d'alertes, et le provider Terraform ne déclare "
             "aucune ressource `scaleway_lb_subscriber` : il n'existe aucun moyen d'en "
-            "créer un que la destruction emporte."
+            "créer un que la destruction emporte. Revu à la coupe de la 0.7.0 sur la "
+            "documentation du provider, avec témoins : `lb_subscriber.md` rend 404 là "
+            "où `lb_backend.md` et `instance_snapshot.md` rendent 200 et où un nom "
+            "inventé rend 404. La méthode discrimine, donc l'absence est un fait et "
+            "non une supposition. **Ce qui fermerait la ligne** vient de l'amont, pas "
+            "d'ici."
         ),
         preuve="amont",
-        revoir_en="0.7.0",
+        revoir_en="0.8.0",
     ),
 }
 
