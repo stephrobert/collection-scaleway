@@ -36,6 +36,7 @@ from generator.parser.openapi import ParseError, parse_document
 from generator.plan import ProductPlan, build_plan
 from generator.renderer.modules import write_modules
 from generator.renderer.resolution import render_resolution
+from generator.renderer.zones import render_zones
 from generator.report import render
 from generator.source.base import DEFAULT_SPEC_ROOT, SpecNotFoundError, VendoredSpecSource
 
@@ -238,6 +239,7 @@ def _resolve(arguments: argparse.Namespace) -> int:
     # cohabiteraient pour une seule opération.
     classifications: dict[str, OperationKind] = {}
     sources: list[str] = []
+    zones_par_produit: dict[str, tuple[str, ...]] = {}
 
     for produit, version in source.available():
         plan = build_plan(
@@ -251,6 +253,19 @@ def _resolve(arguments: argparse.Namespace) -> int:
         for entree in plan.operations:
             classifications[entree.operation.id] = entree.classification.kind
 
+        # L'énumération est portée par chaque opération zonée, et elle est la
+        # même pour toutes : la réunir plutôt que prendre la première évite de
+        # dépendre de l'ordre de lecture du contrat.
+        zones = {
+            zone
+            for operation in service.operations
+            for parametre in operation.parameters
+            if parametre.name == "zone"
+            for zone in (parametre.enum_values or ())
+        }
+        if zones:
+            zones_par_produit[produit] = tuple(sorted(zones))
+
         identifiants = {
             parametre.name
             for operation in service.operations
@@ -260,6 +275,11 @@ def _resolve(arguments: argparse.Namespace) -> int:
         resolutions, refuses = build_resolutions(service, identifiants)
         tables.append(resolutions)
         refus.extend(refuses)
+
+    # Les zones que chaque produit déclare, lues au passage : deux produits ne
+    # servent pas les mêmes, et rien ne le disait au runtime (#222).
+    cible_zones = collection.path / "plugins" / "module_utils" / "zones.py"
+    cible_zones.write_text(render_zones(zones_par_produit), encoding="utf-8")
 
     gardees, conflits = merge_resolutions(tables)
     refus.extend(conflits)
