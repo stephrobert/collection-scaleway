@@ -2519,6 +2519,22 @@
       "find": "    - name: What the named group holds, read from the inventory\n      ansible.builtin.set_fact:\n        _scaleway_power_schedule_selection:",
       "replace": "    - name: What the named group holds, read from the inventory\n      ansible.builtin.set_fact:\n        selection: >-\n          {{ groups[scaleway_power_schedule_group] | default([]) | sort }}\n        _scaleway_power_schedule_selection:",
       "test": "tests/unit/collection/test_roles.py::test_aucun_role_ne_pose_un_fait_sans_le_prefixer"
+    },
+    {
+      "name": "structure-composee-a-la-main",
+      "why": "Une structure écrite à la main dans un rôle a la forme du contrat et aucune de ses garanties : ni les comptes déduits des noms, ni le refus d'un refus sans raison, ni `null` quand rien n'a pu être examiné. C'est pire qu'une phrase, parce que ça se lit comme un contrat.",
+      "file": "ansible_collections/stephrobert/scaleway/roles/fleet_report/tasks/main.yml",
+      "find": "      {{ 'fleet_report' | stephrobert.scaleway.operation_result(",
+      "replace": "      {{ 'fleet_report' | stephrobert.scaleway.operation_result_absent(",
+      "test": "tests/unit/collection/test_roles.py::test_chaque_role_rend_la_structure_commune"
+    },
+    {
+      "name": "compte-passe-a-cote-de-sa-liste",
+      "why": "Un `changed: 3` transmis en plus de la liste des noms changés est une seconde source du même fait. Deux sources d'un même fait finissent par se contredire, et celle qu'une chaîne lit n'est alors plus celle qu'un opérateur voit. Le filtre déduit le compte de la liste, et refuse qu'on lui passe l'un sans l'autre.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/operation_result.py",
+      "find": "    if not isinstance(valeur, (list, tuple)):\n        raise AnsibleFilterError(\n            f\"`{champ}` doit être une liste de noms",
+      "replace": "    if not isinstance(valeur, (list, tuple)) and False:\n        raise AnsibleFilterError(\n            f\"`{champ}` doit être une liste de noms",
+      "test": "tests/unit/collection/test_operation_result.py::test_un_compte_passe_au_lieu_dune_liste_est_refuse"
     }
   ]
 }

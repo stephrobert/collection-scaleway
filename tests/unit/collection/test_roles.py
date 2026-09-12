@@ -120,7 +120,16 @@ def test_aucun_role_ne_pose_un_fait_sans_le_prefixer() -> None:
         # appelant. `fleet_report` laisse son rapport, et un appelant qui doit
         # relire l'écran plutôt que la donnée n'a pas d'API.
         attendus = (f"_scaleway_{role.name}_", f"scaleway_{role.name}_")
-        fautifs = sorted({nom for nom in poses if not nom.startswith(attendus)})
+        # **Un seul nom commun, et il est déclaré ici.** `scaleway_operation`
+        # désigne la dernière opération du play, parce que le cas courant est
+        # une chaîne qui veut le résultat de ce qu'elle vient de lancer. Deux
+        # opérations dans le même play s'écrasent donc sur ce nom, et c'est
+        # pour ça que chacune pose aussi le sien, qui dure. Ce sont deux noms
+        # pour un même objet, pas deux calculs : ils ne peuvent pas diverger.
+        partages = {"scaleway_operation"}
+        fautifs = sorted(
+            {nom for nom in poses if not nom.startswith(attendus) and nom not in partages}
+        )
         assert fautifs == [], (
             f"{role.name} pose {fautifs} sans préfixe : ces faits écraseraient "
             f"ceux de qui inclut le rôle. Attendu : {' ou '.join(attendus)}..."
@@ -157,3 +166,46 @@ def test_un_playbook_livre_appelle_son_role_et_ne_le_reimplemente_pas() -> None:
                 f"{playbook.name} appelle {modules} en plus de son rôle : une "
                 "opération implémentée deux fois finit par se contredire"
             )
+
+
+def test_chaque_role_rend_la_structure_commune() -> None:
+    """Une grammaire que deux opérations sur trois parlent est une convention.
+
+    Et une convention se perd : la quatrième opération la suivra ou ne la
+    suivra pas, personne ne le verra, et la chaîne qui lit le résultat
+    redeviendra un analyseur de sortie standard (#206).
+
+    Ce test tient les deux moitiés : la structure est posée, et elle est
+    **construite par le filtre**. Une structure écrite à la main dans un rôle
+    aurait la même forme et aucune des garanties : ni les comptes déduits des
+    noms, ni le refus d'une raison manquante, ni `null` quand rien n'a pu être
+    examiné.
+    """
+    for role in _roles():
+        taches = _taches(role / "tasks" / "main.yml")
+        poses = {
+            nom: valeur
+            for tache in taches
+            for nom, valeur in (tache.get("ansible.builtin.set_fact") or {}).items()
+        }
+
+        attendus = {"scaleway_operation", f"scaleway_{role.name}_operation"}
+        manquants = sorted(attendus - set(poses))
+        assert manquants == [], (
+            f"{role.name} ne rend pas {manquants} : une opération dont le "
+            "résultat ne se lit que dans sa phrase oblige à analyser du texte"
+        )
+
+        construction = "\n".join(
+            str(tache.get("vars", {}).get("resultat", ""))
+            for tache in taches
+            if "resultat" in (tache.get("vars") or {})
+        )
+        # La parenthèse fait partie du motif : sans elle, la garde acceptait
+        # `operation_result_absent(`, qui contient le nom cherché. `/falsify`
+        # l'a montré en restant vert sur une mutation qui aurait dû mordre.
+        assert "stephrobert.scaleway.operation_result(" in construction, (
+            f"{role.name} compose sa structure à la main : elle aurait la forme "
+            "sans les garanties, ce qui est pire qu'une phrase parce que ça se "
+            "lit comme un contrat"
+        )
