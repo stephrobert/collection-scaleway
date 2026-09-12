@@ -4,6 +4,74 @@ stephrobert.scaleway Release Notes
 
 .. contents:: Topics
 
+v0.6.0
+======
+
+Release Summary
+---------------
+
+Operate, do not assemble. The previous releases built modules; this one turns
+them into commands somebody remembers. Seven playbooks ship instead of three,
+each answering a need rather than demonstrating a module: check a setup,
+report on a fleet, power a group down for the night, reboot production in
+batches. Each one says what it refuses to do, which is the half that is
+missing everywhere else and the one that keeps a tool from misleading.
+
+Two things you no longer need in order to try this. An account: a quickstart
+brings up a local emulator and a fictional fleet with one command, and the
+same playbooks then run against a real account by changing the endpoint and
+the credentials. And a module call to find an identifier: the ``resource_id``
+lookup resolves the name you already know, from a table derived from the
+versioned API contracts rather than written by hand.
+
+The rest is about being able to trust what is written here. The shipped
+playbooks are renamed to English, which is a breaking change and the only one.
+Every page that carries a measured number now derives it, including the one
+recording what this project knows about its own adoption, and what it does
+not.
+
+Minor Changes
+-------------
+
+- A quickstart now lets anyone try the collection without a Scaleway account, without credentials, and without spending anything. ``docker compose up -d`` starts a local emulator and creates a small fictional fleet; from there the shipped playbooks run exactly as they would against a real account, and switching over changes the endpoint and the credentials and nothing else. The page says what the emulator does not prove, because an emulator that lies without saying so teaches a false green. The whole journey is replayed on every CI run, so it cannot go stale quietly.
+- A scheduling guide now says how a shipped playbook gets called twice a day rather than by hand: a scheduled pipeline, ``ansible-navigator``, and AWX. All three start from ``power_schedule``, take their credentials from the platform rather than from a file, and use the published execution environment instead of explaining how to build one. The page says which path has actually run: the scheduled pipeline is replayed here on every run, ``ansible-navigator`` was measured once by hand, and the AWX shapes have never been executed. Presenting the three as equivalent would be claiming three things and having measured one.
+- New ``stephrobert.scaleway.doctor`` playbook, the first command to run against a new setup. It checks the ansible-core that will run the modules, the Scaleway SDK the playbook interpreter can import, where the credentials come from, and whether the API answers in a zone. **Every check runs**: none aborts the others, so one run reports every problem rather than the first one. Finding one problem per run is how a first contact is spent on nothing.
+- New ``stephrobert.scaleway.fleet_report`` playbook: the whole fleet in one read-only command, with three outputs for three readers. ``text`` for a terminal, ``json`` for a pipeline, ``markdown`` for a ticket. It creates nothing and changes nothing, which is what makes it safe to run first, and it answers the question asked most often: where is the fleet and in what state.
+- New ``stephrobert.scaleway.power_schedule`` playbook: bring a named inventory group to a power state, which is the schedule that pays for itself twice a day. Machines running at night that nobody uses are the most ordinary waste there is, and the collection already had every piece: the inventory groups by tag, the action module powers on and off. Nothing joined them, so everyone wrote the loop again.
+- New ``stephrobert.scaleway.resource_id`` lookup plugin. Half of the modules in this collection act on a sub-resource whose identifier only the matching ``_info`` module returns, so a playbook had to call a module, register its result and dig a UUID out of it. The lookup returns that identifier from the name you already know. Its resolution table is derived from the versioned API contracts rather than written by hand, so a resource that stops being listable, or that loses its ``name`` field upstream, leaves the table at the next generation instead of staying a promise. Twelve identifiers resolve today; four do not, and the plugin says why rather than reporting them as unknown. See #177.
+- New ``stephrobert.scaleway.rolling_reboot`` playbook: reboot a named inventory group in batches, waiting for each batch to come back before touching the next. A lot of work went into making the ``reboot`` action and its check mode trustworthy, and none of it showed: someone wanting to restart production progressively wrote ``action: reboot`` over a group and hoped.
+- The project now records what it knows about its own adoption, and what it does not, in ``ADOPTERS.md``. The Galaxy download counter is deliberately absent from it: a pipeline reinstalling on every run weighs as much there as a team using the collection daily, so steering anything on that number means optimising something nobody can read. Every recorded use names where it was said, and an entry without a source fails the derived block rather than being published as a measurement. Saying you use it no longer means opening a bug report: the issue chooser now points at a discussion for that, and CONTRIBUTING describes how a chain someone else wrote reaches the shipped playbooks and the recipe chapter.
+- The shipped playbooks now carry a recipe chapter, organised by need rather than by module: what someone tells themselves before they go looking. Each recipe gives the command, what to check first, and **what the playbook does not do**, which is the half that is missing everywhere else and the one that keeps a tool from misleading. The recipes live in the playbooks README, which the documentation site assembles as its task page, so there is one source and it is the one that runs.
+- ``doctor`` never prints a credential. It names where one comes from, which is what repairs a setup, and a report can be pasted into an issue as is.
+- ``doctor`` separates three states that are not the same thing: the check ran and the answer is yes, the check ran and the answer is no, and the check could not run at all. A zone that does not answer has not been measured to be empty. ``Ready.`` is printed only when everything was checked **and** everything passed, so an unreachable API never reads as a success.
+- ``fleet_report`` never counts a zone it could not read. **A zone that does not answer has not been measured to be empty**, so it is named as unmeasured rather than contributing a zero, and when no zone answers at all the playbook says so instead of printing a total. A report that counted an unreachable zone as empty would be worse than no report, because it would be a plausible one.
+- ``power_schedule`` is idempotent, and the idempotence lives in the playbook rather than in the module. An action is a trigger and not a state, so ``instance_server_action`` reports ``changed`` every time by design. The playbook reads each machine first and acts only on those not already where they should be: measured against a fleet, the first pass acts on three and the second reports none changed.
+- ``power_schedule`` refuses before it writes. It has no default target, because a schedule that guesses which machines to power off is how a fleet goes down one evening; a named group that holds no host fails rather than exiting quietly; and machines in ``starting``, ``stopping`` or ``locked`` are named and left alone rather than swept up. With no group named at all it does nothing and says so, which is the convention the other shipped playbooks follow.
+- ``resource_id`` matches the name exactly, and refuses rather than choosing. The Scaleway ``name`` query filter matches by prefix, which the contract states for Instances: ``server1`` returns both ``server100`` and ``server1``. The filter is sent so a whole fleet is not paginated, and the exact comparison is always done locally. No match and several matches both fail, and the message names what was found nearby or which candidates collided. Returning the first of several would make the playbook act on a resource nobody designated. See ADR-0019.
+- ``rolling_reboot`` records the state before touching anything: a machine that is not running is left alone and named, because a rolling reboot that starts machines has done something nobody asked for. A batch that does not come back stops the roll and names what was left to do, rather than continuing over a fleet a third of which may be down.
+- ``rolling_reboot`` waits on what it observes, never on a duration. The action module already watches a machine leave ``running`` before accepting that it came back, and refuses to conclude when it never saw it change; the playbook puts that wait inside an async job so a batch waits for jobs rather than for a delay. A test reads both files and fails on any ``pause``, ``sleep`` or timed ``wait_for``, because a fixed delay that works today is indistinguishable from a correct wait until the day it is not.
+
+Breaking Changes / Porting Guide
+--------------------------------
+
+- The shipped playbooks are renamed to English. ``inventaire_serveurs`` becomes ``list_servers``, ``detail_dun_serveur`` becomes ``server_details``, and ``arreter_un_serveur`` becomes ``stop_server``. A playbook name is what a user types, so it is published surface, and the rest of the collection is in English. **The old names stop resolving, and nothing can soften that**: Ansible exposes no playbook loader, so ``meta/runtime.yml`` cannot redirect an old playbook name to a new one. Update any ``ansible-playbook stephrobert.scaleway.<name>`` call accordingly.
+
+Bugfixes
+--------
+
+- Cutting a release whose cycle added no module, option or return value left the appearance journal pointing at the version just published, and the next check refused with ``a release went out without the journal being frozen``. The journal had been frozen; the freeze had returned early, skipping the part that moves the preparation version on. The message was right about the fact and wrong about the culprit, which costs more than a silent refusal. What is skipped when there is nothing to date is the block, because an empty one would publish a version badge on nothing. Found while cutting this release, whose contents are playbooks, a lookup plugin and documentation.
+- Terraform outputs that cross into a module no longer carry their scope. The Scaleway provider prefixes its identifiers with ``fr-par-1/``, and a module receiving one composes a URL the API rejects. Four of the five outputs kept it, which made the ``certificate_ids`` ordering measurement unreachable on the only target where it can run. A guard now refuses a scoped output before the first playbook starts, and names all the offending ones rather than the first. See #186.
+- inventory - the ``strict`` option promised a stop it cannot produce on its own. Ansible downgrades an inventory plugin failure to a warning and exits zero, so a revoked key made a run green on an empty fleet while the option sat at its default ``true``. The option description now says so, and names ``ANSIBLE_INVENTORY_ANY_UNPARSED_IS_FAILED``, which is the setting that makes the refusal visible. The behaviour itself does not change: it was already measured both ways on every integration run, and already explained in the dynamic inventory guide.
+- playbooks - ``power_schedule`` reported ``acted on`` in check mode, where the action module announces a change without sending it. An operator rehearsing a shutdown read that their machines were off while they were still running. The report now distinguishes a rehearsal from a run.
+
+New Plugins
+-----------
+
+Lookup
+~~~~~~
+
+- stephrobert.scaleway.resource_id - Resolve a Scaleway resource name into its identifier.
+
 v0.5.0
 ======
 

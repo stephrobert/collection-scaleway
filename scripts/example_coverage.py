@@ -97,29 +97,41 @@ SANS_CIBLE: dict[str, SansCible] = {
     "instance_snapshot": SansCible(
         raison=(
             "demande un instantané que l'API Instance liste. Celui de la stack passe par "
-            "l'API Block, seule à voir un volume SBS, et l'API Instance ne le liste pas. "
-            "En tailler un dans le volume `l_ssd` échoue : « cannot create a RO disk from "
-            "an empty disk », mesuré sur le compte réel."
+            "l'API Block, seule à voir un volume SBS, et l'API Instance ne le liste pas : "
+            "c'est le contrat, pas un défaut. En tailler un dans le volume `l_ssd` échoue : "
+            "« cannot create a RO disk from an empty disk », mesuré sur le compte réel. "
+            "Revu à la coupe de la 0.6.0 : rien de ce cycle ne touche à cette mesure. "
+            "**Ce qui n'est pas mesuré, et qui fermerait la ligne** : le refus porte sur un "
+            "`l_ssd` *vide*. Un volume `l_ssd` écrit par la stack, puis instantanéisé, n'a "
+            "jamais été essayé, et c'est par là que la prochaine revue doit commencer "
+            "plutôt que de remesurer le refus connu."
         ),
         preuve="stack",
-        revoir_en="0.6.0",
+        revoir_en="0.7.0",
     ),
     "instance_snapshot_action": SansCible(
         raison=(
             "exporte un instantané, donc il lui en faut un : même raison que "
-            "`instance_snapshot`, et le même volume vide."
+            "`instance_snapshot`, et le même volume vide. Cette ligne se ferme avec "
+            "l'autre ou ne se ferme pas : elle n'a pas d'obstacle propre."
         ),
         preuve="stack",
-        revoir_en="0.6.0",
+        revoir_en="0.7.0",
     ),
     "instance_ip_action": SansCible(
         raison=(
             "rend une adresse à l'IPAM. Toutes les adresses de la stack appartiennent à "
             "Terraform : en rendre une laisserait son état en désaccord avec le compte, "
-            "et c'est exactement le résidu que la règle du dépôt interdit."
+            "et c'est exactement le résidu que la règle du dépôt interdit. Revu à la coupe "
+            "de la 0.6.0 : l'obstacle n'est pas l'API, c'est que l'exemple ne possède "
+            "aucune adresse à lui. **Le chemin qui fermerait la ligne** : que le playbook "
+            "en crée une hors de Terraform, comme le quickstart peuple son parc, puis la "
+            "rende avec ce module. Le contrôle de résidu est différentiel, donc créer et "
+            "rendre dans le même run ne laisse rien derrière. C'est du travail, pas une "
+            "impossibilité, et le dire évite de rouvrir la question par le mauvais bout."
         ),
         preuve="stack",
-        revoir_en="0.6.0",
+        revoir_en="0.7.0",
     ),
     "lb_load_balancer_action": SansCible(
         raison=(

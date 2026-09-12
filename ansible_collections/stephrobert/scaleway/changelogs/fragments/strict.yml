@@ -1,9 +1,0 @@
-bugfixes:
-  - "inventory - the ``strict`` option promised a stop it cannot produce on its
-    own. Ansible downgrades an inventory plugin failure to a warning and exits
-    zero, so a revoked key made a run green on an empty fleet while the option
-    sat at its default ``true``. The option description now says so, and names
-    ``ANSIBLE_INVENTORY_ANY_UNPARSED_IS_FAILED``, which is the setting that
-    makes the refusal visible. The behaviour itself does not change: it was
-    already measured both ways on every integration run, and already explained
-    in the dynamic inventory guide."
