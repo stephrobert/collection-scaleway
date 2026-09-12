@@ -1,0 +1,158 @@
+---
+# What you run every day, in read-only.
+#
+# `rolling_reboot` is used when you need it. An audit is launched daily, and
+# that is the whole difference between a useful tool and a tool somebody
+# integrates into their operations.
+#
+# **It creates nothing and corrects nothing.** Terraform provisions, Ansible
+# operates: an audit that repaired what it found would cross that boundary, and
+# the repair nobody asked for is how automation loses trust.
+#
+# **A zone that did not answer is never counted as conforming.** It is named as
+# unmeasured in the operation result, and a report that said `PASS` over a fleet
+# it could not read would be worse than no report, because it would be a
+# plausible one.
+- name: When this audit started
+  ansible.builtin.set_fact:
+    _scaleway_fleet_audit_debut: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+
+- name: The zones to ask, cleaned of whatever the command line carried
+  ansible.builtin.set_fact:
+    _scaleway_fleet_audit_zones: >-
+      {{ (scaleway_fleet_audit_zones
+          if scaleway_fleet_audit_zones is sequence
+             and scaleway_fleet_audit_zones is not string
+          else scaleway_fleet_audit_zones | split(','))
+         | map('trim') | select | list | sort }}
+
+# `failed_when: false` so one unreachable zone does not hide the others. It also
+# rewrites `failed` to `false`, measured, so the presence of the payload is what
+# says whether the zone answered.
+- name: Ask each zone for its Instances
+  stephrobert.scaleway.instance_server_info:
+    zone: "{{ item }}"
+  loop: "{{ _scaleway_fleet_audit_zones }}"
+  register: sonde
+  failed_when: false
+
+- name: Separate what was read from what could not be
+  ansible.builtin.set_fact:
+    _scaleway_fleet_audit_machines: >-
+      {{ sonde.results | selectattr('servers', 'defined')
+         | map(attribute='servers') | flatten | list }}
+    _scaleway_fleet_audit_muettes: >-
+      {{ sonde.results | rejectattr('servers', 'defined')
+         | map(attribute='item') | list | sort }}
+    _scaleway_fleet_audit_mesurees: >-
+      {{ sonde.results | selectattr('servers', 'defined')
+         | map(attribute='item') | list | sort }}
+
+# ---- The judgement -------------------------------------------------------
+
+- name: Judge what the measured zones hold
+  ansible.builtin.set_fact:
+    scaleway_fleet_audit_findings: >-
+      {{ _scaleway_fleet_audit_machines | stephrobert.scaleway.audit_findings(
+           policy=scaleway_fleet_audit_policy,
+           now=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}
+
+- name: Sort the findings by what they demand
+  ansible.builtin.set_fact:
+    _scaleway_fleet_audit_fail: >-
+      {{ scaleway_fleet_audit_findings | selectattr('severity', 'equalto', 'fail') | list }}
+    _scaleway_fleet_audit_warn: >-
+      {{ scaleway_fleet_audit_findings | selectattr('severity', 'equalto', 'warn') | list }}
+    # Une machine sans constat est conforme **à cette politique**, ce qui n'est
+    # pas la même chose que conforme. Le rapport nomme la politique pour que la
+    # nuance reste lisible.
+    _scaleway_fleet_audit_pass: >-
+      {{ _scaleway_fleet_audit_machines | map(attribute='name') | list
+         | difference(scaleway_fleet_audit_findings | map(attribute='name')
+                      | map('regex_replace', '^instance/', '') | list) }}
+
+# ---- What a machine reads ------------------------------------------------
+
+- name: What this audit examined, in a shape a machine reads
+  ansible.builtin.set_fact:
+    scaleway_fleet_audit_operation: "{{ resultat }}"
+    scaleway_operation: "{{ resultat }}"
+  vars:
+    resultat: >-
+      {{ 'fleet_audit' | stephrobert.scaleway.operation_result(
+           target=(_scaleway_fleet_audit_zones | join(',')),
+           mode='apply',
+           already_compliant=_scaleway_fleet_audit_pass,
+           refused=scaleway_fleet_audit_findings,
+           refused_reason='detail',
+           unmeasured=_scaleway_fleet_audit_muettes,
+           started_at=_scaleway_fleet_audit_debut,
+           completed_at=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}
+
+# ---- What a person reads -------------------------------------------------
+
+- name: Nothing was measured, and that is not a compliant fleet
+  ansible.builtin.debug:
+    msg: >-
+      No zone answered: {{ _scaleway_fleet_audit_muettes | join(', ') }}.
+      Nothing was audited, which is not the same as nothing being wrong.
+      `ansible-playbook stephrobert.scaleway.doctor` says why.
+  when: _scaleway_fleet_audit_mesurees | length == 0
+
+# Une boucle plutôt qu'un enchaînement de filtres : la première version
+# composait les lignes par `zip` et `map('join')`, et personne ne relit ça. Un
+# rendu se vérifie en le lisant.
+- name: The audit, for a terminal
+  ansible.builtin.debug:
+    msg: |-
+      Fleet audit
+
+      PASS {{ _scaleway_fleet_audit_pass | length }}
+      WARN {{ _scaleway_fleet_audit_warn | length }}
+      FAIL {{ _scaleway_fleet_audit_fail | length }}
+      {% for constat in scaleway_fleet_audit_findings %}
+      {{ constat.severity | upper }} {{ constat.name }}
+           {{ constat.rule }}: {{ constat.detail }}
+      {% endfor %}
+      {% if _scaleway_fleet_audit_muettes %}
+      unmeasured zones: {{ _scaleway_fleet_audit_muettes | join(', ') }}
+      {% endif %}
+  when:
+    - scaleway_fleet_audit_output == 'text'
+    - _scaleway_fleet_audit_mesurees | length > 0
+
+- name: The audit, for a pipeline
+  ansible.builtin.debug:
+    msg: "{{ scaleway_fleet_audit_findings | to_nice_json }}"
+  when:
+    - scaleway_fleet_audit_output == 'json'
+    - _scaleway_fleet_audit_mesurees | length > 0
+
+- name: The audit, for a ticket
+  ansible.builtin.debug:
+    msg: |-
+      | severity | resource | rule | detail |
+      |---|---|---|---|
+      {% for constat in scaleway_fleet_audit_findings -%}
+      | {{ constat.severity }} | {{ constat.name }} | {{ constat.rule }} | {{ constat.detail }} |
+      {% endfor -%}
+      {% if _scaleway_fleet_audit_muettes -%}
+      | **zones unmeasured** | {{ _scaleway_fleet_audit_muettes | join(", ") }} | | |
+      {% endif -%}
+  when:
+    - scaleway_fleet_audit_output == 'markdown'
+    - _scaleway_fleet_audit_mesurees | length > 0
+
+# ---- The verdict ---------------------------------------------------------
+
+# **Une planification qui n'échoue jamais visiblement est une planification que
+# personne ne regarde.** Un `fail` fait sortir le run en échec ; un `warn` non,
+# parce que sinon les deux sévérités n'en feraient qu'une.
+- name: No rule of severity fail is broken
+  ansible.builtin.assert:
+    that:
+      - _scaleway_fleet_audit_fail | length == 0
+    fail_msg: >-
+      {{ _scaleway_fleet_audit_fail | length }} finding(s) of severity fail:
+      {{ _scaleway_fleet_audit_fail | map(attribute='name') | list | join(', ') }}.
+    quiet: true

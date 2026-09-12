@@ -1,0 +1,35 @@
+---
+argument_specs:
+  main:
+    short_description: Judge a Scaleway fleet against a policy
+    description:
+      - >-
+        Read-only. It creates nothing, changes nothing and reboots nothing: an
+        audit that corrected things would cross the boundary this collection
+        exists to hold, where Terraform provisions and Ansible operates.
+      - >-
+        Every rule names the field it reads, and a rule the evaluation cannot
+        settle is refused rather than reported as compliant. A zone that did not
+        answer is named as unmeasured, never counted as conforming.
+      - >-
+        The run fails when a rule of severity C(fail) is broken, so a schedule
+        that never fails visibly is not what you end up with.
+    options:
+      scaleway_fleet_audit_zones:
+        type: list
+        elements: str
+        description:
+          - The zones to read. Defaults to what the contract declares.
+      scaleway_fleet_audit_output:
+        type: str
+        default: text
+        choices: [text, json, markdown]
+        description:
+          - Which rendering to print. The findings are returned whatever this says.
+      scaleway_fleet_audit_policy:
+        type: dict
+        description:
+          - >-
+            The rules and their severities. The shipped default is a starting
+            point made only of warnings, so a first run never fails; replacing
+            it is the point.

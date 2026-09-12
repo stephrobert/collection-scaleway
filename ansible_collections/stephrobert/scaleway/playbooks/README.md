@@ -113,6 +113,32 @@ first on an account you do not know.
 does not answer is named as unmeasured rather than contributing a zero, and when
 no zone answers it says so instead of printing a total.
 
+### "I want to know what is wrong with my fleet, every morning"
+
+```bash
+ansible-playbook stephrobert.scaleway.fleet_audit
+ansible-playbook stephrobert.scaleway.fleet_audit -e output=json
+ansible-playbook stephrobert.scaleway.fleet_audit -e @policy.yml
+```
+
+Judges the fleet against a policy and prints what it found, with a severity per
+finding. `rolling_reboot` is used when you need it; this is the one that earns
+its place in a schedule.
+
+**As a role**: `stephrobert.scaleway.fleet_audit`. It leaves its findings in
+`scaleway_fleet_audit_findings`, so a pipeline can open a ticket rather than
+read a report.
+
+**Check before**: nothing. It is read-only.
+
+**What it does not do**: it never repairs what it finds. Terraform provisions
+and Ansible operates, and an audit that corrected things would cross that line.
+It never counts a zone it could not read as compliant, because a `PASS` over a
+fleet nobody read would be worse than no audit: it would be believable. And the
+shipped policy is a starting point made only of warnings, never an opinion about
+your fleet: the severity of a public address depends on whether the machine is a
+bastion or a database.
+
 ### "I need to power the lab down tonight"
 
 ```bash

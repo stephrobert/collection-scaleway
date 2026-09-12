@@ -2567,6 +2567,38 @@
       "find": "             | stephrobert.scaleway.select_hosts(groups=groups, hostvars=hostvars) }}",
       "replace": "             | map('extract', groups) | list }}",
       "test": "tests/unit/collection/test_roles.py::test_un_role_qui_selectionne_emploie_la_grammaire_commune"
+    },
+    {
+      "name": "politique-vide-acceptee",
+      "why": "Un audit qui ne vérifie rien rend un rapport vert sur rien, et le chemin le plus court vers un rapport vert serait alors de vider le fichier de politique. Un vert obtenu en ne regardant pas est le défaut que ce dépôt traque depuis le sanity sur zéro fichier.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
+      "find": "    if not isinstance(policy, dict) or not policy.get(\"rules\"):",
+      "replace": "    if (not isinstance(policy, dict) or not policy.get(\"rules\")) and False:",
+      "test": "tests/unit/collection/test_audit_findings.py::test_une_politique_sans_regle_est_refusee"
+    },
+    {
+      "name": "regle-non-evaluee-comptee-conforme",
+      "why": "Une règle que l'évaluation ne sait pas trancher ne produit aucun constat, donc la ressource ressort conforme pour la seule raison que personne ne l'a regardée. C'est la même erreur qu'une zone muette comptée pour vide, un étage plus haut.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
+      "find": "    if inconnues:",
+      "replace": "    if inconnues and False:",
+      "test": "tests/unit/collection/test_audit_findings.py::test_une_regle_quaucun_fait_ne_tranche_est_refusee"
+    },
+    {
+      "name": "severite-decidee-par-le-depot",
+      "why": "La sévérité est une donnée parce que l'adresse publique d'un bastion est normale et celle d'une base ne l'est pas. Accepter n'importe quelle valeur revient à la décider en silence : une règle dont la sévérité ne veut rien dire ne fait échouer ni ne fait avertir.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
+      "find": "        if severite not in SEVERITES:",
+      "replace": "        if severite not in SEVERITES and False:",
+      "test": "tests/unit/collection/test_audit_findings.py::test_une_severite_inconnue_est_refusee"
+    },
+    {
+      "name": "audit-qui-repare",
+      "why": "Terraform provisionne, Ansible exploite. Un audit qui corrigerait ce qu'il trouve franchirait cette frontière, et la réparation que personne n'a demandée est la façon dont une automatisation perd la confiance qu'elle avait.",
+      "file": "ansible_collections/stephrobert/scaleway/roles/fleet_audit/tasks/main.yml",
+      "find": "  stephrobert.scaleway.instance_server_info:\n    zone: \"{{ item }}\"",
+      "replace": "  stephrobert.scaleway.instance_server_action:\n    zone: \"{{ item }}\"",
+      "test": "tests/unit/collection/test_fleet_audit.py::test_laudit_nappelle_aucune_ecriture"
     }
   ]
 }

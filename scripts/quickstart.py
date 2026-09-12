@@ -209,6 +209,29 @@ def etats_du_groupe(groupe: str) -> dict[str, str]:
     return {nom: variables.get(nom, {}).get("scaleway_state", "inconnu") for nom in machines}
 
 
+def etape_audit() -> None:
+    """Ce qu'on lance tous les jours, et qui doit donc rester juste.
+
+    L'audit ne vaut que s'il dit la vérité sur un parc qu'il a lu. Deux choses
+    se mesurent ici, et pas son code de retour : qu'il rende un verdict, et
+    qu'il **compte les machines qu'il a vues** plutôt que de conclure sur un
+    parc vide, ce qu'un `PASS 0 WARN 0 FAIL 0` sur une API muette donnerait.
+    """
+    sortie = jouer(f"ansible-playbook stephrobert.scaleway.fleet_audit -e zones={ZONES}")
+
+    verdict = re.search(r"PASS (\d+)\\nWARN (\d+)\\nFAIL (\d+)", sortie)
+    if verdict is None:
+        raise Verdict(f"l'audit ne rend pas de verdict :\n{sortie[-2000:]}")
+
+    vues = sum(int(compte) for compte in verdict.groups())
+    if vues == 0:
+        raise Verdict(
+            "l'audit conclut sur zéro machine. Un rapport sur un parc qu'on n'a "
+            f"pas lu est pire que pas de rapport : il est crédible.\n{sortie[-1500:]}"
+        )
+    print(f"  audit de parc : {verdict.group(0).replace(chr(92) + 'n', ' · ')}")
+
+
 def etape_extinction() -> None:
     """L'enchaînement qui se planifie, joué dans les deux sens.
 
@@ -296,6 +319,7 @@ ETAPES = (
     ("le rapport de parc", etape_rapport),
     ("l'inventaire dynamique", etape_inventaire),
     ("l'idempotence", etape_idempotence),
+    ("l'audit de parc", etape_audit),
     ("l'extinction planifiée", etape_extinction),
     ("le redémarrage progressif", etape_redemarrage),
 )

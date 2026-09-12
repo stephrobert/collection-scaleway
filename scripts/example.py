@@ -789,6 +789,11 @@ def jouer(playbook: str, env: dict[str, str], variables: dict[str, Any]) -> int:
 LIVRES: dict[str, dict[str, Any]] = {
     "doctor.yml": {"variables": {}},
     "fleet_report.yml": {"variables": {"zones": "{zone}"}},
+    # En lecture seule, donc sans risque sur un compte facturé : il lit la zone
+    # et juge contre la politique livrée, faite d'avertissements seulement. Un
+    # audit qu'on ne jouerait jamais contre un vrai parc serait un audit dont on
+    # ignore s'il sait lire un vrai parc.
+    "fleet_audit.yml": {"variables": {"zones": "{zone}"}},
     "list_servers.yml": {"variables": {"zone": "{zone}"}},
     # Sans `server_id` il prend la première machine de la zone, ce qui est
     # exactement ce qu'on veut ici : la stack en déclare cinq.
