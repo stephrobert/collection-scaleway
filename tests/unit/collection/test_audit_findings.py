@@ -153,7 +153,11 @@ def test_une_regle_quaucun_fait_ne_tranche_est_refusee() -> None:
 
     message = str(erreur.value)
     assert "healthy_backend" in message
-    assert "aucun load balancer" in message
+    # La raison dit **où** est l'obstacle, et la mesure l'a déplacé : feint sert
+    # la route, c'est le parc fictif qui ne porte pas de load balancer. Une
+    # raison qui accuserait l'amont ferait chercher au mauvais endroit.
+    assert "aucun parc" in message
+    assert "not_emulated" in message
 
 
 def test_une_severite_inconnue_est_refusee() -> None:
