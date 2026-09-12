@@ -2599,6 +2599,14 @@
       "find": "  stephrobert.scaleway.instance_server_info:\n    zone: \"{{ item }}\"",
       "replace": "  stephrobert.scaleway.instance_server_action:\n    zone: \"{{ item }}\"",
       "test": "tests/unit/collection/test_fleet_audit.py::test_laudit_nappelle_aucune_ecriture"
+    },
+    {
+      "name": "plan-rendu-apres-avoir-agi",
+      "why": "Le plan se termine par « No action has been sent ». Rendu hors du mode check, il l'affirmerait après avoir éteint des machines : une phrase fausse qui se lit exactement comme une phrase vraie, et que le lecteur croira parce qu'elle est au bon endroit. C'est pire qu'un silence (ADR-020).",
+      "file": "ansible_collections/stephrobert/scaleway/roles/power_schedule/tasks/main.yml",
+      "find": "        resultat: \"{{ scaleway_operation }}\"\n      when: ansible_check_mode",
+      "replace": "        resultat: \"{{ scaleway_operation }}\"\n      when: true",
+      "test": "tests/unit/collection/test_roles.py::test_le_plan_ne_se_rend_quen_repetition"
     }
   ]
 }

@@ -1,0 +1,12 @@
+minor_changes:
+  - "roles - in check mode, ``power_schedule`` and ``rolling_reboot`` now render
+    a plan a reviewer can read: the target, how many machines were selected,
+    what would change, what is already compliant and what is refused with its
+    reason. The same data is in ``scaleway_operation``, so a pipeline can make
+    it an artifact and have somebody approve it before the operation runs. The
+    plan is a rendering of the result structure, never a second computation."
+  - "A plan describes the fleet as it was read, and is never replayed: running
+    the operation reads it again. An approval chain therefore approves an
+    intention rather than a set of instructions, because the inventory can be
+    served from its cache and a cached state is not a state. See ADR-020, which
+    also says what that costs."

@@ -237,6 +237,56 @@
                started_at=_scaleway_power_schedule_debut,
                completed_at=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}
 
+
+    # ---- Le plan, quand rien n'a été envoyé ------------------------------
+
+    # **Un plan n'est pas une promesse.** Il décrit ce qui serait fait *au
+    # moment où il a été calculé* ; entre ce moment et l'exécution, une machine
+    # change d'état. C'est pourquoi l'exécution relit plutôt que d'appliquer un
+    # plan, et pourquoi rejouer un plan tel quel serait une régression déguisée
+    # en fonctionnalité (ADR-020).
+    #
+    # La même donnée est dans `scaleway_operation` : ce bloc en est le rendu,
+    # jamais une seconde source.
+    - name: The plan, for a reviewer
+      ansible.builtin.debug:
+        msg: |-
+          PLAN
+
+          Target
+            {{ resultat.target }}
+
+          Selected
+            {{ resultat.examined if resultat.examined is not none
+               else 'nothing could be read' }}
+
+          Would change
+          {% for nom in resultat.names.changed %}
+            {{ nom }}
+          {% else %}
+            nothing
+          {% endfor %}
+          {% if resultat.names.already_compliant %}
+
+          Already compliant
+          {% for nom in resultat.names.already_compliant %}
+            {{ nom }}
+          {% endfor %}
+          {% endif %}
+          {% if resultat.names.refused %}
+
+          Refused
+          {% for refus in resultat.names.refused %}
+            {{ refus.name }}  {{ refus.reason }}
+          {% endfor %}
+          {% endif %}
+
+          No action has been sent. This plan describes the fleet as it was read;
+          running the operation reads it again.
+      vars:
+        resultat: "{{ scaleway_operation }}"
+      when: ansible_check_mode
+
     # A machine that could not be read is not a machine that is fine. The run
     # stops on it, after having done what it could for the others: hiding it
     # would let the next schedule act on a fleet it does not know.

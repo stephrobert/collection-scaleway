@@ -84,6 +84,7 @@ adr/016-a-clearable-field-is-cleared-with-the-empty-value
 adr/017-the-launcher-removes-what-blocks-its-own-destruction
 adr/018-a-retry-policy-belongs-to-the-operation
 adr/019-a-name-filter-narrows-a-listing
+adr/020-a-plan-describes-the-moment-it-was-computed
 ```
 
 ```{toctree}
