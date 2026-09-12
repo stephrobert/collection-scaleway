@@ -2607,6 +2607,22 @@
       "find": "        resultat: \"{{ scaleway_operation }}\"\n      when: ansible_check_mode",
       "replace": "        resultat: \"{{ scaleway_operation }}\"\n      when: true",
       "test": "tests/unit/collection/test_roles.py::test_le_plan_ne_se_rend_quen_repetition"
+    },
+    {
+      "name": "produit-inconnu-normalise-au-mieux",
+      "why": "Normaliser un produit qu'on ne sait pas lire rendrait des champs absents, et une machine sans étiquette se lirait comme une machine dont on n'a pas su lire les étiquettes. La première est un constat, la seconde une ignorance, et l'audit les donnerait pour la même.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/resource_facts.py",
+      "find": "    if normaliseur is None:",
+      "replace": "    if normaliseur is None and False:",
+      "test": "tests/unit/collection/test_resource_facts.py::test_un_produit_inconnu_est_refuse"
+    },
+    {
+      "name": "refus-compte-par-constat",
+      "why": "Le contrat de résultat compte des ressources examinées, pas des constats. Un refus par constat fait compter deux fois une machine qui enfreint deux règles, et sur un parc où chacune n'en enfreint qu'une le total tombe juste par coïncidence : c'est la forme même d'un faux vert, trouvé en relisant ce qui venait d'être livré.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
+      "find": "        par_ressource.setdefault(constat[\"name\"], []).append(constat[\"rule\"])",
+      "replace": "        par_ressource.setdefault(constat[\"name\"] + constat[\"rule\"], []).append(constat[\"rule\"])",
+      "test": "tests/unit/collection/test_audit_findings.py::test_un_refus_par_machine_et_pas_par_constat"
     }
   ]
 }

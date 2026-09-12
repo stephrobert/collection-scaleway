@@ -1,0 +1,18 @@
+minor_changes:
+  - "filter - ``resource_facts`` normalises what a reading module returned into
+    the shape the audit rules are written against, so a rule never names a
+    product's own fields: ``last_change`` rather than ``modification_date``,
+    ``public_addresses`` rather than ``public_ips``. Adding a product adds a
+    normaliser, not a line inside a rule, which is what keeps policy-as-data
+    from becoming a giant playbook of rules per product. It refuses a product it
+    does not know rather than normalising it as best it can, because a machine
+    with no tags and a machine whose tags could not be read look alike, and the
+    first is a finding while the second is an ignorance."
+bugfixes:
+  - "roles - ``fleet_audit`` counted findings where the result contract counts
+    resources. ``examined`` is the sum of what changed, what was already
+    compliant and what was refused, so passing one refusal per finding counted a
+    machine twice as soon as it broke two rules. On a fleet where each machine
+    breaks exactly one, the total was right by coincidence, which is the shape a
+    false green takes. There is now one refusal per resource, carrying the rules
+    it broke as its reason, and the detailed findings stay where they were."
