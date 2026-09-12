@@ -1,0 +1,9 @@
+bugfixes:
+  - "The pre-push gate announced replaying the CI while silently omitting two of
+    its jobs: the quickstart journey and the event reaction, both added during
+    this cycle. It reported ``12 steps of the CI replayed`` where the pipeline
+    carried fourteen, and its own header promises to **name** whatever it cannot
+    replay. A gate that hides its holes is the green on zero files examined this
+    repository exists to prevent. Both are replayed now, and a test derives the
+    coverage from the workflow itself: a job that is neither replayed nor named
+    fails at the moment somebody adds it, rather than at the next release."
