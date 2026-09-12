@@ -19,7 +19,7 @@
 # renommage à moitié fait.
 namespace: stephrobert
 name: scaleway
-version: 0.6.0
+version: 0.7.0
 readme: README.md
 authors:
   - Stéphane Robert (@stephrobert)
@@ -58,7 +58,7 @@ homepage: https://github.com/stephrobert/collection-scaleway
 # Le commentaire précédent disait que le site n'était pas encore publié. Il a
 # été vrai, il ne l'est plus, et rien ne l'a relevé : une affirmation sur le
 # monde extérieur ne se compare à rien de local (#90).
-documentation: https://github.com/stephrobert/collection-scaleway/tree/0.6.0/docs
+documentation: https://github.com/stephrobert/collection-scaleway/tree/0.7.0/docs
 
 dependencies: {}
 

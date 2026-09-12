@@ -919,3 +919,214 @@ releases:
           name: resource_id
           namespace: null
     release_date: '2026-09-12'
+  0.7.0:
+    changes:
+      bugfixes:
+        - 'The pre-push gate announced replaying the CI while silently omitting two
+          of its jobs: the quickstart journey and the event reaction, both added during
+          this cycle. It reported ``12 steps of the CI replayed`` where the pipeline
+          carried fourteen, and its own header promises to **name** whatever it cannot
+          replay. A gate that hides its holes is the green on zero files examined
+          this repository exists to prevent. Both are replayed now, and a test derives
+          the coverage from the workflow itself: a job that is neither replayed nor
+          named fails at the moment somebody adds it, rather than at the next release.'
+        - roles - ``fleet_audit`` counted findings where the result contract counts
+          resources. ``examined`` is the sum of what changed, what was already compliant
+          and what was refused, so passing one refusal per finding counted a machine
+          twice as soon as it broke two rules. On a fleet where each machine breaks
+          exactly one, the total was right by coincidence, which is the shape a false
+          green takes. There is now one refusal per resource, carrying the rules it
+          broke as its reason, and the detailed findings stay where they were.
+        - 'roles - ``fleet_report`` reported two zones as unmeasured on every clean
+          run, and neither was unmeasured. The Load Balancer contract declares eight
+          zones where Instance declares ten, and the module refused the rest before
+          any call. ``zones_unmeasured`` carries this collection''s most repeated
+          claim, that nothing measured is not nothing found, and a signal that cries
+          wolf is a signal nobody reads: the day a zone really does not answer, the
+          line would have looked the same.'
+      minor_changes:
+        - 'A plan describes the fleet as it was read, and is never replayed: running
+          the operation reads it again. An approval chain therefore approves an intention
+          rather than a set of instructions, because the inventory can be served from
+          its cache and a cached state is not a state. See ADR-020, which also says
+          what that costs.'
+        - 'Each product is now asked only the zones its own contract declares, and
+          the report carries ``zones_not_offered`` beside ``zones_unmeasured``: a
+          zone a product does not offer is a fact about the product, not a measurement
+          that failed. The map comes from the versioned contracts, written by the
+          generator into ``module_utils`` and held by ``check:generated``. Typing
+          the eight zones into a role would have been a second source of the contract,
+          wrong the day the product opens a zone.'
+        - Every shipped operation now returns a machine-readable result alongside
+          its sentence, built by the new ``stephrobert.scaleway.operation_result``
+          filter. A pipeline, a ticket or a monitoring system reads ``scaleway_operation``
+          instead of parsing standard output, and an output parser breaks on the first
+          reworded sentence. Each operation also leaves its own ``scaleway_<operation>_operation``,
+          which survives the next one.
+        - 'New ``stephrobert.scaleway.fleet_audit`` playbook and role: the fleet judged
+          against a policy, read-only, with a severity per finding and the same three
+          outputs as the fleet report. ``rolling_reboot`` is used when you need it;
+          this is the one that earns its place in a schedule, and that is the difference
+          between a useful tool and a tool somebody integrates into their operations.'
+        - 'The collection now ships an Event-Driven Ansible rulebook, ``stephrobert.scaleway.diagnose_on_alert``:
+          an alert posted to its webhook makes it read the fleet. **Detect then diagnose,
+          never detect then modify**, and that boundary is the design rather than
+          a first step towards something else. An event is reachable by a third party
+          in a way a command line is not, so a rule that powered machines off on a
+          malformed payload would be the failure mode the chains refuse by construction,
+          moved somewhere nobody reviews. A test refuses a rulebook that triggers
+          anything that writes, and it derives what a playbook does rather than trusting
+          its name.'
+        - 'The operational playbooks are now roles, callable by their full name from
+          anybody''s playbook: ``stephrobert.scaleway.fleet_report``, ``stephrobert.scaleway.power_schedule``
+          and ``stephrobert.scaleway.rolling_reboot``. Each one carries a ``meta/argument_specs.yml``,
+          so Ansible validates its arguments before the first task rather than failing
+          at the third. The playbook is the ergonomics, the role is the operational
+          API, the module is the technical one; ``doctor`` stays a playbook, because
+          an entry command has nothing to compose. Nothing a user types changed.'
+        - 'The operations that act on machines now take a selector, and it is the
+          same one everywhere: exactly one of ``group``, ``name`` or ``tags``, plus
+          ``match`` set to ``all`` or ``any`` when several tags are given. ``all``
+          is the default because it is the narrower selection, and for an operation
+          that writes, erring on the safe side means touching fewer machines rather
+          than more. ``group: X`` on the command line stays, as the shorthand for
+          ``selector: {group: X}``, because what a user types is published surface.'
+        - 'The product admission gate now answers a second question, the one that
+          decides adoption rather than correctness: which recurring operation does
+          this product unlock? A product that adds modules no chain calls adds names
+          to a README and nothing to anybody, and 0.6.0 showed the opposite by becoming
+          usable without one new module. The answer is derived from the shipped operations
+          rather than declared, so it cannot drift: an operation calls modules, a
+          module names its product. A product with no operation is admitted while
+          saying so, never refused, because refusing would forbid adding a contract
+          before writing the chain that uses it.'
+        - 'The rulebook is replayed on every CI run, and by ``mise run rulebook``
+          locally: an emulator, ansible-rulebook on the rulebook of the installed
+          collection, an alert posted the way a monitoring system would, and the diagnosis
+          played by the rule. What is measured is not that the command exits zero,
+          which a rulebook that never fires would also do, but that the playbook ran
+          and that an event with no status ran nothing.'
+        - 'The sources come from the ``ansible.eda`` collection, which you install
+          yourself. Measured: ansible-rulebook carries webhook code inside its own
+          package, but neither ``ansible.eda.webhook`` nor a bare ``webhook`` resolves
+          without that collection present. This collection does not declare it as
+          a dependency, because somebody installing modules to power a fleet down
+          at night should not be made to pull an event framework they never asked
+          for.'
+        - 'filter - ``audit_findings`` evaluates the policy. The rules are data, not
+          code: an audit whose rules are carved into its playbook is its author''s
+          opinion made executable, and the first team without the same mandatory tags
+          has to fork it. The severity is data for the same reason, because the public
+          address of a bastion is normal and that of a database is not.'
+        - 'filter - ``operation_result`` derives its counts from the names rather
+          than taking them alongside. A ``changed: 3`` passed next to the list of
+          changed machines would be a second source of one fact, and two sources of
+          one fact end up disagreeing; here the count is the length of the list. It
+          refuses a refusal without a reason, a count passed instead of a list, and
+          an operation with no target or no mode. When nothing could be examined the
+          totals are ``null`` rather than ``0``, because nothing measured is not nothing
+          found.'
+        - 'filter - ``product_zones`` splits asked zones into what a product offers
+          and what it does not, and refuses a product absent from the map: one without
+          modules has nothing to be asked.'
+        - 'filter - ``resource_facts`` normalises what a reading module returned into
+          the shape the audit rules are written against, so a rule never names a product''s
+          own fields: ``last_change`` rather than ``modification_date``, ``public_addresses``
+          rather than ``public_ips``. Adding a product adds a normaliser, not a line
+          inside a rule, which is what keeps policy-as-data from becoming a giant
+          playbook of rules per product. It refuses a product it does not know rather
+          than normalising it as best it can, because a machine with no tags and a
+          machine whose tags could not be read look alike, and the first is a finding
+          while the second is an ignorance.'
+        - 'filter - ``select_hosts`` unifies four refusals that already existed separately
+          and now hold for all three forms: an ambiguous name is refused rather than
+          settled, naming the candidates; a name is compared exactly, where the API
+          filter matches by prefix; an unknown key is refused rather than selecting
+          nothing, because a typo and an empty fleet look alike; and two criteria
+          at once are refused, because the answer would depend on the reading order.
+          ``fleet_report`` does not take a selector: its target is a list of zones,
+          and forcing a host selector on it would be uniformity that lies about what
+          the operation does.'
+        - 'roles - ``fleet_audit`` refuses a policy with no rule, a rule nothing can
+          settle, and a severity that is not one. The first would make emptying the
+          policy file the shortest path to a green report; the second would report
+          a resource as compliant for the sole reason that nobody evaluated it. Two
+          rules the issue proposed are deliberately not written, and the refusal names
+          them with the reason: neither an unused reserved address nor a load balancer
+          backend has been measured on any available target, and a rule written on
+          the supposed shape of an object never seen judges from an invention.'
+        - 'roles - ``fleet_report`` leaves its report in ``scaleway_fleet_report_result``,
+          so a calling playbook can act on it instead of reading it off the screen.
+          Every other fact a role sets is prefixed and internal: a role included in
+          somebody else''s play shares their namespace, and a bare ``set_fact: machines``
+          would overwrite whatever they call ``machines``. A test refuses an unprefixed
+          one, which is a defect that only exists once the code is a role.'
+        - roles - a shipped playbook calls its role and never reimplements it, and
+          a test refuses anything else. Two implementations of one operation always
+          end up disagreeing, and the day they do, the documentation describes one
+          while the user plays the other.
+        - 'roles - in check mode, ``power_schedule`` and ``rolling_reboot`` now render
+          a plan a reviewer can read: the target, how many machines were selected,
+          what would change, what is already compliant and what is refused with its
+          reason. The same data is in ``scaleway_operation``, so a pipeline can make
+          it an artifact and have somebody approve it before the operation runs. The
+          plan is a rendering of the result structure, never a second computation.'
+      release_summary: 'Compose operations. The previous release turned modules into
+        commands
+
+        somebody remembers; this one turns those commands into something other people
+
+        build on. The chains are roles now, callable by their full name from anybody''s
+
+        playbook, with their arguments validated before the first task. The playbook
+
+        is the ergonomics, the role is the operational API, the module is the
+
+        technical one, and nothing a user types changed.
+
+
+        Every operation returns a result a machine reads rather than a sentence, with
+
+        its counts derived from the names it carries so the two cannot disagree. They
+
+        all accept the same way of saying what to act on: a group, a name, or tags,
+
+        with the refusals that already existed now holding for all three forms. In
+
+        check mode they render a plan a reviewer can read, and a new record says why
+
+        that plan is never replayed.
+
+
+        Two things are new to run. ``fleet_audit`` judges a fleet against a policy,
+
+        read-only, and it is the one that earns a place in a schedule rather than
+
+        being used when you need it; its rules are data, and so are their severities,
+
+        because the public address of a bastion is normal and that of a database is
+
+        not. And an Event-Driven rulebook reacts to an alert by reading the fleet:
+
+        detect then diagnose, never detect then modify, which is the design and not
+        a
+
+        first step towards something else.
+
+
+        Both are replayed on every run, like everything else here.
+
+        '
+    fragments:
+      - admission-operations.yml
+      - fleet-audit.yml
+      - operation-plan.yml
+      - operation-result.yml
+      - product-zones.yml
+      - qualifier-couverture.yml
+      - release_summary.yml
+      - resource-facts.yml
+      - roles.yml
+      - rulebook.yml
+      - selector.yml
+    release_date: '2026-09-12'
