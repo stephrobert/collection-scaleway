@@ -404,3 +404,56 @@ jobs:
 
       - name: Le parcours d'accueil tient sans compte Scaleway
         run: mise run quickstart
+
+  rulebook:
+    # **Un rulebook livré que rien ne rejoue pourrit plus discrètement que le
+    # reste.** Personne ne lance un rulebook à la main pour voir s'il marche
+    # encore, et un fichier d'événements faux se lit exactement comme un juste.
+    #
+    # Ce job monte la chaîne entière : un émulateur, `ansible-rulebook` sur le
+    # rulebook de la collection, un événement d'alerte posté comme une
+    # supervision le posterait, et le diagnostic joué par la règle.
+    #
+    # Ce qu'il ne prouve pas : rien de ce qui dépend d'une vraie supervision.
+    # L'événement est fabriqué ici, et c'est sa forme qui est mesurée, pas
+    # qu'Alertmanager l'émette ainsi.
+    name: Réaction sur événement
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Durcir le runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          # La JVM, le binaire de l'émulateur et la collection des sources se
+          # téléchargent : `audit` documente ce trafic.
+          egress-policy: audit
+
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Installer mise
+        uses: ./.github/actions/mise
+
+      - name: Installer
+        run: mise run setup
+
+      # Hors de l'arbre du dépôt : une collection tierce posée dedans serait lue
+      # par tous les contrôles d'ici, et celui qui refuse le tiret cadratin a
+      # rougi sur sa documentation avant qu'elle ne soit déplacée.
+      - name: Installer la collection qui fournit les sources d'événements
+        run: |
+          mkdir -p build/collections
+          ansible-galaxy collection install ansible.eda -p build/collections
+
+      - name: Démarrer l'émulateur
+        uses: stephrobert/setup-feint@b7eba1d4fcaccf65cf9124bf97a0d995996709b9 # v1
+        with:
+          version: "0.12.1"
+          addr: 127.0.0.1:4878
+
+      - name: Une alerte entre, un diagnostic sort
+        run: mise run rulebook

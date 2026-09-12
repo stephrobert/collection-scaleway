@@ -1,0 +1,61 @@
+---
+# An alert fires somewhere, and the fleet gets read. Nothing else.
+#
+#   ansible-rulebook --rulebook stephrobert.scaleway.diagnose_on_alert \
+#     -i inventory.yml -E SCW_ACCESS_KEY,SCW_SECRET_KEY
+#
+# **Detect then diagnose, never detect then modify.** That boundary is the whole
+# design of this rulebook, and it is deliberate rather than a first step towards
+# something else. A rule that powered machines off on a malformed event would be
+# the failure mode `power_schedule` refuses by construction, moved somewhere
+# nobody reviews: an event is attacker-reachable in a way a command line is not.
+#
+# Remediation can come later, and it will need what this does not: a guard on
+# what it is allowed to touch, and a trace of what it did. Until somebody asks
+# for it with those, reading the fleet is the useful half and the safe one.
+#
+# **The source comes from `ansible.eda`, which you install yourself.** Measured:
+# `ansible-rulebook` carries webhook code inside its own package, but neither
+# `ansible.eda.webhook` nor a bare `webhook` resolves without that collection
+# present. This collection does not declare it as a dependency, because somebody
+# installing modules to power a fleet down at night should not be made to pull
+# an event framework they never asked for.
+#
+#   ansible-galaxy collection install ansible.eda
+#
+# Alertmanager, a monitoring system or a CI job posts to it; nothing
+# Scaleway-specific is involved in receiving an event, and writing a Scaleway
+# event source would be a component to maintain that nobody has asked for.
+#
+# **The source nests the posted body under `payload`.** So a body of
+# `{"status": "firing"}` is read as `event.payload.status`, and wrapping it
+# yourself gives `event.payload.payload.status` and a rule that never fires.
+# Measured, because the first version of this rulebook did exactly that.
+- name: Diagnose a Scaleway fleet when something alerts
+  hosts: localhost
+
+  sources:
+    - ansible.eda.webhook:
+        host: "{{ listen_host | default('127.0.0.1') }}"
+        port: "{{ listen_port | default(5000) }}"
+
+  rules:
+    # `status == "firing"` is Alertmanager's own vocabulary. A resolved alert
+    # reaches the same endpoint, and reading the fleet because something got
+    # better would teach people to ignore the reports.
+    - name: An alert is firing, so read the fleet
+      condition: event.payload.status == "firing"
+      action:
+        run_playbook:
+          name: stephrobert.scaleway.fleet_report
+
+    # An event that does not say whether it is firing is not an alert this
+    # rulebook understands. Saying so beats matching it silently: a payload
+    # shape nobody checked is how a rule starts firing on the wrong thing.
+    - name: An event without a status says so rather than being ignored
+      condition: event.payload.status is not defined
+      action:
+        debug:
+          msg: >-
+            Event received without `payload.status`. This rulebook reacts to
+            Alertmanager's vocabulary; nothing was read.

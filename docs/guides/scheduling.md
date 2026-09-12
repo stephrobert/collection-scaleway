@@ -173,6 +173,41 @@ with `desired_state: on` in the morning and one with `desired_state: off` in the
 evening. AWX schedules are timezone aware, which is the one thing it gives you
 that a cron line does not.
 
+## When something else decides when
+
+A schedule fires on the clock. Event-Driven Ansible fires on an event, and the
+collection ships a rulebook for it:
+
+```bash
+ansible-galaxy collection install ansible.eda
+ansible-rulebook --rulebook stephrobert.scaleway.diagnose_on_alert \
+  -i inventory.yml -E SCW_ACCESS_KEY,SCW_SECRET_KEY
+```
+
+An alert posted to its webhook makes it read the fleet.
+
+**Detect then diagnose, never detect then modify.** That is the design, not a
+first step towards something else. An event is reachable by a third party in a
+way a command line is not, so a rule that powered machines off on a malformed
+payload would be the failure mode `power_schedule` refuses by construction,
+moved somewhere nobody reviews. A test refuses a rulebook that triggers anything
+that writes, and it derives what a playbook does rather than trusting its name.
+
+Two things measured while building it, worth knowing before you write your own:
+
+- `ansible-rulebook` carries webhook code inside its own package, but neither
+  `ansible.eda.webhook` nor a bare `webhook` resolves without the `ansible.eda`
+  collection installed. This collection does not declare it as a dependency:
+  somebody installing modules to power a fleet down at night should not be made
+  to pull an event framework they never asked for;
+- the webhook source nests the posted body under `payload`, so a body of
+  `{"status": "firing"}` reads as `event.payload.status`. Wrapping it yourself
+  gives a rule that never fires.
+
+This path is replayed here on every run, like the scheduled pipeline: an
+emulator, the rulebook of the installed collection, an alert posted the way a
+monitoring system would, and the diagnosis played by the rule.
+
 ## What none of these make safe
 
 Scheduling does not make a fleet-wide action safe, and none of these paths tries

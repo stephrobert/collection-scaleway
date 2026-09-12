@@ -39,13 +39,20 @@ def _non_playbooks() -> set[str]:
     que `compute` n'en était pas un. Il avait raison sur la forme et tort sur
     le fond.
     """
-    plugins = RACINE / "ansible_collections" / "stephrobert" / "scaleway" / "plugins"
-    return {
+    collection = RACINE / "ansible_collections" / "stephrobert" / "scaleway"
+    plugins = {
         chemin.stem
         for genre in ("inventory", "lookup", "modules", "filter")
-        for chemin in (plugins / genre).glob("*.py")
+        for chemin in (collection / "plugins" / genre).glob("*.py")
         if chemin.stem != "__init__"
     }
+    # Les rulebooks se citent par leur nom complet comme les playbooks, et n'en
+    # sont pas. Lus sur le disque pour la même raison que les plugins : la
+    # liste écrite à la main a déjà refusé un nom valide le jour d'un renommage.
+    rulebooks = {
+        chemin.stem for chemin in (collection / "extensions" / "eda" / "rulebooks").glob("*.yml")
+    }
+    return plugins | rulebooks
 
 
 def test_le_guide_part_denchainements_livres() -> None:
