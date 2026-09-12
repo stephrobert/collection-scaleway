@@ -30,23 +30,30 @@ PLUGIN = (
 
 MAINTENANT = "2026-09-12T12:00:00Z"
 
-#: Un parc de laboratoire, avec exactement les défauts que les règles cherchent.
+#: Un parc de laboratoire **dans la forme commune**, celle que les règles lisent.
+#:
+#: Elles ne connaissent aucun nom de champ d'Instance : `last_change` et pas
+#: `modification_date`, `public_addresses` et pas `public_ips`. C'est ce qui
+#: leur permet de valoir pour un produit qu'elles ne connaissent pas, et c'est
+#: `resource_facts` qui fait la traduction (#210).
 PARC = [
     {
+        "kind": "instance",
         "name": "web-1",
         "zone": "fr-par-1",
         "state": "running",
         "tags": ["owner=sre", "environment=prod"],
-        "public_ips": [{"address": "51.0.0.1"}],
-        "modification_date": "2026-09-12T11:00:00Z",
+        "public_addresses": ["51.0.0.1"],
+        "last_change": "2026-09-12T11:00:00Z",
     },
     {
+        "kind": "instance",
         "name": "oubliee",
         "zone": "pl-waw-1",
         "state": "stopped",
         "tags": ["role=test"],
-        "public_ips": [],
-        "modification_date": "2026-01-01T00:00:00Z",
+        "public_addresses": [],
+        "last_change": "2026-01-01T00:00:00Z",
     },
 ]
 
@@ -118,7 +125,7 @@ def test_une_machine_arretee_sans_date_ressort_comme_non_jugeable() -> None:
     """
     constats = _juger(
         {"stopped_since": {"severity": "warn", "days": 30}},
-        machines=[{"name": "sans-date", "state": "stopped", "tags": []}],
+        machines=[{"kind": "instance", "name": "sans-date", "state": "stopped", "tags": []}],
     )
 
     assert constats[0]["detail"] == "stopped, and no date to measure it from"
@@ -184,3 +191,29 @@ def test_les_constats_sont_tries() -> None:
 
 def test_le_filtre_est_publie_sous_son_nom() -> None:
     assert "audit_findings" in _module().FilterModule().filters()
+
+
+# --- le refus que le contrat de résultat reçoit ---------------------------
+
+
+def test_un_refus_par_machine_et_pas_par_constat() -> None:
+    """Le contrat compte des ressources examinées, pas des constats.
+
+    `examined` y vaut la somme de ce qui a changé, de ce qui était conforme et
+    de ce qui est refusé : passer les constats ferait compter deux fois une
+    machine qui enfreint deux règles. Sur un parc où chacune n'en enfreint
+    qu'une, le total tombe juste par coïncidence, et c'est la forme même d'un
+    faux vert.
+    """
+    constats = _juger(
+        {
+            "required_tags": {"severity": "fail", "keys": ["owner"]},
+            "allowed_zones": {"severity": "fail", "zones": ["fr-par-1"]},
+        }
+    )
+    assert len(constats) == 2, "la machine doit enfreindre deux règles pour que ça mesure"
+
+    refus = _module().audit_refusals(constats)
+    assert len(refus) == 1, "deux constats sur une machine font un refus, pas deux"
+    assert refus[0]["name"] == "instance/oubliee"
+    assert refus[0]["reason"] == "allowed_zones, required_tags"

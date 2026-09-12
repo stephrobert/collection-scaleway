@@ -50,10 +50,20 @@
 
 # ---- The judgement -------------------------------------------------------
 
+# **La couture entre un produit et une règle.** Les règles ne lisent que la
+# forme commune, donc elles ne connaissent aucun nom de champ d'Instance. Le
+# jour où Elastic Metal aura des modules, un normaliseur s'ajoute et aucune
+# règle ne bouge.
+- name: Normalise what the zones answered
+  ansible.builtin.set_fact:
+    _scaleway_fleet_audit_faits: >-
+      {{ _scaleway_fleet_audit_machines
+         | stephrobert.scaleway.resource_facts(kind='instance') }}
+
 - name: Judge what the measured zones hold
   ansible.builtin.set_fact:
     scaleway_fleet_audit_findings: >-
-      {{ _scaleway_fleet_audit_machines | stephrobert.scaleway.audit_findings(
+      {{ _scaleway_fleet_audit_faits | stephrobert.scaleway.audit_findings(
            policy=scaleway_fleet_audit_policy,
            now=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}
 
@@ -68,8 +78,19 @@
     # nuance reste lisible.
     _scaleway_fleet_audit_pass: >-
       {{ _scaleway_fleet_audit_machines | map(attribute='name') | list
-         | difference(scaleway_fleet_audit_findings | map(attribute='name')
-                      | map('regex_replace', '^instance/', '') | list) }}
+         | difference(_noms_en_constat) }}
+    # **Un refus par machine, jamais par constat.** Le contrat calcule
+    # `examined` comme la somme de ce qui a changé, de ce qui était conforme et
+    # de ce qui est refusé : passer les constats y ferait compter deux fois une
+    # machine qui enfreint deux règles. Sur un parc où chaque machine n'en
+    # enfreint qu'une, le total tombe juste par coïncidence, ce qui est la forme
+    # même d'un faux vert.
+    _scaleway_fleet_audit_refus: >-
+      {{ scaleway_fleet_audit_findings | stephrobert.scaleway.audit_refusals }}
+  vars:
+    _noms_en_constat: >-
+      {{ scaleway_fleet_audit_findings | map(attribute='name')
+         | map('regex_replace', '^instance/', '') | list }}
 
 # ---- What a machine reads ------------------------------------------------
 
@@ -83,8 +104,7 @@
            target=(_scaleway_fleet_audit_zones | join(',')),
            mode='apply',
            already_compliant=_scaleway_fleet_audit_pass,
-           refused=scaleway_fleet_audit_findings,
-           refused_reason='detail',
+           refused=_scaleway_fleet_audit_refus,
            unmeasured=_scaleway_fleet_audit_muettes,
            started_at=_scaleway_fleet_audit_debut,
            completed_at=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}

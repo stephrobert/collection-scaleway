@@ -14,9 +14,14 @@ doit le forker. La sévérité en fait partie : l'adresse publique d'un bastion 
 normale et celle d'une base ne l'est pas, et ce dépôt n'a pas à trancher ça pour
 autrui.
 
-**Aucune règle ne s'écrit sur une supposition de ce que l'API rend.** Chacune de
-celles qui existent ici nomme le champ qu'elle lit, et ce champ a été mesuré sur
-`instance_server_info`. Deux règles que l'issue proposait ne sont pas écrites,
+**Une règle ne nomme jamais le champ d'un produit.** Elle lit la forme commune
+que `resource_facts` produit : `last_change` plutôt que `modification_date`,
+`public_addresses` plutôt que `public_ips`. C'est ce qui lui permet de valoir
+pour un produit qu'elle ne connaît pas, et c'est pourquoi ajouter un produit
+ajoute un normaliseur et pas une ligne dans une règle (#210).
+
+**Aucune règle ne s'écrit sur une supposition de ce que l'API rend.** Chaque
+champ de la forme commune vient d'un champ mesuré sur `instance_server_info`. Deux règles que l'issue proposait ne sont pas écrites,
 et leur absence est déclarée dans `SANS_SOURCE` plutôt que tue : une adresse
 réservée inutilisée et un load balancer sans backend sain n'ont pu être mesurés
 sur aucune cible disponible.
@@ -130,16 +135,8 @@ def _regle_adresse_publique(machine: dict, _parametres: dict) -> str | None:
     D'où la sévérité dans la politique. Un bastion en a une par construction,
     une base de données pas.
     """
-    adresses = machine.get("public_ips") or (
-        [machine["public_ip"]] if machine.get("public_ip") else []
-    )
-    if not adresses:
-        return None
-    lisibles = [
-        adresse.get("address", "?") if isinstance(adresse, dict) else str(adresse)
-        for adresse in adresses
-    ]
-    return f"public address: {', '.join(lisibles)}"
+    adresses = machine.get("public_addresses") or []
+    return f"public address: {', '.join(adresses)}" if adresses else None
 
 
 def _regle_arretee_depuis(machine: dict, parametres: dict, maintenant: datetime) -> str | None:
@@ -149,7 +146,7 @@ def _regle_arretee_depuis(machine: dict, parametres: dict, maintenant: datetime)
 
     if not str(machine.get("state", "")).startswith("stopped"):
         return None
-    depuis = machine.get("modification_date") or machine.get("creation_date")
+    depuis = machine.get("last_change")
     if not depuis:
         # Ne pas savoir n'est pas savoir que ça va : la machine ressort comme
         # non jugeable plutôt que comme conforme.
@@ -227,8 +224,31 @@ def audit_findings(machines: object, policy: object, now: str) -> list[dict[str,
     return sorted(constats, key=lambda constat: (constat["name"], constat["rule"]))
 
 
+def audit_refusals(constats: object) -> list[dict[str, str]]:
+    """Un refus par ressource, avec les règles qu'elle enfreint pour raison.
+
+    **Le contrat de résultat compte des ressources examinées, pas des constats.**
+    `examined` y vaut la somme de ce qui a changé, de ce qui était conforme et
+    de ce qui est refusé : passer les constats ferait compter deux fois une
+    machine qui enfreint deux règles. Sur un parc où chacune n'en enfreint
+    qu'une, le total tombe juste par coïncidence, et c'est la forme même d'un
+    faux vert.
+
+    La raison porte les règles plutôt que les détails : c'est ce qui se relit
+    dans un compte rendu, et les détails restent dans les constats.
+    """
+    par_ressource: dict[str, list[str]] = {}
+    for constat in constats or []:
+        par_ressource.setdefault(constat["name"], []).append(constat["rule"])
+
+    return [
+        {"name": nom, "reason": ", ".join(sorted(set(regles)))}
+        for nom, regles in sorted(par_ressource.items())
+    ]
+
+
 class FilterModule:
     """Ce que la collection publie comme filtres."""
 
     def filters(self) -> dict[str, object]:
-        return {"audit_findings": audit_findings}
+        return {"audit_findings": audit_findings, "audit_refusals": audit_refusals}
