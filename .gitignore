@@ -33,6 +33,12 @@ __pycache__/
 # Ansible laisse ceci derrière un playbook interrompu.
 *.retry
 
+# `galaxy_importer` écrit son verdict dans le répertoire courant, sans le
+# demander et sans option pour l'en empêcher. Un mégaoctet de sortie a été
+# versionné comme ça. C'est le verdict d'une exécution, pas un artefact du
+# produit.
+/importer_result.json
+
 # Ce que Terraform pose à côté de la stack d'exemple : le fournisseur
 # téléchargé, l'état, et les valeurs locales. L'état décrit un compte à un
 # instant, et `terraform.tfvars` porte une clé publique de poste : ni l'un
