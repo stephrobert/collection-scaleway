@@ -21,7 +21,10 @@ from pathlib import Path
 import pytest
 
 RACINE = Path(__file__).resolve().parents[3]
-PLAYBOOK = RACINE / "ansible_collections/stephrobert/scaleway/playbooks/fleet_report.yml"
+COLLECTION = RACINE / "ansible_collections" / "stephrobert" / "scaleway"
+PLAYBOOK = COLLECTION / "playbooks" / "fleet_report.yml"
+#: Le comportement vit dans le rôle depuis #207 : la façade se joue, le rôle se lit.
+TACHES = COLLECTION / "roles" / "fleet_report" / "tasks" / "main.yml"
 PORT_MORT = "http://127.0.0.1:4999"
 
 
@@ -97,7 +100,12 @@ def test_un_format_de_sortie_inconnu_est_refuse(ansible_disponible: None) -> Non
     code, sortie = _jouer("-e", "zones=fr-par-1", "-e", "output=csv")
 
     assert code != 0
-    assert "is not one of text, json, markdown" in sortie
+    # Le refus vient du contrat d'arguments du rôle, donc avant la première
+    # tâche, et il nomme les valeurs acceptées. Le test mesure le refus et ce
+    # qu'il apprend, pas la phrase que ce dépôt aurait écrite : une garde
+    # accrochée à une formulation rougit sur une reformulation d'Ansible.
+    assert "text, json, markdown" in sortie
+    assert "scaleway_fleet_report_output" in sortie
 
 
 # --- ce qu'il ne fait jamais ----------------------------------------------
@@ -106,10 +114,12 @@ def test_un_format_de_sortie_inconnu_est_refuse(ansible_disponible: None) -> Non
 def test_le_rapport_nappelle_aucune_ecriture(ansible_disponible: None) -> None:
     """Lecture seule, et c'est ce qui en fait une première commande sans risque.
 
-    Le test lit le playbook plutôt que son exécution : un module d'écriture
-    ajouté demain doit rougir ici, même si la cible du jour ne l'exerce pas.
+    Le test lit le rôle plutôt que son exécution : un module d'écriture ajouté
+    demain doit rougir ici, même si la cible du jour ne l'exerce pas. Laisser ce
+    test sur la façade l'aurait rendu vert sur un playbook qui n'appelle plus
+    rien, ce qui est la façon la plus discrète de désarmer une garde.
     """
-    texte = PLAYBOOK.read_text(encoding="utf-8")
+    texte = TACHES.read_text(encoding="utf-8")
     # Un appel de module, et pas un exemple d'usage en commentaire : en YAML il
     # est indenté et suivi de deux-points. Le motif large attrapait
     # `stephrobert.scaleway.fleet_report` de l'en-tête, qui n'appelle rien.

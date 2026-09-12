@@ -2466,10 +2466,10 @@
     },
     {
       "name": "repetition-rendue-comme-un-vrai-passage",
-      "why": "En mode check, le module d'action annonce le changement sans l'envoyer : `changed` compte ce qui bougerait. Le compte rendu disait « acted on » dans les deux cas, donc une répétition annonçait trois extinctions pendant que les trois machines tournaient encore. Mesuré en jouant le playbook contre l'émulateur du quickstart.",
-      "file": "ansible_collections/stephrobert/scaleway/playbooks/power_schedule.yml",
-      "find": "              {{ 'would be acted on (check mode: nothing was sent)'\n                 if ansible_check_mode else 'acted on' }},",
-      "replace": "              {{ 'would be acted on (check mode: nothing was sent)'\n                 if false else 'acted on' }},",
+      "why": "En mode check, le module d'action annonce le changement sans l'envoyer : `changed` compte ce qui bougerait. Le compte rendu disait « acted on » dans les deux cas, donc une répétition annonçait trois extinctions pendant que les trois machines tournaient encore. Mesuré en jouant le playbook contre l'émulateur du quickstart. Depuis #207 le comportement vit dans le rôle, et cette mutation l'y suit : `/falsify` a refusé de s'appliquer plutôt que de se taire, ce qui est la seule façon dont une mutation orpheline peut se signaler.",
+      "file": "ansible_collections/stephrobert/scaleway/roles/power_schedule/tasks/main.yml",
+      "find": "          {{ 'would be acted on (check mode: nothing was sent)'\n             if ansible_check_mode else 'acted on' }},",
+      "replace": "          {{ 'would be acted on (check mode: nothing was sent)'\n             if false else 'acted on' }},",
       "test": "tests/unit/collection/test_power_schedule.py::test_le_compte_rendu_distingue_une_repetition_dun_vrai_passage"
     },
     {
@@ -2503,6 +2503,22 @@
       "find": "    rien_a_dater = not neufs and not options and not retours\n",
       "replace": "    rien_a_dater = not neufs and not options and not retours\n    if rien_a_dater:\n        return [f\"rien à figer : aucun nom n'attend de date sous {version}.\"]\n",
       "test": "tests/unit/outillage/test_introductions_controle.py::test_un_cycle_sans_rien_a_dater_avance_quand_meme_la_preparation"
+    },
+    {
+      "name": "playbook-qui-reimplemente-son-role",
+      "why": "Le playbook est l'ergonomie, le rôle est l'opération. Une tâche ajoutée « juste pour cette fois » dans la façade donne deux implémentations d'une même opération, et deux implémentations divergent toujours. Le jour où elles diffèrent, la documentation décrit l'une et l'utilisateur joue l'autre, sans que personne sache laquelle a raison.",
+      "file": "ansible_collections/stephrobert/scaleway/playbooks/power_schedule.yml",
+      "find": "  roles:\n    - role: stephrobert.scaleway.power_schedule",
+      "replace": "  tasks:\n    - name: A shortcut, just this once\n      stephrobert.scaleway.instance_server_action:\n        zone: fr-par-1\n        server_id: \"{{ server_id | default('') }}\"\n        action: poweroff\n      when: false\n\n  roles:\n    - role: stephrobert.scaleway.power_schedule",
+      "test": "tests/unit/collection/test_roles.py::test_un_playbook_livre_appelle_son_role_et_ne_le_reimplemente_pas"
+    },
+    {
+      "name": "fait-de-role-non-prefixe",
+      "why": "Un rôle inclus depuis le playbook de quelqu'un d'autre partage son espace de noms. Un `set_fact: selection` atterrit dans ses faits et écrase le sien, et le défaut se manifeste chez lui comme une variable qui change de valeur sans raison. C'est un mode de défaillance qui n'existe pas tant que le code est un playbook, donc qu'aucune garde d'avant #207 ne pouvait attraper.",
+      "file": "ansible_collections/stephrobert/scaleway/roles/power_schedule/tasks/main.yml",
+      "find": "    - name: What the named group holds, read from the inventory\n      ansible.builtin.set_fact:\n        _scaleway_power_schedule_selection:",
+      "replace": "    - name: What the named group holds, read from the inventory\n      ansible.builtin.set_fact:\n        selection: >-\n          {{ groups[scaleway_power_schedule_group] | default([]) | sort }}\n        _scaleway_power_schedule_selection:",
+      "test": "tests/unit/collection/test_roles.py::test_aucun_role_ne_pose_un_fait_sans_le_prefixer"
     }
   ]
 }

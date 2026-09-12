@@ -18,11 +18,16 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
 RACINE = Path(__file__).resolve().parents[3]
-PLAYBOOKS = RACINE / "ansible_collections/stephrobert/scaleway/playbooks"
-PLAYBOOK = PLAYBOOKS / "rolling_reboot.yml"
-LOT = PLAYBOOKS / "tasks/rolling_reboot_batch.yml"
+COLLECTION = RACINE / "ansible_collections" / "stephrobert" / "scaleway"
+PLAYBOOK = COLLECTION / "playbooks" / "rolling_reboot.yml"
+#: Le comportement vit dans le rôle depuis #207. Deux fichiers le portent : les
+#: tâches, et le lot qu'elles incluent.
+ROLE = COLLECTION / "roles" / "rolling_reboot"
+TACHES = ROLE / "tasks" / "main.yml"
+LOT = ROLE / "tasks" / "batch.yml"
 
 
 def _jouer(*options: str) -> tuple[int, str]:
@@ -60,7 +65,7 @@ def test_aucune_attente_nest_une_duree_fixe() -> None:
     mesurer autrement, parce qu'un `sleep` qui marche ne se distingue pas d'une
     attente juste tant que la machine est rapide.
     """
-    for chemin in (PLAYBOOK, LOT):
+    for chemin in (TACHES, LOT):
         texte = chemin.read_text(encoding="utf-8")
         lignes = [
             ligne
@@ -92,7 +97,9 @@ def test_le_travail_asynchrone_survit_a_lattente_du_module() -> None:
     échoue plus souvent que ce qu'il mesure.
     """
     texte = LOT.read_text(encoding="utf-8")
-    assert "(wait_timeout | int) + 60" in texte, (
+    # Le nom de la variable est celui du rôle depuis #207. Le fait tenu est le
+    # même : la marge vient de l'attente du module, pas d'un nombre écrit à côté.
+    assert "(scaleway_rolling_reboot_wait_timeout | int) + 60" in texte, (
         "la durée de vie du travail doit dépasser l'attente du module"
     )
 
@@ -127,20 +134,25 @@ def test_un_lot_non_positif_est_refuse(ansible_disponible: None) -> None:
 
 
 def test_aucune_valeur_par_defaut_ne_designe_une_cible() -> None:
-    texte = PLAYBOOK.read_text(encoding="utf-8")
-    declarations = re.search(r"\n  vars:\n(.*?)\n  tasks:", texte, flags=re.DOTALL)
-    assert declarations, "la section vars du play n'est plus reconnue"
+    """Les deux endroits comptent : le rôle pour qui l'inclut, le playbook pour
+    qui le lance. Un défaut ajouté d'un seul côté suffirait à redémarrer une
+    production entière."""
+    defauts = yaml.safe_load((ROLE / "defaults" / "main.yml").read_text(encoding="utf-8"))
+    assert defauts.get("scaleway_rolling_reboot_group") == "", (
+        "`scaleway_rolling_reboot_group` doit rester vide par défaut : un "
+        "redémarrage progressif qui devine sa cible redémarre une production entière"
+    )
 
-    assert re.search(r'^\s+group:\s*""\s*$', declarations.group(1), flags=re.MULTILINE), (
-        "`group` doit rester vide par défaut : un redémarrage progressif qui "
-        "devine sa cible redémarre une production entière"
+    play = yaml.safe_load(PLAYBOOK.read_text(encoding="utf-8"))[0]
+    assert play.get("vars", {}).get("group") == "", (
+        "`group` doit rester vide par défaut dans le playbook livré"
     )
 
 
 def test_une_seule_tache_ecrit() -> None:
     """Le reste lit. Et un redémarrage progressif n'allume jamais rien."""
     appels: list[str] = []
-    for chemin in (PLAYBOOK, LOT):
+    for chemin in (TACHES, LOT):
         appels += re.findall(
             r"^\s+stephrobert\.scaleway\.([a-z0-9_]+):",
             chemin.read_text(encoding="utf-8"),

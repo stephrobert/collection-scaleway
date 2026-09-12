@@ -1,0 +1,37 @@
+---
+argument_specs:
+  main:
+    short_description: Reboot a named inventory group in batches
+    description:
+      - >-
+        Reboots one batch at a time and waits for each batch to come back before
+        touching the next. A machine that is not running is left alone and
+        named: a rolling reboot that starts machines has done something nobody
+        asked for.
+      - >-
+        The waiting is observation, never a duration. The action module watches
+        each machine leave C(running) and return, and refuses to conclude when it
+        never saw it change.
+    options:
+      scaleway_rolling_reboot_group:
+        type: str
+        default: ""
+        description:
+          - >-
+            The inventory group to roll through. Empty means do nothing and say
+            so, because a roll with no target would reboot whatever the
+            inventory happens to hold.
+      scaleway_rolling_reboot_batch_size:
+        type: int
+        default: 1
+        description:
+          - >-
+            How many machines to reboot at once. One at a time is the safe
+            default; a larger batch is a decision.
+      scaleway_rolling_reboot_wait_timeout:
+        type: int
+        default: 300
+        description:
+          - >-
+            Bound, in seconds, for the observation the action module performs on
+            each machine. Not a sleep.

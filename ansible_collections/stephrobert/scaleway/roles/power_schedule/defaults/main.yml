@@ -1,0 +1,10 @@
+---
+# No default target, deliberately: a schedule that guesses which machines to
+# power off is how a fleet goes down one evening. An empty group means "do
+# nothing and say so", which is what lets `mise run integration` play the
+# shipped playbook without arguments.
+scaleway_power_schedule_group: ""
+
+# No default direction either. Naming the target without saying which way to
+# move it is not a request.
+scaleway_power_schedule_desired_state: ""

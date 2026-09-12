@@ -1,0 +1,12 @@
+---
+# No default target, deliberately: a roll with no group would reboot whatever
+# the inventory happens to hold. An empty group means do nothing and say so.
+scaleway_rolling_reboot_group: ""
+
+# One at a time is the safe default. A larger batch is a decision.
+scaleway_rolling_reboot_batch_size: 1
+
+# Passed to the action module, which uses it to bound its own observation. It is
+# not a sleep: the module watches the machine leave `running` before accepting
+# that it came back.
+scaleway_rolling_reboot_wait_timeout: 300
