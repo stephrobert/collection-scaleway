@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  author: Stéphane Robert
+  description: Judge a Scaleway fleet against a policy, without touching it.
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.17"
+dependencies: []

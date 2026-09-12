@@ -1,0 +1,20 @@
+minor_changes:
+  - "New ``stephrobert.scaleway.fleet_audit`` playbook and role: the fleet judged
+    against a policy, read-only, with a severity per finding and the same three
+    outputs as the fleet report. ``rolling_reboot`` is used when you need it;
+    this is the one that earns its place in a schedule, and that is the
+    difference between a useful tool and a tool somebody integrates into their
+    operations."
+  - "filter - ``audit_findings`` evaluates the policy. The rules are data, not
+    code: an audit whose rules are carved into its playbook is its author's
+    opinion made executable, and the first team without the same mandatory tags
+    has to fork it. The severity is data for the same reason, because the public
+    address of a bastion is normal and that of a database is not."
+  - "roles - ``fleet_audit`` refuses a policy with no rule, a rule nothing can
+    settle, and a severity that is not one. The first would make emptying the
+    policy file the shortest path to a green report; the second would report a
+    resource as compliant for the sole reason that nobody evaluated it. Two
+    rules the issue proposed are deliberately not written, and the refusal names
+    them with the reason: neither an unused reserved address nor a load balancer
+    backend has been measured on any available target, and a rule written on the
+    supposed shape of an object never seen judges from an invention."

@@ -1,0 +1,30 @@
+---
+# What you run every day: the fleet, judged against a policy, read-only.
+#
+#   ansible-playbook stephrobert.scaleway.fleet_audit
+#   ansible-playbook stephrobert.scaleway.fleet_audit -e output=json
+#   ansible-playbook stephrobert.scaleway.fleet_audit -e @policy.yml
+#
+# **This playbook is the ergonomics, the role is the operation.** What it does
+# lives in `roles/fleet_audit`, so a pipeline can include it and read
+# `scaleway_fleet_audit_findings` rather than the printed report.
+#
+# The shipped policy is a starting point made only of warnings, so a first run
+# never fails. Replacing it is the point: the severity of a public address
+# depends on whether the machine is a bastion or a database, and this collection
+# has no business deciding that.
+- name: Judge a Scaleway fleet against a policy, without touching it
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    zones: >-
+      fr-par-1,fr-par-2,fr-par-3,nl-ams-1,nl-ams-2,nl-ams-3,
+      pl-waw-1,pl-waw-2,pl-waw-3,it-mil-1
+    output: text
+
+  roles:
+    - role: stephrobert.scaleway.fleet_audit
+      scaleway_fleet_audit_zones: "{{ zones }}"
+      scaleway_fleet_audit_output: "{{ output }}"
