@@ -265,3 +265,28 @@ def test_le_plan_ne_se_rend_quen_repetition() -> None:
         assert plan["vars"]["resultat"] == "{{ scaleway_operation }}", (
             f"{role.name} compose son plan autrement que depuis le résultat"
         )
+
+
+def test_chaque_role_porte_un_readme() -> None:
+    """Galaxy refuse l'import d'une collection dont un rôle n'en a pas.
+
+    Mesuré, et cher : la publication de la 0.7.0 a échoué sur « No role readme
+    found » après que tout le reste soit passé. `ansible-galaxy install`
+    n'applique pas cette règle, `mise run package` non plus, et la porte de
+    release ne la voyait pas.
+    """
+    for role in _roles():
+        readme = role / "README.md"
+        assert readme.is_file(), (
+            f"{role.name} n'a pas de README : Galaxy refusera l'import de toute "
+            "la collection, après que le reste du workflow soit passé"
+        )
+        texte = readme.read_text(encoding="utf-8")
+        assert f"stephrobert.scaleway.{role.name}" in texte, (
+            f"{role.name}/README.md ne nomme pas le rôle qu'il documente"
+        )
+        # Une page publiée qui ne dit pas comment appeler la chose ne sert que
+        # d'antisèche à Galaxy, et c'est une page de moins qui aide quelqu'un.
+        assert "include_role" in texte, (
+            f"{role.name}/README.md ne montre pas comment l'appeler depuis un playbook"
+        )
