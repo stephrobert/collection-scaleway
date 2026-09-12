@@ -177,6 +177,21 @@ jobs:
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             "$archive"
 
+      # **L'importeur de Galaxy applique des règles que rien d'autre n'applique.**
+      # Mesuré, et cher : la 0.7.0 a échoué à la publication sur « No role readme
+      # found », après que la porte, les contrôles, le sanity et l'archive soient
+      # tous passés. `ansible-galaxy install` ne juge pas ça, et `mise run
+      # package` non plus.
+      #
+      # Il est installé ici plutôt que dans le verrou du dépôt : il tire une
+      # quarantaine de paquets, dont `ansible-builder` que ce dépôt a refusé
+      # pour ce motif précis. Il n'a de valeur qu'au moment où l'on publie.
+      - name: Ce que l'importeur de Galaxy dira de cette archive
+        run: |
+          python -m venv build/importer
+          build/importer/bin/pip install --quiet galaxy-importer
+          build/importer/bin/python -m galaxy_importer.main "$(ls build/dist/*.tar.gz)"
+
       - name: Publier
         env:
           # Le jeton passe par l'environnement, jamais par la ligne de commande :
