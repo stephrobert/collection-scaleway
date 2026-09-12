@@ -7,6 +7,14 @@ vraiment en ajoutant un troisième contrat :
 
     est-il sûr d'ajouter RDB ?
 
+Et depuis #213, celle qui décide de l'adoption plutôt que de la correction :
+
+    quelle opération récurrente ce produit débloque-t-il ?
+
+Un produit dont aucun enchaînement n'appelle les modules ajoute des noms à
+un README et rien à personne. La réponse est dérivée de ce qui
+tourne, et un produit sans opération est admis en le disant, jamais refusé.
+
 Répondre « les tests passent » à cette question n'est pas une réponse : les
 tests passent aussi sur un produit dont le parser ignore la moitié des
 constructions, dont personne n'a lu les pages, et dont la moitié des
@@ -29,6 +37,8 @@ verdict :
             v
     couverture documentaire
             v
+    opérations récurrentes débloquées
+            v
     ADMIS
 
 **Toutes les étapes ne bloquent pas, et c'est délibéré.** Une porte qui
@@ -46,6 +56,7 @@ Codes de sortie : `0` admis, `1` erreur, `2` refusé.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -265,6 +276,73 @@ def etape_documentation(modules: set[str]) -> Etape:
     )
 
 
+#: Où vivent les opérations livrées : les rôles portent ce qu'elles font, les
+#: playbooks les appellent. Lire les deux évite de manquer une opération qui
+#: n'aurait pas encore de rôle.
+OPERATIONS = (
+    ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "roles",
+    ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "playbooks",
+)
+
+#: Un appel de module dans une tâche : indenté, préfixé, suivi de deux-points.
+#:
+#: Le tiret optionnel couvre la forme compacte `- stephrobert.scaleway.x:`, du
+#: YAML légitime qu'aucun playbook de ce dépôt n'emploie mais qu'une
+#: contribution peut employer. Un commentaire ne passe pas : le `#` s'intercale
+#: là où le motif attend le préfixe.
+_APPEL = re.compile(r"^\s+(?:-\s+)?stephrobert\.scaleway\.([a-z0-9_]+):", re.MULTILINE)
+
+
+def operations_du_produit(produit: str) -> dict[str, set[str]]:
+    """Les opérations livrées qui appellent un module de ce produit.
+
+    **Dérivé de ce qui tourne, jamais déclaré.** Une table écrite à la main
+    dirait qu'un produit débloque une opération le jour où cette opération
+    aura changé de modules, et personne ne le verrait.
+
+    Un module se rattache à son produit par son préfixe, qui est la convention
+    de nommage que le générateur applique : `lb_load_balancer_info` appartient
+    à `lb`, `instance_server_action` à `instance`.
+    """
+    trouvees: dict[str, set[str]] = {}
+    for racine in OPERATIONS:
+        if not racine.is_dir():
+            continue
+        for chemin in sorted(racine.rglob("*.yml")):
+            appels = {
+                module
+                for module in _APPEL.findall(chemin.read_text(encoding="utf-8"))
+                if module.startswith(f"{produit}_")
+            }
+            if appels:
+                # Le nom de l'opération est celui du rôle, ou du playbook quand
+                # il n'a pas de rôle : c'est ce qu'un opérateur tape.
+                nom = chemin.parent.parent.name if chemin.parent.name == "tasks" else chemin.stem
+                trouvees.setdefault(nom, set()).update(appels)
+    return trouvees
+
+
+def etape_operations(produit: str) -> Etape:
+    """Quelle opération récurrente ce produit débloque-t-il ?
+
+    Non bloquante. Un produit sans opération n'est pas refusé : il est admis
+    sans opération, et le rapport le dit. Refuser serait interdire d'ajouter un
+    contrat avant d'avoir écrit l'enchaînement qui s'en sert, c'est à dire
+    interdire l'ordre dans lequel le travail se fait.
+    """
+    operations = operations_du_produit(produit)
+    return Etape(
+        nom="opérations débloquées",
+        bloquante=False,
+        tenue=bool(operations),
+        detail=(
+            ", ".join(sorted(operations))
+            if operations
+            else "aucune : les modules existent, aucun enchaînement livré ne les appelle"
+        ),
+    )
+
+
 def examiner(produit: str, version: str) -> list[Etape]:
     """Les étapes d'un produit, dans l'ordre où elles s'éclairent."""
     from generator.ansible.collection import load_collection
@@ -282,6 +360,7 @@ def examiner(produit: str, version: str) -> list[Etape]:
         etape_ecritures(plan, specs, ecartes),
         etape_comparaisons(plan, specs),
         etape_documentation(modules),
+        etape_operations(produit),
     ]
 
 

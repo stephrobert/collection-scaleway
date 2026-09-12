@@ -1,0 +1,10 @@
+minor_changes:
+  - "The product admission gate now answers a second question, the one that
+    decides adoption rather than correctness: which recurring operation does
+    this product unlock? A product that adds modules no chain calls adds names
+    to a README and nothing to anybody, and 0.6.0 showed the opposite by
+    becoming usable without one new module. The answer is derived from the
+    shipped operations rather than declared, so it cannot drift: an operation
+    calls modules, a module names its product. A product with no operation is
+    admitted while saying so, never refused, because refusing would forbid
+    adding a contract before writing the chain that uses it."

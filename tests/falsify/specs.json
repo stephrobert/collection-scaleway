@@ -2623,6 +2623,14 @@
       "find": "        par_ressource.setdefault(constat[\"name\"], []).append(constat[\"rule\"])",
       "replace": "        par_ressource.setdefault(constat[\"name\"] + constat[\"rule\"], []).append(constat[\"rule\"])",
       "test": "tests/unit/collection/test_audit_findings.py::test_un_refus_par_machine_et_pas_par_constat"
+    },
+    {
+      "name": "operations-rattachees-a-nimporte-quel-produit",
+      "why": "Sans le filtre par préfixe, chaque produit revendique toutes les opérations livrées : `lb` semblerait débloquer le redémarrage progressif, qui ne touche que des Instances. La porte rendrait alors un verdict flatteur sur tous les produits, ce qui est exactement le chiffre illisible qu'elle existe pour remplacer.",
+      "file": "scripts/admission.py",
+      "find": "                if module.startswith(f\"{produit}_\")",
+      "replace": "                if module.startswith(\"\")",
+      "test": "tests/unit/outillage/test_admission_operations.py::test_une_operation_se_rattache_au_produit_quelle_appelle"
     }
   ]
 }
