@@ -38,6 +38,22 @@ playbooks, so what is written here is what runs: `mise run integration` plays
 every one of them against an emulator on each run, and the real exercise plays
 them against a Scaleway account.
 
+**Three of them are roles you can call from your own playbook.** The playbook is
+the ergonomics, the role is the operation, and the module is the technical API.
+Where a recipe says so below, the same logic is available without copying it:
+
+```yaml
+- ansible.builtin.include_role:
+    name: stephrobert.scaleway.rolling_reboot
+  vars:
+    scaleway_rolling_reboot_group: scw_tag_production
+    scaleway_rolling_reboot_batch_size: 2
+```
+
+The playbook and the role are never two implementations: the playbook calls the
+role and passes what the command line carried. A test refuses anything else,
+because two implementations of one operation always end up disagreeing.
+
 ### "My Scaleway setup does not work"
 
 ```bash
@@ -66,6 +82,11 @@ ansible-playbook stephrobert.scaleway.fleet_report -e output=markdown -e zones=f
 Instances by state, by zone and by tag, plus the load balancers. Three outputs
 for three readers: a terminal, a pipeline, a ticket.
 
+**As a role**: `stephrobert.scaleway.fleet_report`, with
+`scaleway_fleet_report_zones` and `scaleway_fleet_report_output`. It leaves the
+report in `scaleway_fleet_report_result`, so a calling playbook can act on it
+rather than read it off the screen.
+
 **Check before**: nothing. It is read-only, which is what makes it safe to run
 first on an account you do not know.
 
@@ -83,6 +104,9 @@ ansible-playbook stephrobert.scaleway.power_schedule \
 Brings a named inventory group to a power state. Scheduled at 08:00 with
 `desired_state=on` and at 20:00 with `off`, it is the command that pays for
 itself twice a day.
+
+**As a role**: `stephrobert.scaleway.power_schedule`, with
+`scaleway_power_schedule_group` and `scaleway_power_schedule_desired_state`.
 
 **Check before**: that the group holds what you think. `ansible-inventory -i
 production.scaleway.yml --graph` shows it, and `--check` lists what would move
@@ -103,6 +127,10 @@ ansible-playbook stephrobert.scaleway.rolling_reboot \
 
 Reboots a named group in batches, waiting for each batch to come back before
 touching the next.
+
+**As a role**: `stephrobert.scaleway.rolling_reboot`, with
+`scaleway_rolling_reboot_group`, `scaleway_rolling_reboot_batch_size` and
+`scaleway_rolling_reboot_wait_timeout`.
 
 **Check before**: run it with `--check` first. It returns the batch plan and
 reboots nothing.

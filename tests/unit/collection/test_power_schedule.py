@@ -21,7 +21,10 @@ import pytest
 import yaml
 
 RACINE = Path(__file__).resolve().parents[3]
-PLAYBOOK = RACINE / "ansible_collections/stephrobert/scaleway/playbooks/power_schedule.yml"
+COLLECTION = RACINE / "ansible_collections" / "stephrobert" / "scaleway"
+PLAYBOOK = COLLECTION / "playbooks" / "power_schedule.yml"
+#: Là où le comportement vit depuis #207. La façade se joue, le rôle se lit.
+ROLE = COLLECTION / "roles" / "power_schedule"
 
 
 def _jouer(*options: str) -> tuple[int, str]:
@@ -106,18 +109,22 @@ def test_un_etat_desire_hors_des_deux_valeurs_est_refuse(ansible_disponible: Non
 def test_aucune_valeur_par_defaut_ne_designe_une_cible(ansible_disponible: None) -> None:
     """Une valeur par défaut sur `group` vaudrait « tout le parc ».
 
-    Le test lit le playbook : un défaut ajouté demain doit rougir ici, même si
-    aucun scénario du jour ne l'exerce.
+    **Les deux endroits comptent, et pas pour la même raison.** Les défauts du
+    rôle sont ce qu'obtient quelqu'un qui l'inclut depuis son playbook ; ceux du
+    playbook livré sont ce qu'obtient quelqu'un qui le lance. Un défaut ajouté
+    d'un côté seulement suffirait à éteindre un parc.
     """
-    texte = PLAYBOOK.read_text(encoding="utf-8")
-    declarations = re.search(r"\n  vars:\n(.*?)\n  tasks:", texte, flags=re.DOTALL)
-    assert declarations, "la section vars du play n'est plus reconnue"
+    defauts = yaml.safe_load((ROLE / "defaults" / "main.yml").read_text(encoding="utf-8"))
+    for nom in ("scaleway_power_schedule_group", "scaleway_power_schedule_desired_state"):
+        assert defauts.get(nom) == "", (
+            f"`{nom}` doit rester vide par défaut dans le rôle : une cible "
+            "implicite est le mode de défaillance le plus cher de cette opération"
+        )
 
+    play = yaml.safe_load(PLAYBOOK.read_text(encoding="utf-8"))[0]
     for nom in ("group", "desired_state"):
-        motif = rf'^\s+{nom}:\s*""\s*$'
-        assert re.search(motif, declarations.group(1), flags=re.MULTILINE), (
-            f"`{nom}` doit rester vide par défaut : une cible implicite est "
-            "le mode de défaillance le plus cher de ce playbook"
+        assert play.get("vars", {}).get(nom) == "", (
+            f"`{nom}` doit rester vide par défaut dans le playbook livré"
         )
 
 
@@ -127,11 +134,17 @@ def _tache(chemin: Path, nom: str) -> dict:
     Un `grep` sur le message rendrait vert une reformulation qui perdrait la
     distinction : c'est la structure qu'on tient, pas la présence d'une chaîne
     quelque part dans le fichier.
-    """
-    jeu = yaml.safe_load(chemin.read_text(encoding="utf-8"))[0]
 
-    def _parcourir(taches: list) -> dict | None:
-        for tache in taches:
+    Le fichier peut être un play ou une liste de tâches de rôle : depuis #207
+    c'est la seconde forme qui porte le comportement, et un accesseur qui
+    n'accepterait que la première échouerait en disant que la tâche a disparu.
+    """
+    charge = yaml.safe_load(chemin.read_text(encoding="utf-8"))
+    premier = charge[0] if isinstance(charge[0], dict) else {}
+    taches = premier.get("tasks", charge)
+
+    def _parcourir(candidates: list) -> dict | None:
+        for tache in candidates:
             if tache.get("name") == nom:
                 return tache
             trouvee = _parcourir(tache.get("block", []))
@@ -139,14 +152,19 @@ def _tache(chemin: Path, nom: str) -> dict:
                 return trouvee
         return None
 
-    tache = _parcourir(jeu["tasks"])
-    assert tache is not None, f"la tâche « {nom} » a disparu du playbook"
+    tache = _parcourir(taches)
+    assert tache is not None, f"la tâche « {nom} » a disparu de {chemin.name}"
     return tache
 
 
 def test_une_seule_tache_ecrit(ansible_disponible: None) -> None:
-    """Tout le reste lit. Une écriture ajoutée hors du chemin gardé rougit ici."""
-    texte = PLAYBOOK.read_text(encoding="utf-8")
+    """Tout le reste lit. Une écriture ajoutée hors du chemin gardé rougit ici.
+
+    Le fichier lu est celui du rôle. Laisser ce test sur la façade l'aurait
+    rendu vert sur un playbook qui n'appelle plus rien, et c'est exactement
+    ainsi qu'une garde cesse de garder.
+    """
+    texte = (ROLE / "tasks" / "main.yml").read_text(encoding="utf-8")
     appels = re.findall(r"^\s+stephrobert\.scaleway\.([a-z0-9_]+):", texte, flags=re.MULTILINE)
     assert appels, "le motif ne reconnaît plus aucun appel : il ne mesure plus rien"
 
@@ -164,7 +182,7 @@ def test_le_compte_rendu_distingue_une_repetition_dun_vrai_passage() -> None:
     du quickstart : `--check` annonçait trois extinctions, et l'inventaire
     montrait les trois machines toujours `running`.
     """
-    compte_rendu = _tache(PLAYBOOK, "The result")
+    compte_rendu = _tache(ROLE / "tasks" / "main.yml", "The result")
     message = compte_rendu["ansible.builtin.debug"]["msg"]
 
     assert "ansible_check_mode" in message, (

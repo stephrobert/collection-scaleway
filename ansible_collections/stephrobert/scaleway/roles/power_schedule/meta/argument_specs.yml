@@ -1,0 +1,32 @@
+---
+argument_specs:
+  main:
+    short_description: Bring a named inventory group to a power state
+    description:
+      - >-
+        Reads each machine of the group first, then acts only on those not
+        already where they should be. The action module is a trigger and not a
+        state, so idempotence lives here rather than in the module.
+      - >-
+        Machines in a transient state are named and left alone. A machine that
+        could not be read fails the run, because a power state nobody could
+        read is not a power state that is fine.
+    options:
+      scaleway_power_schedule_group:
+        type: str
+        default: ""
+        description:
+          - >-
+            The inventory group to act on. Empty means do nothing and say so.
+          - >-
+            There is no default target, because a schedule that guesses which
+            machines to power off is how a fleet goes down one evening.
+      scaleway_power_schedule_desired_state:
+        type: str
+        default: ""
+        description:
+          - >-
+            C(on) or C(off). Required as soon as a group is named.
+          - >-
+            It is validated by the role rather than by C(choices), so that the
+            refusal carries the sentence that explains it.

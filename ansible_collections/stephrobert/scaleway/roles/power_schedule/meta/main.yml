@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  author: Stéphane Robert
+  description: Bring a named inventory group of Scaleway Instances to a power state.
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.17"
+dependencies: []

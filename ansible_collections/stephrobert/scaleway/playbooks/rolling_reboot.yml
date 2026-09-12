@@ -1,165 +1,36 @@
-# Reboot a named group in batches, waiting for each batch to come back.
+---
+# Reboot a named group in batches, and stop if one does not come back.
 #
 #   ansible-playbook stephrobert.scaleway.rolling_reboot \
 #     -i production.scaleway.yml -e group=scw_tag_production -e batch_size=1
 #
-# A lot of work went into making the `reboot` action and its check mode
-# trustworthy, and none of it showed: someone wanting to restart production
-# progressively wrote `action: reboot` over a group and hoped.
+# **This playbook is the ergonomics, the role is the operation.** What it does
+# lives in `roles/rolling_reboot`, so anybody can call the same logic from their
+# own playbook without copying it:
 #
-# **Waiting is observing, never sleeping.** The action module already watches
-# the machine leave `running` before accepting that it came back, and refuses to
-# conclude when it never saw it change; the contract does not say how fast that
-# happens, so nothing here supposes it. A `sleep 60` that works today becomes
-# tomorrow's contract and measures nothing.
+#   - ansible.builtin.include_role:
+#       name: stephrobert.scaleway.rolling_reboot
+#     vars:
+#       scaleway_rolling_reboot_group: scw_tag_production
+#       scaleway_rolling_reboot_batch_size: 2
 #
-# **A batch is fired, then awaited.** Each reboot goes into an async job that
-# carries the module's own wait, so the batch waits for jobs rather than for a
-# duration. Re-implementing the wait in a polling loop would reintroduce the
-# defect the runtime documents: a first read satisfies the wait in zero seconds,
-# and the next batch starts while the fleet is still restarting.
+# Nothing is reimplemented here, and a test refuses it: two implementations of
+# one operation always diverge.
 #
-# **What it refuses, before touching anything.**
-#
-#   no group named        no default means "the whole fleet"
-#   an empty selection    finding nothing does not authorise acting on
-#                         everything
-#   a machine not running  a stopped machine is left stopped. A rolling reboot
-#                         that starts machines is not the gesture that was asked
+# The short option names are kept on purpose. What a user types is published
+# surface, and renaming it would be a breaking change for a convenience.
 - name: Reboot a named group in batches, and stop if one does not come back
   hosts: localhost
   connection: local
   gather_facts: false
 
   vars:
-    # No default, deliberately. See the refusals above.
     group: ""
     batch_size: 1
-    # Passed to the action module, which uses it to bound its own observation.
     wait_timeout: 300
 
-  tasks:
-    # **Asking for nothing is not an error**, which is what lets the integration
-    # target play every shipped playbook without arguments.
-    - name: With no group named, do nothing and say so
-      ansible.builtin.debug:
-        msg: >-
-          No group named. Run again with
-          `-i <name>.scaleway.yml -e group=<inventory group> [-e batch_size=N]`
-          to act. The playbook stops here without touching anything.
-      when: group | length == 0
-
-    - name: Roll through the named group
-      when: group | length > 0
-      block:
-        - name: The batch size is a positive number
-          ansible.builtin.assert:
-            that:
-              - batch_size | int > 0
-            fail_msg: "batch_size={{ batch_size }} must be a positive number"
-            quiet: true
-
-        - name: What the named group holds
-          ansible.builtin.set_fact:
-            selection: "{{ groups[group] | default([]) | sort }}"
-
-        - name: The selection is not empty
-          ansible.builtin.assert:
-            that:
-              - selection | length > 0
-            fail_msg: >-
-              the group `{{ group }}` holds no host.
-              {{ ('No inventory was parsed: run with `-i <name>.scaleway.yml`.
-                   That missing option is the likeliest cause.')
-                 if groupes_construits | length == 0
-                 else ('Groups the inventory built: '
-                       ~ (groupes_construits | join(', ')) ~ '.') }}
-              Finding nothing does not authorise acting on everything.
-            quiet: true
-          vars:
-            groupes_construits: >-
-              {{ groups.keys() | reject('equalto', 'all')
-                 | reject('equalto', 'ungrouped') | list | sort }}
-
-        # ---- The state before, recorded rather than assumed --------------
-
-        # A machine that is already down must come out of this run still down.
-        # A rolling reboot that starts machines has done something nobody asked
-        # for, and the report has to be able to say what it left alone.
-        - name: Read each selected machine before touching anything
-          stephrobert.scaleway.instance_server_info:
-            zone: "{{ hostvars[item].scaleway_zone }}"
-            server_id: "{{ hostvars[item].scaleway_id }}"
-          loop: "{{ selection }}"
-          register: avant
-          failed_when: false
-
-        - name: Separate what can be rebooted from what cannot
-          ansible.builtin.set_fact:
-            # `server is defined` rather than `failed`: `failed_when: false`
-            # rewrites that field, measured.
-            a_redemarrer: >-
-              {{ avant.results | selectattr('server', 'defined')
-                 | selectattr('server.state', 'equalto', 'running') | list }}
-            laissees: >-
-              {{ avant.results | selectattr('server', 'defined')
-                 | rejectattr('server.state', 'equalto', 'running')
-                 | map(attribute='server') | list }}
-            illisibles: >-
-              {{ avant.results | rejectattr('server', 'defined')
-                 | map(attribute='item') | list | sort }}
-
-        - name: Every selected machine was readable
-          ansible.builtin.assert:
-            that:
-              - illisibles | length == 0
-            fail_msg: >-
-              {{ illisibles | length }} machine(s) could not be read:
-              {{ illisibles | join(', ') }}. Rebooting a fleet that is only
-              partly known is how a roll takes down what it could not see.
-            quiet: true
-
-        # ---- The plan, said before anything moves ------------------------
-
-        - name: The plan
-          ansible.builtin.debug:
-            msg: >-
-              {{ group }} : {{ a_redemarrer | length }} to reboot in
-              {{ (a_redemarrer | length / (batch_size | int)) | round(0, 'ceil') | int }}
-              batch(es) of {{ batch_size }}
-              ({{ a_redemarrer | map(attribute='server.name') | list | sort
-                  | join(', ') or 'none' }})
-              {{ ('· left alone, not running: '
-                  ~ (laissees | map(attribute='name') | list | sort | join(', ')))
-                 if laissees else '' }}
-
-        # `--check` stops here: the plan is the whole point of a rehearsal, and
-        # a roll that rehearsed by rebooting would not be a rehearsal.
-        - name: In check mode, the plan is the answer
-          ansible.builtin.debug:
-            msg: "check mode: nothing was rebooted."
-          when: ansible_check_mode
-
-        # ---- The roll ----------------------------------------------------
-
-        - name: Roll through the batches
-          ansible.builtin.include_tasks: tasks/rolling_reboot_batch.yml
-          loop: "{{ a_redemarrer | batch(batch_size | int) | list }}"
-          loop_control:
-            loop_var: lot
-            index_var: index
-            label: "batch {{ index + 1 }}"
-          vars:
-            numero: "{{ index + 1 }}"
-            restants: >-
-              {{ a_redemarrer[((index + 1) * (batch_size | int)):]
-                 | map(attribute='server.name') | list }}
-          when: not ansible_check_mode and a_redemarrer | length > 0
-
-        - name: The result
-          ansible.builtin.debug:
-            msg: >-
-              {{ a_redemarrer | length }} rebooted,
-              {{ laissees | length }} left alone,
-              in batches of {{ batch_size }}.
-          when: not ansible_check_mode
+  roles:
+    - role: stephrobert.scaleway.rolling_reboot
+      scaleway_rolling_reboot_group: "{{ group }}"
+      scaleway_rolling_reboot_batch_size: "{{ batch_size }}"
+      scaleway_rolling_reboot_wait_timeout: "{{ wait_timeout }}"

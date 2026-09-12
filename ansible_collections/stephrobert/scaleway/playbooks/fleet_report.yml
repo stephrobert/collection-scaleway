@@ -1,177 +1,37 @@
-# What your Scaleway fleet looks like, in one read-only command.
+---
+# The whole fleet in one read-only command.
 #
 #   ansible-playbook stephrobert.scaleway.fleet_report
 #   ansible-playbook stephrobert.scaleway.fleet_report -e output=json
-#   ansible-playbook stephrobert.scaleway.fleet_report -e output=markdown
-#   ansible-playbook stephrobert.scaleway.fleet_report -e zones=fr-par-1,nl-ams-1
+#   ansible-playbook stephrobert.scaleway.fleet_report -e output=markdown -e zones=fr-par-1
 #
-# **Read-only, and that is what makes it safe to run first.** It creates
-# nothing and changes nothing. It answers the question asked most often, where
-# is my fleet and in what state, and a report you can paste into a ticket or
-# consume in a pipeline is a reason to run the collection again tomorrow.
+# **This playbook is the ergonomics, the role is the operation.** What it does
+# lives in `roles/fleet_report`, and the role leaves its report in
+# `scaleway_fleet_report_result` so a calling playbook can act on it:
 #
-# **A zone that does not answer has not been measured to be empty.** This is the
-# rule the whole report rests on. A failing zone is named as unmeasured; it
-# never contributes a zero. `residue.py` refuses to blur the same distinction
-# against a real account, and `doctor` reports it as its third state. A report
-# that counted an unreachable zone as empty would be worse than no report: it
-# would be a plausible one.
+#   - ansible.builtin.include_role:
+#       name: stephrobert.scaleway.fleet_report
+#     vars:
+#       scaleway_fleet_report_zones: [fr-par-1, fr-par-2]
+#   - ansible.builtin.assert:
+#       that: scaleway_fleet_report_result.zones_unmeasured | length == 0
 #
-# The three outputs say the same thing to three readers, a terminal, a pipeline
-# and a ticket. Only the shape changes, never the numbers.
+# Nothing is reimplemented here, and a test refuses it.
 - name: Report on a Scaleway fleet, without touching it
   hosts: localhost
   connection: local
   gather_facts: false
 
   vars:
-    # The zones the contract declares. Narrow it with `-e zones=a,b` when a
-    # report over the whole catalogue costs more than it says.
+    # The command line carries a comma-separated string; the role accepts both
+    # that and a list. Keeping the string form is what keeps `-e zones=a,b`
+    # working, and what a user types is published surface.
     zones: >-
       fr-par-1,fr-par-2,fr-par-3,nl-ams-1,nl-ams-2,nl-ams-3,
       pl-waw-1,pl-waw-2,pl-waw-3,it-mil-1
     output: text
 
-  tasks:
-    - name: The output format is one of the three
-      ansible.builtin.assert:
-        that:
-          - output in ['text', 'json', 'markdown']
-        fail_msg: "output={{ output }} is not one of text, json, markdown"
-        quiet: true
-
-    - name: The zones to ask, cleaned of whatever the command line carried
-      ansible.builtin.set_fact:
-        zones_demandees: "{{ zones | split(',') | map('trim') | select | list | sort }}"
-
-    # ---- What each zone answers ------------------------------------------
-
-    # `failed_when: false` so one unreachable zone does not hide the others.
-    # **It also rewrites `failed` to `false`**, measured, so the presence of the
-    # payload is what says whether the zone answered, not that field.
-    - name: Ask each zone for its Instances
-      stephrobert.scaleway.instance_server_info:
-        zone: "{{ item }}"
-      loop: "{{ zones_demandees }}"
-      register: sonde_instances
-      failed_when: false
-
-    - name: Ask each zone for its Load Balancers
-      stephrobert.scaleway.lb_load_balancer_info:
-        zone: "{{ item }}"
-      loop: "{{ zones_demandees }}"
-      register: sonde_lb
-      failed_when: false
-
-    # ---- Measured, and not measured --------------------------------------
-
-    - name: Separate the zones that answered from the zones that did not
-      ansible.builtin.set_fact:
-        machines: >-
-          {{ sonde_instances.results | selectattr('servers', 'defined')
-             | map(attribute='servers') | flatten | list }}
-        balanceurs: >-
-          {{ sonde_lb.results | selectattr('lbs', 'defined')
-             | map(attribute='lbs') | flatten | list }}
-        # Les parenthèses portent le dédoublonnage : sans elles, `a + b | unique`
-        # ne dédoublonne que `b`, et une zone muette des deux côtés apparaît
-        # deux fois. Mesuré au premier essai.
-        zones_muettes: >-
-          {{ ((sonde_instances.results | rejectattr('servers', 'defined')
-               | map(attribute='item') | list)
-            + (sonde_lb.results | rejectattr('lbs', 'defined')
-               | map(attribute='item') | list)) | unique | sort }}
-        zones_mesurees: >-
-          {{ sonde_instances.results | selectattr('servers', 'defined')
-             | map(attribute='item') | list | sort }}
-
-    # ---- The counts ------------------------------------------------------
-
-    # Sorted everywhere, because the same fleet must produce the same bytes
-    # twice: two runs that cannot be compared make the JSON a decoration.
-    #
-    # `groupby` gives `[[key, [items]]]`, so the count is the length of the
-    # second element. Measured rather than assumed, like everything else here.
-    - name: Count what the measured zones hold
-      ansible.builtin.set_fact:
-        rapport:
-          zones_asked: "{{ zones_demandees }}"
-          zones_measured: "{{ zones_mesurees }}"
-          zones_unmeasured: "{{ zones_muettes }}"
-          # **`null` et non `0` quand aucune zone n'a répondu.** Un total nul
-          # se lit « le parc est vide », et rien n'a été mesuré n'est pas rien
-          # n'a été trouvé. Le dépôt rend déjà `None` plutôt que `0.0 %` pour
-          # un ratio sans dénominateur, et c'est la même règle.
-          instances_total: "{{ none if not zones_mesurees else machines | length }}"
-          instances_by_state: "{{ dict(machines | groupby('state')
-            | map('first') | zip(machines | groupby('state')
-            | map('last') | map('length'))) }}"
-          instances_by_zone: "{{ dict(machines | groupby('zone')
-            | map('first') | zip(machines | groupby('zone')
-            | map('last') | map('length'))) }}"
-          instances_by_tag: "{{ etiquettes }}"
-          load_balancers_total: >-
-            {{ none if not zones_mesurees else balanceurs | length }}
-          load_balancers_by_status: "{{ dict(balanceurs | groupby('status')
-            | map('first') | zip(balanceurs | groupby('status')
-            | map('last') | map('length'))) }}"
-      vars:
-        # Les étiquettes sont une liste plate de chaînes, pas des objets : il
-        # n'y a pas d'attribut sur lequel `groupby` puisse travailler. Un
-        # dictionnaire se construit donc à la main, et `untagged` compte les
-        # machines qu'aucune étiquette ne décrit, qui sont celles qu'on cherche.
-        plates: "{{ machines | map(attribute='tags') | flatten | list }}"
-        etiquettes: >-
-          {%- set compte = {} -%}
-          {%- for etiquette in plates | unique | sort -%}
-          {%- set _ = compte.update(
-              {etiquette: plates | select('equalto', etiquette) | list | length}) -%}
-          {%- endfor -%}
-          {%- set _ = compte.update(
-              {'untagged': machines | rejectattr('tags') | list | length}) -%}
-          {{ compte }}
-
-    - name: Nothing was measured, and that is not an empty fleet
-      ansible.builtin.debug:
-        msg: >-
-          No zone answered: {{ rapport.zones_unmeasured | join(', ') }}.
-          Nothing was measured, which is not the same as nothing being there.
-          `ansible-playbook stephrobert.scaleway.doctor` says why.
-      when: zones_mesurees | length == 0
-
-    - name: The report, for a terminal
-      ansible.builtin.debug:
-        msg: "{{ rapport }}"
-      when: output == 'text' and zones_mesurees | length > 0
-
-    - name: The report, for a pipeline
-      ansible.builtin.debug:
-        msg: "{{ rapport | to_nice_json }}"
-      when: output == 'json' and zones_mesurees | length > 0
-
-    # Une boucle plutôt qu'un enchaînement de filtres : la première version
-    # composait les lignes par `regex_replace` avec une référence arrière, et
-    # rendait « | tag \\1 | ». Un rendu se vérifie en le lisant.
-    - name: The report, for a ticket
-      ansible.builtin.debug:
-        msg: |-
-          | what | count |
-          |---|---|
-          | instances | {{ rapport.instances_total }} |
-          {% for etat, compte in rapport.instances_by_state.items() -%}
-          | state {{ etat }} | {{ compte }} |
-          {% endfor -%}
-          {% for zone, compte in rapport.instances_by_zone.items() -%}
-          | zone {{ zone }} | {{ compte }} |
-          {% endfor -%}
-          {% for etiquette, compte in rapport.instances_by_tag.items() -%}
-          | tag {{ etiquette }} | {{ compte }} |
-          {% endfor -%}
-          | load balancers | {{ rapport.load_balancers_total }} |
-          {% for statut, compte in rapport.load_balancers_by_status.items() -%}
-          | lb {{ statut }} | {{ compte }} |
-          {% endfor -%}
-          {% if rapport.zones_unmeasured -%}
-          | **zones unmeasured** | {{ rapport.zones_unmeasured | join(", ") }} |
-          {% endif -%}
-      when: output == 'markdown' and zones_mesurees | length > 0
+  roles:
+    - role: stephrobert.scaleway.fleet_report
+      scaleway_fleet_report_zones: "{{ zones }}"
+      scaleway_fleet_report_output: "{{ output }}"

@@ -1,0 +1,31 @@
+---
+argument_specs:
+  main:
+    short_description: Report on a Scaleway fleet, without touching it
+    description:
+      - >-
+        Instances by state, by zone and by tag, plus the load balancers. It
+        creates nothing and changes nothing, which is what makes it safe to run
+        first on an account you do not know.
+      - >-
+        It never counts a zone it could not read. A zone that does not answer is
+        named as unmeasured rather than contributing a zero, and the totals are
+        C(null) rather than C(0) when no zone answered at all.
+      - >-
+        The report is left in C(scaleway_fleet_report_result) so a calling
+        playbook can use it rather than read it.
+    options:
+      scaleway_fleet_report_zones:
+        type: list
+        elements: str
+        description:
+          - >-
+            The zones to ask. Defaults to what the contract declares.
+      scaleway_fleet_report_output:
+        type: str
+        default: text
+        choices: [text, json, markdown]
+        description:
+          - >-
+            Which rendering to print. The report itself is returned whatever
+            this says.

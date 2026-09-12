@@ -16,13 +16,13 @@
     server_id: "{{ item.server.id }}"
     action: reboot
     wait: true
-    wait_timeout: "{{ wait_timeout }}"
+    wait_timeout: "{{ scaleway_rolling_reboot_wait_timeout }}"
   loop: "{{ lot }}"
   loop_control:
     label: "{{ item.server.name }}"
   # Le travail asynchrone vit plus longtemps que l'attente du module, sinon il
   # serait tué en plein redémarrage et le verdict viendrait du harnais.
-  async: "{{ (wait_timeout | int) + 60 }}"
+  async: "{{ (scaleway_rolling_reboot_wait_timeout | int) + 60 }}"
   poll: 0
   register: jetons
 
@@ -37,7 +37,7 @@
   until: retours.finished
   # Les tentatives couvrent l'attente du module plus sa marge, à un sondage par
   # seconde : c'est une observation répétée, pas une durée supposée.
-  retries: "{{ (wait_timeout | int) + 60 }}"
+  retries: "{{ (scaleway_rolling_reboot_wait_timeout | int) + 60 }}"
   delay: 1
   failed_when: false
 
