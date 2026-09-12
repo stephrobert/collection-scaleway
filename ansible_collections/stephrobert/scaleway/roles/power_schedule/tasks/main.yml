@@ -54,6 +54,12 @@
           a fleet is how a production fleet goes down one evening.
         quiet: true
 
+    # Pris avant la première lecture : une durée qui démarrerait après les
+    # appels mesurerait le compte rendu, pas l'opération.
+    - name: When this operation started
+      ansible.builtin.set_fact:
+        _scaleway_power_schedule_debut: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+
     - name: What the named group holds, read from the inventory
       ansible.builtin.set_fact:
         _scaleway_power_schedule_selection: >-
@@ -182,6 +188,33 @@
         deja: "{{ _scaleway_power_schedule_deja }}"
         en_vol: "{{ _scaleway_power_schedule_en_vol }}"
         illisibles: "{{ _scaleway_power_schedule_illisibles }}"
+
+    # ---- What a machine reads --------------------------------------------
+
+    # **La phrase est pour un opérateur, la structure est pour une chaîne.**
+    # Les deux sortent des mêmes listes, donc elles ne peuvent pas se
+    # contredire, et personne n'a plus à analyser une sortie standard pour
+    # savoir ce qui s'est passé.
+    - name: What happened, in a shape a machine reads
+      ansible.builtin.set_fact:
+        scaleway_power_schedule_operation: "{{ resultat }}"
+        # La dernière opération du play, pour le cas courant : une chaîne qui
+        # veut le résultat de ce qu'elle vient de lancer. Même objet, pas un
+        # second calcul.
+        scaleway_operation: "{{ resultat }}"
+      vars:
+        resultat: >-
+          {{ 'power_schedule' | stephrobert.scaleway.operation_result(
+               target=scaleway_power_schedule_group,
+               mode=('check' if ansible_check_mode else 'apply'),
+               changed=(agi.results | default([]) | selectattr('changed')
+                        | map(attribute='item.server.name') | list),
+               already_compliant=_scaleway_power_schedule_deja,
+               refused=_scaleway_power_schedule_en_vol,
+               refused_reason='state',
+               unmeasured=_scaleway_power_schedule_illisibles,
+               started_at=_scaleway_power_schedule_debut,
+               completed_at=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}
 
     # A machine that could not be read is not a machine that is fine. The run
     # stops on it, after having done what it could for the others: hiding it

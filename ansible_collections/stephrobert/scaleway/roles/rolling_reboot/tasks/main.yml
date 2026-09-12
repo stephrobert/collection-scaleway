@@ -45,6 +45,12 @@
           positive number
         quiet: true
 
+    # Pris avant la première lecture : une durée qui démarrerait après les
+    # appels mesurerait le compte rendu, pas l'opération.
+    - name: When this operation started
+      ansible.builtin.set_fact:
+        _scaleway_rolling_reboot_debut: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+
     - name: What the named group holds
       ansible.builtin.set_fact:
         _scaleway_rolling_reboot_selection: >-
@@ -162,3 +168,27 @@
           {{ _scaleway_rolling_reboot_laissees | length }} left alone,
           in batches of {{ scaleway_rolling_reboot_batch_size }}.
       when: not ansible_check_mode
+
+    # **La phrase est pour un opérateur, la structure est pour une chaîne.**
+    # Elles sortent des mêmes listes, donc elles ne peuvent pas se contredire.
+    #
+    # Une machine laissée tranquille est un **refus** et non une conformité :
+    # elle n'était pas en marche, le rôle l'a vue et écartée, et sa raison est
+    # son état. Un redémarrage progressif n'a pas de notion de « déjà
+    # conforme » : rien n'est jamais déjà redémarré.
+    - name: What happened, in a shape a machine reads
+      ansible.builtin.set_fact:
+        scaleway_rolling_reboot_operation: "{{ resultat }}"
+        scaleway_operation: "{{ resultat }}"
+      vars:
+        resultat: >-
+          {{ 'rolling_reboot' | stephrobert.scaleway.operation_result(
+               target=scaleway_rolling_reboot_group,
+               mode=('check' if ansible_check_mode else 'apply'),
+               changed=(_scaleway_rolling_reboot_a_redemarrer
+                        | map(attribute='server.name') | list),
+               refused=_scaleway_rolling_reboot_laissees,
+               refused_reason='state',
+               unmeasured=_scaleway_rolling_reboot_illisibles,
+               started_at=_scaleway_rolling_reboot_debut,
+               completed_at=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}

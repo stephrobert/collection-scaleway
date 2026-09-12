@@ -24,6 +24,12 @@
 # `power_schedule` fait l'inverse, et pour une raison mesurée : chez lui la
 # chaîne vide est une valeur légitime, celle qui veut dire « ne rien faire ».
 # `choices` la refuserait.
+# Pris avant la première lecture : une durée qui démarrerait après les appels
+# mesurerait le compte rendu, pas l'opération.
+- name: When this operation started
+  ansible.builtin.set_fact:
+    _scaleway_fleet_report_debut: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+
 - name: The zones to ask, cleaned of whatever the command line carried
   ansible.builtin.set_fact:
     # Une chaîne séparée par des virgules ou une liste : le playbook livré passe
@@ -124,6 +130,24 @@
       {%- set _ = compte.update(
           {'untagged': _scaleway_fleet_report_machines | rejectattr('tags') | list | length}) -%}
       {{ compte }}
+
+# **Une lecture rend la même structure qu'une écriture**, et c'est ce qui fait
+# de cette forme une grammaire plutôt qu'un format de plus. `changed` y est
+# toujours vide, et ce sont les zones muettes qui remplissent `unmeasured` : la
+# structure porte alors exactement ce que la prose du rapport dit déjà.
+- name: What happened, in a shape a machine reads
+  ansible.builtin.set_fact:
+    scaleway_fleet_report_operation: "{{ resultat }}"
+    scaleway_operation: "{{ resultat }}"
+  vars:
+    resultat: >-
+      {{ 'fleet_report' | stephrobert.scaleway.operation_result(
+           target=(_scaleway_fleet_report_zones | join(',')),
+           mode='apply',
+           already_compliant=_scaleway_fleet_report_mesurees,
+           unmeasured=_scaleway_fleet_report_muettes,
+           started_at=_scaleway_fleet_report_debut,
+           completed_at=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}
 
 - name: Nothing was measured, and that is not an empty fleet
   ansible.builtin.debug:
