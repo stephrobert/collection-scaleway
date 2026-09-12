@@ -89,6 +89,23 @@ ETAPES: tuple[Etape, ...] = (
         commande=("mise", "run", "integration"),
     ),
     Etape(
+        nom="le parcours d'accueil, tel qu'un visiteur le tape",
+        job="Parcours d'accueil",
+        commande=("mise", "run", "quickstart"),
+        outil="docker",
+    ),
+    Etape(
+        nom="une alerte entre, un diagnostic sort",
+        job="Réaction sur événement",
+        commande=("mise", "run", "rulebook"),
+        outil="ansible-rulebook",
+        reserve=(
+            "la collection `ansible.eda` doit être installée sous "
+            "`build/collections` : elle fournit les sources d'événements, et "
+            "`ansible-rulebook` ne résout `ansible.eda.webhook` sans elle."
+        ),
+    ),
+    Etape(
         nom="la plateforme d'exemple, déployée puis détruite",
         job="Plateforme d'exemple",
         commande=("mise", "run", "example"),

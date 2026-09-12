@@ -147,7 +147,7 @@ collection stephrobert.scaleway: 50 modules written out of 52 planned
   45 modules called by the example playbook out of 50 (90.0%), which is not the same as played
   51 published pages: 298/298 options and 70/70 returned keys documented
   108/108 examples copyable as is · 64/65 returned keys list their fields
-  1150 unit tests · 332 mutations proven by /falsify
+  1153 unit tests · 333 mutations proven by /falsify
   CI: 8 jobs, Générateur · collection · Image · Archive · Intégration · Plateforme d'exemple · Parcours d'accueil · Réaction sur événement
   ansible-test sanity, playbooks and inventory against the emulator:
   reported by `mise run sanity` and `mise run integration`

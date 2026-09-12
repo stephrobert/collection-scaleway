@@ -2655,6 +2655,14 @@
       "find": "  loop: \"{{ _scaleway_fleet_report_lb.offered }}\"",
       "replace": "  loop: \"{{ _scaleway_fleet_report_zones }}\"",
       "test": "tests/unit/collection/test_product_zones.py::test_le_rapport_demande_a_chaque_produit_ce_quil_offre"
+    },
+    {
+      "name": "porte-qui-tait-un-job-de-ci",
+      "why": "La porte d'avant-poussée annonce rejouer la CI. Elle a annoncé douze étapes quand la CI en portait quatorze : deux jobs ajoutés pendant le jalon n'y étaient pas, et le compte rendu se lisait comme une couverture complète. Une porte qui tait ses trous est le vert sur zéro fichier examiné, et sa propre docstring promet de nommer ce qu'elle ne rejoue pas.",
+      "file": "scripts/qualifier.py",
+      "find": "        job=\"Parcours d'accueil\",",
+      "replace": "        job=\"Parcours d'accueil supprimé\",",
+      "test": "tests/unit/outillage/test_qualifier_couverture.py::test_chaque_job_de_la_ci_est_rejoue_ou_nomme"
     }
   ]
 }
