@@ -54,6 +54,25 @@ The playbook and the role are never two implementations: the playbook calls the
 role and passes what the command line carried. A test refuses anything else,
 because two implementations of one operation always end up disagreeing.
 
+**One way of saying what to act on.** The operations that act on machines take a
+selector: exactly one of a group, a name, or tags.
+
+```yaml
+scaleway_rolling_reboot_selector:
+  tags: [production, web]     # every machine carrying both
+  match: all                  # `all` is the default; `any` widens it
+```
+
+`group: X` on the command line is the shorthand for `selector: {group: X}`. An
+ambiguous name is refused rather than settled, and an unknown key is refused
+rather than quietly selecting nothing, because a typo and an empty fleet look
+alike.
+
+**What every operation gives back.** `scaleway_operation` holds a
+machine-readable result: what it examined, what it changed, what it left alone,
+what it refused and why, and what it could not read. A pipeline reads that
+rather than the sentence, and a sentence gets reworded.
+
 ### "My Scaleway setup does not work"
 
 ```bash

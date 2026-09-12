@@ -1,0 +1,17 @@
+minor_changes:
+  - "The operations that act on machines now take a selector, and it is the same
+    one everywhere: exactly one of ``group``, ``name`` or ``tags``, plus
+    ``match`` set to ``all`` or ``any`` when several tags are given. ``all`` is
+    the default because it is the narrower selection, and for an operation that
+    writes, erring on the safe side means touching fewer machines rather than
+    more. ``group: X`` on the command line stays, as the shorthand for
+    ``selector: {group: X}``, because what a user types is published surface."
+  - "filter - ``select_hosts`` unifies four refusals that already existed
+    separately and now hold for all three forms: an ambiguous name is refused
+    rather than settled, naming the candidates; a name is compared exactly,
+    where the API filter matches by prefix; an unknown key is refused rather
+    than selecting nothing, because a typo and an empty fleet look alike; and
+    two criteria at once are refused, because the answer would depend on the
+    reading order. ``fleet_report`` does not take a selector: its target is a
+    list of zones, and forcing a host selector on it would be uniformity that
+    lies about what the operation does."

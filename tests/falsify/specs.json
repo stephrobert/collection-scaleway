@@ -2514,10 +2514,10 @@
     },
     {
       "name": "fait-de-role-non-prefixe",
-      "why": "Un rôle inclus depuis le playbook de quelqu'un d'autre partage son espace de noms. Un `set_fact: selection` atterrit dans ses faits et écrase le sien, et le défaut se manifeste chez lui comme une variable qui change de valeur sans raison. C'est un mode de défaillance qui n'existe pas tant que le code est un playbook, donc qu'aucune garde d'avant #207 ne pouvait attraper.",
+      "why": "Un rôle inclus depuis le playbook de quelqu'un d'autre partage son espace de noms. Un `set_fact: selection` atterrit dans ses faits et écrase le sien, et le défaut se manifeste chez lui comme une variable qui change de valeur sans raison. C'est un mode de défaillance qui n'existe pas tant que le code est un playbook, donc qu'aucune garde d'avant #207 ne pouvait attraper. La mutation a suivi le renommage de la tâche en #208 : `/falsify` a refusé de s'appliquer plutôt que de se taire.",
       "file": "ansible_collections/stephrobert/scaleway/roles/power_schedule/tasks/main.yml",
-      "find": "    - name: What the named group holds, read from the inventory\n      ansible.builtin.set_fact:\n        _scaleway_power_schedule_selection:",
-      "replace": "    - name: What the named group holds, read from the inventory\n      ansible.builtin.set_fact:\n        selection: >-\n          {{ groups[scaleway_power_schedule_group] | default([]) | sort }}\n        _scaleway_power_schedule_selection:",
+      "find": "    - name: The machines it holds, read from the inventory\n      ansible.builtin.set_fact:\n        _scaleway_power_schedule_selection:",
+      "replace": "    - name: The machines it holds, read from the inventory\n      ansible.builtin.set_fact:\n        selection: []\n        _scaleway_power_schedule_selection:",
       "test": "tests/unit/collection/test_roles.py::test_aucun_role_ne_pose_un_fait_sans_le_prefixer"
     },
     {
@@ -2535,6 +2535,38 @@
       "find": "    if not isinstance(valeur, (list, tuple)):\n        raise AnsibleFilterError(\n            f\"`{champ}` doit être une liste de noms",
       "replace": "    if not isinstance(valeur, (list, tuple)) and False:\n        raise AnsibleFilterError(\n            f\"`{champ}` doit être une liste de noms",
       "test": "tests/unit/collection/test_operation_result.py::test_un_compte_passe_au_lieu_dune_liste_est_refuse"
+    },
+    {
+      "name": "nom-ambigu-tranche-au-lieu-detre-refuse",
+      "why": "Rendre la première d'une liste ferait agir un playbook sur une ressource que personne n'a désignée. C'est ADR-019, appliquée ici à l'inventaire : deux machines peuvent porter le même nom dans deux zones, et l'opération doit s'arrêter en les nommant plutôt que d'en choisir une.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/select_hosts.py",
+      "find": "    if len(trouves) > 1:",
+      "replace": "    if len(trouves) > 1 and False:",
+      "test": "tests/unit/collection/test_select_hosts.py::test_un_nom_ambigu_est_refuse_et_nomme_les_candidats"
+    },
+    {
+      "name": "cle-de-selecteur-inconnue-ignoree",
+      "why": "`tag:` au lieu de `tags:` sélectionnerait zéro machine en silence, et une sélection vide se lit comme un parc vide. Une faute de frappe et un fait doivent se distinguer : le premier est un défaut, le second une mesure.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/select_hosts.py",
+      "find": "    if inconnues:",
+      "replace": "    if inconnues and False:",
+      "test": "tests/unit/collection/test_select_hosts.py::test_une_cle_inconnue_est_refusee"
+    },
+    {
+      "name": "etiquettes-combinees-au-hasard",
+      "why": "`tags: [production, web]` ne dit pas s'il faut toutes les étiquettes ou une seule. Sans refus sur `match`, la sélection dépendrait de ce que le lecteur a supposé, et pour une opération qui écrit, supposer `any` touche plus de machines que voulu.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/select_hosts.py",
+      "find": "    if mode not in COMBINAISONS:",
+      "replace": "    if mode not in COMBINAISONS and False:",
+      "test": "tests/unit/collection/test_select_hosts.py::test_une_combinaison_inconnue_est_refusee"
+    },
+    {
+      "name": "role-qui-reinvente-sa-grammaire",
+      "why": "Un rôle qui lit `groups[...]` lui-même a sa propre façon de désigner, donc ses propres refus, donc aucun. L'utilisateur apprend alors la grammaire une fois par rôle, ce qui est exactement l'état d'avant #208.",
+      "file": "ansible_collections/stephrobert/scaleway/roles/power_schedule/tasks/main.yml",
+      "find": "             | stephrobert.scaleway.select_hosts(groups=groups, hostvars=hostvars) }}",
+      "replace": "             | map('extract', groups) | list }}",
+      "test": "tests/unit/collection/test_roles.py::test_un_role_qui_selectionne_emploie_la_grammaire_commune"
     }
   ]
 }
