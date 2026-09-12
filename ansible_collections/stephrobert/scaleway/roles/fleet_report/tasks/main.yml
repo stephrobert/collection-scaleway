@@ -42,6 +42,20 @@
           else scaleway_fleet_report_zones | split(','))
          | map('trim') | select | list | sort }}
 
+# **Chaque produit ne sert pas les mêmes zones.** Demander au Load Balancer une
+# zone que son contrat ne déclare pas faisait ressortir cette zone comme « non
+# mesurée », à chaque exécution propre. `zones_unmeasured` porte l'affirmation
+# la plus répétée de ce dépôt, et un signal qui crie au loup est un signal que
+# personne ne lit (#222).
+- name: What each product offers among the zones asked
+  ansible.builtin.set_fact:
+    _scaleway_fleet_report_instance: >-
+      {{ _scaleway_fleet_report_zones
+         | stephrobert.scaleway.product_zones(kind='instance') }}
+    _scaleway_fleet_report_lb: >-
+      {{ _scaleway_fleet_report_zones
+         | stephrobert.scaleway.product_zones(kind='lb') }}
+
 # ---- What each zone answers ---------------------------------------------
 
 # `failed_when: false` so one unreachable zone does not hide the others.
@@ -50,14 +64,14 @@
 - name: Ask each zone for its Instances
   stephrobert.scaleway.instance_server_info:
     zone: "{{ item }}"
-  loop: "{{ _scaleway_fleet_report_zones }}"
+  loop: "{{ _scaleway_fleet_report_instance.offered }}"
   register: sonde_instances
   failed_when: false
 
 - name: Ask each zone for its Load Balancers
   stephrobert.scaleway.lb_load_balancer_info:
     zone: "{{ item }}"
-  loop: "{{ _scaleway_fleet_report_zones }}"
+  loop: "{{ _scaleway_fleet_report_lb.offered }}"
   register: sonde_lb
   failed_when: false
 
@@ -96,6 +110,10 @@
       zones_asked: "{{ _scaleway_fleet_report_zones }}"
       zones_measured: "{{ mesurees }}"
       zones_unmeasured: "{{ _scaleway_fleet_report_muettes }}"
+      # Distinct de `zones_unmeasured`, et c'est tout l'objet du champ : une
+      # zone qu'un produit n'offre pas est un fait sur le produit, pas une
+      # mesure qui a manqué.
+      zones_not_offered: "{{ non_offertes }}"
       # **`null` et non `0` quand aucune zone n'a répondu.** Un total nul se lit
       # « le parc est vide », et rien n'a été mesuré n'est pas rien n'a été
       # trouvé. Le dépôt rend déjà `None` plutôt que `0.0 %` pour un ratio sans
@@ -116,6 +134,10 @@
     machines: "{{ _scaleway_fleet_report_machines }}"
     balanceurs: "{{ _scaleway_fleet_report_balanceurs }}"
     mesurees: "{{ _scaleway_fleet_report_mesurees }}"
+    non_offertes: >-
+      {{ {'instance': _scaleway_fleet_report_instance.not_offered,
+          'lb': _scaleway_fleet_report_lb.not_offered}
+         | dict2items | rejectattr('value', 'equalto', []) | items2dict }}
     # Les étiquettes sont une liste plate de chaînes, pas des objets : il n'y a
     # pas d'attribut sur lequel `groupby` puisse travailler. Un dictionnaire se
     # construit donc à la main, et `untagged` compte les machines qu'aucune
