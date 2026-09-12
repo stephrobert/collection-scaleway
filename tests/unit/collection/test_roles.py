@@ -209,3 +209,29 @@ def test_chaque_role_rend_la_structure_commune() -> None:
             "sans les garanties, ce qui est pire qu'une phrase parce que ça se "
             "lit comme un contrat"
         )
+
+
+def test_un_role_qui_selectionne_emploie_la_grammaire_commune() -> None:
+    """Quatre grammaires pour une question, c'est trois de trop (#208).
+
+    Un rôle qui lirait `groups[...]` lui-même aurait sa propre façon de
+    désigner, et l'utilisateur apprendrait la grammaire une fois par rôle. Pire,
+    il perdrait les refus qui vont avec : le nom ambigu qu'on ne tranche pas, la
+    clé inconnue qu'on ne prend pas pour une sélection vide.
+    """
+    for role in _roles():
+        options = yaml.safe_load(
+            (role / "meta" / "argument_specs.yml").read_text(encoding="utf-8")
+        )["argument_specs"]["main"]["options"]
+        if f"scaleway_{role.name}_selector" not in options:
+            continue  # cette opération ne désigne pas des machines
+
+        texte = (role / "tasks" / "main.yml").read_text(encoding="utf-8")
+        assert "stephrobert.scaleway.select_hosts(" in texte, (
+            f"{role.name} déclare un sélecteur et ne l'emploie pas : il résout "
+            "sa cible autrement, donc avec d'autres refus que les autres"
+        )
+        assert "groups[" not in texte, (
+            f"{role.name} lit `groups[...]` directement : c'est la grammaire "
+            "parallèle que le sélecteur existe pour supprimer"
+        )

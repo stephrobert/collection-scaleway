@@ -31,10 +31,12 @@
       No group named. Run again with
       `-i <name>.scaleway.yml -e group=<inventory group> [-e batch_size=N]`
       to act. The playbook stops here without touching anything.
-  when: scaleway_rolling_reboot_group | length == 0
+  when:
+    - scaleway_rolling_reboot_group | length == 0
+    - scaleway_rolling_reboot_selector | length == 0
 
 - name: Roll through the named group
-  when: scaleway_rolling_reboot_group | length > 0
+  when: scaleway_rolling_reboot_group | length > 0 or scaleway_rolling_reboot_selector | length > 0
   block:
     - name: The batch size is a positive number
       ansible.builtin.assert:
@@ -51,17 +53,34 @@
       ansible.builtin.set_fact:
         _scaleway_rolling_reboot_debut: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
 
-    - name: What the named group holds
+    - name: A group name and a selector are two ways of saying one thing
+      ansible.builtin.assert:
+        that:
+          - not (scaleway_rolling_reboot_group | length > 0
+                 and scaleway_rolling_reboot_selector | length > 0)
+        fail_msg: >-
+          `group` et `selector` ont été donnés tous les deux. `group: X` est le
+          raccourci de `selector: {group: X}`.
+        quiet: true
+
+    - name: What the selector designates
+      ansible.builtin.set_fact:
+        _scaleway_rolling_reboot_selecteur: >-
+          {{ scaleway_rolling_reboot_selector if scaleway_rolling_reboot_selector | length > 0
+             else {'group': scaleway_rolling_reboot_group} }}
+
+    - name: The machines it holds, read from the inventory
       ansible.builtin.set_fact:
         _scaleway_rolling_reboot_selection: >-
-          {{ groups[scaleway_rolling_reboot_group] | default([]) | sort }}
+          {{ _scaleway_rolling_reboot_selecteur
+             | stephrobert.scaleway.select_hosts(groups=groups, hostvars=hostvars) }}
 
     - name: The selection is not empty
       ansible.builtin.assert:
         that:
           - _scaleway_rolling_reboot_selection | length > 0
         fail_msg: >-
-          the group `{{ scaleway_rolling_reboot_group }}` holds no host.
+          the selector `{{ _scaleway_rolling_reboot_selecteur | to_json }}` holds no host.
           {{ ('No inventory was parsed: run with `-i <name>.scaleway.yml`.
                That missing option is the likeliest cause.')
              if groupes_construits | length == 0
@@ -183,7 +202,7 @@
       vars:
         resultat: >-
           {{ 'rolling_reboot' | stephrobert.scaleway.operation_result(
-               target=scaleway_rolling_reboot_group,
+               target=(_scaleway_rolling_reboot_selecteur | to_json),
                mode=('check' if ansible_check_mode else 'apply'),
                changed=(_scaleway_rolling_reboot_a_redemarrer
                         | map(attribute='server.name') | list),

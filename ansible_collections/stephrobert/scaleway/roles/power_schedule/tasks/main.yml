@@ -37,10 +37,12 @@
       No group named. Run again with
       `-i <name>.scaleway.yml -e group=<inventory group> -e desired_state=on|off`
       to act. The playbook stops here without touching anything.
-  when: scaleway_power_schedule_group | length == 0
+  when:
+    - scaleway_power_schedule_group | length == 0
+    - scaleway_power_schedule_selector | length == 0
 
 - name: Bring the named group where it should be
-  when: scaleway_power_schedule_group | length > 0
+  when: scaleway_power_schedule_group | length > 0 or scaleway_power_schedule_selector | length > 0
   block:
     # ---- What the role refuses to guess ----------------------------------
 
@@ -60,10 +62,29 @@
       ansible.builtin.set_fact:
         _scaleway_power_schedule_debut: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
 
-    - name: What the named group holds, read from the inventory
+    # Un raccourci et une forme longue disent la même chose ; les deux à la
+    # fois laisseraient la réponse dépendre de l'ordre de lecture.
+    - name: A group name and a selector are two ways of saying one thing
+      ansible.builtin.assert:
+        that:
+          - not (scaleway_power_schedule_group | length > 0
+                 and scaleway_power_schedule_selector | length > 0)
+        fail_msg: >-
+          `group` et `selector` ont été donnés tous les deux. `group: X` est le
+          raccourci de `selector: {group: X}`.
+        quiet: true
+
+    - name: What the selector designates
+      ansible.builtin.set_fact:
+        _scaleway_power_schedule_selecteur: >-
+          {{ scaleway_power_schedule_selector if scaleway_power_schedule_selector | length > 0
+             else {'group': scaleway_power_schedule_group} }}
+
+    - name: The machines it holds, read from the inventory
       ansible.builtin.set_fact:
         _scaleway_power_schedule_selection: >-
-          {{ groups[scaleway_power_schedule_group] | default([]) | sort }}
+          {{ _scaleway_power_schedule_selecteur
+             | stephrobert.scaleway.select_hosts(groups=groups, hostvars=hostvars) }}
 
     # **Un groupe nommé et vide est une erreur, pas un silence.** À 20:00, un
     # planificateur qui ne trouve rien et sort en 0 est un planificateur qui
@@ -73,7 +94,7 @@
         that:
           - _scaleway_power_schedule_selection | length > 0
         fail_msg: >-
-          the group `{{ scaleway_power_schedule_group }}` holds no host.
+          the selector `{{ _scaleway_power_schedule_selecteur | to_json }}` holds no host.
           {{ ('No inventory was parsed: run with `-i <name>.scaleway.yml`.
                That missing option is the likeliest cause.')
              if groupes_construits | length == 0
@@ -205,7 +226,7 @@
       vars:
         resultat: >-
           {{ 'power_schedule' | stephrobert.scaleway.operation_result(
-               target=scaleway_power_schedule_group,
+               target=(_scaleway_power_schedule_selecteur | to_json),
                mode=('check' if ansible_check_mode else 'apply'),
                changed=(agi.results | default([]) | selectattr('changed')
                         | map(attribute='item.server.name') | list),

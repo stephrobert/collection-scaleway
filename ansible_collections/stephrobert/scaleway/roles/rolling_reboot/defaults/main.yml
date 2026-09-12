@@ -3,6 +3,10 @@
 # the inventory happens to hold. An empty group means do nothing and say so.
 scaleway_rolling_reboot_group: ""
 
+# La même question, posée d'une seule façon partout : un groupe, un nom,
+# ou des étiquettes. `group` ci-dessus en est le raccourci.
+scaleway_rolling_reboot_selector: {}
+
 # One at a time is the safe default. A larger batch is a decision.
 scaleway_rolling_reboot_batch_size: 1
 

@@ -5,6 +5,10 @@
 # shipped playbook without arguments.
 scaleway_power_schedule_group: ""
 
+# La même question, posée d'une seule façon partout : un groupe, un nom,
+# ou des étiquettes. `group` ci-dessus en est le raccourci.
+scaleway_power_schedule_selector: {}
+
 # No default direction either. Naming the target without saying which way to
 # move it is not a request.
 scaleway_power_schedule_desired_state: ""

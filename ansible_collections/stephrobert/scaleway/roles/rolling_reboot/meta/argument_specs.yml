@@ -13,6 +13,22 @@ argument_specs:
         each machine leave C(running) and return, and refuses to conclude when it
         never saw it change.
     options:
+      scaleway_rolling_reboot_selector:
+        type: dict
+        default: {}
+        description:
+          - >-
+            What to roll through, said the same way everywhere: exactly one of
+            C(group), C(name) or C(tags), plus C(match) set to C(all) or C(any)
+            when several tags are given.
+          - >-
+            C(all) is the default, because it is the narrower selection: for an
+            operation that writes, erring on the safe side means touching fewer
+            machines, never more.
+          - >-
+            An ambiguous name is refused rather than settled, and an unknown key
+            is refused rather than selecting nothing, because a typo and an
+            empty fleet look alike.
       scaleway_rolling_reboot_group:
         type: str
         default: ""
