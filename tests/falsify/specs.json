@@ -2663,6 +2663,14 @@
       "find": "        job=\"Parcours d'accueil\",",
       "replace": "        job=\"Parcours d'accueil supprimé\",",
       "test": "tests/unit/outillage/test_qualifier_couverture.py::test_chaque_job_de_la_ci_est_rejoue_ou_nomme"
+    },
+    {
+      "name": "readme-de-role-qui-ne-montre-pas-lappel",
+      "why": "Galaxy refuse l'import de toute la collection quand un rôle n'a pas de README, et c'est ce qui a fait échouer la publication de la 0.7.0 après que la porte, le sanity et l'archive soient passés. La garde exige en plus que la page montre l'appel : une page publiée qui ne dit pas comment appeler la chose ne sert que d'antisèche à l'importeur. Le harnais ne sachant que substituer dans un fichier, il ne peut pas faire disparaître un README : c'est cette seconde moitié qu'il éprouve, l'existence restant tenue par l'importeur de Galaxy dans le workflow de publication.",
+      "file": "ansible_collections/stephrobert/scaleway/roles/fleet_report/README.md",
+      "find": "- ansible.builtin.include_role:",
+      "replace": "- name: Call it the way the guide describes",
+      "test": "tests/unit/collection/test_roles.py::test_chaque_role_porte_un_readme"
     }
   ]
 }
