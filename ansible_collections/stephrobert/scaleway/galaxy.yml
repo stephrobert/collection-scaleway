@@ -72,3 +72,9 @@ build_ignore:
   # parce qu'il ne regardait que les fichiers. Rien sous `tests/` n'a sa place
   # chez un utilisateur.
   - tests
+  # `antsibull-changelog` reconstruit ce cache à chaque exécution, et git
+  # l'ignore. Un clone frais ne le porte donc pas : la CI publiait une archive
+  # sans lui pendant qu'une construction locale en publiait une avec. Mesuré
+  # sur la 0.7.0, en comparant l'archive que Galaxy sert à celle que le poste
+  # produit : 151 fichiers contre 152, et c'était le seul écart.
+  - changelogs/.plugin-cache.yaml

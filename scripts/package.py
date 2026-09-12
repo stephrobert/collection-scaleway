@@ -86,6 +86,41 @@ def entrees(archive: Path) -> tuple[str, ...]:
         return tuple(sorted(member.name for member in tar.getmembers()))
 
 
+def ignores_par_git(collection: Collection) -> frozenset[str]:
+    """Ce que git ignore sous la collection, relatif à celle-ci.
+
+    C'est la définition de « reproductible, donc pas un artefact du produit »
+    que le dépôt applique déjà partout ailleurs. Un fichier ignoré n'existe pas
+    dans un clone frais : l'archive de la CI ne le porte pas, celle d'un poste
+    de travail si, et les deux se disent pourtant la même version.
+
+    Une commande qui ne répond pas ne prouve pas qu'il n'y a rien à ignorer :
+    elle prouve qu'on ne sait pas. L'échec est donc un refus, jamais un
+    ensemble vide.
+    """
+    vu = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(collection.path),
+            "ls-files",
+            "--others",
+            "--ignored",
+            "--exclude-standard",
+            ".",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if vu.returncode != 0:
+        raise PackageError(
+            "git n'a pas dit ce qu'il ignore sous la collection, donc on ignore "
+            f"si l'archive emporte un artefact : {vu.stderr.strip()}"
+        )
+    return frozenset(ligne for ligne in vu.stdout.splitlines() if ligne)
+
+
 def check_contents(archive: Path) -> tuple[str, ...]:
     """Refuse une archive qui emporte le générateur, ou qui oublie un module.
 
@@ -112,6 +147,24 @@ def check_contents(archive: Path) -> tuple[str, ...]:
         raise PackageError(f"l'archive n'emporte pas {manquants}")
 
     return contenu
+
+
+def check_artefacts(contenu: tuple[str, ...], collection: Collection) -> None:
+    """Refuse une archive qui emporte ce que git ignore.
+
+    Séparé de `check_contents`, qui juge l'archive seule : celui-ci a besoin du
+    dépôt, et un contrôle qui a besoin de deux choses les demande toutes les
+    deux plutôt que d'en supposer une.
+
+    Sur les fichiers seuls : git ne suit pas les répertoires, donc il n'en
+    ignore aucun, et les comparer à cette liste ne rendrait jamais rien.
+    """
+    artefacts = sorted(set(contenu) & ignores_par_git(collection))
+    if artefacts:
+        raise PackageError(
+            "l'archive emporte ce que git ignore, donc ce qu'un clone frais n'a "
+            f"pas : {artefacts}. La CI publierait une autre archive que ce poste."
+        )
 
 
 def check_installed(collections_path: Path, collection: Collection) -> None:
@@ -337,6 +390,7 @@ def main(argv: list[str]) -> int:
         raise PackageError(f"archive attendue et absente : {archive}")
 
     contenu = check_contents(archive)
+    check_artefacts(contenu, collection)
     taille = archive.stat().st_size
     print(f"{os.path.relpath(archive, ROOT)} : {len(contenu)} fichier(s), {taille // 1024} Kio")
 

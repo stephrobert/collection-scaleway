@@ -2671,6 +2671,22 @@
       "find": "- ansible.builtin.include_role:",
       "replace": "- name: Call it the way the guide describes",
       "test": "tests/unit/collection/test_roles.py::test_chaque_role_porte_un_readme"
+    },
+    {
+      "name": "artefact-ignore-emporte-par-larchive",
+      "why": "Mesuré sur la 0.7.0, après publication : l'archive servie par Galaxy et celle que le poste construisait ne portaient pas les mêmes entrées, l'écart tenant dans un cache que git ignore. Deux archives différentes sous le même numéro, et une version publiée sur Galaxy est immuable. La liste des répertoires interdits ne pouvait pas le voir : elle nomme des répertoires du dépôt, et celui-ci est dans la collection.",
+      "file": "scripts/package.py",
+      "find": "    artefacts = sorted(set(contenu) & ignores_par_git(collection))",
+      "replace": "    artefacts = sorted(set() & ignores_par_git(collection))",
+      "test": "tests/unit/outillage/test_paquet.py::test_une_archive_qui_emporte_un_artefact_ignore_est_refusee"
+    },
+    {
+      "name": "git-muet-lu-comme-rien-a-ignorer",
+      "why": "Une commande qui ne répond pas ne prouve pas qu'il n'y a rien à ignorer : elle prouve qu'on ne sait pas. Sans ce refus, une construction hors dépôt rendrait l'ensemble vide et le contrôle annoncerait qu'aucun artefact n'a fuité, ce qui est exactement la forme que prend un vert sur zéro fichier examiné.",
+      "file": "scripts/package.py",
+      "find": "    if vu.returncode != 0:\n        raise PackageError(\n            \"git n'a pas dit ce qu'il ignore sous la collection, donc on ignore \"",
+      "replace": "    if False:\n        raise PackageError(\n            \"git n'a pas dit ce qu'il ignore sous la collection, donc on ignore \"",
+      "test": "tests/unit/outillage/test_paquet.py::test_git_qui_ne_repond_pas_est_un_refus"
     }
   ]
 }
