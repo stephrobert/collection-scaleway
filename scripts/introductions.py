@@ -185,9 +185,6 @@ def enregistrer(journal: Introductions, version: str, chemin: Path) -> list[str]
         if (module, nom) not in deja:
             (options if genre == "option" else retours).setdefault(module, []).append(nom)
 
-    if not neufs and not options and not retours:
-        return [f"rien à figer : aucun nom n'attend de date sous {version}."]
-
     bloc = [f'\n  "{version}":']
     if neufs:
         bloc.append("    modules:")
@@ -211,14 +208,32 @@ def enregistrer(journal: Introductions, version: str, chemin: Path) -> list[str]
     )
     if remplacements != 1:
         raise IntroductionsError(f"{chemin} ne porte pas exactement une ligne `en_preparation:`")
-    chemin.write_text(texte.rstrip("\n") + "\n" + "\n".join(bloc) + "\n", encoding="utf-8")
+
+    # **Le bloc se saute, l'avancement jamais.** Un cycle peut ne rien ajouter
+    # que le journal date : la 0.6.0 était faite de playbooks, d'un plugin et de
+    # documentation. Un bloc vide publierait un badge de version sur rien, mais
+    # la release, elle, est bien partie, et le cycle suivant prépare la version
+    # d'après. Sortir ici sans avancer laissait le contrôle refuser la release
+    # qui venait de se faire, en accusant un figeage qui avait eu lieu.
+    rien_a_dater = not neufs and not options and not retours
+    contenu = texte.rstrip("\n") + "\n"
+    if not rien_a_dater:
+        contenu += "\n".join(bloc) + "\n"
+    chemin.write_text(contenu, encoding="utf-8")
 
     # Relire prouve que le fichier écrit se charge encore : un bloc mal indenté
     # ne se verrait qu'à la génération suivante, c'est-à-dire trop tard.
     load_introductions(chemin)
+    fige = (
+        f"rien à figer : aucun nom n'attend de date sous {version}."
+        if rien_a_dater
+        else (
+            f"{len(neufs)} module(s), {sum(map(len, options.values()))} option(s) et "
+            f"{sum(map(len, retours.values()))} retour(s) figés sous {version}."
+        )
+    )
     return [
-        f"{len(neufs)} module(s), {sum(map(len, options.values()))} option(s) et "
-        f"{sum(map(len, retours.values()))} retour(s) figés sous {version}.",
+        fige,
         f"version en préparation portée à {suivante} ; la corriger si les "
         "fragments du cycle suivant impliquent autre chose.",
     ]

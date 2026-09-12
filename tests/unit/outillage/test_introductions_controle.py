@@ -7,10 +7,12 @@ tout est un contrôle qu'on désactive. Les deux bords sont donc mesurés ici.
 from __future__ import annotations
 
 import dataclasses
+from pathlib import Path
 from types import MappingProxyType
 
 import introductions
 import pytest
+import version as version_module
 
 from generator.ansible.collection import load_collection
 from generator.ansible.introductions import load_introductions
@@ -109,3 +111,36 @@ def test_une_version_en_preparation_qui_contredit_les_fragments_est_refusee(
     assert introductions.non_dates(sans_attente, modules, membres) == []
     conforme, _ = introductions.controler(sans_attente)
     assert conforme
+
+
+def test_un_cycle_sans_rien_a_dater_avance_quand_meme_la_preparation(tmp_path: Path) -> None:
+    """Un cycle peut ne rien ajouter que le journal date, et être une release.
+
+    Mesuré en coupant la 0.6.0 : elle apportait des playbooks, un plugin de
+    lookup et de la documentation, et pas un module, pas une option, pas une
+    valeur de retour. Le figeage sortait par un raccourci avant d'avancer
+    `en_preparation`, et le contrôle suivant refusait la release qui venait de
+    se faire, en accusant un figeage qui avait pourtant eu lieu.
+
+    Ce qui se saute quand il n'y a rien à dater, c'est le **bloc** : un bloc
+    vide publierait un badge de version sur rien.
+    """
+    # Le journal du dépôt, copié : il date déjà tout ce qui est écrit, donc
+    # figer une version de plus n'a rien à y inscrire. C'est exactement la
+    # situation de la 0.6.0, reproduite plutôt que simulée.
+    fichier = tmp_path / "introductions.yml"
+    fichier.write_text(introductions.DEFAULT_JOURNAL.read_text(encoding="utf-8"), encoding="utf-8")
+    journal = load_introductions(fichier)
+    cible = journal.en_preparation
+
+    lignes = introductions.enregistrer(journal, cible, fichier)
+
+    assert any("rien à figer" in ligne for ligne in lignes), lignes
+    attendue = version_module.suivante(cible, "correctif")
+    assert load_introductions(fichier).en_preparation == attendue, (
+        "la version en préparation n'a pas avancé : le contrôle refusera la "
+        "release qui vient de se faire"
+    )
+    assert f'"{cible}":' not in fichier.read_text(encoding="utf-8"), (
+        "un bloc vide a été écrit : il publierait un badge de version sur rien"
+    )

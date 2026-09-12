@@ -2495,6 +2495,14 @@
       "find": "    if sans_source:\n        raise CompteursError(",
       "replace": "    if sans_source and False:\n        raise CompteursError(",
       "test": "tests/unit/outillage/test_adoption.py::test_une_ligne_dadoption_sans_source_est_refusee"
+    },
+    {
+      "name": "journal-qui-nvance-pas-sans-rien-a-dater",
+      "why": "Un cycle peut ne rien ajouter que le journal date et être une release : la 0.6.0 apportait des playbooks, un plugin de lookup et de la documentation. Le figeage sortait alors avant d'avancer la version en préparation, et le contrôle refusait la release qui venait de se faire en accusant un figeage qui avait eu lieu. Un message juste sur le fait et faux sur le coupable coûte plus cher qu'un refus muet.",
+      "file": "scripts/introductions.py",
+      "find": "    rien_a_dater = not neufs and not options and not retours\n",
+      "replace": "    rien_a_dater = not neufs and not options and not retours\n    if rien_a_dater:\n        return [f\"rien à figer : aucun nom n'attend de date sous {version}.\"]\n",
+      "test": "tests/unit/outillage/test_introductions_controle.py::test_un_cycle_sans_rien_a_dater_avance_quand_meme_la_preparation"
     }
   ]
 }
