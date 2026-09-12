@@ -46,3 +46,4 @@ Code says the **current** invariant. This directory says what happened.
 | [ADR-017](017-the-launcher-removes-what-blocks-its-own-destruction.md) | On a failed destruction the launcher removes what blocks it, once, only within the run's own platform, and says what it removed |
 | [ADR-018](018-a-retry-policy-belongs-to-the-operation.md) | A retry policy belongs to the operation: a read replays, a write only when the server says it did nothing, an action never |
 | [ADR-019](019-a-name-filter-narrows-a-listing.md) | An API name filter narrows a listing, it never selects: the exact comparison is local, and two matches refuse |
+| [ADR-020](020-a-plan-describes-the-moment-it-was-computed.md) | A plan describes the fleet as it was read, and is never replayed: the execution reads again |

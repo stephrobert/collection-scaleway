@@ -235,3 +235,33 @@ def test_un_role_qui_selectionne_emploie_la_grammaire_commune() -> None:
             f"{role.name} lit `groups[...]` directement : c'est la grammaire "
             "parallèle que le sélecteur existe pour supprimer"
         )
+
+
+def test_le_plan_ne_se_rend_quen_repetition() -> None:
+    """« No action has been sent » sur un vrai passage serait un mensonge.
+
+    Le plan dit qu'aucune action n'est partie. Rendu hors du mode check, il
+    l'affirmerait après avoir agi, ce qui est pire qu'un silence : c'est une
+    phrase que le lecteur croira (ADR-020).
+    """
+    for role in _roles():
+        plan = next(
+            (
+                tache
+                for tache in _taches(role / "tasks" / "main.yml")
+                if tache.get("name") == "The plan, for a reviewer"
+            ),
+            None,
+        )
+        if plan is None:
+            continue  # cette opération ne rend pas de plan
+
+        assert plan.get("when") == "ansible_check_mode", (
+            f"{role.name} rend son plan hors de la répétition : il dirait "
+            "« aucune action envoyée » après en avoir envoyé"
+        )
+        # Le plan est un rendu de la structure, pas un second calcul : deux
+        # sources du même fait finiraient par se contredire.
+        assert plan["vars"]["resultat"] == "{{ scaleway_operation }}", (
+            f"{role.name} compose son plan autrement que depuis le résultat"
+        )
