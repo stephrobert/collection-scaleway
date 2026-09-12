@@ -1,0 +1,7 @@
+bugfixes:
+  - "The published archive no longer carries ``changelogs/.plugin-cache.yaml``,
+    a cache ``antsibull-changelog`` rebuilds and git ignores. A fresh clone does
+    not have it, so the CI published an archive without it while a workstation
+    build published one with it, under the same version number, and a version
+    published on Galaxy is immutable. Packaging now asks git what it ignores
+    under the collection and refuses an archive that carries any of it."
