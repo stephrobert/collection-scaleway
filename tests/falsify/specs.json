@@ -2631,6 +2631,14 @@
       "find": "                if module.startswith(f\"{produit}_\")",
       "replace": "                if module.startswith(\"\")",
       "test": "tests/unit/outillage/test_admission_operations.py::test_une_operation_se_rattache_au_produit_quelle_appelle"
+    },
+    {
+      "name": "reaction-qui-modifie-la-production",
+      "why": "Un événement est atteignable par un tiers d'une façon qu'une ligne de commande n'est pas. Une règle qui lancerait `power_schedule` sur une alerte éteindrait un parc sur une charge utile que personne n'a vérifiée : c'est le mode de défaillance que les enchaînements refusent par construction, déplacé là où personne ne le relit.",
+      "file": "ansible_collections/stephrobert/scaleway/extensions/eda/rulebooks/diagnose_on_alert.yml",
+      "find": "          name: stephrobert.scaleway.fleet_report",
+      "replace": "          name: stephrobert.scaleway.power_schedule",
+      "test": "tests/unit/collection/test_rulebooks.py::test_une_reaction_ne_declenche_que_des_lectures"
     }
   ]
 }

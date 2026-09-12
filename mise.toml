@@ -32,6 +32,16 @@ uv = "0.11.26"
 # résolu différemment selon la machine ferait mentir le contrôle de résidu.
 terraform = "1.15.4"
 
+# **Une JVM, pour une seule chose : `ansible-rulebook`.** Son moteur de règles
+# est Drools, donc il refuse de démarrer sans machine virtuelle Java, et même
+# `--version` échoue en le disant. Mesuré avant de l'ajouter : sans elle, rien
+# ici ne peut valider un rulebook, et livrer du YAML que personne n'a lu serait
+# le contraire de ce que ce dépôt publie.
+#
+# Une LTS, épinglée comme le reste : un moteur de règles qui changerait de
+# version tout seul rendrait un verdict qu'on ne saurait pas relire.
+java = "temurin-21.0.12+101.0.LTS"
+
 [env]
 # Le venv du projet, créé et activé par mise. Les dépendances de développement
 # s'y installent par `mise run setup`.
@@ -330,6 +340,14 @@ description = "Rejouer le parcours d'accueil (docker compose, sans compte Scalew
 # backend de test, pas une dépendance du produit. La CI le joue, parce qu'une
 # page d'accueil qui périme est ce qu'un visiteur découvre en premier.
 run = "python scripts/quickstart.py"
+
+[tasks.rulebook]
+description = "Éprouver le rulebook livré : un événement entre, un diagnostic sort"
+# Hors de `check`, comme `integration` : l'émulateur et la JVM sont des backends
+# de test, pas des dépendances du produit. La CI la joue, parce qu'un rulebook
+# livré que rien ne rejoue pourrit plus discrètement que le reste : personne ne
+# lance un rulebook à la main pour voir s'il marche encore.
+run = "python scripts/rulebook.py"
 
 [tasks.integration]
 description = "Jouer les playbooks contre un émulateur local (FEINT_VM=off)"
