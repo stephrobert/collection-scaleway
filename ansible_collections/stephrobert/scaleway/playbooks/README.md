@@ -139,6 +139,36 @@ shipped policy is a starting point made only of warnings, never an opinion about
 your fleet: the severity of a public address depends on whether the machine is a
 bastion or a database.
 
+### "What changed in my cloud since the last time I looked"
+
+```bash
+ansible-playbook stephrobert.scaleway.fleet_report -e snapshot_to=today.json
+ansible-playbook stephrobert.scaleway.fleet_diff -e baseline=today.json
+ansible-playbook stephrobert.scaleway.fleet_diff -e baseline=a.json -e current=b.json
+ansible-playbook stephrobert.scaleway.fleet_diff -e baseline=today.json -e output=markdown
+```
+
+Compares a snapshot you kept against the fleet as it is now, and reports what
+appeared, what went away and what changed, field by field. A report that
+announces the same count every morning stops being read by the third morning;
+this is the one that says why there are two more today.
+
+**As a role**: `stephrobert.scaleway.fleet_diff`. It leaves the comparison in
+`scaleway_fleet_diff_result` and the level it earned in
+`scaleway_fleet_diff_level`, which is `quiet`, `changed` or `action_required`.
+
+**Check before**: `fleet_report -e snapshot_to=<file>` at least once, to have
+something to compare against. This collection keeps no history of its own: a
+snapshot lives wherever you put it, a CI artifact, object storage, a git
+repository.
+
+**What it does not do**: it never compares a zone only one of the two snapshots
+measured. A zone that did not answer, and a zone you simply stopped reading,
+would both make everything they hold look removed, and the report would be
+perfectly plausible. Such zones are named instead, with which of the two cases
+it is. Nothing new prints one line rather than a screen, because a tool that
+writes the same thing every morning ends up ignored.
+
 ### "I need to power the lab down tonight"
 
 ```bash

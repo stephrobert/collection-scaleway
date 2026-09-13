@@ -788,7 +788,13 @@ def jouer(playbook: str, env: dict[str, str], variables: dict[str, Any]) -> int:
 #: c'est voulu : l'éteindre couperait la route que les playbooks SSH empruntent.
 LIVRES: dict[str, dict[str, Any]] = {
     "doctor.yml": {"variables": {}},
-    "fleet_report.yml": {"variables": {"zones": "{zone}"}},
+    "fleet_report.yml": {
+        "variables": {"zones": "{zone}"},
+        # Le second passage écrit l'instantané que `fleet_diff` comparera. C'est
+        # le playbook qui écrit le fichier, jamais le rôle : un rôle qui écrit
+        # dans le système de fichiers de qui l'inclut décide à sa place.
+        "puis": {"zones": "{zone}", "snapshot_to": "{instantane}"},
+    },
     # En lecture seule, donc sans risque sur un compte facturé : il lit la zone
     # et juge contre la politique livrée, faite d'avertissements seulement. Un
     # audit qu'on ne jouerait jamais contre un vrai parc serait un audit dont on
@@ -815,6 +821,10 @@ LIVRES: dict[str, dict[str, Any]] = {
     "rolling_reboot.yml": {
         "variables": {"group": "scw_tag_etage_charge", "batch_size": 1},
     },
+    # Après `rolling_reboot`, et c'est le seul ordre qui prouve quelque chose :
+    # l'instantané a été pris avant les redémarrages, donc la comparaison porte
+    # sur un parc qui a réellement bougé entre les deux lectures.
+    "fleet_diff.yml": {"variables": {"baseline": "{instantane}", "zones": "{zone}"}},
 }
 
 
@@ -827,14 +837,20 @@ def jouer_les_livres(env: dict[str, str], contexte: dict[str, Any]) -> int:
     redémarrage réel prend des minutes, et une attente correcte ne se distingue
     d'un `sleep` que le jour où la machine est lente (#196).
     """
-    livres = sorted(chemin.name for chemin in LIVRES_DIR.glob("*.yml"))
-    inconnus = [nom for nom in livres if nom not in LIVRES]
+    presents = {chemin.name for chemin in LIVRES_DIR.glob("*.yml")}
+    inconnus = sorted(presents - set(LIVRES))
     if inconnus:
         raise ExempleError(
             f"playbook(s) livré(s) sans entrée dans LIVRES : {', '.join(inconnus)}. "
             "Un playbook qu'aucune cible ne joue se déclare avec sa raison, "
             "pas en silence."
         )
+
+    # **L'ordre vient de la table, pas du répertoire.** `fleet_diff` compare une
+    # référence à ce que le parc est devenu, et cette référence est un instantané
+    # que `fleet_report` produit : l'ordre alphabétique ferait tourner le diff
+    # avant que le fichier existe.
+    livres = [nom for nom in LIVRES if nom in presents]
 
     code = 0
     for nom in livres:
@@ -1074,7 +1090,15 @@ def main(argv: list[str]) -> int:
         # les jouer plus tôt couperait sous les pieds de `site.yml` le parc
         # qu'il déploie. Sur toutes, parce que l'écart entre les deux cibles est
         # précisément ce qu'on cherche à mesurer (#196).
-        code = code or jouer_les_livres(env, {"zone": env.get("SCW_DEFAULT_ZONE", "fr-par-1")})
+        code = code or jouer_les_livres(
+            env,
+            {
+                "zone": env.get("SCW_DEFAULT_ZONE", "fr-par-1"),
+                # Sous `build/`, donc hors du dépôt : c'est l'état d'un compte à
+                # un instant, pas un artefact du produit.
+                "instantane": str(TRAVAIL / "instantane.json"),
+            },
+        )
         return code
     finally:
         if arguments.garder:

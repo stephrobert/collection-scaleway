@@ -2735,6 +2735,46 @@
       "find": "    if sans_identite:",
       "replace": "    if sans_identite and False:",
       "test": "tests/unit/collection/test_resource_facts.py::test_une_ressource_sans_identifiant_est_refusee"
+    },
+    {
+      "name": "diff-qui-compare-une-zone-non-mesuree",
+      "why": "Une zone qui n'a pas répondu ferait apparaître tout ce qu'elle porte comme supprimé, et le rapport serait parfaitement plausible. C'est le défaut le plus cher que cette fonction puisse commettre : annoncer la disparition d'un parc entier le matin où l'API est indisponible.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_diff.py",
+      "find": "            if ressource.get(\"zone\") in comparables",
+      "replace": "            if ressource.get(\"zone\") in comparables or True",
+      "test": "tests/unit/collection/test_fleet_diff.py::test_une_zone_muette_ne_fait_disparaitre_personne"
+    },
+    {
+      "name": "zone-quon-a-cesse-de-lire-passee-sous-silence",
+      "why": "Le cas qui se voit le moins : une zone que le premier instantané a lue et que le second n'a même pas demandée. Elle n'apparaît dans aucun `zones_unmeasured`, puisque personne n'a échoué à la lire. L'intersection des zones mesurées empêche déjà de la comparer, mais sans cette ligne le rapport ne dirait pas qu'elle manque, et « aucun changement » se lirait comme « rien n'a bougé ».",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_diff.py",
+      "find": "    for zone in mesurees_avant - mesurees_apres:",
+      "replace": "    for zone in set():",
+      "test": "tests/unit/collection/test_fleet_diff.py::test_une_zone_quon_a_cesse_de_lire_ne_fait_disparaitre_personne"
+    },
+    {
+      "name": "mesure-impossible-lue-comme-un-parc-calme",
+      "why": "Une zone muette n'est pas une bonne nouvelle. La présenter comme un parc calme est le vert sur zéro fichier examiné, et c'est la seule ligne que ce rapport n'a pas le droit d'écrire.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_diff.py",
+      "find": "    if diff.get(\"zones_not_compared\"):",
+      "replace": "    if diff.get(\"zones_not_compared\") and False:",
+      "test": "tests/unit/collection/test_fleet_diff.py::test_une_zone_muette_ne_fait_disparaitre_personne"
+    },
+    {
+      "name": "horodatage-qui-declenche-un-changement",
+      "why": "`last_change` est un témoin, pas une propriété du parc. Une ligne de diff qui ne montre qu'un horodatage qui bouge ne donne d'action à personne, et un rapport récurrent rempli de ces lignes cesse d'être lu : c'est la règle du jalon, augmenter le rapport signal sur bruit plutôt que le nombre de notifications.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_diff.py",
+      "find": "CHAMPS_COMPARES = (\"name\", \"zone\", \"state\", \"tags\", \"public_addresses\")",
+      "replace": "CHAMPS_COMPARES = (\"name\", \"zone\", \"state\", \"tags\", \"public_addresses\", \"last_change\")",
+      "test": "tests/unit/collection/test_fleet_diff.py::test_un_horodatage_qui_bouge_seul_est_compte_a_part"
+    },
+    {
+      "name": "horodatage-qui-bouge-noye-dans-les-inchangees",
+      "why": "Mesuré sur le compte réel : la date ne bouge pas d'elle-même sur une machine stable. Qu'elle ait bougé dit donc que quelque chose a changé hors de ce que cette forme observe. Le compter parmi les inchangées perdrait cette information, et c'est l'inverse du défaut d'à côté : là on criait pour rien, ici on se tairait sur quelque chose.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_diff.py",
+      "find": "        elif ancien[cle].get(\"last_change\") != nouveau[cle].get(\"last_change\"):",
+      "replace": "        elif False:",
+      "test": "tests/unit/collection/test_fleet_diff.py::test_un_horodatage_qui_bouge_seul_est_compte_a_part"
     }
   ]
 }

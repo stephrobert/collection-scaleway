@@ -24,8 +24,11 @@ argument_specs:
       scaleway_fleet_report_output:
         type: str
         default: text
-        choices: [text, json, markdown, snapshot]
+        choices: [text, json, markdown, snapshot, none]
         description:
           - >-
             Which rendering to print. The report itself is returned whatever
             this says.
+          - >-
+            C(none) prints nothing. It is for a caller that includes this role
+            for its data, and for which a second report on screen is noise.

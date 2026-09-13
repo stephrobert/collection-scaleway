@@ -1,0 +1,176 @@
+---
+# What changed since a snapshot the caller kept, and what could not be compared.
+#
+# **This collection stores nothing.** The baseline is a path the caller gives:
+# a CI artifact, object storage, a git repository, a file. Where a snapshot
+# lives is not this role's business, and a default path would end up overwriting
+# something (#231).
+#
+# **A zone is only compared when both snapshots measured it.** A zone that did
+# not answer, and a zone that was simply not read this time, would both make
+# everything it holds look removed, and the report would be perfectly plausible.
+#
+# **What this role leaves behind.** `scaleway_fleet_diff_result` holds the
+# comparison and `scaleway_fleet_diff_level` the level it earned, so a calling
+# playbook acts on them rather than reading them off the screen. Everything else
+# is prefixed with an underscore and is internal.
+
+# **Sans référence, le rôle ne fait rien et le dit.** C'est le même choix que
+# `stop_server` sans machine nommée : un playbook livré se lance sans argument,
+# ne serait-ce que par curiosité, et échouer là-dessus apprend à l'utilisateur
+# que l'outil est fragile plutôt que ce qu'il lui manque.
+#
+# Le contrat d'arguments ne peut pas le porter : `required: true` refuse une
+# variable absente, pas une chaîne vide, et la chaîne vide est exactement ce
+# qu'un `-e baseline=` oublié produit.
+- name: With no baseline, do nothing and say so
+  ansible.builtin.debug:
+    msg: >-
+      Nothing to compare against. Run again with -e baseline=<file> to compare.
+      `stephrobert.scaleway.fleet_report -e output=snapshot` produces one; this
+      collection keeps none of its own, because where a snapshot lives belongs
+      to whoever runs it.
+  when: scaleway_fleet_diff_baseline | length == 0
+
+# Un bloc plutôt que la même condition sur chaque tâche : répétée dix fois, elle
+# finit par manquer sur la onzième, et c'est celle-là qui lira un fichier vide.
+- name: Compare, when there is something to compare against
+  when: scaleway_fleet_diff_baseline | length > 0
+  block:
+    # Pris avant la première lecture : une durée qui démarrerait après les
+    # appels mesurerait le compte rendu, pas l'opération.
+    - name: When this operation started
+      ansible.builtin.set_fact:
+        _scaleway_fleet_diff_debut: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+
+    - name: The snapshot to compare against
+      ansible.builtin.set_fact:
+        _scaleway_fleet_diff_avant: >-
+          {{ lookup('ansible.builtin.file', scaleway_fleet_diff_baseline)
+             | from_json }}
+
+    # ---- The later side: a file, or the fleet as it is now -----------------
+
+    - name: Read the fleet as it is now
+      ansible.builtin.include_role:
+        name: stephrobert.scaleway.fleet_report
+      vars:
+        scaleway_fleet_report_zones: "{{ scaleway_fleet_diff_zones }}"
+        # The report is not what we came for, and printing it would be a second
+        # report nobody asked for.
+        scaleway_fleet_report_output: none
+      when: scaleway_fleet_diff_current | length == 0
+
+    - name: The later snapshot
+      ansible.builtin.set_fact:
+        _scaleway_fleet_diff_apres: >-
+          {{ (lookup('ansible.builtin.file', scaleway_fleet_diff_current) | from_json)
+             if scaleway_fleet_diff_current | length > 0
+             else scaleway_fleet_report_snapshot }}
+
+    # ---- What moved --------------------------------------------------------
+
+    - name: What changed, and what could not be compared
+      ansible.builtin.set_fact:
+        scaleway_fleet_diff_result: >-
+          {{ _scaleway_fleet_diff_avant
+             | stephrobert.scaleway.fleet_diff(after=_scaleway_fleet_diff_apres) }}
+
+    # **Le niveau se calcule, il ne se passe pas en paramètre.** Un appelant qui
+    # pourrait le forcer produirait un rapport qui se dit calme quand il ne
+    # l'est pas, et c'est la seule ligne que ce rapport n'a pas le droit
+    # d'écrire.
+    - name: The level this comparison earned
+      ansible.builtin.set_fact:
+        scaleway_fleet_diff_level: >-
+          {{ scaleway_fleet_diff_result | stephrobert.scaleway.diff_verdict }}
+
+    - name: What happened, in a shape a machine reads
+      ansible.builtin.set_fact:
+        scaleway_fleet_diff_operation: "{{ resultat }}"
+        scaleway_operation: "{{ resultat }}"
+      vars:
+        resultat: >-
+          {{ 'fleet_diff' | stephrobert.scaleway.operation_result(
+               target=(scaleway_fleet_diff_result.zones_compared | join(',')),
+               mode='apply',
+               changed=(scaleway_fleet_diff_result.changed | map(attribute='name') | list)
+                       + (scaleway_fleet_diff_result.new | map(attribute='name') | list)
+                       + (scaleway_fleet_diff_result.removed | map(attribute='name') | list),
+               unmeasured=(scaleway_fleet_diff_result.zones_not_compared | list),
+               started_at=_scaleway_fleet_diff_debut,
+               completed_at=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}
+
+    # ---- Renderings --------------------------------------------------------
+
+    # **Rien de nouveau tient en une ligne, et c'est délibéré.** Un outil
+    # récurrent qui écrit un écran tous les matins finit ignoré : la règle du
+    # jalon est de ne pas augmenter le nombre de notifications mais le rapport
+    # signal sur bruit.
+    - name: Nothing moved
+      ansible.builtin.debug:
+        msg: >-
+          No change across
+          {{ scaleway_fleet_diff_result.zones_compared | length }} zone(s),
+          {{ scaleway_fleet_diff_result.unchanged }} resource(s) unchanged.
+      when:
+        - scaleway_fleet_diff_level == 'quiet'
+        - scaleway_fleet_diff_output != 'json'
+
+    - name: Something could not be compared, which is not a calm fleet
+      ansible.builtin.debug:
+        msg: >-
+          {{ scaleway_fleet_diff_result.zones_not_compared | length }} zone(s)
+          could not be compared, holding
+          {{ scaleway_fleet_diff_result.resources_not_compared }} resource(s):
+          {{ scaleway_fleet_diff_result.zones_not_compared
+             | dict2items | map(attribute='key') | join(', ') }}.
+          Nothing measured is not nothing changed.
+      when:
+        - scaleway_fleet_diff_result.zones_not_compared | length > 0
+        - scaleway_fleet_diff_output != 'json'
+
+    - name: What changed, for a terminal
+      ansible.builtin.debug:
+        msg: "{{ scaleway_fleet_diff_result }}"
+      when:
+        - scaleway_fleet_diff_output == 'text'
+        - scaleway_fleet_diff_level != 'quiet'
+
+    - name: What changed, for a pipeline
+      ansible.builtin.debug:
+        msg: "{{ scaleway_fleet_diff_result | to_nice_json }}"
+      when: scaleway_fleet_diff_output == 'json'
+
+    # Une boucle plutôt qu'un enchaînement de filtres : `fleet_report` a déjà
+    # payé une fois pour l'avoir composé par `regex_replace`, et un rendu se
+    # vérifie en le lisant.
+    - name: What changed, for a ticket
+      ansible.builtin.debug:
+        msg: |-
+          ## Scaleway fleet changes
+
+          {% for ressource in diff.new -%}
+          * **new** `{{ ressource.kind }}/{{ ressource.name }}` in {{ ressource.zone }}
+          {% endfor -%}
+          {% for ressource in diff.removed -%}
+          * **removed** `{{ ressource.kind }}/{{ ressource.name }}` in {{ ressource.zone }}
+          {% endfor -%}
+          {% for ressource in diff.changed -%}
+          * **changed** `{{ ressource.kind }}/{{ ressource.name }}`
+          {% for champ, ecart in ressource.fields.items() -%}
+              * {{ champ }}: `{{ ecart.before }}` to `{{ ecart.after }}`
+          {% endfor -%}
+          {% endfor -%}
+          {% if diff.zones_not_compared -%}
+          * **not compared**
+          {% for zone, raison in diff.zones_not_compared.items() -%}
+              * {{ zone }}: {{ raison }}
+          {% endfor -%}
+          {% endif %}
+          {{ diff.unchanged }} unchanged.
+      vars:
+        diff: "{{ scaleway_fleet_diff_result }}"
+      when:
+        - scaleway_fleet_diff_output == 'markdown'
+        - scaleway_fleet_diff_level != 'quiet'

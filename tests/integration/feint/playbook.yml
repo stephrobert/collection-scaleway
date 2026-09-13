@@ -301,3 +301,99 @@
           des changements que personne n'a faits
       vars:
         premier: "{{ instantane_garde }}"
+
+    # ---- Le diff, joué sur un changement qu'on provoque ---------------------
+    #
+    # L'instantané seul ne prouve rien d'utile : il prouve qu'on sait écrire un
+    # fichier. Ce qui compte est qu'une modification réelle du parc ressorte, et
+    # ressorte au bon endroit. On change donc l'état d'une machine entre les deux
+    # lectures, et on exige de la retrouver (#232).
+    - name: Un endroit où poser l'instantané, hors du dépôt
+      ansible.builtin.tempfile:
+        state: file
+        suffix: .json
+      register: fichier_instantane
+
+    - name: Poser la référence
+      ansible.builtin.copy:
+        content: "{{ instantane_garde | to_json }}"
+        dest: "{{ fichier_instantane.path }}"
+        mode: "0600"
+
+    - name: Changer vraiment quelque chose entre les deux lectures
+      stephrobert.scaleway.instance_server_action:
+        zone: "{{ zone }}"
+        server_id: "{{ serveur_allume }}"
+        action: poweroff
+        wait: true
+
+    - name: Comparer la référence à ce que le parc est devenu
+      ansible.builtin.include_role:
+        name: stephrobert.scaleway.fleet_diff
+      vars:
+        scaleway_fleet_diff_baseline: "{{ fichier_instantane.path }}"
+        scaleway_fleet_diff_zones: "{{ zone }}"
+        scaleway_fleet_diff_output: none
+
+    - name: La machine éteinte ressort comme changée, sur le champ `state`
+      ansible.builtin.assert:
+        that:
+          - scaleway_fleet_diff_level == 'changed'
+          - serveur_allume in (diff.changed | map(attribute='id') | list)
+          - "'state' in (diff.changed
+              | selectattr('id', 'equalto', serveur_allume)
+              | first).fields"
+          # Rien n'a été créé ni supprimé : c'est un changement, et le diff doit
+          # le dire comme tel plutôt que comme un départ suivi d'une arrivée.
+          - diff.new == []
+          - diff.removed == []
+          # Une zone non comparée rendrait le verdict `action_required`, et
+          # l'assertion précédente masquerait le fait qu'on n'a rien comparé.
+          - diff.zones_not_compared == {}
+        success_msg: >-
+          {{ serveur_allume }} ressort en changé sur
+          {{ (diff.changed | selectattr('id', 'equalto', serveur_allume)
+              | first).fields.keys() | list | join(', ') }},
+          {{ diff.unchanged }} ressource(s) inchangée(s)
+        fail_msg: >-
+          un changement réel du parc n'est pas ressorti du diff : {{ diff }}
+      vars:
+        diff: "{{ scaleway_fleet_diff_result }}"
+
+    - name: Comparer un instantané à lui-même ne dit rien
+      ansible.builtin.include_role:
+        name: stephrobert.scaleway.fleet_diff
+      vars:
+        scaleway_fleet_diff_baseline: "{{ fichier_instantane.path }}"
+        scaleway_fleet_diff_current: "{{ fichier_instantane.path }}"
+        scaleway_fleet_diff_output: none
+
+    - name: Deux lectures identiques sortent en `quiet`
+      ansible.builtin.assert:
+        that:
+          - scaleway_fleet_diff_level == 'quiet'
+          - scaleway_fleet_diff_result.changed == []
+          - scaleway_fleet_diff_result.new == []
+          - scaleway_fleet_diff_result.removed == []
+        success_msg: >-
+          rien n'a bougé, et le dire coûte une ligne :
+          {{ scaleway_fleet_diff_result.unchanged }} ressource(s) inchangée(s)
+        fail_msg: >-
+          un instantané comparé à lui-même annonce des changements :
+          {{ scaleway_fleet_diff_result }}
+
+    # **Ce que l'épreuve a éteint, elle le rallume.** Les playbooks joués ensuite
+    # mesurent ce parc, et l'un d'eux a échoué sur `l'état n'a jamais quitté
+    # stopped` : une épreuve qui laisse le terrain modifié fait rougir la
+    # suivante, pour une raison qui n'a rien à voir avec elle.
+    - name: Remettre la machine dans l'état où l'épreuve l'a trouvée
+      stephrobert.scaleway.instance_server_action:
+        zone: "{{ zone }}"
+        server_id: "{{ serveur_allume }}"
+        action: poweron
+        wait: true
+
+    - name: Ne rien laisser derrière
+      ansible.builtin.file:
+        path: "{{ fichier_instantane.path }}"
+        state: absent

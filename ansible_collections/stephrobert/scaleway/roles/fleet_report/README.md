@@ -38,6 +38,9 @@ costs no extra call, because the payloads are already in memory:
     mode: "0644"
 ```
 
+The shipped playbook does that for you with `-e snapshot_to=today.json`.
+Redirecting its output would capture Ansible's own decoration rather than JSON.
+
 Every resource in it carries its kind and its identifier, and that pair is the
 key. A name is not an identity: two machines can carry the same name in one
 zone, and the API then returns two distinct identifiers for it.
