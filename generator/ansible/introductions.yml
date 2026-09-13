@@ -34,7 +34,7 @@
 # fragments de changelog impliquent : un module neuf stampé `0.5.0` dans une
 # version qui sortira en `1.0.0` publierait une date fausse dès son premier
 # jour.
-en_preparation: "0.7.1"
+en_preparation: "0.8.0"
 
 apparitions:
 

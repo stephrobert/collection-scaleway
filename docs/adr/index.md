@@ -47,3 +47,4 @@ Code says the **current** invariant. This directory says what happened.
 | [ADR-018](018-a-retry-policy-belongs-to-the-operation.md) | A retry policy belongs to the operation: a read replays, a write only when the server says it did nothing, an action never |
 | [ADR-019](019-a-name-filter-narrows-a-listing.md) | An API name filter narrows a listing, it never selects: the exact comparison is local, and two matches refuse |
 | [ADR-020](020-a-plan-describes-the-moment-it-was-computed.md) | A plan describes the fleet as it was read, and is never replayed: the execution reads again |
+| [ADR-021](021-a-snapshot-is-keyed-by-kind-and-identifier.md) | A snapshot resource is keyed on its kind and its identifier, never on its name: two machines can carry one name in a zone |

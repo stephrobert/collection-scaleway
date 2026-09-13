@@ -23,12 +23,40 @@ The report is left in C(scaleway_fleet_report_result) so a calling playbook can 
 The report is left in `scaleway_fleet_report_result`, so a calling playbook acts
 on it rather than reading it off the screen.
 
+## What a later run will compare against
+
+The same read also leaves a snapshot in `scaleway_fleet_report_snapshot`. It
+costs no extra call, because the payloads are already in memory:
+
+```yaml
+- ansible.builtin.include_role:
+    name: stephrobert.scaleway.fleet_report
+
+- ansible.builtin.copy:
+    content: "{{ scaleway_fleet_report_snapshot | to_nice_json }}"
+    dest: today.json
+    mode: "0644"
+```
+
+Every resource in it carries its kind and its identifier, and that pair is the
+key. A name is not an identity: two machines can carry the same name in one
+zone, and the API then returns two distinct identifiers for it.
+
+**The role writes no file.** Where the snapshot is kept belongs to whoever calls
+it: a CI artifact, object storage, a git repository. This collection is not a
+CMDB, and that is the decision rather than a first step towards one.
+
+`-e output=snapshot` prints it instead, for a pipeline that pipes rather than
+stores.
+
 ## Options
 
 | name | type | default |
 |---|---|---|
 | `scaleway_fleet_report_zones` | list | none |
 | `scaleway_fleet_report_output` | str | `text` |
+
+`output` accepts `text`, `json`, `markdown` and `snapshot`.
 
 Every option is validated by Ansible before the first task, from
 `meta/argument_specs.yml`. The descriptions live there, and this page does

@@ -1,0 +1,21 @@
+minor_changes:
+  - "roles - ``fleet_report`` now also leaves a versioned snapshot in
+    ``scaleway_fleet_report_snapshot``, so a later run can say what changed
+    rather than what exists. It costs no extra call, because the payloads are
+    already in memory. Every resource carries its kind and its identifier, and
+    that pair is the key: measured on a real account, two machines can carry the
+    same name in one zone and the API then returns two distinct identifiers, so
+    a snapshot keyed on names would merge them into one resource that changed.
+    The snapshot also carries the zones that did not answer, because a comparison
+    computed without them would announce the disappearance of a whole fleet.
+    ``-e output=snapshot`` prints it; where it is kept belongs to the caller, and
+    this collection stores nothing."
+  - "filter - ``resource_facts`` now carries the resource identifier, and knows
+    load balancers as well as Instances. A load balancer names its state
+    ``status``, its addresses live under ``ip[].ip_address`` and its dates are
+    ``updated_at`` and ``created_at``: absorbing those three differences is what
+    this seam exists for, so no audit rule has to know them."
+  - "filter - ``fleet_snapshot`` builds the snapshot and ``snapshot_read``
+    refuses one this collection cannot read: an unknown ``schema_version``, or a
+    truncated file. A truncated file and an empty fleet look alike, and only the
+    second one is information."

@@ -32,6 +32,7 @@ PLUGIN = (
 #: Une charge utile telle qu'`instance_server_info` la rend, mesurée contre
 #: l'émulateur : les noms sont ceux de l'API, pas ceux des règles.
 CHARGE = {
+    "id": "b20294e8-d0b9-471e-a78f-bbce79e7ca74",
     "name": "web-1",
     "zone": "fr-par-1",
     "state": "running",
@@ -61,6 +62,7 @@ def test_une_instance_devient_la_forme_que_les_regles_lisent() -> None:
 
     assert fait == {
         "kind": "instance",
+        "id": "b20294e8-d0b9-471e-a78f-bbce79e7ca74",
         "name": "web-1",
         "zone": "fr-par-1",
         "state": "running",
@@ -116,3 +118,77 @@ def test_un_produit_inconnu_est_refuse() -> None:
 
 def test_le_filtre_est_publie_sous_son_nom() -> None:
     assert "resource_facts" in _module().FilterModule().filters()
+
+
+#: Un load balancer tel que `lb_load_balancer_info` le rend. Les trois écarts de
+#: vocabulaire sont mesurés sur le contrat : `status` et non `state`, les
+#: adresses sous `ip[].ip_address`, et `updated_at` là où Instance dit
+#: `modification_date`.
+CHARGE_LB = {
+    "id": "9f1d0a3c-1111-4222-8333-444455556666",
+    "name": "api-prod",
+    "zone": "fr-par-1",
+    "status": "ready",
+    "tags": ["env=prod"],
+    "ip": [{"id": "aaaa", "ip_address": "51.15.0.9"}],
+    "updated_at": "2026-09-13T06:00:00Z",
+    "created_at": "2026-01-01T00:00:00Z",
+    "type": "LB-S",
+    "backend_count": 2,
+}
+
+
+def test_un_load_balancer_entre_dans_la_meme_forme() -> None:
+    """Le produit nomme autrement, la règle ne le sait pas.
+
+    Sans ce normaliseur, un instantané ne porterait que des machines, et le
+    diff annoncerait un parc amputé de ses load balancers sans le dire.
+    """
+    fait = _module().resource_facts([CHARGE_LB], kind="lb")[0]
+
+    assert fait == {
+        "kind": "lb",
+        "id": "9f1d0a3c-1111-4222-8333-444455556666",
+        "name": "api-prod",
+        "zone": "fr-par-1",
+        "state": "ready",
+        "tags": ["env=prod"],
+        "public_addresses": ["51.15.0.9"],
+        "last_change": "2026-09-13T06:00:00Z",
+    }
+
+
+def test_le_load_balancer_ne_laisse_passer_aucun_champ_du_produit() -> None:
+    """Le même voisin que pour Instance : `type` et `backend_count` restent dehors."""
+    module = _module()
+    fait = module.resource_facts([CHARGE_LB], kind="lb")[0]
+
+    assert set(fait) == set(module.CHAMPS)
+
+
+def test_une_ressource_sans_identifiant_est_refusee() -> None:
+    """Mesuré sur le compte réel : le nom n'est pas une identité.
+
+    Deux machines peuvent porter le même nom dans une zone, et les mentions
+    d'unicité du contrat Instance portent toutes sur un identifiant. Une
+    ressource sans `id` entrerait dans un instantané que rien ne pourrait
+    comparer : le diff la verrait apparaître puis disparaître à chaque run.
+    """
+    module = _module()
+    sans_id = {cle: valeur for cle, valeur in CHARGE.items() if cle != "id"}
+
+    with pytest.raises(Exception, match="sans identifiant"):
+        module.resource_facts([sans_id], kind="instance")
+
+
+def test_une_charge_qui_porte_un_identifiant_vide_est_refusee() -> None:
+    """La chaîne vide est un identifiant absent qui a l'air présent.
+
+    C'est la forme que prend une charge utile tronquée, et la distinguer de
+    l'absence coûterait une règle de plus pour aucun gain : ni l'une ni l'autre
+    ne permet de reconnaître la ressource demain.
+    """
+    module = _module()
+
+    with pytest.raises(Exception, match="sans identifiant"):
+        module.resource_facts([{**CHARGE, "id": ""}], kind="instance")

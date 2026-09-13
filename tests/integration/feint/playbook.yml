@@ -238,3 +238,66 @@
           - refus is failed
           - "'terminate' in (refus.msg | string)"
         success_msg: "terminate refusé avant tout appel réseau"
+
+    # ---- L'instantané, joué plutôt qu'affirmé --------------------------------
+    #
+    # Un test unitaire dit que le filtre calcule ce que le test croit. Il ne dit
+    # pas qu'Ansible sait charger le filtre depuis la collection, que le rôle lui
+    # passe ce qu'il faut, ni que la version se lit à l'endroit où l'on tourne.
+    # C'est ici que ça se mesure (#231).
+    - name: Lire le parc, et garder de quoi le comparer plus tard
+      ansible.builtin.include_role:
+        name: stephrobert.scaleway.fleet_report
+      vars:
+        scaleway_fleet_report_zones: "{{ zone }}"
+
+    - name: L'instantané porte sa forme, sa clé, et ce qu'il n'a pas mesuré
+      ansible.builtin.assert:
+        that:
+          - scaleway_fleet_report_snapshot.schema_version == 1
+          # La version vient du disque, pas d'une constante recopiée : la seule
+          # chose qu'on puisse affirmer sans la figer est qu'elle existe.
+          - scaleway_fleet_report_snapshot.collection_version is string
+          - scaleway_fleet_report_snapshot.collection_version | length > 0
+          - scaleway_fleet_report_snapshot.captured_at is string
+          - scaleway_fleet_report_snapshot.zones_measured == [zone]
+          - scaleway_fleet_report_snapshot.zones_unmeasured == []
+          # Toute ressource porte sa clé : c'est ce qui rend la comparaison
+          # possible, et son absence est le défaut que le diff ne verrait pas.
+          - scaleway_fleet_report_snapshot.resources
+              | rejectattr('id') | list | length == 0
+          - scaleway_fleet_report_snapshot.resources
+              | rejectattr('kind') | list | length == 0
+        success_msg: >-
+          instantané v{{ scaleway_fleet_report_snapshot.schema_version }},
+          {{ scaleway_fleet_report_snapshot.resources | length }} ressource(s),
+          produit par {{ scaleway_fleet_report_snapshot.collection_version }}
+        fail_msg: >-
+          l'instantané ne tient pas sa forme :
+          {{ scaleway_fleet_report_snapshot }}
+
+    # Gardé avant la seconde lecture : le rôle réécrit son propre fait, donc
+    # comparer sans copier comparerait le second instantané à lui-même, et le
+    # test passerait sans rien mesurer.
+    - name: Garder le premier instantané, que la seconde lecture va écraser
+      ansible.builtin.set_fact:
+        instantane_garde: "{{ scaleway_fleet_report_snapshot }}"
+
+    - name: Le même parc relu produit le même instantané, aux dates près
+      ansible.builtin.include_role:
+        name: stephrobert.scaleway.fleet_report
+      vars:
+        scaleway_fleet_report_zones: "{{ zone }}"
+
+    - name: Deux lectures d'un parc inchangé se comparent
+      ansible.builtin.assert:
+        that:
+          - scaleway_fleet_report_snapshot.resources == premier.resources
+        success_msg: >-
+          deux lectures, {{ premier.resources | length }} ressource(s)
+          identiques : ce que le diff de #232 pourra comparer
+        fail_msg: >-
+          deux lectures d'un parc inchangé diffèrent, donc un diff annoncerait
+          des changements que personne n'a faits
+      vars:
+        premier: "{{ instantane_garde }}"

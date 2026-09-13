@@ -68,7 +68,22 @@ EXAMPLES = r"""
 #:
 #: `last_change` plutôt que `modification_date` : le nom dit ce que la règle
 #: cherche, pas ce que l'API d'un produit a choisi d'appeler son champ.
-CHAMPS = ("kind", "name", "zone", "state", "tags", "public_addresses", "last_change")
+#:
+#: `id` en premier parce que c'est la seule identité que le contrat promette.
+#: Mesuré sur le compte réel : deux machines peuvent porter le même nom dans une
+#: zone, et les mentions d'unicité du contrat Instance portent toutes sur un
+#: identifiant, aucune sur un nom. Une forme sans `id` ne permet pas de
+#: reconnaître une ressource d'un run à l'autre (#231).
+CHAMPS = (
+    "kind",
+    "id",
+    "name",
+    "zone",
+    "state",
+    "tags",
+    "public_addresses",
+    "last_change",
+)
 
 
 def _adresses(charge: dict) -> list[str]:
@@ -84,6 +99,7 @@ def _adresses(charge: dict) -> list[str]:
 def _instance(charge: dict) -> dict[str, object]:
     return {
         "kind": "instance",
+        "id": charge.get("id"),
         "name": charge.get("name"),
         "zone": charge.get("zone"),
         "state": charge.get("state"),
@@ -93,9 +109,33 @@ def _instance(charge: dict) -> dict[str, object]:
     }
 
 
+def _lb(charge: dict) -> dict[str, object]:
+    """Un load balancer, dans la forme commune.
+
+    Le vocabulaire diffère, et c'est exactement ce que cette couture existe pour
+    absorber : le contrat nomme `status` ce qu'Instance nomme `state`, ses
+    adresses vivent sous `ip[].ip_address`, et ses dates sont `updated_at` et
+    `created_at` là où Instance dit `modification_date`. Une règle qui devrait
+    connaître ces trois écarts ne serait plus une règle sur un parc.
+    """
+    return {
+        "kind": "lb",
+        "id": charge.get("id"),
+        "name": charge.get("name"),
+        "zone": charge.get("zone"),
+        "state": charge.get("status"),
+        "tags": list(charge.get("tags") or []),
+        "public_addresses": [
+            adresse.get("ip_address", "?") if isinstance(adresse, dict) else str(adresse)
+            for adresse in (charge.get("ip") or [])
+        ],
+        "last_change": charge.get("updated_at") or charge.get("created_at"),
+    }
+
+
 #: Les produits que ce normaliseur sait lire. Le jour où Elastic Metal aura des
 #: modules, il s'ajoute ici, et aucune règle ne bouge.
-NORMALISEURS = {"instance": _instance}
+NORMALISEURS = {"instance": _instance, "lb": _lb}
 
 
 def resource_facts(charges: object, kind: str) -> list[dict[str, object]]:
@@ -116,7 +156,27 @@ def resource_facts(charges: object, kind: str) -> list[dict[str, object]]:
             f"{type(charges).__name__}"
         )
 
-    return [normaliseur(charge) for charge in charges]
+    normalisees = [normaliseur(charge) for charge in charges]
+
+    # **Une ressource sans identité ne se normalise pas « au mieux ».** Elle
+    # entrerait dans un instantané que rien ne pourrait comparer, et le diff la
+    # verrait apparaître puis disparaître à chaque run. Le contrat promet un
+    # identifiant sur toute ressource que ces modules lisent : son absence dit
+    # que la charge utile n'est pas celle qu'on croit.
+    sans_identite = [
+        ressource.get("name") or "<sans nom>"
+        for ressource in normalisees
+        if not ressource.get("id")
+    ]
+    if sans_identite:
+        raise AnsibleFilterError(
+            f"{len(sans_identite)} ressource(s) `{kind}` sans identifiant : "
+            f"{', '.join(sans_identite[:5])}. Une ressource sans `id` ne peut pas "
+            "être reconnue d'un run à l'autre, et un instantané qui la porte "
+            "produirait une apparition puis une disparition à chaque lecture."
+        )
+
+    return normalisees
 
 
 class FilterModule:
