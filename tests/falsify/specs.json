@@ -2618,10 +2618,10 @@
     },
     {
       "name": "refus-compte-par-constat",
-      "why": "Le contrat de résultat compte des ressources examinées, pas des constats. Un refus par constat fait compter deux fois une machine qui enfreint deux règles, et sur un parc où chacune n'en enfreint qu'une le total tombe juste par coïncidence : c'est la forme même d'un faux vert, trouvé en relisant ce qui venait d'être livré.",
+      "why": "Le contrat de résultat compte des ressources examinées, pas des constats. Un refus par constat fait compter deux fois une machine qui enfreint deux règles, et sur un parc où chacune n'en enfreint qu'une le total tombe juste par coïncidence : c'est la forme même d'un faux vert, trouvé en relisant ce qui venait d'être livré. La mutation a suivi #233 : le regroupement se fait désormais sur l'identité de la ressource et non sur son nom, et `/falsify` a refusé de s'appliquer plutôt que de se taire.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
-      "find": "        par_ressource.setdefault(constat[\"name\"], []).append(constat[\"rule\"])",
-      "replace": "        par_ressource.setdefault(constat[\"name\"] + constat[\"rule\"], []).append(constat[\"rule\"])",
+      "find": "        cle = (_ressource_de(constat[\"id\"]), constat[\"name\"])",
+      "replace": "        cle = (constat[\"id\"], constat[\"name\"])",
       "test": "tests/unit/collection/test_audit_findings.py::test_un_refus_par_machine_et_pas_par_constat"
     },
     {
@@ -2775,6 +2775,38 @@
       "find": "        elif ancien[cle].get(\"last_change\") != nouveau[cle].get(\"last_change\"):",
       "replace": "        elif False:",
       "test": "tests/unit/collection/test_fleet_diff.py::test_un_horodatage_qui_bouge_seul_est_compte_a_part"
+    },
+    {
+      "name": "identite-de-constat-assise-sur-le-nom",
+      "why": "Mesuré sur le compte réel le 13 septembre 2026 : deux machines acceptent le même nom dans la même zone, et l'API rend alors deux identifiants distincts. Une identité assise sur le nom collerait le constat d'une machine sur une autre, et le rapport du lendemain annoncerait « résolu » pour celle qui ne l'est pas. C'est le défaut qui était dans le code avant #233, où un constat se désignait par `instance/<nom>` (ADR-021).",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
+      "find": "    identifiant = ressource.get(\"id\")",
+      "replace": "    identifiant = ressource.get(\"name\")",
+      "test": "tests/unit/collection/test_audit_findings.py::test_une_identite_porte_lidentifiant_et_jamais_le_nom"
+    },
+    {
+      "name": "regle-qui-ne-declare-pas-le-champ-quelle-juge",
+      "why": "La forme proposée en #233 portait le champ dans l'identité d'un constat. `/falsify` a montré qu'il n'y distinguait rien : `REGLES` associe à chaque règle exactement un champ, donc le champ se déduit de la règle, et un composant qu'aucune mutation ne peut faire rougir est une affirmation que rien ne vérifie. Il est donc sorti de l'identité, et cet invariant est ce qui rend ce retrait sûr : le jour où une règle jugerait deux champs, elle doit devenir deux règles, sinon deux constats distincts partageraient une identité.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
+      "find": "    \"stopped_since\": (_regle_arretee_depuis, \"state\"),",
+      "replace": "    \"stopped_since\": (_regle_arretee_depuis, \"\"),",
+      "test": "tests/unit/collection/test_audit_findings.py::test_une_regle_juge_un_champ_et_un_seul"
+    },
+    {
+      "name": "constat-sans-identite-produit-quand-meme",
+      "why": "Une ressource sans `kind` ni `id` produirait un constat que rien ne peut reconnaître d'un run à l'autre : il ressortirait comme neuf puis comme résolu à chaque exécution, ce qui est exactement le bruit que la 0.8.0 existe pour supprimer. La première écriture de cette mutation était inerte, faute de parenthèses : `not a or not b and False` se lit `not a or (not b and False)`, donc la moitié qui comptait survivait.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
+      "find": "    if not identifiant or not kind:",
+      "replace": "    if (not identifiant or not kind) and False:",
+      "test": "tests/unit/collection/test_audit_findings.py::test_une_ressource_sans_identifiant_ne_produit_pas_de_constat_anonyme"
+    },
+    {
+      "name": "refus-groupes-sur-le-nom-de-la-ressource",
+      "why": "Le contrat de résultat compte des ressources examinées. Groupées sur le nom, deux machines homonymes non conformes se fondent en un seul refus, et le compte tombe juste d'une unité de trop. C'est la même classe de défaut que `examined` comptant des constats plutôt que des ressources, trouvée en #210.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
+      "find": "        cle = (_ressource_de(constat[\"id\"]), constat[\"name\"])",
+      "replace": "        cle = (constat[\"name\"], constat[\"name\"])",
+      "test": "tests/unit/collection/test_audit_findings.py::test_deux_machines_du_meme_nom_produisent_deux_refus"
     }
   ]
 }

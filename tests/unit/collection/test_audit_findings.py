@@ -39,6 +39,7 @@ MAINTENANT = "2026-09-12T12:00:00Z"
 PARC = [
     {
         "kind": "instance",
+        "id": "11111111-1111-4111-8111-111111111111",
         "name": "web-1",
         "zone": "fr-par-1",
         "state": "running",
@@ -48,6 +49,7 @@ PARC = [
     },
     {
         "kind": "instance",
+        "id": "22222222-2222-4222-8222-222222222222",
         "name": "oubliee",
         "zone": "pl-waw-1",
         "state": "stopped",
@@ -125,7 +127,15 @@ def test_une_machine_arretee_sans_date_ressort_comme_non_jugeable() -> None:
     """
     constats = _juger(
         {"stopped_since": {"severity": "warn", "days": 30}},
-        machines=[{"kind": "instance", "name": "sans-date", "state": "stopped", "tags": []}],
+        machines=[
+            {
+                "kind": "instance",
+                "id": "33333333-3333-4333-8333-333333333333",
+                "name": "sans-date",
+                "state": "stopped",
+                "tags": [],
+            }
+        ],
     )
 
     assert constats[0]["detail"] == "stopped, and no date to measure it from"
@@ -221,3 +231,135 @@ def test_un_refus_par_machine_et_pas_par_constat() -> None:
     assert len(refus) == 1, "deux constats sur une machine font un refus, pas deux"
     assert refus[0]["name"] == "instance/oubliee"
     assert refus[0]["reason"] == "allowed_zones, required_tags"
+
+
+# --- l'identité d'un constat, d'un run à l'autre (#233) ---------------------
+
+#: Deux machines, le **même nom**, deux identifiants. C'est le cas mesuré sur le
+#: compte réel le 13 septembre 2026, et celui qu'une identité assise sur le nom
+#: rendrait indiscernable.
+JUMELLES = [
+    {
+        "kind": "instance",
+        "id": "aaaaaaaa-0000-4000-8000-000000000001",
+        "name": "web-01",
+        "zone": "fr-par-1",
+        "state": "running",
+        "tags": [],
+        "public_addresses": ["51.0.0.1"],
+        "last_change": "2026-09-12T11:00:00Z",
+    },
+    {
+        "kind": "instance",
+        "id": "aaaaaaaa-0000-4000-8000-000000000002",
+        "name": "web-01",
+        "zone": "fr-par-1",
+        "state": "running",
+        "tags": [],
+        "public_addresses": ["51.0.0.2"],
+        "last_change": "2026-09-12T11:00:00Z",
+    },
+]
+
+
+def test_le_meme_parc_juge_deux_fois_rend_les_memes_identites() -> None:
+    """Sans ça, tout serait neuf chaque matin et rien ne serait jamais résolu.
+
+    Rien d'aléatoire, rien d'horodaté : l'identité se recalcule, elle ne se
+    range pas.
+    """
+    regles = {"public_ip": {"severity": "warn"}}
+
+    un = [constat["id"] for constat in _juger(regles)]
+    deux = [constat["id"] for constat in _juger(regles)]
+
+    assert un == deux
+    assert un, "le parc de laboratoire ne produit plus aucun constat"
+
+
+def test_deux_machines_du_meme_nom_produisent_deux_constats_distincts() -> None:
+    """Mesuré sur le compte réel : le nom n'est pas une identité.
+
+    Une identité assise sur le nom collerait le constat d'une machine sur une
+    autre, et le rapport du lendemain annoncerait « résolu » pour celle qui ne
+    l'est pas.
+    """
+    constats = _juger({"public_ip": {"severity": "warn"}}, machines=JUMELLES)
+
+    assert len(constats) == 2
+    assert len({constat["id"] for constat in constats}) == 2
+    # Elles portent bien le même nom : c'est ce qui rend le cas intéressant.
+    assert {constat["name"] for constat in constats} == {"instance/web-01"}
+
+
+def test_deux_machines_du_meme_nom_produisent_deux_refus() -> None:
+    """Le contrat de résultat compte des ressources, pas des noms.
+
+    Groupées sur le nom, deux machines homonymes non conformes se fondraient en
+    un seul refus, et le compte des ressources examinées tomberait juste d'une
+    unité de trop.
+    """
+    module = _module()
+    constats = _juger({"public_ip": {"severity": "warn"}}, machines=JUMELLES)
+
+    assert len(module.audit_refusals(constats)) == 2
+
+
+def test_deux_regles_sur_une_machine_donnent_deux_identites() -> None:
+    """La règle entre dans l'identité, donc corriger l'une ne masque pas l'autre."""
+    constats = _juger(
+        {
+            "public_ip": {"severity": "warn"},
+            "allowed_zones": {"severity": "fail", "zones": ["nl-ams-1"]},
+        },
+        machines=[PARC[0]],
+    )
+
+    assert len({constat["id"] for constat in constats}) == 2
+
+
+def test_une_regle_juge_un_champ_et_un_seul() -> None:
+    """L'invariant qui permet au champ de rester hors de l'identité.
+
+    La forme proposée en #233 portait le champ dans l'identité. `/falsify` a
+    montré qu'il n'y distinguait rien : `REGLES` associe à chaque règle
+    exactement un champ, donc le champ se déduit de la règle. Le jour où une
+    règle en jugerait deux, elle doit devenir deux règles, et ce test le dit
+    avant que l'identité se mette à confondre deux constats.
+    """
+    module = _module()
+
+    for nom, (fonction, champ) in module.REGLES.items():
+        assert callable(fonction), nom
+        assert isinstance(champ, str) and champ, (
+            f"la règle `{nom}` ne déclare pas le champ unique qu'elle juge"
+        )
+
+
+def test_une_regle_renommee_produit_une_autre_identite() -> None:
+    """Et c'est voulu : ce n'est plus la même règle, donc plus le même constat."""
+    module = _module()
+    machine = PARC[0]
+
+    assert module.finding_id("public_ip", machine) != module.finding_id("adresse_publique", machine)
+
+
+def test_une_identite_porte_lidentifiant_et_jamais_le_nom() -> None:
+    """La propriété qui compte, énoncée directement."""
+    module = _module()
+
+    identite = module.finding_id("public_ip", PARC[0])
+
+    assert PARC[0]["id"] in identite
+    assert PARC[0]["name"] not in identite
+
+
+def test_une_ressource_sans_identifiant_ne_produit_pas_de_constat_anonyme() -> None:
+    """Elle ressortirait comme neuve puis comme résolue à chaque exécution."""
+    module = _module()
+    sans_id = {cle: valeur for cle, valeur in PARC[0].items() if cle != "id"}
+
+    with pytest.raises(Exception, match="ni `kind` ni `id`"):
+        module.audit_findings(
+            [sans_id], policy={"rules": {"public_ip": {"severity": "warn"}}}, now=MAINTENANT
+        )
