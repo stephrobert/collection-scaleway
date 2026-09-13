@@ -2666,8 +2666,8 @@
     },
     {
       "name": "readme-de-role-qui-ne-montre-pas-lappel",
-      "why": "Galaxy refuse l'import de toute la collection quand un rôle n'a pas de README, et c'est ce qui a fait échouer la publication de la 0.7.0 après que la porte, le sanity et l'archive soient passés. La garde exige en plus que la page montre l'appel : une page publiée qui ne dit pas comment appeler la chose ne sert que d'antisèche à l'importeur. Le harnais ne sachant que substituer dans un fichier, il ne peut pas faire disparaître un README : c'est cette seconde moitié qu'il éprouve, l'existence restant tenue par l'importeur de Galaxy dans le workflow de publication.",
-      "file": "ansible_collections/stephrobert/scaleway/roles/fleet_report/README.md",
+      "why": "Galaxy refuse l'import de toute la collection quand un rôle n'a pas de README, et c'est ce qui a fait échouer la publication de la 0.7.0 après que la porte, le sanity et l'archive soient passés. La garde exige en plus que la page montre l'appel : une page publiée qui ne dit pas comment appeler la chose ne sert que d'antisèche à l'importeur. Le harnais ne sachant que substituer dans un fichier, il ne peut pas faire disparaître un README : c'est cette seconde moitié qu'il éprouve, l'existence restant tenue par l'importeur de Galaxy dans le workflow de publication. La mutation a changé de fichier en #231 : `fleet_report` montre désormais deux appels, celui du rapport et celui de l'instantané, donc neutraliser l'un laisserait l'autre satisfaire la garde. Le harnais l'a dit, en refusant un motif ambigu plutôt qu'en choisissant une occurrence.",
+      "file": "ansible_collections/stephrobert/scaleway/roles/fleet_audit/README.md",
       "find": "- ansible.builtin.include_role:",
       "replace": "- name: Call it the way the guide describes",
       "test": "tests/unit/collection/test_roles.py::test_chaque_role_porte_un_readme"
@@ -2687,6 +2687,54 @@
       "find": "    if vu.returncode != 0:\n        raise PackageError(\n            \"git n'a pas dit ce qu'il ignore sous la collection, donc on ignore \"",
       "replace": "    if False:\n        raise PackageError(\n            \"git n'a pas dit ce qu'il ignore sous la collection, donc on ignore \"",
       "test": "tests/unit/outillage/test_paquet.py::test_git_qui_ne_repond_pas_est_un_refus"
+    },
+    {
+      "name": "instantane-non-trie",
+      "why": "L'ordre dans lequel les zones répondent n'est pas une propriété du parc. Sans tri, deux lectures du même parc produisent deux instantanés différents, et le diff annonce des changements que personne n'a faits. C'est la règle de déterminisme que le générateur applique déjà à ce qu'il écrit, portée à ce que le runtime rend.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_snapshot.py",
+      "find": "\"resources\": sorted(normalisees, key=_cle_de),",
+      "replace": "\"resources\": list(normalisees),",
+      "test": "tests/unit/collection/test_fleet_snapshot.py::test_le_meme_parc_produit_le_meme_instantane_deux_fois"
+    },
+    {
+      "name": "ressource-sans-cle-portee-par-linstantane",
+      "why": "Une ressource sans `kind` ou sans `id` n'est pas comparable : le diff la verrait apparaître puis disparaître à chaque lecture. La première écriture de cette garde était inerte, et c'est instructif : elle testait la vérité du tuple rendu par `_cle_de`, or `('', '')` est un tuple non vide donc vrai. Le refus venait alors du contrôle suivant, avec un message qui disait autre chose, et un test qui ne regardait que le type d'exception serait passé.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_snapshot.py",
+      "find": "        if not all(_cle_de(ressource, tolerant=True))",
+      "replace": "        if not all(_cle_de(ressource, tolerant=True)) and False",
+      "test": "tests/unit/collection/test_fleet_snapshot.py::test_une_ressource_sans_cle_est_refusee"
+    },
+    {
+      "name": "ressource-lue-deux-fois-dedoublonnee-en-silence",
+      "why": "Deux ressources de même clé viennent d'une lecture répétée ou de deux lectures concaténées. Dans les deux cas le diff compterait faux, et garder « la dernière » choisirait à la place de l'utilisateur sans que rien ne le dise.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_snapshot.py",
+      "find": "    if doublons:",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_fleet_snapshot.py::test_la_meme_ressource_lue_deux_fois_est_refusee"
+    },
+    {
+      "name": "instantane-dune-version-inconnue-relu-quand-meme",
+      "why": "Un instantané d'aujourd'hui sera comparé à un instantané d'il y a trois mois. Comparer deux formes dont l'une porte un champ de plus produirait des changements qui n'ont pas eu lieu, et un rapport de changements faux est pire qu'aucun rapport : il se croit.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_snapshot.py",
+      "find": "    if vue != SCHEMA_VERSION:",
+      "replace": "    if vue != SCHEMA_VERSION and False:",
+      "test": "tests/unit/collection/test_fleet_snapshot.py::test_un_instantane_dune_autre_version_est_refuse"
+    },
+    {
+      "name": "instantane-tronque-lu-comme-un-parc-vide",
+      "why": "Un fichier tronqué et un parc vide se ressemblent, et seul le second est une information. Les confondre ferait annoncer un parc disparu là où un fichier a été mal écrit, ce qui est exactement la distinction que tout ce dépôt tient ailleurs.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_snapshot.py",
+      "find": "    if manquants:",
+      "replace": "    if manquants and False:",
+      "test": "tests/unit/collection/test_fleet_snapshot.py::test_un_instantane_tronque_est_refuse"
+    },
+    {
+      "name": "ressource-normalisee-sans-identifiant",
+      "why": "Mesuré sur le compte réel le 13 septembre 2026 : deux machines peuvent porter le même nom dans la même zone, et les mentions d'unicité du contrat Instance portent toutes sur un identifiant, aucune sur un nom. Une ressource normalisée sans `id` ne peut pas être reconnue d'un run à l'autre, et le normaliseur est le premier endroit où on peut le dire.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/resource_facts.py",
+      "find": "    if sans_identite:",
+      "replace": "    if sans_identite and False:",
+      "test": "tests/unit/collection/test_resource_facts.py::test_une_ressource_sans_identifiant_est_refusee"
     }
   ]
 }

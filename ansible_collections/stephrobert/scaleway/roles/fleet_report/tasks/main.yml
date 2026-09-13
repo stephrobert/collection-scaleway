@@ -153,6 +153,47 @@
           {'untagged': _scaleway_fleet_report_machines | rejectattr('tags') | list | length}) -%}
       {{ compte }}
 
+# ---- Ce qu'une prochaine lecture pourra comparer -------------------------
+
+# **L'instantané coûte zéro appel**, parce que les charges utiles sont déjà là.
+# Un rôle séparé rejouerait les mêmes lectures, et deux implémentations d'une
+# même lecture divergent : le dépôt refuse déjà qu'un playbook réimplémente son
+# rôle pour ce motif.
+#
+# **La collection ne stocke rien.** Elle rend l'instantané, et l'appelant le
+# range où il veut : artefact de CI, stockage d'objets, dépôt git. C'est la
+# limite, pas une étape vers autre chose (#231).
+- name: What a later read will be able to compare against
+  ansible.builtin.set_fact:
+    scaleway_fleet_report_snapshot: >-
+      {{ (machines + balanceurs)
+         | stephrobert.scaleway.fleet_snapshot(
+             zones_measured=_scaleway_fleet_report_mesurees,
+             zones_unmeasured=_scaleway_fleet_report_muettes,
+             captured_at=_scaleway_fleet_report_debut,
+             collection_version=version) }}
+  vars:
+    machines: >-
+      {{ _scaleway_fleet_report_machines
+         | stephrobert.scaleway.resource_facts(kind='instance') }}
+    balanceurs: >-
+      {{ _scaleway_fleet_report_balanceurs
+         | stephrobert.scaleway.resource_facts(kind='lb') }}
+    # La version se lit là où elle se trouve vraiment, et ce n'est pas le même
+    # fichier selon le contexte : une collection installée porte `MANIFEST.json`
+    # et **pas** `galaxy.yml`, le dépôt l'inverse. Le filtre cherche les deux,
+    # plutôt que ce Jinja recopie un chemin qui ne vaut que dans un des deux cas.
+    version: "{{ undef | stephrobert.scaleway.collection_version }}"
+
+# **Le fichier est écrit par l'appelant, pas par le rôle.** Un rôle qui écrit
+# dans le système de fichiers de qui l'inclut décide à sa place, et un chemin par
+# défaut finirait par écraser quelque chose. Le rôle rend la structure ; celui
+# qui la veut sur disque la pose lui-même.
+- name: The snapshot, for whoever keeps it
+  ansible.builtin.debug:
+    msg: "{{ scaleway_fleet_report_snapshot | to_nice_json }}"
+  when: scaleway_fleet_report_output == 'snapshot'
+
 # **Une lecture rend la même structure qu'une écriture**, et c'est ce qui fait
 # de cette forme une grammaire plutôt qu'un format de plus. `changed` y est
 # toujours vide, et ce sont les zones muettes qui remplissent `unmeasured` : la

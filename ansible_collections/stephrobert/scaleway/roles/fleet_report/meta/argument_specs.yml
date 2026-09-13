@@ -24,7 +24,7 @@ argument_specs:
       scaleway_fleet_report_output:
         type: str
         default: text
-        choices: [text, json, markdown]
+        choices: [text, json, markdown, snapshot]
         description:
           - >-
             Which rendering to print. The report itself is returned whatever
