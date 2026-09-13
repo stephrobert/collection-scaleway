@@ -25,6 +25,29 @@ The findings are left in `scaleway_fleet_audit_findings`, so a pipeline opens a
 ticket rather than reading a report. The shipped policy is a starting point made
 only of warnings; replacing it is the point.
 
+## Each finding keeps its identity between runs
+
+A finding carries an `id` that is recomputed on every run and comes out the same
+tomorrow for the same problem on the same resource:
+
+```text
+public_ip:instance:b20294e8-d0b9-471e-a78f-bbce79e7ca74
+```
+
+Nothing random, nothing timestamped, or everything would be new each morning.
+
+**It is built on the resource identifier, never on its name.** Two machines can
+carry the same name in one zone, and the API then returns two distinct
+identifiers for it; an identity built on names would stick one machine's finding
+onto another, and the next day's report would say "resolved" for the wrong one.
+
+A renamed rule produces different identities, and that is intended: it is no
+longer the same rule, so it is no longer the same finding.
+
+The field a rule judges is not part of the identity. Each rule judges exactly
+one field, so the field is derivable from the rule and distinguishes nothing more
+than the rule already does. It stays on the finding as information.
+
 ## Options
 
 | name | type | default |

@@ -161,15 +161,57 @@ def _regle_arretee_depuis(machine: dict, parametres: dict, maintenant: datetime)
     return f"stopped for {ecoules} day(s)" if ecoules >= int(jours) else None
 
 
-#: Les règles écrites, et le champ que chacune lit. Ce que la politique nomme
+#: Les règles écrites, et le champ que chacune juge. Ce que la politique nomme
 #: hors de cette table est refusé : une règle qu'aucun fait ne peut trancher
 #: rendrait « conforme » pour la seule raison que personne ne l'évalue.
+#:
+#: Le champ entre dans l'identité du constat, et il n'est pas décoratif : deux
+#: règles peuvent juger la même ressource sur deux choses différentes, et une
+#: identité qui les confondrait ferait disparaître l'une quand l'autre est
+#: corrigée.
 REGLES = {
-    "required_tags": _regle_etiquettes,
-    "allowed_zones": _regle_zones,
-    "public_ip": _regle_adresse_publique,
-    "stopped_since": _regle_arretee_depuis,
+    "required_tags": (_regle_etiquettes, "tags"),
+    "allowed_zones": (_regle_zones, "zone"),
+    "public_ip": (_regle_adresse_publique, "public_addresses"),
+    "stopped_since": (_regle_arretee_depuis, "state"),
 }
+
+
+def finding_id(regle: str, ressource: dict) -> str:
+    """L'identité d'un constat, recalculée à chaque run et stable entre deux.
+
+    **Rien d'aléatoire, rien d'horodaté** : sinon tout serait neuf chaque matin,
+    et « nouveau, persistant, résolu » ne voudrait rien dire.
+
+    **Sur l'identifiant, jamais sur le nom.** Mesuré sur le compte réel : deux
+    machines acceptent le même nom dans la même zone, et l'API rend alors deux
+    identifiants distincts. Une identité assise sur le nom collerait le constat
+    d'une machine sur une autre, et le rapport du lendemain annoncerait « résolu »
+    pour celle qui ne l'est pas (ADR-021).
+
+    Une règle renommée produit d'autres identifiants, et c'est voulu : ce n'est
+    plus la même règle, donc ce n'est plus le même constat.
+
+    **Le champ jugé n'y entre pas, et c'est une décision.** La forme proposée
+    portait `règle:produit:identifiant:champ`, mais `REGLES` associe à chaque
+    règle exactement un champ : le champ se déduit donc de la règle et ne
+    distingue rien de plus. `/falsify` l'a dit avant nous, en laissant le test
+    vert quand la mutation le retirait. Un composant qu'aucune mutation ne peut
+    faire rougir est une affirmation que rien ne vérifie.
+
+    L'invariant qui rend ça vrai : **une règle juge un champ**. Le jour où une
+    règle en jugerait deux, elle devient deux règles, et un test le tient.
+    """
+    identifiant = ressource.get("id")
+    kind = ressource.get("kind")
+    if not identifiant or not kind:
+        raise AnsibleFilterError(
+            f"la ressource jugée par `{regle}` n'a ni `kind` ni `id` utilisable : "
+            f"{ressource.get('name') or '<sans nom>'}. Un constat sans identité "
+            "ne peut pas être reconnu d'un run à l'autre, et il ressortirait "
+            "comme neuf puis comme résolu à chaque exécution."
+        )
+    return f"{regle}:{kind}:{identifiant}"
 
 
 def audit_findings(machines: object, policy: object, now: str) -> list[dict[str, str]]:
@@ -205,8 +247,8 @@ def audit_findings(machines: object, policy: object, now: str) -> list[dict[str,
                 "base ne l'est pas."
             )
 
+        fonction, champ = REGLES[nom]
         for machine in machines or []:
-            fonction = REGLES[nom]
             detail = (
                 fonction(machine, parametres, maintenant)
                 if nom == "stopped_since"
@@ -215,18 +257,27 @@ def audit_findings(machines: object, policy: object, now: str) -> list[dict[str,
             if detail:
                 constats.append(
                     {
+                        # **L'identité, et elle seule, sert à comparer deux
+                        # runs.** Le reste est fait pour être lu.
+                        "id": finding_id(nom, machine),
                         # `name` et pas `resource` : c'est ce dont le constat
                         # parle, et c'est le champ que le contrat de résultat
                         # attend. Porter les deux serait une redondance de plus
                         # à tenir d'accord.
-                        "name": f"instance/{machine.get('name', '?')}",
+                        #
+                        # Il reste le nom, donc lisible et non unique : c'est
+                        # pourquoi il ne sert pas d'identité.
+                        "name": f"{machine.get('kind', '?')}/{machine.get('name', '?')}",
                         "rule": nom,
+                        "field": champ,
                         "severity": severite,
                         "detail": detail,
                     }
                 )
 
-    return sorted(constats, key=lambda constat: (constat["name"], constat["rule"]))
+    # Trié sur l'identité : elle est unique, là où deux machines homonymes
+    # rendraient l'ordre dépendant de celui de la lecture.
+    return sorted(constats, key=lambda constat: constat["id"])
 
 
 def audit_refusals(constats: object) -> list[dict[str, str]]:
@@ -242,18 +293,39 @@ def audit_refusals(constats: object) -> list[dict[str, str]]:
     La raison porte les règles plutôt que les détails : c'est ce qui se relit
     dans un compte rendu, et les détails restent dans les constats.
     """
-    par_ressource: dict[str, list[str]] = {}
+    # **Groupé sur l'identité de la ressource, pas sur son nom.** Deux machines
+    # homonymes non conformes se fondraient en un seul refus, et le compte des
+    # ressources examinées tomberait juste d'une unité de trop.
+    par_ressource: dict[tuple[str, str], list[str]] = {}
     for constat in constats or []:
-        par_ressource.setdefault(constat["name"], []).append(constat["rule"])
+        cle = (_ressource_de(constat["id"]), constat["name"])
+        par_ressource.setdefault(cle, []).append(constat["rule"])
 
+    # La clé porte l'identité pour regrouper et trier, le nom pour être lu :
+    # seule la seconde moitié ressort.
     return [
-        {"name": nom, "reason": ", ".join(sorted(set(regles)))}
-        for nom, regles in sorted(par_ressource.items())
+        {"name": cle[1], "reason": ", ".join(sorted(set(regles)))}
+        for cle, regles in sorted(par_ressource.items())
     ]
+
+
+def _ressource_de(identite: str) -> str:
+    """La ressource que cette identité désigne, sans la règle qui l'a jugée.
+
+    L'identité est `règle:produit:identifiant` ; ce qui désigne la ressource est
+    ce qui suit la règle. Le découpage est ici plutôt que recopié à trois
+    endroits, parce que trois copies d'une convention finissent par diverger.
+    """
+    morceaux = identite.split(":", 1)
+    return morceaux[1] if len(morceaux) == 2 else identite
 
 
 class FilterModule:
     """Ce que la collection publie comme filtres."""
 
     def filters(self) -> dict[str, object]:
-        return {"audit_findings": audit_findings, "audit_refusals": audit_refusals}
+        return {
+            "audit_findings": audit_findings,
+            "audit_refusals": audit_refusals,
+            "finding_id": finding_id,
+        }

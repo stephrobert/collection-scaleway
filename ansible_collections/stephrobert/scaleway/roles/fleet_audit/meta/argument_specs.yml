@@ -23,9 +23,12 @@ argument_specs:
       scaleway_fleet_audit_output:
         type: str
         default: text
-        choices: [text, json, markdown]
+        choices: [text, json, markdown, none]
         description:
           - Which rendering to print. The findings are returned whatever this says.
+          - >-
+            C(none) prints nothing. It is for a caller that includes this role
+            for its data, and for which a second report on screen is noise.
       scaleway_fleet_audit_policy:
         type: dict
         description:

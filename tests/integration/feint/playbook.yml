@@ -397,3 +397,48 @@
       ansible.builtin.file:
         path: "{{ fichier_instantane.path }}"
         state: absent
+
+    # ---- L'identité d'un constat, éprouvée sur deux runs --------------------
+    #
+    # Le test unitaire prouve que la fonction rend deux fois la même chose sur
+    # les mêmes données. Il ne prouve pas que deux audits d'un vrai parc, avec
+    # deux lectures distinctes, produisent les mêmes identités : c'est ce que
+    # « nouveau, persistant, résolu » exigera de #234, et ça se mesure ici.
+    - name: Auditer le parc une première fois
+      ansible.builtin.include_role:
+        name: stephrobert.scaleway.fleet_audit
+      vars:
+        scaleway_fleet_audit_zones: "{{ zone }}"
+        scaleway_fleet_audit_output: none
+
+    - name: Garder les identités du premier audit
+      ansible.builtin.set_fact:
+        identites_premier: >-
+          {{ scaleway_fleet_audit_findings | map(attribute='id') | list | sort }}
+
+    - name: Auditer le parc une seconde fois
+      ansible.builtin.include_role:
+        name: stephrobert.scaleway.fleet_audit
+      vars:
+        scaleway_fleet_audit_zones: "{{ zone }}"
+        scaleway_fleet_audit_output: none
+
+    - name: Les deux audits nomment exactement les mêmes constats
+      ansible.builtin.assert:
+        that:
+          - identites_premier | length > 0
+          - identites_premier == identites_second
+          # Une identité porte l'identifiant de la ressource, jamais son nom :
+          # deux machines peuvent porter le même nom dans une zone.
+          - identites_premier | select('search', ':instance:') | list | length
+              == identites_premier | length
+        success_msg: >-
+          {{ identites_premier | length }} constat(s), les mêmes identités aux
+          deux lectures : ce que #234 pourra compter en nouveau et en résolu
+        fail_msg: >-
+          deux audits du même parc ne nomment pas les mêmes constats, donc tout
+          ressortirait comme neuf puis comme résolu :
+          {{ identites_premier | symmetric_difference(identites_second) }}
+      vars:
+        identites_second: >-
+          {{ scaleway_fleet_audit_findings | map(attribute='id') | list | sort }}
