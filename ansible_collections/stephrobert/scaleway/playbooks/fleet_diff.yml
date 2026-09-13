@@ -1,0 +1,37 @@
+---
+# What changed since a snapshot you kept.
+#
+#   ansible-playbook stephrobert.scaleway.fleet_diff -e baseline=yesterday.json
+#   ansible-playbook stephrobert.scaleway.fleet_diff -e baseline=a.json -e current=b.json
+#   ansible-playbook stephrobert.scaleway.fleet_diff -e baseline=a.json -e output=markdown
+#
+# The baseline is a file you kept, because this collection stores nothing.
+# `stephrobert.scaleway.fleet_report -e output=snapshot` produces one.
+#
+# **This playbook is the ergonomics, the role is the operation.** What it does
+# lives in `roles/fleet_diff`, and the role leaves the comparison in
+# `scaleway_fleet_diff_result` and its level in `scaleway_fleet_diff_level`:
+#
+#   - ansible.builtin.include_role:
+#       name: stephrobert.scaleway.fleet_diff
+#     vars:
+#       scaleway_fleet_diff_baseline: yesterday.json
+#   - ansible.builtin.assert:
+#       that: scaleway_fleet_diff_level != 'action_required'
+#
+# Nothing is reimplemented here, and a test refuses it.
+- name: Say what changed in a Scaleway fleet, without touching it
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    baseline: ""
+    current: ""
+    output: text
+
+  roles:
+    - role: stephrobert.scaleway.fleet_diff
+      scaleway_fleet_diff_baseline: "{{ baseline }}"
+      scaleway_fleet_diff_current: "{{ current }}"
+      scaleway_fleet_diff_output: "{{ output }}"

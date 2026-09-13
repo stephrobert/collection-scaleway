@@ -1,0 +1,25 @@
+---
+# The snapshot to compare against, as a path to a file the caller kept. This
+# collection stores nothing: where a snapshot lives belongs to whoever runs it.
+scaleway_fleet_diff_baseline: ""
+
+# The later snapshot. Left empty, the fleet is read now, which is the common
+# case: compare what is there against what was there.
+scaleway_fleet_diff_current: ""
+
+# The zones to read when reading now. Ignored when `current` is a file.
+scaleway_fleet_diff_zones:
+  - fr-par-1
+  - fr-par-2
+  - fr-par-3
+  - nl-ams-1
+  - nl-ams-2
+  - nl-ams-3
+  - pl-waw-1
+  - pl-waw-2
+  - pl-waw-3
+  - it-mil-1
+
+# text for a terminal, json for a pipeline, markdown for a ticket, none for a
+# caller that wants the data and not a second report on screen.
+scaleway_fleet_diff_output: text

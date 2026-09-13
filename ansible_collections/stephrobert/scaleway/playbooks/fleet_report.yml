@@ -31,7 +31,26 @@
       pl-waw-1,pl-waw-2,pl-waw-3,it-mil-1
     output: text
 
+    # Where to keep the snapshot, if you want to keep it. Empty means keep
+    # nothing, which is the default: this collection stores nothing of its own.
+    #
+    # **The playbook writes the file, not the role.** A role that writes into
+    # the filesystem of whoever includes it decides in their place, and a
+    # default path would end up overwriting something.
+    snapshot_to: ""
+
   roles:
     - role: stephrobert.scaleway.fleet_report
       scaleway_fleet_report_zones: "{{ zones }}"
       scaleway_fleet_report_output: "{{ output }}"
+
+  tasks:
+    # Redirecting the playbook's output would capture Ansible's own decoration
+    # rather than JSON. The file is written here, so what lands on disk is
+    # exactly what `fleet_diff` reads back.
+    - name: Keep the snapshot, when asked where
+      ansible.builtin.copy:
+        content: "{{ scaleway_fleet_report_snapshot | to_nice_json }}"
+        dest: "{{ snapshot_to }}"
+        mode: "0600"
+      when: snapshot_to | length > 0

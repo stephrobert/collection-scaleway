@@ -1,0 +1,43 @@
+---
+argument_specs:
+  main:
+    short_description: Say what changed between two observed snapshots
+    description:
+      - >-
+        Compares a snapshot the caller kept against the fleet as it is now, or
+        against a second snapshot, and reports what appeared, what went away and
+        what changed.
+      - >-
+        Only compares a zone both snapshots measured. A zone that did not answer
+        and a zone that was simply not read this time would both make everything
+        it holds look removed.
+    options:
+      scaleway_fleet_diff_baseline:
+        type: str
+        required: true
+        description:
+          - >-
+            Path to the snapshot to compare against, as
+            C(fleet_report) left it.
+      scaleway_fleet_diff_current:
+        type: str
+        default: ""
+        description:
+          - >-
+            Path to the later snapshot. Left empty, the fleet is read now.
+      scaleway_fleet_diff_zones:
+        type: list
+        elements: str
+        description:
+          - The zones to read when reading now. Ignored when a file is given.
+      scaleway_fleet_diff_output:
+        type: str
+        default: text
+        choices: [text, json, markdown, none]
+        description:
+          - >-
+            Which rendering to print. The comparison itself is returned whatever
+            this says.
+          - >-
+            C(none) prints nothing. It is for a caller that includes this role
+            for its data, and for which a second report on screen is noise.
