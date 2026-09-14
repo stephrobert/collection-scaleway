@@ -20,6 +20,7 @@ from pathlib import Path
 
 from generator.ansible.collection import Collection
 from generator.ansible.models import build_module_specs
+from generator.ecriture import ecrire
 from generator.overrides.loader import OverrideSet
 from generator.parser.openapi import parse_document
 from generator.plan import plan_service
@@ -49,7 +50,7 @@ def update_ir() -> None:
         service = parse_document(source.load(product, version))
         target = FIXTURES / product / "expected_ir.json"
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(service.to_json(), encoding="utf-8")
+        ecrire(target, service.to_json())
         print(f"{target.relative_to(ROOT)} : {len(service.operations)} opérations")
 
 

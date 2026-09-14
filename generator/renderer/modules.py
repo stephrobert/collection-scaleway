@@ -24,6 +24,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from generator.ansible.models import AnsibleModuleSpec, OperationBinding
 from generator.ansible.retry import RetryPolicy
+from generator.ecriture import ecrire
 from generator.ir.enums import OperationKind
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1] / "templates"
@@ -110,7 +111,7 @@ def write_modules(
     written: list[Path] = []
     for spec in sorted(specs, key=lambda item: item.name):
         target = output_dir / f"{spec.name}.py"
-        target.write_text(render_module(spec, source=source), encoding="utf-8")
+        ecrire(target, render_module(spec, source=source))
         written.append(target)
     return written
 
