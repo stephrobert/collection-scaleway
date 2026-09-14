@@ -26,6 +26,28 @@
           else scaleway_fleet_audit_zones | split(','))
          | map('trim') | select | list | sort }}
 
+# **Une règle qui ne juge rien est un silence, pas une conformité.** Écrire
+# `unhealthy_conditions` dans sa politique en ne lisant que des Instances
+# produirait un rapport vert où personne n'a rien vérifié, et rien dans ce
+# rapport ne le dirait.
+#
+# Le rôle refuse plutôt que de lire de lui-même ce qui manque : chaque produit
+# lu est une famille d'appels d'API sur un compte facturé, et ce n'est pas une
+# décision que ce rôle prend à la place de qui le lance (#252).
+- name: Every rule has something to judge
+  ansible.builtin.assert:
+    that:
+      - orphelines | length == 0
+    fail_msg: >-
+      {{ orphelines | length }} rule(s) judge nothing with the products this run
+      reads: {{ orphelines | join(' / ') }}. Add the product to
+      `scaleway_fleet_audit_products`, or drop the rule.
+    quiet: true
+  vars:
+    orphelines: >-
+      {{ scaleway_fleet_audit_policy | stephrobert.scaleway.rules_without_target(
+           scaleway_fleet_audit_products) }}
+
 # `failed_when: false` so one unreachable zone does not hide the others. It also
 # rewrites `failed` to `false`, measured, so the presence of the payload is what
 # says whether the zone answered.
@@ -35,18 +57,113 @@
   loop: "{{ _scaleway_fleet_audit_zones }}"
   register: sonde
   failed_when: false
+  when: "'instance' in scaleway_fleet_audit_products"
 
 - name: Separate what was read from what could not be
   ansible.builtin.set_fact:
     _scaleway_fleet_audit_machines: >-
-      {{ sonde.results | selectattr('servers', 'defined')
+      {{ _reponses | selectattr('servers', 'defined')
          | map(attribute='servers') | flatten | list }}
     _scaleway_fleet_audit_muettes: >-
-      {{ sonde.results | rejectattr('servers', 'defined')
+      {{ _reponses | rejectattr('servers', 'defined')
          | map(attribute='item') | list | sort }}
     _scaleway_fleet_audit_mesurees: >-
-      {{ sonde.results | selectattr('servers', 'defined')
+      {{ _reponses | selectattr('servers', 'defined')
          | map(attribute='item') | list | sort }}
+  vars:
+    # Une tâche entièrement sautée ne porte pas de `results`. La lire par
+    # `default([])` dirait « zéro machine », et zéro machine lue se lit comme un
+    # parc vide : ce n'est pas la même chose que « je n'ai pas demandé ».
+    _reponses: "{{ sonde.results | default([]) }}"
+
+# ---- What else the policy asked for --------------------------------------
+#
+# **Chaque bloc est conditionné au produit déclaré**, et pas à la présence de la
+# ressource : un compte sans cluster doit donner « zéro cluster lu », pas « le
+# produit n'a pas été demandé ». Les deux se ressemblent dans un rapport et ne
+# mènent pas aux mêmes actions.
+#
+# Kubernetes est **régional** là où Instance est zonal, et c'est le contrat qui
+# le dit. Mélanger les deux boucles ferait demander `fr-par-1` à une API qui
+# n'accepte que `fr-par`.
+
+- name: The regions behind those zones
+  ansible.builtin.set_fact:
+    # Dérivé plutôt que redemandé : une seconde liste à tenir à jour finirait
+    # par ne plus correspondre à la première, et personne ne le verrait.
+    _scaleway_fleet_audit_regions: >-
+      {{ _scaleway_fleet_audit_zones
+         | map('regex_replace', '-[0-9]+$', '') | unique | list | sort }}
+
+- name: Ask each region for its clusters
+  stephrobert.scaleway.k8s_cluster_info:
+    region: "{{ item }}"
+  loop: "{{ _scaleway_fleet_audit_regions }}"
+  register: _sonde_clusters
+  failed_when: false
+  when: "'k8s_cluster' in scaleway_fleet_audit_products"
+
+# Le catalogue des versions, pour que le cluster puisse dire quand la sienne
+# meurt. La jointure se fait à la couture, jamais dans une règle.
+- name: Ask each region for the versions it offers
+  stephrobert.scaleway.k8s_version_info:
+    region: "{{ item }}"
+  loop: "{{ _scaleway_fleet_audit_regions }}"
+  register: _sonde_versions
+  failed_when: false
+  when: "'k8s_cluster' in scaleway_fleet_audit_products"
+
+- name: The clusters, in the shape rules speak
+  ansible.builtin.set_fact:
+    _scaleway_fleet_audit_grappes: >-
+      {{ (_sonde_clusters.results | default([]) | selectattr('clusters', 'defined')
+          | map(attribute='clusters') | flatten | list)
+         | stephrobert.scaleway.resource_facts(
+             kind='k8s_cluster',
+             context={'versions': _catalogue}) }}
+  vars:
+    _catalogue: >-
+      {{ _sonde_versions.results | default([]) | selectattr('versions', 'defined')
+         | map(attribute='versions') | flatten | list }}
+
+- name: Ask each cluster for its nodes
+  stephrobert.scaleway.k8s_cluster_node_info:
+    region: "{{ item.zone }}"
+    cluster_id: "{{ item.id }}"
+  loop: "{{ _scaleway_fleet_audit_grappes }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: _sonde_noeuds
+  failed_when: false
+  when: "'k8s_node' in scaleway_fleet_audit_products"
+
+- name: Ask each zone for its load balancers
+  stephrobert.scaleway.lb_load_balancer_info:
+    zone: "{{ item }}"
+  loop: "{{ _scaleway_fleet_audit_zones }}"
+  register: _sonde_lbs
+  failed_when: false
+  when: >-
+    'lb' in scaleway_fleet_audit_products
+    or 'lb_certificate' in scaleway_fleet_audit_products
+
+- name: The load balancers, in the shape rules speak
+  ansible.builtin.set_fact:
+    _scaleway_fleet_audit_repartiteurs: >-
+      {{ (_sonde_lbs.results | default([]) | selectattr('lbs', 'defined')
+          | map(attribute='lbs') | flatten | list)
+         | stephrobert.scaleway.resource_facts(kind='lb') }}
+
+- name: Ask each load balancer for its certificates
+  stephrobert.scaleway.lb_certificate_info:
+    zone: "{{ item.zone }}"
+    lb_id: "{{ item.id }}"
+  loop: "{{ _scaleway_fleet_audit_repartiteurs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: _sonde_certificats
+  failed_when: false
+  when: "'lb_certificate' in scaleway_fleet_audit_products"
 
 # ---- The judgement -------------------------------------------------------
 
@@ -54,11 +171,64 @@
 # forme commune, donc elles ne connaissent aucun nom de champ d'Instance. Le
 # jour où Elastic Metal aura des modules, un normaliseur s'ajoute et aucune
 # règle ne bouge.
-- name: Normalise what the zones answered
+# **Ce qui n'a pas répondu, quel que soit le produit.** Une région muette côté
+# Kubernetes est exactement aussi grave qu'une zone muette côté Instance : le
+# parc qu'elle porte n'a pas été jugé, et un rapport qui ne le dirait pas
+# annoncerait conforme ce que personne n'a lu.
+#
+# Nommé `zone/produit` plutôt que `zone` seule : une région qui répond pour les
+# clusters et pas pour les versions n'est pas la même situation qu'une région
+# entièrement muette, et un nom qui les confondrait rendrait le rapport
+# inutilisable pour agir.
+- name: What else did not answer
+  ansible.builtin.set_fact:
+    _scaleway_fleet_audit_muettes: >-
+      {{ (_scaleway_fleet_audit_muettes + _muettes_ailleurs) | unique | list | sort }}
+  vars:
+    # **`rejectattr('skipped', ...)` d'abord, et ce n'est pas une précaution.**
+    # Mesuré : une tâche à boucle dont le `when` est faux enregistre quand même
+    # un `results`, un élément par item, chacun marqué `skipped`. Sans ce
+    # filtre, un audit qui ne demande qu'Instance sortait trois régions muettes
+    # qu'il n'avait jamais interrogées, et le bilan passait en
+    # `action_required` sur un parc parfaitement calme.
+    #
+    # N'avoir rien tenté n'est pas avoir manqué quelque chose, et c'est la même
+    # distinction que partout ailleurs ici.
+    #
+    # Écrit une sonde par ligne plutôt que factorisé : Jinja n'a pas de
+    # fonction anonyme, et une boucle sur une table de couples rendrait ce bloc
+    # illisible pour épargner quatre lignes.
+    _muettes_ailleurs: >-
+      {{ (_sonde_clusters.results | default([]) | rejectattr('skipped', 'defined') | rejectattr('clusters', 'defined')
+          | map(attribute='item') | map('regex_replace', '$', '/k8s_cluster') | list)
+         + (_sonde_versions.results | default([]) | rejectattr('skipped', 'defined') | rejectattr('versions', 'defined')
+            | map(attribute='item') | map('regex_replace', '$', '/k8s_version') | list)
+         + (_sonde_noeuds.results | default([]) | rejectattr('skipped', 'defined') | rejectattr('nodes', 'defined')
+            | map(attribute='item') | map(attribute='name')
+            | map('regex_replace', '$', '/k8s_node') | list)
+         + (_sonde_lbs.results | default([]) | rejectattr('skipped', 'defined') | rejectattr('lbs', 'defined')
+            | map(attribute='item') | map('regex_replace', '$', '/lb') | list)
+         + (_sonde_certificats.results | default([]) | rejectattr('skipped', 'defined') | rejectattr('certificates', 'defined')
+            | map(attribute='item') | map(attribute='name')
+            | map('regex_replace', '$', '/lb_certificate') | list) }}
+
+- name: Normalise what the products answered
   ansible.builtin.set_fact:
     _scaleway_fleet_audit_faits: >-
-      {{ _scaleway_fleet_audit_machines
-         | stephrobert.scaleway.resource_facts(kind='instance') }}
+      {{ (_scaleway_fleet_audit_machines
+          | stephrobert.scaleway.resource_facts(kind='instance'))
+         + _scaleway_fleet_audit_grappes
+         + (_noeuds | stephrobert.scaleway.resource_facts(kind='k8s_node'))
+         + (_certificats | stephrobert.scaleway.resource_facts(kind='lb_certificate'))
+         + (_scaleway_fleet_audit_repartiteurs
+            if 'lb' in scaleway_fleet_audit_products else []) }}
+  vars:
+    _noeuds: >-
+      {{ _sonde_noeuds.results | default([]) | selectattr('nodes', 'defined')
+         | map(attribute='nodes') | flatten | list }}
+    _certificats: >-
+      {{ _sonde_certificats.results | default([]) | selectattr('certificates', 'defined')
+         | map(attribute='certificates') | flatten | list }}
 
 - name: Judge what the measured zones hold
   ansible.builtin.set_fact:

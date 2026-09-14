@@ -12,6 +12,18 @@ scaleway_fleet_audit_zones:
   - pl-waw-3
   - it-mil-1
 
+# **Les produits que cet audit lit.** Instance seul par défaut, ce qui est ce
+# que cet audit lisait avant que les autres existent : une version qui se met à
+# interroger Kubernetes et les load balancers sur tous les comptes multiplierait
+# les appels d'API sans que personne l'ait demandé.
+#
+# Une règle qui juge un champ qu'aucun produit lu ne porte fait échouer le run en
+# nommant ce qu'il faut ajouter. Elle ne le lit pas d'elle-même : chaque produit
+# est une famille d'appels sur un compte facturé, et ce rôle ne décide pas de la
+# facture de qui le lance.
+scaleway_fleet_audit_products:
+  - instance
+
 scaleway_fleet_audit_output: text
 
 # **The findings of the previous run, as you kept them.** The collection keeps
