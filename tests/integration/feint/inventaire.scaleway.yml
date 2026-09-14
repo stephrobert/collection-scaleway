@@ -32,6 +32,22 @@ hostnames:
   - name
   - id
 
+# **Les deux options venues de chez eux, jouées plutôt que documentées** (#246).
+#
+# `state` est leur nom pour notre `states`, accepté pour qu'un fichier écrit
+# pour leur collection se lise ici. Il porte les deux états que le parc amorcé
+# contient, donc il ne cache rien : ce qui est éprouvé ici est que l'option est
+# lue, pas qu'elle filtre.
+state:
+  - running
+  - stopped
+
+# `variables` est leur table `destination: source`. `hostname` est leur nom pour
+# notre `name` : la traduction est jouée, pas seulement testée.
+variables:
+  ansible_host_name: hostname
+  scw_zone_venue_de_chez_eux: zone
+
 # Le mode strict : un provider qui échoue fait échouer l'inventaire au lieu
 # de rendre un parc incomplet avec un code de retour 0.
 strict: true

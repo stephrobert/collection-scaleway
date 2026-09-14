@@ -1,0 +1,18 @@
+minor_changes:
+  - "inventory - ``state`` is accepted as the name ``scaleway.scaleway`` uses for
+    the same idea, so a file written for that collection reads here without
+    being rewritten. ``states`` wins when both are given: it is the one this
+    documentation describes, and the one a user here wrote on purpose."
+  - "inventory - ``variables`` takes a ``destination: source`` mapping, the shape
+    ``scaleway.scaleway`` uses, where the source is a host variable this plugin
+    sets without its ``scaleway_`` prefix. ``hostname``, ``vpc_ipv4`` and
+    ``vpc_ipv6`` are accepted as their names for ``name``, ``private_ipv4`` and
+    ``private_ipv6``."
+  - "inventory - a ``variables`` source this plugin does not set is refused, and
+    the refusal names the sources that exist. Their plugin drops the whole host
+    instead, so a typo empties the inventory, the warning drowns in the rest,
+    and a playbook then runs green having touched nothing."
+  - "inventory - a source missing on one host is a different question from a
+    source that does not exist. A machine with no private address is not a
+    configuration mistake: the variable is not set for that host, and the host
+    stays."

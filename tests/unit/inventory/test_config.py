@@ -37,6 +37,9 @@ def _options(**surcharges):
         "tags": None,
         "tags_match": None,
         "states": None,
+        # Leur nom pour `states`, et leur table `destination: source` (#246).
+        "state": None,
+        "variables": None,
         "exclude": None,
         "include_raw": False,
         "strict": False,

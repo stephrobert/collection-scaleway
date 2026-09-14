@@ -26,6 +26,23 @@
           - scaleway_region == 'fr-par'
         quiet: true
 
+    # **Les deux options venues de leur inventaire, éprouvées sur le graphe.**
+    # Un test unitaire dit que la table est traduite ; il ne dit pas qu'Ansible
+    # pose la variable sur l'hôte, ni que leur nom d'option est bien lu (#246).
+    - name: Un fichier écrit pour leur collection pose ses variables ici
+      ansible.builtin.assert:
+        that:
+          # `hostname` est leur nom pour notre `name`, traduit à la lecture.
+          - ansible_host_name is defined
+          - ansible_host_name == scaleway_name
+          - scw_zone_venue_de_chez_eux == scaleway_zone
+        success_msg: >-
+          {{ ansible_host_name }} : les correspondances de `variables` sont
+          posées, et `hostname` a bien été traduit en `name`
+        fail_msg: >-
+          une correspondance de `variables` n'a pas été posée sur {{ inventory_hostname }}
+        quiet: true
+
     - name: Les groupes natifs portent bien le produit et la zone
       ansible.builtin.assert:
         that:
