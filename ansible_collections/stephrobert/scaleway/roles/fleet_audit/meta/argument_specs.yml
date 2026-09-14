@@ -29,6 +29,18 @@ argument_specs:
           - >-
             C(none) prints nothing. It is for a caller that includes this role
             for its data, and for which a second report on screen is noise.
+      scaleway_fleet_audit_previous:
+        type: list
+        elements: dict
+        description:
+          - >-
+            The findings of the previous run, as you kept them. This collection
+            keeps no history, so comparing two runs needs the earlier one handed
+            back; where it is kept is yours to decide.
+          - >-
+            Leaving it unset is not the same as passing an empty list. No
+            previous run at all makes this one a baseline; a previous run that
+            found nothing makes everything here new.
       scaleway_fleet_audit_policy:
         type: dict
         description:

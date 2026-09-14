@@ -91,6 +91,25 @@
     scaleway_fleet_audit_exceptions_without_target: >-
       {{ _scaleway_fleet_audit_juge.exceptions_without_target }}
 
+# **Un rapport qui affiche les mêmes avertissements chaque matin cesse d'être lu
+# au troisième matin.** C'est le mode de défaillance d'un outil récurrent, et il
+# est plus dangereux qu'une panne : il ne se voit pas.
+#
+# La comparaison a besoin du run précédent, et la collection ne tient pas
+# d'historique : il est rendu par l'appelant, qui décide où il le garde (#234).
+- name: What is new, what persists, what is resolved
+  ansible.builtin.set_fact:
+    scaleway_fleet_audit_changes: >-
+      {{ scaleway_fleet_audit_findings | stephrobert.scaleway.audit_changes(
+           previous=scaleway_fleet_audit_previous,
+           zones_measured=_scaleway_fleet_audit_mesurees,
+           now=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}
+
+- name: What those changes demand, computed and never passed in
+  ansible.builtin.set_fact:
+    scaleway_fleet_audit_level: >-
+      {{ scaleway_fleet_audit_changes | stephrobert.scaleway.changes_verdict }}
+
 - name: Sort the findings by what they demand
   ansible.builtin.set_fact:
     # **Ce qui est couvert ne demande rien**, et c'est tout l'objet du statut :
@@ -196,6 +215,40 @@
   when:
     - scaleway_fleet_audit_output == 'text'
     - _scaleway_fleet_audit_mesurees | length > 0
+
+# **Ce bloc n'apparaît que s'il y a quelque chose à comparer.** Sur un premier
+# run il n'y a pas de « nouveau » : il n'y a qu'une référence, et l'annoncer
+# autrement noierait la première lecture sous ce qu'elle sert à établir.
+- name: What moved since the run you kept
+  ansible.builtin.debug:
+    msg: |-
+      Fleet posture changes
+
+      {% for constat in scaleway_fleet_audit_changes.new %}
+      {% if loop.first %}NEW{% endif %}
+        {{ constat.severity | upper }} {{ constat.name }}  {{ constat.rule }}
+      {% endfor %}
+      {% for constat in scaleway_fleet_audit_changes.persisting %}
+      {% if loop.first %}PERSISTING{% endif %}
+        {{ constat.severity | upper }} {{ constat.name }}  {{ constat.rule }}
+             {{ 'first seen ' ~ constat.first_seen if constat.first_seen is defined
+                else 'first seen unknown, no kept report says when' }}
+      {% endfor %}
+      {% for constat in scaleway_fleet_audit_changes.resolved %}
+      {% if loop.first %}RESOLVED{% endif %}
+        {{ constat.name }}  {{ constat.rule }}
+      {% endfor %}
+      {# **Jamais dans RESOLVED.** Dire à quelqu'un que son problème est réglé
+         alors que personne n'a regardé est la pire ligne d'un tel rapport. #}
+      {% for constat in scaleway_fleet_audit_changes.unmeasured %}
+      {% if loop.first %}NOT CONCLUDED{% endif %}
+        {{ constat.name }}  {{ constat.rule }}: {{ constat.reason }}
+      {% endfor %}
+      level: {{ scaleway_fleet_audit_level }}
+  when:
+    - scaleway_fleet_audit_output == 'text'
+    - _scaleway_fleet_audit_mesurees | length > 0
+    - not scaleway_fleet_audit_changes.baseline
 
 - name: The audit, for a pipeline
   ansible.builtin.debug:

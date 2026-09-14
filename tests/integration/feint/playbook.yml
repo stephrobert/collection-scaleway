@@ -415,13 +415,44 @@
       ansible.builtin.set_fact:
         identites_premier: >-
           {{ scaleway_fleet_audit_findings | map(attribute='id') | list | sort }}
+        # Ce qu'un appelant garderait entre deux runs. La collection ne tient pas
+        # d'historique : la comparaison a besoin de ce que l'appelant a conservé.
+        constats_premier: "{{ scaleway_fleet_audit_changes.current }}"
+        niveau_premier: "{{ scaleway_fleet_audit_level }}"
 
-    - name: Auditer le parc une seconde fois
+    - name: Auditer le parc une seconde fois, en rendant le premier
       ansible.builtin.include_role:
         name: stephrobert.scaleway.fleet_audit
       vars:
         scaleway_fleet_audit_zones: "{{ zone }}"
         scaleway_fleet_audit_output: none
+        scaleway_fleet_audit_previous: "{{ constats_premier }}"
+
+    # **La propriété que le jalon exige, jouée et non affirmée.** Deux audits
+    # d'un parc inchangé ne produisent ni nouveau ni résolu, et le second sort en
+    # `quiet`. Sans ce contrôle, « ne pas augmenter le nombre de notifications »
+    # serait une phrase dans une issue (#234).
+    - name: Un parc inchangé ne produit ni nouveau ni résolu, et le dit
+      ansible.builtin.assert:
+        that:
+          - niveau_premier == 'baseline'
+          - scaleway_fleet_audit_changes.baseline is false
+          - scaleway_fleet_audit_changes.counts.new == 0
+          - scaleway_fleet_audit_changes.counts.resolved == 0
+          - scaleway_fleet_audit_changes.counts.unmeasured == 0
+          - scaleway_fleet_audit_changes.counts.persisting == identites_premier | length
+          - scaleway_fleet_audit_level == 'quiet'
+          # La première vue vient du premier run, recopiée et non réécrite.
+          - scaleway_fleet_audit_changes.persisting
+              | selectattr('first_seen', 'defined') | list | length
+              == identites_premier | length
+        success_msg: >-
+          le premier audit est une référence, le second est `quiet` :
+          {{ scaleway_fleet_audit_changes.counts.persisting }} constat(s)
+          persistant(s), 0 nouveau, 0 résolu
+        fail_msg: >-
+          un parc inchangé a produit du mouvement, donc le rapport du lendemain
+          serait du bruit : {{ scaleway_fleet_audit_changes.counts }}
 
     - name: Les deux audits nomment exactement les mêmes constats
       ansible.builtin.assert:

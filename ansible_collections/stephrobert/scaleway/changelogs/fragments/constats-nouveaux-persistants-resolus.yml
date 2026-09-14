@@ -1,0 +1,35 @@
+minor_changes:
+  - "roles - ``fleet_audit`` accepts ``scaleway_fleet_audit_previous``, the
+    findings of the previous run as you kept them, and sorts this run's findings
+    into new, persisting and resolved. Run daily, an audit that shows the same
+    warnings every morning stops being read by the third morning, which is the
+    failure mode of a recurring tool and more dangerous than an outage because it
+    does not show."
+  - "roles - a finding that vanished because its zone did not answer never comes
+    out as resolved. A zone that did not answer makes everything it held
+    disappear, and announcing that as resolved tells somebody their problem is
+    fixed when nobody looked. Those come out under their own heading, each with
+    which of the two cases it is."
+  - "roles - a suppressed finding is not a resolved one. An exception changes a
+    status, it does not make the problem go away, so it stays among the
+    persisting findings with its status."
+  - "roles - ``first_seen`` is stamped on a new finding and carried over on a
+    persisting one, so the date goes back as far as the caller kept its reports.
+    A kept report that carries none says the date is unknown rather than
+    inventing one."
+  - "roles - there is deliberately no ``since`` field. Nothing in a set of kept
+    findings says when the previous run happened: the oldest ``first_seen``
+    dates the oldest finding, and on a run where nothing was new it dates
+    nothing at all."
+  - "roles - a first run is a baseline rather than a fleet where everything is
+    new. No previous run at all and a previous run that found nothing lead to
+    opposite reports, and a caller keeping an empty list would otherwise flood a
+    whole fleet into the new set."
+  - "roles - ``scaleway_fleet_audit_level`` is computed and never passed in:
+    ``quiet``, ``changed``, ``action_required`` on a new failing finding or on
+    anything that could not be concluded, and ``baseline`` on a first run. A
+    caller able to force it could produce a report that calls itself calm when it
+    is not."
+  - "filter - a finding now carries the ``zone`` it was found in. Without it a
+    vanished finding is indistinguishable from a resolved one, and the only
+    honest answer would be to conclude nothing about the whole fleet."

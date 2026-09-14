@@ -268,6 +268,13 @@ def audit_findings(machines: object, policy: object, now: str) -> list[dict[str,
                         # Il reste le nom, donc lisible et non unique : c'est
                         # pourquoi il ne sert pas d'identité.
                         "name": f"{machine.get('kind', '?')}/{machine.get('name', '?')}",
+                        # **La zone, parce que sans elle un constat disparu est
+                        # indiscernable d'un constat résolu.** Comparer deux runs
+                        # demande de savoir si la zone qui portait le constat a
+                        # répondu cette fois ; sans cette information, la seule
+                        # réponse honnête serait « on ne sait pas » pour tout le
+                        # parc, et le rapport ne dirait plus rien (#234).
+                        "zone": machine.get("zone"),
                         "rule": nom,
                         "field": champ,
                         "severity": severite,
