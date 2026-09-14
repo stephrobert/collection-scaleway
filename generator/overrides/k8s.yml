@@ -134,3 +134,45 @@ operations:
           Le contrat déclare une chaîne libre et renvoie à la documentation
           produit : « note that some migrations are not possible ».
           `k8s_cluster_type_info` rend les types disponibles.
+
+  # --- Ce qu'une action laisse derrière elle --------------------------------
+
+  k8s.v1.NodeReboot.RebootNode:
+    # **La ressource est le nœud, pas « le redémarrage du nœud ».** La règle de
+    # dérivation lit le dernier segment du chemin, et
+    # `/nodes/{node_id}/reboot` lui donne `node_reboot`. Instance ne connaît pas
+    # ce cas parce que son chemin finit par le mot générique `/action` : mesuré,
+    # `instance.v1.Server.ServerAction` rend bien `server`.
+    #
+    # Ce n'est pas cosmétique : l'attente cherche la lecture unitaire de la
+    # ressource, et `GetNode` lit un `node`. Sans cet override, le générateur
+    # **écarte le module avec sa raison** plutôt que de l'écrire sans attente,
+    # ce qui est le comportement voulu et ce qui a rendu ce défaut visible.
+    resource: node
+    # Le nom reste celui que la collection publie, et il doit rester distinct :
+    # deux actions portent sur un nœud, `reboot` et `replace`, et `k8s_node_action`
+    # ne dirait pas laquelle.
+    module: k8s_node_reboot_action
+    reason: >-
+      La ressource dérivée du dernier segment désigne l'action et non la chose
+      sur laquelle elle porte ; la lecture unitaire qui permet d'attendre est
+      celle du nœud.
+    wait:
+      field: status
+      # **La clé est l'identifiant de l'opération, et non une valeur d'action.**
+      # `RebootNode` redémarre : lui demander `action: reboot` ferait nommer une
+      # seconde fois ce que le chemin dit déjà. Le runtime cherche alors l'état
+      # attendu sous cet identifiant, et c'est la seule clé qui puisse exister.
+      states:
+        RebootNode: ready
+      reason: >-
+        Sans elle, le module rendait la main sur un déclenchement accepté, et
+        une vague de redémarrage passait à la suivante pendant que la première
+        redémarrait encore. Le contrat déclare `rebooting` entre deux `ready`,
+        donc l'attente observe le nœud **quitter** son état avant d'accepter
+        qu'il soit revenu : une attente naïve se satisfait de la première
+        lecture, qui dit `ready` parce que rien n'a encore bougé.
+
+        `status` et non `state` : le contrat nomme ainsi le champ d'un nœud, là
+        où Instance dit `state`. Attendre le mauvais champ ferait échouer
+        l'action après `wait_timeout` sur un nœud pourtant revenu.

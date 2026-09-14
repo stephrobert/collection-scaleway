@@ -193,7 +193,7 @@ second run reports no change.
 | `k8s_cluster_type_info` | Gather information about Scaleway Kubernetes cluster types |
 | `k8s_cluster_upgrade_action` | Perform an action on a Scaleway Kubernetes cluster upgrade |
 | `k8s_node_info` | Gather information about Scaleway Kubernetes nodes |
-| `k8s_node_reboot_action` | Perform an action on a Scaleway Kubernetes node reboot |
+| `k8s_node_reboot_action` | Perform an action on a Scaleway Kubernetes node |
 | `k8s_node_replace_action` | Perform an action on a Scaleway Kubernetes node replace |
 | `k8s_pool` | Manage a Scaleway Kubernetes pool |
 | `k8s_pool_info` | Gather information about Scaleway Kubernetes pools |
