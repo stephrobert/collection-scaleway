@@ -167,46 +167,38 @@ SANS_CIBLE: dict[str, SansCible] = {
     **{
         nom: SansCible(
             raison=(
-                "Kubernetes n'a aucune cible aujourd'hui, et l'obstacle est mesuré "
-                "plutôt que supposé : feint rend `501 not_emulated` sur toute l'API "
-                "`/k8s/v1`, donc la cible `machines` ne peut exercer aucun de ces "
-                "modules. Seul le compte réel le pourrait, et il demande d'étendre la "
-                "stack avec un cluster Kapsule et son pool, dont la création prend "
-                "plusieurs minutes et dont les nœuds sont facturés tant qu'ils "
-                "vivent. **Ce qui fermerait la ligne** : l'émulation côté feint, ou "
-                "l'extension de la stack, suivies en feint#763 et en #249. Le produit "
-                "entre malgré ça parce que la collection officielle livre "
-                "`k8s_cluster` et `k8s_pool` en création seule : elle crée des "
-                "clusters et n'offre rien pour les exploiter ensuite (#240)."
+                "son seul appel acceptable change le type ou la version du "
+                "cluster, donc la facture et la durée du run, et ce n'est pas "
+                "une décision que l'exemple prend à la place de qui le lance. "
+                "C'est la leçon de `MigrateLb`, mesurée sur le compte réel : "
+                "l'API refuse le non-changement, donc il n'existe pas d'appel "
+                "neutre. La plateforme lit en revanche les types et les versions "
+                "atteignables, qui est ce dont la règle de dérive a besoin. "
+                "**Ce qui fermerait la ligne** : que l'exercice accepte de payer "
+                "une migration, ce qui est une décision de facture."
             ),
-            preuve="amont",
+            preuve="reel",
             revoir_en="0.9.0",
         )
-        # Une compréhension plutôt que vingt copies du même paragraphe :
-        # l'obstacle est le même pour tous, et vingt copies divergeraient à la
-        # première retouche.
         for nom in (
-            "k8s_cluster",
-            "k8s_cluster_acl_action",
-            "k8s_cluster_acl_info",
-            "k8s_cluster_available_type_info",
-            "k8s_cluster_available_version_info",
-            "k8s_cluster_info",
-            "k8s_cluster_node_info",
-            "k8s_cluster_pool_info",
-            "k8s_cluster_reset_admin_token_action",
             "k8s_cluster_set_type_action",
-            "k8s_cluster_type_info",
             "k8s_cluster_upgrade_action",
-            "k8s_node_info",
-            "k8s_node_reboot_action",
-            "k8s_node_replace_action",
-            "k8s_pool",
-            "k8s_pool_info",
             "k8s_pool_upgrade_action",
-            "k8s_version_info",
         )
     },
+    "k8s_node_replace_action": SansCible(
+        raison=(
+            "détruit un nœud et en remet un. La plateforme le remplace, donc la "
+            "taille déclarée ne bouge pas, mais le remplacement prend plusieurs "
+            "minutes et laisse le pool en transition pendant que `destroy` "
+            "voudrait partir. L'override porte la décision de le générer ; ce "
+            "qui manque est l'attente, qui doit observer ce que le contrat "
+            "déclare et non ce qu'on suppose par analogie avec une Instance. "
+            "**Ce qui fermerait la ligne** : cette attente, suivie en #244."
+        ),
+        preuve="stack",
+        revoir_en="0.9.0",
+    ),
 }
 
 

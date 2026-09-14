@@ -1,0 +1,293 @@
+---
+# Les modules Kubernetes, sur le cluster que la stack a créé.
+#
+# **Un playbook à part, et c'est une correction.** Ces tâches vivaient à la fin
+# de `modules.yml`, donc otages de tout ce qui échoue avant elles : le
+# 14 septembre 2026, une assertion sur l'ordre des certificats d'un load
+# balancer a fait mourir le play, et aucun module Kubernetes n'a été appelé. Un playbook qui ne tourne que si tous ses voisins
+# passent ne prouve rien de lui-même.
+#
+# feint rend `501 not_emulated` sur toute l'API `/k8s/v1`, mesuré : ces tâches
+# ne s'exercent que contre le cloud réel. La sortie existe toujours et ses
+# identifiants sont vides ailleurs, donc le bloc se saute en le disant.
+- name: Les modules Kubernetes, sur le cluster de la plateforme
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    # ---- Kubernetes : les dix-neuf modules, sur un vrai cluster --------------
+    #
+    # **Aucun n'avait jamais appelé une API.** Chargés par Ansible, leurs
+    # paramètres construits, leur documentation publiée, et rien de plus : c'est
+    # l'étage « porté par un module », pas l'étage « éprouvé » (#249).
+    #
+    # feint rend `501 not_emulated` sur toute l'API `/k8s/v1`, mesuré, donc ces
+    # tâches ne tournent que sur le cloud réel. La sortie existe toujours et ses
+    # identifiants sont vides ailleurs : le bloc se saute en le disant, plutôt
+    # que d'échouer sur une chaîne vide.
+    - name: Kubernetes, sans cluster, ne se mesure pas
+      ansible.builtin.debug:
+        msg: >-
+          Aucun cluster : feint ne sert pas /k8s/v1, et la stack n'en crée que
+          sur le cloud réel. Les dix-neuf modules Kubernetes ne sont pas exercés
+          par cette cible.
+      when: kapsule.cluster_id | default('') | length == 0
+
+    - name: Les modules Kubernetes, contre le cluster de la plateforme
+      when: kapsule.cluster_id | default('') | length > 0
+      vars:
+        region: "{{ kapsule.region }}"
+        cluster: "{{ kapsule.cluster_id }}"
+        pool: "{{ kapsule.pool_id }}"
+      block:
+        # ---- Ce qui se lit ------------------------------------------------
+
+        - name: Lister les clusters de la région
+          stephrobert.scaleway.k8s_cluster_info:
+            region: "{{ region }}"
+          register: k8s_clusters
+
+        - name: Le cluster de cette plateforme est dans la liste
+          ansible.builtin.assert:
+            that: cluster in (k8s_clusters.clusters | map(attribute='id') | list)
+            fail_msg: >-
+              {{ cluster }} absent de ListClusters : la liste ne rend pas ce que
+              la plateforme vient de créer.
+            quiet: true
+
+        - name: Lire ce cluster seul
+          stephrobert.scaleway.k8s_cluster_info:
+            region: "{{ region }}"
+            cluster_id: "{{ cluster }}"
+          register: k8s_un_cluster
+
+        - name: La lecture unitaire et la liste disent la même chose
+          ansible.builtin.assert:
+            that:
+              - k8s_un_cluster.result.id == cluster
+              - k8s_un_cluster.result.status is defined
+              - k8s_un_cluster.result.version is defined
+            fail_msg: "GetCluster rend {{ k8s_un_cluster.result | default('rien') }}"
+            quiet: true
+
+        - name: Les pools du cluster
+          stephrobert.scaleway.k8s_cluster_pool_info:
+            region: "{{ region }}"
+            cluster_id: "{{ cluster }}"
+          register: k8s_pools
+
+        - name: Lire ce pool seul
+          stephrobert.scaleway.k8s_pool_info:
+            region: "{{ region }}"
+            pool_id: "{{ pool }}"
+          register: k8s_un_pool
+
+        - name: Le pool porte les deux nœuds que Terraform déclare
+          ansible.builtin.assert:
+            that:
+              - pool in (k8s_pools.pools | map(attribute='id') | list)
+              - k8s_un_pool.result.size | int == 2
+            fail_msg: >-
+              le pool rend {{ k8s_un_pool.result.size | default('rien') }} nœud(s) là
+              où la stack en déclare deux
+            quiet: true
+
+        - name: Les nœuds du cluster
+          stephrobert.scaleway.k8s_cluster_node_info:
+            region: "{{ region }}"
+            cluster_id: "{{ cluster }}"
+          register: k8s_noeuds
+
+        - name: Lire un nœud seul
+          stephrobert.scaleway.k8s_node_info:
+            region: "{{ region }}"
+            node_id: "{{ k8s_noeuds.nodes[0].id }}"
+          register: k8s_un_noeud
+          when: k8s_noeuds.nodes | length > 0
+
+        - name: Les versions que la région propose
+          stephrobert.scaleway.k8s_version_info:
+            region: "{{ region }}"
+          register: k8s_versions
+
+        - name: Les versions vers lesquelles ce cluster peut aller
+          stephrobert.scaleway.k8s_cluster_available_version_info:
+            region: "{{ region }}"
+            cluster_id: "{{ cluster }}"
+          register: k8s_versions_possibles
+
+        - name: La dérive de version se calcule, elle ne s'estime pas
+          ansible.builtin.assert:
+            that:
+              - k8s_versions.versions | length > 0
+              - k8s_un_cluster.result.version in (k8s_versions.versions | map(attribute='name') | list)
+            success_msg: >-
+              cluster en {{ k8s_un_cluster.result.version }},
+              {{ k8s_versions.versions | length }} version(s) offertes,
+              {{ k8s_versions_possibles.versions | default([]) | length }} atteignable(s)
+            fail_msg: >-
+              la version du cluster n'est pas dans celles que la région
+              déclare : la comparaison qui fonde #243 ne tient pas
+            quiet: true
+
+        - name: Les types de cluster, et ceux vers lesquels celui-ci peut migrer
+          stephrobert.scaleway.k8s_cluster_type_info:
+            region: "{{ region }}"
+          register: k8s_types
+
+        - name: Les types disponibles pour ce cluster
+          stephrobert.scaleway.k8s_cluster_available_type_info:
+            region: "{{ region }}"
+            cluster_id: "{{ cluster }}"
+          register: k8s_types_possibles
+
+        - name: Les règles d'accès au plan de contrôle
+          stephrobert.scaleway.k8s_cluster_acl_info:
+            region: "{{ region }}"
+            cluster_id: "{{ cluster }}"
+          register: k8s_acls
+
+        # ---- Ce qui écrit, et qui doit être idempotent --------------------
+
+        - name: Étiqueter le cluster
+          stephrobert.scaleway.k8s_cluster:
+            region: "{{ region }}"
+            cluster_id: "{{ cluster }}"
+            tags: "{{ k8s_un_cluster.result.tags + ['mesure'] }}"
+          register: k8s_etiquete
+
+        - name: Réécrire les mêmes étiquettes
+          stephrobert.scaleway.k8s_cluster:
+            region: "{{ region }}"
+            cluster_id: "{{ cluster }}"
+            tags: "{{ k8s_un_cluster.result.tags + ['mesure'] }}"
+          register: k8s_repris
+
+        - name: Un module de gestion n'écrit que la différence
+          ansible.builtin.assert:
+            that:
+              - k8s_etiquete is changed
+              - k8s_repris is not changed
+            success_msg: >-
+              premier passage changed, second ok : `k8s_cluster` compare avant
+              d'écrire
+            fail_msg: >-
+              premier {{ 'changed' if k8s_etiquete.changed else 'ok' }}, second
+              {{ 'changed' if k8s_repris.changed else 'ok' }} : l'idempotence d'un
+              MANAGE ne tient pas
+            quiet: true
+
+        - name: Étiqueter le pool
+          stephrobert.scaleway.k8s_pool:
+            region: "{{ region }}"
+            pool_id: "{{ pool }}"
+            tags: "{{ k8s_un_pool.result.tags + ['mesure'] }}"
+          register: k8s_pool_etiquete
+
+        - name: Réécrire les mêmes étiquettes du pool
+          stephrobert.scaleway.k8s_pool:
+            region: "{{ region }}"
+            pool_id: "{{ pool }}"
+            tags: "{{ k8s_un_pool.result.tags + ['mesure'] }}"
+          register: k8s_pool_repris
+
+        - name: Le pool aussi compare avant d'écrire
+          ansible.builtin.assert:
+            that:
+              - k8s_pool_etiquete is changed
+              - k8s_pool_repris is not changed
+            quiet: true
+
+        # ---- Ce qui agit --------------------------------------------------
+
+        # **Les écritures d'abord, les actions perturbantes ensuite.** Mesuré le
+        # 14 septembre 2026 : `AddClusterACLRules` rend `409 transient_state`
+        # quand il suit un redémarrage de nœud et une réinitialisation du jeton
+        # d'administration. Ces deux actions mettent le cluster en état
+        # transitoire, et l'API refuse d'y écrire une règle d'accès pendant ce
+        # temps.
+        #
+        # Aucune documentation ne le dit, et l'ordre inverse le cachait : la
+        # règle passait parce que rien ne l'avait précédée. Ce qui suit est donc
+        # rangé du moins perturbant au plus perturbant.
+        # **`ReplaceNode` n'est pas joué non plus, et la raison est autre.** Il
+        # détruit un nœud et en remet un : la plateforme le remplace, donc la
+        # taille déclarée ne bouge pas, mais le remplacement prend plusieurs
+        # minutes et laisse le pool en transition pendant que `destroy` voudrait
+        # partir. Le module existe, son override porte la décision, et la ligne
+        # se lèvera quand l'attente sera écrite (#244).
+        - name: Ajouter une règle d'accès au plan de contrôle
+          stephrobert.scaleway.k8s_cluster_acl_action:
+            region: "{{ region }}"
+            cluster_id: "{{ cluster }}"
+            acls:
+              - ip: 203.0.113.0/24
+                description: Mesure, plage de documentation RFC 5737
+          register: k8s_acl_ajoutee
+
+        - name: La règle ajoutée se relit
+          stephrobert.scaleway.k8s_cluster_acl_info:
+            region: "{{ region }}"
+            cluster_id: "{{ cluster }}"
+          register: k8s_acls_apres
+
+        - name: L'API rend ce qu'on vient d'y écrire
+          ansible.builtin.assert:
+            that: (k8s_acls_apres.rules | length) >= (k8s_acls.rules | default([]) | length)
+            fail_msg: >-
+              les règles d'accès ne reflètent pas l'ajout :
+              {{ k8s_acls.rules | default([]) | length }} avant,
+              {{ k8s_acls_apres.rules | length }} après
+            quiet: true
+        # **Un redémarrage de nœud, et un seul.** Le pool en porte deux : en
+        # redémarrer un laisse l'autre servir, ce qui est exactement ce qu'un
+        # redémarrage par vagues doit prouver. Redémarrer les deux ne prouverait
+        # rien de plus et coûterait le temps d'attente deux fois.
+        - name: Redémarrer un nœud
+          stephrobert.scaleway.k8s_node_reboot_action:
+            region: "{{ region }}"
+            node_id: "{{ k8s_noeuds.nodes[0].id }}"
+          register: k8s_redemarre
+          when: k8s_noeuds.nodes | length > 0
+
+        - name: L'API a confirmé le déclenchement
+          ansible.builtin.assert:
+            that: k8s_redemarre is changed
+            fail_msg: >-
+              RebootNode n'a pas rendu changed : une action est un déclencheur,
+              et son acceptation est ce qu'elle a à dire
+            quiet: true
+          when: k8s_noeuds.nodes | length > 0
+
+        # **Les migrations ne sont pas jouées, et la raison est mesurée
+        # ailleurs.** `MigrateLb` a appris que l'API refuse un non-changement,
+        # et que le seul appel accepté change la facture. `SetClusterType`,
+        # `UpgradeCluster` et `UpgradePool` sont de la même famille : le seul
+        # appel acceptable coûte, et ce n'est pas une décision que l'exemple
+        # prend à la place de qui le lance.
+        - name: Ce que cette plateforme n'exerce pas, et pourquoi
+          ansible.builtin.debug:
+            msg: >-
+              k8s_cluster_set_type_action, k8s_cluster_upgrade_action et
+              k8s_pool_upgrade_action ne sont pas joués : leur seul appel
+              acceptable change le type ou la version du cluster, donc la
+              facture et la durée du run.
+              {{ k8s_types.cluster_types | default([]) | length }} type(s) et
+              {{ k8s_versions_possibles.versions | default([]) | length }}
+              version(s) atteignables ont été lus, ce qui est ce dont #243 a
+              besoin.
+
+        # `ResetClusterAdminToken` invalide le jeton d'administration. Sur une
+        # plateforme jetable c'est sans conséquence, et c'est précisément
+        # pourquoi il s'exerce ici plutôt que de se découvrir ailleurs.
+        - name: Réinitialiser le jeton d'administration du cluster
+          stephrobert.scaleway.k8s_cluster_reset_admin_token_action:
+            region: "{{ region }}"
+            cluster_id: "{{ cluster }}"
+          register: k8s_jeton
+
+        - name: Le jeton a été réinitialisé
+          ansible.builtin.assert:
+            that: k8s_jeton is changed
+            quiet: true

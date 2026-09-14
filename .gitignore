@@ -33,6 +33,16 @@ __pycache__/
 # Ansible laisse ceci derrière un playbook interrompu.
 *.retry
 
+# Les transcriptions du proxy d'enregistrement. C'est **l'état d'un compte à un
+# instant**, avec ses identifiants de ressources et ses adresses, exactement ce
+# que la référence de résidu est déjà pour la même raison. Elles pèsent
+# plusieurs mégaoctets et se reproduisent en relançant l'exercice.
+#
+# Elles ne sont pas jetables pour autant : c'est la preuve qu'ADR-015 de feint
+# réclame, « a claim about the real API is a recorded exchange ». Elles se
+# transmettent, elles ne se versionnent pas.
+/transcriptions/
+
 # `galaxy_importer` écrit son verdict dans le répertoire courant, sans le
 # demander et sans option pour l'en empêcher. Un mégaoctet de sortie a été
 # versionné comme ça. C'est le verdict d'une exécution, pas un artefact du

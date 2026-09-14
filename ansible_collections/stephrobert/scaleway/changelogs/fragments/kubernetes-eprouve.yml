@@ -1,0 +1,26 @@
+minor_changes:
+  - "The Kubernetes modules have now run against the real API. Nineteen modules
+    were shipped in this cycle without a single call ever reaching Scaleway:
+    loaded by Ansible, their arguments built, their documentation published, and
+    nothing more. Fifteen of them are now exercised by the example platform,
+    which creates a Kapsule cluster and a pool, and the two declarative-state
+    modules are proven idempotent against the real API: first pass ``changed``,
+    second pass ``ok``."
+  - "The four that remain unexercised say why: their only acceptable call changes
+    the type or the version of a cluster, so the bill, and that is not a decision
+    an example makes on behalf of whoever runs it. The types and reachable
+    versions are read all the same, which is what a version-drift rule needs."
+bugfixes:
+  - "The example platform no longer leaves a security group behind. A Kapsule
+    cluster creates one for itself and ``delete_additional_resources`` does not
+    take it: measured five times over three minutes after the cluster was
+    destroyed, it was still there every time. It does not carry the platform's
+    prefix, so the guards that filter by prefix ignore it; the launcher now
+    removes it after destruction and before the residue check, so that check
+    stays the judge."
+  - "The public gateway waits up to sixty minutes instead of ten. Measured on a
+    real account: one took fifty-six minutes to reach ``running``. The provider
+    gave up at ten, never recorded the resource, and the destroy that followed
+    took eighteen resources and left that one behind, billed and outside the
+    state. A timeout that gives up does not leave a half-created resource, it
+    leaves a whole one nobody tracks."

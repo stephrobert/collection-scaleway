@@ -99,3 +99,23 @@ output "certificat_backend" {
   # reçoit tel quel compose une URL que l'API refuse.
   value = join("", [for f in scaleway_lb_frontend.tls : reverse(split("/", f.backend_id))[0]])
 }
+
+# Ce que l'exemple doit connaître du cluster, et rien de plus.
+#
+# **Vide quand la cible est l'émulateur**, qui ne sert pas l'API Kubernetes : le
+# playbook saute alors ces tâches au lieu d'échouer sur une chaîne vide, et il
+# le dit. Une sortie absente et une sortie vide se distinguent mal dans un
+# `when`, donc c'est une chaîne vide, une seule fois, ici.
+output "kapsule" {
+  description = "Le cluster et son pool, quand la cible est le cloud réel."
+  value = {
+    # **Dépouillés de leur portée, ici et pas dans le playbook.** Le provider
+    # préfixe ses identifiants par la région, `fr-par/<uuid>` : passé tel quel à
+    # un module, ça compose une URL que l'API refuse, avec un 404 qui vient du
+    # serveur web et non de l'API. La règle du dépôt dit que c'est la sortie qui
+    # s'en charge, parce que son nom promet un identifiant.
+    cluster_id = try(reverse(split("/", scaleway_k8s_cluster.mesure[0].id))[0], "")
+    pool_id    = try(reverse(split("/", scaleway_k8s_pool.mesure[0].id))[0], "")
+    region     = var.region
+  }
+}

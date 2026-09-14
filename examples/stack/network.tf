@@ -196,15 +196,48 @@ resource "scaleway_vpc_acl" "plateforme" {
 # La passerelle publique porte la sortie du tier applicatif : ces machines
 # n'ont aucune adresse publique, et c'est délibéré. Si un paquet s'y installe,
 # c'est que la passerelle fonctionne.
+# **L'IP est déclarée, et c'est une correction payée deux fois.** Elle avait été
+# retirée le 14 septembre 2026, en croyant que l'IP flexible forçait un mode
+# *Legacy* responsable d'une allocation bloquée. Les deux moitiés étaient
+# fausses : la passerelle bloquée portait `is_legacy: false`, et elle n'était
+# pas bloquée mais lente, passée en `running` après cinquante-six minutes.
+#
+# Le retrait a **créé un résidu** au run suivant : sans `ip_id`, la passerelle
+# s'alloue une adresse que Terraform ne connaît pas, donc `destroy` emporte la
+# passerelle et laisse l'IP derrière, facturée et sans propriétaire. C'est la
+# règle que ce fichier énonce ailleurs, appliquée contre lui-même : ce que
+# Terraform ne déclare pas, Terraform ne détruit pas.
 resource "scaleway_vpc_public_gateway_ip" "sortie" {
   tags = local.tags
 }
 
+# **Le délai d'attente est allongé, et c'est la seule correction qui tienne.**
+# Le mode *Legacy* n'était pas en cause, l'IP flexible non plus. Un abandon
+# d'attente ne laisse pas une ressource à moitié créée : il laisse une ressource
+# **entière et hors état**. Le `destroy` qui a suivi a emporté dix-huit
+# ressources et ignoré celle-là, qui a survécu, facturée, et bloquée en
+# `allocating` pendant que l'API refusait de la supprimer parce qu'un état
+# transitoire ne se supprime pas.
+#
+# `residue.py` l'a nommée avec son identifiant, ce qui est son travail, mais la
+# nommer après coup coûte une suppression à la main. Trente minutes laissent la
+# place à une création lente sans changer ce qui est juste.
 resource "scaleway_vpc_public_gateway" "sortie" {
   name  = "${local.prefixe}-sortie"
   type  = "VPC-GW-S"
   ip_id = scaleway_vpc_public_gateway_ip.sortie.id
   tags  = local.tags
+
+  timeouts {
+    # **Soixante minutes, et c'est une mesure et non une marge.** Le 14 septembre
+    # 2026 sur le compte réel, une passerelle est passée en `running`
+    # cinquante-six minutes après sa création. Le provider attend dix minutes
+    # par défaut : il a abandonné, n'a jamais enregistré la ressource, et le
+    # `destroy` qui a suivi a emporté dix-huit ressources en laissant celle-là,
+    # facturée et hors état. Trente minutes n'auraient pas suffi non plus.
+    create = "60m"
+    delete = "60m"
+  }
 }
 
 resource "scaleway_vpc_gateway_network" "app" {
