@@ -13,7 +13,9 @@ from pathlib import Path
 import pytest
 
 from generator.ansible.resolution import (
+    Refus,
     build_resolutions,
+    ecarter_les_ambigus,
     merge_resolutions,
 )
 from generator.ir.enums import ApiType, HTTPMethod, ParameterLocation, Scope
@@ -386,3 +388,78 @@ def test_aucune_resolution_ne_porte_une_portee_contenant_la_zone(tables_livrees)
     for resolution in gardees:
         assert "zone" not in resolution.scope
         assert "region" not in resolution.scope
+
+
+def test_un_identifiant_resolu_ici_et_refuse_ailleurs_ne_traverse_pas() -> None:
+    """Le cas que `merge_resolutions` ne voit pas, parce qu'il n'oppose pas deux résolutions.
+
+    `acl_id` existe dans le Load Balancer, qui le résout, et dans Kubernetes, qui
+    ne le peut pas faute de champ `name`. La résolution du premier restait donc
+    seule en piste, et quelqu'un qui écrit `acl_id` en pensant à une règle de
+    cluster obtenait une règle de load balancer, en silence.
+
+    Ce n'est pas moins ambigu qu'un nom résolu deux fois : le nom désigne deux
+    choses, et laquelle n'est pas décidable depuis le nom seul.
+    """
+    service = _service(
+        (_liste("ListAcls", ressource="acl", schema="lb.v1.Acl", champ="acls"),),
+        (_objet("lb.v1.Acl", ("id", "name")),),
+        nom="lb",
+    )
+    gardees = build_resolutions(service, {"acl_id"})[0]
+    assert [r.parameter for r in gardees] == ["acl_id"]
+
+    survivantes, ecartees = ecarter_les_ambigus(
+        gardees, (Refus("acl_id", "aucun schéma nommé Acl n'est rendu par une liste"),)
+    )
+
+    assert survivantes == ()
+    assert len(ecartees) == 1
+    assert "lb le résout" in ecartees[0].reason
+    assert "n'est pas décidable" in ecartees[0].reason
+
+
+def test_un_identifiant_que_personne_dautre_ne_refuse_traverse() -> None:
+    """Le voisin qui ne doit pas bouger : un refus sur un autre nom n'écarte rien."""
+    service = _service(
+        (_liste("ListWidgets", ressource="widget", schema="labo.v1.Widget", champ="widgets"),),
+        (_objet("labo.v1.Widget", ("id", "name")),),
+    )
+    gardees = build_resolutions(service, {"widget_id"})[0]
+
+    survivantes, ecartees = ecarter_les_ambigus(gardees, (Refus("gadget_id", "aucun champ name"),))
+
+    assert [r.parameter for r in survivantes] == ["widget_id"]
+    assert ecartees == ()
+
+
+def test_une_raison_longue_est_repliee_sans_etre_coupee() -> None:
+    """`merge_refus` réunit les raisons de plusieurs produits, et ça peut être long.
+
+    Deux raisons bout à bout dépassaient la ligne qu'`ansible-test sanity`
+    accepte dans un fichier publié. Tronquer ferait perdre exactement ce que ce
+    champ existe pour dire, et exempter le fichier introduirait la première
+    exemption de sanity du dépôt pour un défaut de mise en forme.
+    """
+    from generator.renderer.resolution import LIGNE_MAXIMALE, _refus_rendu
+
+    raison = " ".join(["un-fragment-de-raison-assez-long"] * 12)
+    lignes = _refus_rendu("acl_id", raison)
+
+    assert max(len(ligne) for ligne in lignes) <= LIGNE_MAXIMALE
+    # **Ce que Python relira, relu par Python.** Recomposer les fragments à la
+    # main mesurerait ma façon de les découper ; `literal_eval` mesure ce que
+    # l'interpréteur en fait, qui est la seule chose qui compte.
+    import ast
+
+    expression = "".join(ligne.strip() for ligne in lignes[1:-1])
+    assert ast.literal_eval(f"({expression})") == raison
+
+
+def test_une_raison_courte_tient_sur_une_ligne() -> None:
+    """Le voisin qui ne doit pas bouger : on ne replie pas tout le monde."""
+    from generator.renderer.resolution import _refus_rendu
+
+    assert _refus_rendu("ip_id", "Ip ne porte pas de champ name dans le contrat") == [
+        '    "ip_id": "Ip ne porte pas de champ name dans le contrat",'
+    ]

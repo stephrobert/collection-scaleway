@@ -27,6 +27,7 @@ from generator.ansible.resolution import (
     Refus,
     Resolution,
     build_resolutions,
+    ecarter_les_ambigus,
     merge_refus,
     merge_resolutions,
 )
@@ -283,6 +284,11 @@ def _resolve(arguments: argparse.Namespace) -> int:
 
     gardees, conflits = merge_resolutions(tables)
     refus.extend(conflits)
+    # Après les conflits entre résolutions, et pas avant : un nom que deux
+    # produits résolvent devient d'abord un refus, et c'est ce refus qui doit
+    # ensuite écarter toute résolution restante du même nom.
+    gardees, ecartees = ecarter_les_ambigus(gardees, refus)
+    refus.extend(ecartees)
     refus = list(merge_refus(refus))
 
     cible = collection.path / "plugins" / "module_utils" / "resolution.py"

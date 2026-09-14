@@ -2807,6 +2807,30 @@
       "find": "        cle = (_ressource_de(constat[\"id\"]), constat[\"name\"])",
       "replace": "        cle = (constat[\"name\"], constat[\"name\"])",
       "test": "tests/unit/collection/test_audit_findings.py::test_deux_machines_du_meme_nom_produisent_deux_refus"
+    },
+    {
+      "name": "nom-resolu-par-un-produit-et-refuse-par-un-autre",
+      "why": "`merge_resolutions` compare des résolutions entre elles : elle attrape un nom que deux produits résolvent, pas un nom que l'un résout et que l'autre refuse. `acl_id` est exactement ce cas depuis l'arrivée de Kubernetes, et la résolution du Load Balancer restait seule en piste : quelqu'un écrivant `acl_id` en pensant à une règle de cluster obtenait une règle de load balancer, en silence. Rendre l'identifiant du mauvais produit est pire que ne rien rendre. La mutation vise le test de la fonction et non celui de la table générée : `/falsify` ne régénère pas les artefacts, donc un test qui lit `resolution.py` mesure l'artefact et reste vert quoi qu'on fasse au générateur. Le test de bout en bout reste, comme témoin.",
+      "file": "generator/ansible/resolution.py",
+      "find": "    survivantes = tuple(r for r in gardees if r.parameter not in refuses)",
+      "replace": "    survivantes = tuple(gardees)",
+      "test": "tests/unit/generator/test_resolution.py::test_un_identifiant_resolu_ici_et_refuse_ailleurs_ne_traverse_pas"
+    },
+    {
+      "name": "documentation-trop-large-pour-le-sanity",
+      "why": "PyYAML ne coupe jamais à l'intérieur d'un mot : il coupe à l'espace suivant. Une description du contrat Kubernetes porte une URL de plus de cent caractères au milieu d'une phrase, et la coupure arrivait donc après l'URL, sur une ligne de 196 caractères qu'`ansible-test sanity` refuse. Le dépôt n'a aucune exemption de sanity, et en introduire une pour un défaut de mise en forme serait un recul : le rendu réduit sa largeur pour le seul bloc qui en a besoin.",
+      "file": "generator/renderer/modules.py",
+      "find": "LARGEURS = (YAML_WIDTH, 76, 64, 56, 48)",
+      "replace": "LARGEURS = (YAML_WIDTH,)",
+      "test": "tests/unit/generator/test_rendu_largeur.py::test_une_url_longue_ne_depasse_pas_la_ligne_du_sanity"
+    },
+    {
+      "name": "raison-de-refus-trop-longue-pour-le-sanity",
+      "why": "`merge_refus` réunit les raisons de plusieurs produits, et deux raisons bout à bout dépassaient la ligne qu'`ansible-test sanity` accepte dans un fichier publié. Tronquer ferait perdre exactement ce que ce champ existe pour dire, et exempter le fichier introduirait la première exemption de sanity du dépôt pour un défaut de mise en forme.",
+      "file": "generator/renderer/resolution.py",
+      "find": "    if len(une_ligne) <= LIGNE_MAXIMALE:",
+      "replace": "    if True:",
+      "test": "tests/unit/generator/test_resolution.py::test_une_raison_longue_est_repliee_sans_etre_coupee"
     }
   ]
 }

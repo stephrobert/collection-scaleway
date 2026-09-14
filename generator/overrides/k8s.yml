@@ -1,0 +1,136 @@
+# Décisions humaines sur l'API Kubernetes v1.
+#
+# Le produit entre derrière la collection officielle et non en face : elle livre
+# `k8s_cluster` et `k8s_pool`, tous deux en `state: present/absent`, donc elle
+# crée des clusters et n'offre rien pour les exploiter ensuite (#240). Ce que
+# ces overrides tranchent porte sur cette frontière, et sur une seule opération
+# qui rend un secret.
+#
+# La clé est celle que l'IR calcule (`<produit>.<version>.<Ressource>.<OperationId>`),
+# et `reason` est obligatoire dès qu'on change une classification.
+
+operations:
+
+  # --- Une lecture qui rend des identifiants ------------------------------
+  #
+  # `GetClusterKubeConfig` rend `{name, content_type, content}`, et `content`
+  # est le kubeconfig : il porte de quoi se connecter au cluster en
+  # administrateur.
+  #
+  # **La détection `no_log` de ce dépôt porte sur les paramètres, pas sur les
+  # valeurs de retour.** Un module généré publierait donc ce contenu dans le
+  # résultat de tâche, qui atterrit dans le journal d'exécution, dans les
+  # plugins de rappel et dans les artefacts de CI. La règle du dépôt tranche
+  # dans ce sens : un faux positif se corrige par un override, un faux négatif
+  # écrit un secret dans le journal.
+  #
+  # Ce n'est pas un refus définitif. Le jour où le runtime saura marquer une
+  # valeur de retour comme sensible, ou le jour où un lookup rendra le
+  # kubeconfig sans le faire passer par un résultat de tâche, cette entrée
+  # disparaît avec son motif.
+  k8s.v1.ClusterKubeconfig.GetClusterKubeConfig:
+    generation: ignore
+    reason: >-
+      rend le kubeconfig, donc des identifiants d'administration, dans une
+      valeur de retour que rien ne sait marquer sensible aujourd'hui.
+
+  # --- La donnée utilisateur d'un pool, pour deux raisons qui se renforcent -
+  #
+  # `GetUserData` et `ListUserData` rendent `scaleway.std.File`, la même forme
+  # que le kubeconfig : `{name, content_type, content}`.
+  #
+  # **Le contrat ne décrit ni `content` ni `content_type`.** Nulle part, sur
+  # aucun schéma. Ce dépôt recopie les descriptions du contrat et n'en invente
+  # pas : une phrase écrite de mémoire est une affirmation sur une API que
+  # personne n'a vérifiée, et `docs:quality` refuse le module pour ce motif.
+  #
+  # **Et ce contenu est fourni par l'opérateur.** La donnée utilisateur d'un
+  # pool est ce qu'on a choisi d'injecter dans ses nœuds : elle porte ce qu'on y
+  # a mis, jetons d'amorçage compris. La même règle que pour le kubeconfig
+  # s'applique, et pour la même raison : la détection `no_log` porte sur les
+  # paramètres, pas sur les valeurs de retour.
+  #
+  # L'une des deux raisons suffirait ; les deux ensemble ne laissent pas de
+  # doute. Elles se lèvent séparément : une description en amont, ou un runtime
+  # qui sait marquer un retour sensible.
+  k8s.v1.PoolUserData.GetUserData:
+    generation: ignore
+    reason: >-
+      rend `scaleway.std.File` dont le contrat ne décrit aucun champ, et son
+      contenu est fourni par l'opérateur, donc potentiellement secret.
+
+  k8s.v1.PoolUserData.ListUserData:
+    generation: ignore
+    reason: >-
+      même forme et même contenu que `GetUserData` : les deux se lèvent
+      ensemble ou pas du tout.
+
+  # --- Ce que le remplacement d'un nœud veut dire -------------------------
+  #
+  # `ReplaceNode` détruit un nœud et en remet un. Vu du nœud c'est du cycle de
+  # vie, et la frontière du dépôt dit que ce qui crée ou supprime une ressource
+  # n'a pas sa place ici.
+  #
+  # **Il reste, et la raison tient à ce que Terraform déclare.** Terraform
+  # déclare un *pool* et sa taille ; il ne déclare aucun nœud. Les nœuds sont
+  # maintenus par la plateforme, apparaissent et disparaissent sans qu'un
+  # fichier HCL bouge, et un `terraform plan` après un remplacement ne montre
+  # aucune dérive. Remplacer un nœud ne touche donc à aucune ressource
+  # provisionnée : c'est exactement l'exploitation d'une ressource existante.
+  #
+  # `DeleteNode` reste écarté par la règle mécanique, et c'est cohérent :
+  # supprimer sans remettre réduit ce que la plateforme maintient, et c'est au
+  # pool de décider de sa taille.
+  #
+  # Aucun changement de classification ici : l'entrée existe pour que la
+  # question soit tranchée quelque part plutôt que de se reposer à chaque
+  # relecture.
+  k8s.v1.NodeReplace.ReplaceNode:
+    reason: >-
+      Terraform déclare un pool et sa taille, jamais un nœud ; remplacer un nœud
+      ne touche à aucune ressource provisionnée.
+
+  # --- Des exemples que le contrat ne peut pas fournir seul ----------------
+  #
+  # Un exemple se copie, ou il n'apprend rien. `_example_value` tire sa valeur du
+  # contrat quand il la porte, d'une convention de nom sinon ; ces champs
+  # échappent aux deux, et le repli rendait `<version>`, qui ne se copie pas.
+  #
+  # Écrire `1.31.2` serait une valeur copiable et **non vérifiée** : les versions
+  # Kubernetes disponibles changent tous les mois, et une version écrite en dur
+  # dans une documentation publiée est fausse quelques semaines plus tard sans
+  # que rien ne le dise. Une variable Jinja est du YAML valide, elle se copie, et
+  # elle échoue en nommant ce qui manque plutôt qu'en envoyant une version
+  # périmée. C'est la décision déjà prise pour `MigrateLb.type`.
+  #
+  # Le contrat dit lui-même où la trouver : `ListClusterAvailableVersions` rend
+  # celles vers lesquelles un cluster peut aller, et `ListClusterTypes` les types
+  # disponibles. L'exemple renvoie donc à une lecture, pas à une constante.
+
+  k8s.v1.ClusterUpgrade.UpgradeCluster:
+    parameters:
+      version:
+        example: "{{ k8s_target_version }}"
+        reason: >-
+          Le contrat déclare une chaîne libre et renvoie à la disponibilité :
+          « the version should either be a higher patch version of the same
+          minor version or the direct minor version after the current one ».
+          `k8s_cluster_available_version_info` la rend ; une version écrite en
+          dur serait périmée sans que rien ne le dise.
+
+  k8s.v1.PoolUpgrade.UpgradePool:
+    parameters:
+      version:
+        example: "{{ k8s_target_version }}"
+        reason: >-
+          Même cas qu'`UpgradeCluster` : chaîne libre, valeurs disponibles
+          rendues par une lecture, et une constante vieillirait en silence.
+
+  k8s.v1.ClusterSetType.SetClusterType:
+    parameters:
+      type:
+        example: "{{ k8s_cluster_type }}"
+        reason: >-
+          Le contrat déclare une chaîne libre et renvoie à la documentation
+          produit : « note that some migrations are not possible ».
+          `k8s_cluster_type_info` rend les types disponibles.

@@ -95,6 +95,10 @@ def test_une_version_en_preparation_qui_contredit_les_fragments_est_refusee(
     sans_attente = dataclasses.replace(
         journal,
         en_preparation="9.9.9",
+        # Les modules aussi, et pas seulement leurs membres : un produit ajouté
+        # laisse des modules en attente de date, et le contre-exemple mesurait
+        # alors l'état du dépôt plutôt que la fonction.
+        modules=MappingProxyType({**journal.modules, **dict.fromkeys(modules, "0.1.0")}),
         options=MappingProxyType(
             {
                 **journal.options,
@@ -125,11 +129,25 @@ def test_un_cycle_sans_rien_a_dater_avance_quand_meme_la_preparation(tmp_path: P
     Ce qui se saute quand il n'y a rien à dater, c'est le **bloc** : un bloc
     vide publierait un badge de version sur rien.
     """
-    # Le journal du dépôt, copié : il date déjà tout ce qui est écrit, donc
-    # figer une version de plus n'a rien à y inscrire. C'est exactement la
-    # situation de la 0.6.0, reproduite plutôt que simulée.
+    # **La situation se fabrique, elle ne se suppose pas.** La version précédente
+    # partait du journal du dépôt en tenant pour acquis qu'il datait déjà tout ce
+    # qui est écrit. C'était vrai le jour où elle a été écrite, et faux dès qu'un
+    # produit arrive : le test mesurait alors l'état du dépôt au lieu de la
+    # fonction. Un premier figeage date ce qui attendait, quoi que ce soit, et le
+    # second est celui du cycle qui n'a plus rien à dater.
     fichier = tmp_path / "introductions.yml"
     fichier.write_text(introductions.DEFAULT_JOURNAL.read_text(encoding="utf-8"), encoding="utf-8")
+    # On fige jusqu'à ce qu'il ne reste rien : le premier passage date les
+    # modules neufs, le suivant leurs options et leurs retours, et le cycle
+    # « rien à dater » est celui qui vient après.
+    for _ in range(5):
+        amorce = load_introductions(fichier)
+        lignes_amorce = introductions.enregistrer(amorce, amorce.en_preparation, fichier)
+        if any("rien à figer" in ligne for ligne in lignes_amorce):
+            break
+    else:
+        raise AssertionError("le journal ne se stabilise pas : figer n'épuise rien")
+
     journal = load_introductions(fichier)
     cible = journal.en_preparation
 

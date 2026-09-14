@@ -66,9 +66,9 @@ group_by: [product, zone, tags]
 ```
 
 <!-- compteurs:modules:début, produits par scripts/readme_counters.py -->
-The inventory sets `scaleway_id` and `scaleway_zone`, which is what 25
-of the 50 modules need behind `delegate_to: localhost`. The other
-25 act on a sub-resource carrying its own identifier, which the
+The inventory sets `scaleway_id` and `scaleway_zone`, which is what 28
+of the 69 modules need behind `delegate_to: localhost`. The other
+41 act on a sub-resource carrying its own identifier, which the
 matching `_info` module returns.
 <!-- compteurs:modules:fin -->
 
@@ -92,7 +92,7 @@ instance v1: 74 operations discovered
   INFO 26 · ACTION 3 · MANAGE 10 · WORKFLOW 1 · LIFECYCLE 19 · IGNORE 15 · UNKNOWN 0
   Day-2 40 · AUTO 39 · MANUAL 1 · classified for automatic generation 97.5% (39/40)
 
-collection stephrobert.scaleway: 50 modules written out of 52 planned
+collection stephrobert.scaleway: 69 modules written out of 75 planned
   instance_dashboard_info                Gather information about Scaleway Instance dashboards
   instance_image                         Manage a Scaleway Instance image
   instance_image_info                    Gather information about Scaleway Instance images
@@ -121,6 +121,25 @@ collection stephrobert.scaleway: 50 modules written out of 52 planned
   instance_volume                        Manage a Scaleway Instance volume
   instance_volume_info                   Gather information about Scaleway Instance volumes
   instance_volume_type_info              Gather information about Scaleway Instance volume types
+  k8s_cluster                            Manage a Scaleway Kubernetes cluster
+  k8s_cluster_acl_action                 Perform an action on a Scaleway Kubernetes cluster ACL
+  k8s_cluster_acl_info                   Gather information about Scaleway Kubernetes cluster ACLs
+  k8s_cluster_available_type_info        Gather information about Scaleway Kubernetes cluster available types
+  k8s_cluster_available_version_info     Gather information about Scaleway Kubernetes cluster available versions
+  k8s_cluster_info                       Gather information about Scaleway Kubernetes clusters
+  k8s_cluster_node_info                  Gather information about Scaleway Kubernetes cluster nodes
+  k8s_cluster_pool_info                  Gather information about Scaleway Kubernetes cluster pools
+  k8s_cluster_reset_admin_token_action   Perform an action on a Scaleway Kubernetes cluster reset admin token
+  k8s_cluster_set_type_action            Perform an action on a Scaleway Kubernetes cluster set type
+  k8s_cluster_type_info                  Gather information about Scaleway Kubernetes cluster types
+  k8s_cluster_upgrade_action             Perform an action on a Scaleway Kubernetes cluster upgrade
+  k8s_node_info                          Gather information about Scaleway Kubernetes nodes
+  k8s_node_reboot_action                 Perform an action on a Scaleway Kubernetes node reboot
+  k8s_node_replace_action                Perform an action on a Scaleway Kubernetes node replace
+  k8s_pool                               Manage a Scaleway Kubernetes pool
+  k8s_pool_info                          Gather information about Scaleway Kubernetes pools
+  k8s_pool_upgrade_action                Perform an action on a Scaleway Kubernetes pool upgrade
+  k8s_version_info                       Gather information about Scaleway Kubernetes versions
   lb_acl                                 Manage a Scaleway Load Balancer ACL
   lb_acl_info                            Gather information about Scaleway Load Balancer ACLs
   lb_backend                             Manage a Scaleway Load Balancer backend
@@ -144,10 +163,10 @@ collection stephrobert.scaleway: 50 modules written out of 52 planned
   lb_subscriber                          Manage a Scaleway Load Balancer subscriber
   lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
   compute (inventory)                    instance, elastic_metal, apple_silicon
-  45 modules called by the example playbook out of 50 (90.0%), which is not the same as played
-  51 published pages: 298/298 options and 70/70 returned keys documented
-  108/108 examples copyable as is · 64/65 returned keys list their fields
-  1194 unit tests · 351 mutations proven by /falsify
+  45 modules called by the example playbook out of 69 (65.2%), which is not the same as played
+  70 published pages: 372/372 options and 92/92 returned keys documented
+  134/134 examples copyable as is · 79/80 returned keys list their fields
+  1202 unit tests · 354 mutations proven by /falsify
   CI: 8 jobs, Générateur · collection · Image · Archive · Intégration · Plateforme d'exemple · Parcours d'accueil · Réaction sur événement
   ansible-test sanity, playbooks and inventory against the emulator:
   reported by `mise run sanity` and `mise run integration`

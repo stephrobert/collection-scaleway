@@ -200,37 +200,25 @@ description = "Rapport de couverture de chaque produit suivi, en mode strict"
 run = "python scripts/report_all.py"
 
 [tasks.generate]
-description = "Écrire les modules des deux produits dans plugins/modules"
+description = "Écrire dans plugins/modules les modules de chaque produit généré"
 # **Aucun périmètre par défaut, et c'est une correction.** `MODULES` valait
-# exactement l'ensemble des modules que le modèle sait construire, 25 et 21 :
-# la liste n'écartait donc plus rien par décision, elle recopiait à la main ce
-# que le générateur calcule. Mais `--module` était passé quand même, alors tout
-# ce qui n'y figurait pas sortait du compte rendu sous l'étiquette « hors du
-# périmètre demandé », y compris les six modules que le modèle refuse pour des
-# raisons documentées. C'est la règle « rien ne disparaît en silence »
-# appliquée à moitié : l'opération ne disparaissait pas, sa raison si.
+# exactement l'ensemble des modules que le modèle sait construire : la liste
+# n'écartait donc plus rien par décision, elle recopiait à la main ce que le
+# générateur calcule. Mais `--module` était passé quand même, alors tout ce qui
+# n'y figurait pas sortait du compte rendu sous l'étiquette « hors du périmètre
+# demandé », y compris les modules que le modèle refuse pour des raisons
+# documentées. C'est la règle « rien ne disparaît en silence » appliquée à
+# moitié : l'opération ne disparaissait pas, sa raison si.
 #
 # Le périmètre reste disponible, `MODULES="instance_server" mise run generate`,
 # pour restreindre volontairement. Vide, il ne déguise plus un refus du modèle
 # en décision humaine.
 #
-# Les deux produits sont générés l'un après l'autre, dans une seule collection.
-# Écrire deux tâches laisserait la porte ouverte à n'en lancer qu'une, et
-# `check:generated` mesurerait alors un arbre à moitié régénéré.
-run = """
-flags=""
-for module in $MODULES; do flags="$flags --module $module"; done
-python -m generator generate $PRODUCT $flags
-
-flags_lb=""
-for module in $MODULES_LB; do flags_lb="$flags_lb --module $module"; done
-python -m generator generate lb $flags_lb
-
-# La table de résolution est fondue entre tous les contrats générés, donc elle
-# s'écrit une fois, après eux. Un identifiant revendiqué par deux produits ne
-# se voit pas depuis un seul.
-python -m generator resolve
-"""
+# **Les produits ne sont plus nommés ici.** Cette tâche les listait l'un après
+# l'autre, donc elle recopiait `specs/scaleway/products.txt`, qui est déjà
+# l'index : un produit ajouté à l'index n'aurait rien produit tant que personne
+# n'aurait pensé à ajouter une ligne ici. On ne suit pas la surface à la main.
+run = "python scripts/generate_all.py"
 
 [tasks."sync:api"]
 description = "Retélécharger les contrats depuis le portail Scaleway"

@@ -228,6 +228,40 @@ def merge_refus(refus: Sequence[Refus]) -> tuple[Refus, ...]:
     )
 
 
+def ecarter_les_ambigus(
+    gardees: Sequence[Resolution], refus: Sequence[Refus]
+) -> tuple[tuple[Resolution, ...], tuple[Refus, ...]]:
+    """Retire une résolution dont un autre produit refuse le même nom.
+
+    **Le cas que `merge_resolutions` ne voit pas.** Elle compare des résolutions
+    entre elles, donc elle attrape `ip_id` revendiqué par deux produits qui le
+    résolvent tous les deux. Elle ne voit pas `acl_id`, que le Load Balancer
+    résout et que Kubernetes refuse faute de champ `name` : la résolution du
+    premier restait seule en piste, et quelqu'un qui écrit `acl_id` en pensant à
+    une règle de cluster obtenait une règle de load balancer, en silence.
+
+    Ce n'est pas moins ambigu qu'un nom résolu deux fois, c'est la même
+    ambiguïté vue d'un autre côté : le nom désigne deux choses, et laquelle
+    n'est pas décidable depuis le nom seul. Rendre l'identifiant du mauvais
+    produit est pire que ne rien rendre.
+
+    Le refus qui existait déjà est conservé tel quel, et celui du produit qui
+    résolvait s'y ajoute : `merge_refus` les réunira en nommant les deux.
+    """
+    refuses = {refuse.parameter for refuse in refus}
+    survivantes = tuple(r for r in gardees if r.parameter not in refuses)
+    ecartees = tuple(
+        Refus(
+            r.parameter,
+            f"{r.service} le résout, un autre produit ne le peut pas : "
+            "lequel n'est pas décidable depuis le nom",
+        )
+        for r in gardees
+        if r.parameter in refuses
+    )
+    return survivantes, ecartees
+
+
 def merge_resolutions(
     par_service: list[tuple[Resolution, ...]],
 ) -> tuple[tuple[Resolution, ...], tuple[Refus, ...]]:

@@ -99,10 +99,52 @@ def render_resolution(
         "UNRESOLVABLE: dict[str, str] = {",
     ]
     for refuse in sorted(refus, key=lambda item: item.parameter):
-        lignes.append(f'    "{refuse.parameter}": "{refuse.reason}",')
+        lignes += _refus_rendu(refuse.parameter, refuse.reason)
     lignes += ["}", ""]
 
     return "\n".join(lignes)
+
+
+#: La ligne qu'`ansible-test sanity` accepte dans un fichier publié. C'est elle
+#: qui décide, pas une préférence de ce dépôt.
+LIGNE_MAXIMALE = 160
+
+
+def _refus_rendu(parametre: str, raison: str) -> list[str]:
+    """Une entrée de refus, repliée quand sa raison ne tient pas sur la ligne.
+
+    **Une raison fusionnée peut être longue.** `merge_refus` réunit celles de
+    plusieurs produits, et deux raisons mises bout à bout dépassaient la ligne
+    que le sanity accepte. Replier est la réponse ; tronquer ferait perdre
+    exactement ce que ce champ existe pour dire, et exempter le fichier
+    introduirait la première exemption de sanity du dépôt pour un défaut de mise
+    en forme.
+
+    La concaténation implicite de Python rend une seule chaîne : ce que le
+    runtime lit ne change pas.
+    """
+    une_ligne = f'    "{parametre}": "{raison}",'
+    if len(une_ligne) <= LIGNE_MAXIMALE:
+        return [une_ligne]
+
+    # Coupé aux espaces, donc jamais à l'intérieur d'un mot : une raison nomme
+    # des identifiants, et les couper les rendrait introuvables.
+    largeur = LIGNE_MAXIMALE - 16
+    morceaux: list[str] = []
+    courant = ""
+    for mot in raison.split(" "):
+        if courant and len(courant) + 1 + len(mot) > largeur:
+            morceaux.append(courant + " ")
+            courant = mot
+        else:
+            courant = f"{courant} {mot}" if courant else mot
+    morceaux.append(courant)
+
+    return [
+        f'    "{parametre}": (',
+        *[f'        "{morceau}"' for morceau in morceaux],
+        "    ),",
+    ]
 
 
 def _chemin(resolution: Resolution) -> tuple[str, ...]:
