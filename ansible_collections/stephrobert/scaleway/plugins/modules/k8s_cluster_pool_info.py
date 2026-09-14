@@ -180,7 +180,7 @@ pools:
       type: bool
     tags:
       description:
-      - Tags associated with the pool, see [managing tags](https://www.scaleway.com/en/docs/kubernetes/api-cli/managing-tags).
+      - Tags associated with the pool, see L(managing tags,https://www.scaleway.com/en/docs/kubernetes/api-cli/managing-tags).
       returned: when the API returns it
       type: list
       elements: str

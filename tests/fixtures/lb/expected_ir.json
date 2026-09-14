@@ -2,7 +2,7 @@
   "service": "lb",
   "version": "v1",
   "title": "Load Balancer API",
-  "description": "Load Balancers are highly available and fully managed [Instances](https://www.scaleway.com/en/docs/instances/concepts/#instance) that facilitate the distribution of incoming traffic across multiple servers. Load Balancers allow you to scale your applications while ensuring their continuous availability, even in the event of heavy traffic. They are commonly used to improve the performance and reliability of websites, applications, databases and other services.",
+  "description": "Load Balancers are highly available and fully managed L(Instances,https://www.scaleway.com/en/docs/instances/concepts/#instance) that facilitate the distribution of incoming traffic across multiple servers. Load Balancers allow you to scale your applications while ensuring their continuous availability, even in the event of heavy traffic. They are commonly used to improve the performance and reliability of websites, applications, databases and other services.",
   "source": "lb.v1.yml",
   "enums": [
     {

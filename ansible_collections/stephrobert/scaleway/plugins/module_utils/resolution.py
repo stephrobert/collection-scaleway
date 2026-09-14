@@ -362,10 +362,41 @@ RESOLUTIONS: dict[str, ResourceLookup] = {
 UNRESOLVABLE: dict[str, str] = {
     "acl_id": (
         "aucun schéma nommé Acl n'est rendu par une opération de liste ; lb le résout, un autre produit ne le peut pas : lequel n'est pas décidable "
-        "depuis le nom"
+        "depuis le nom seul. `service=lb` le dit"
     ),
     "ip_id": "Ip ne porte pas de champ name dans le contrat",
     "private_nic_id": "PrivateNIC ne porte pas de champ name dans le contrat",
     "route_id": "Route ne porte pas de champ name dans le contrat",
     "security_group_rule_id": "SecurityGroupRule ne porte pas de champ name dans le contrat",
+}
+
+
+#: Ce qu'un nom désigne dans **plusieurs** produits, rangé par produit.
+#:
+#: Le nom seul ne tranche pas, donc le lookup refuse : rendre
+#: l'identifiant du mauvais produit est pire que ne rien rendre. Mais
+#: retirer la résolution punirait l'utilisateur pour notre nommage, alors
+#: elle est servie dès que l'appelant dit de quel produit il parle.
+AMBIGUOUS: dict[str, dict[str, ResourceLookup]] = {
+    "acl_id": {
+        "lb": ResourceLookup(
+            parameter="acl_id",
+            service="lb",
+            schema="scaleway.lb.v1.Acl",
+            operation=Operation(
+                id="ListAcls",
+                method="GET",
+                path="/lb/v1/zones/{zone}/frontends/{frontend_id}/acls",
+                path_params=("zone", "frontend_id"),
+                query_params=("order_by", "page", "page_size", "name"),
+                payload_field="acls",
+                is_list=True,
+                page_param="page",
+                per_page_param="page_size",
+                retry="safe",
+            ),
+            scope=("frontend_id",),
+            filters_by_name=True,
+        ),
+    },
 }

@@ -409,7 +409,7 @@ def test_un_identifiant_resolu_ici_et_refuse_ailleurs_ne_traverse_pas() -> None:
     gardees = build_resolutions(service, {"acl_id"})[0]
     assert [r.parameter for r in gardees] == ["acl_id"]
 
-    survivantes, ecartees = ecarter_les_ambigus(
+    survivantes, ecartees, ambigues = ecarter_les_ambigus(
         gardees, (Refus("acl_id", "aucun schéma nommé Acl n'est rendu par une liste"),)
     )
 
@@ -417,6 +417,12 @@ def test_un_identifiant_resolu_ici_et_refuse_ailleurs_ne_traverse_pas() -> None:
     assert len(ecartees) == 1
     assert "lb le résout" in ecartees[0].reason
     assert "n'est pas décidable" in ecartees[0].reason
+    # **Gardée, pas jetée.** Retirer la possibilité de résoudre une ACL de load
+    # balancer par son nom parce qu'un autre produit porte le même nom de
+    # paramètre punirait l'utilisateur pour notre nommage : elle est servie dès
+    # que l'appelant dit `service=`.
+    assert [r.service for r in ambigues] == ["lb"]
+    assert "service=lb" in ecartees[0].reason
 
 
 def test_un_identifiant_que_personne_dautre_ne_refuse_traverse() -> None:
@@ -427,10 +433,13 @@ def test_un_identifiant_que_personne_dautre_ne_refuse_traverse() -> None:
     )
     gardees = build_resolutions(service, {"widget_id"})[0]
 
-    survivantes, ecartees = ecarter_les_ambigus(gardees, (Refus("gadget_id", "aucun champ name"),))
+    survivantes, ecartees, ambigues = ecarter_les_ambigus(
+        gardees, (Refus("gadget_id", "aucun champ name"),)
+    )
 
     assert [r.parameter for r in survivantes] == ["widget_id"]
     assert ecartees == ()
+    assert ambigues == ()
 
 
 def test_une_raison_longue_est_repliee_sans_etre_coupee() -> None:

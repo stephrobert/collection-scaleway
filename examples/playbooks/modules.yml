@@ -442,8 +442,12 @@
 
     - name: L'ACL, résolue dans ce frontend
       ansible.builtin.set_fact:
+        # `service=lb` parce que `acl_id` désigne aussi une règle d'accès de
+        # cluster Kubernetes : le nom seul ne tranche pas, et le lookup refuse
+        # plutôt que de servir l'identifiant du mauvais produit.
         acl_par_nom: "{{ lookup('stephrobert.scaleway.resource_id', 'acl_id',
-          zone=zone, frontend_id=frontend_par_nom, name=prefixe ~ '-web') }}"
+          service='lb', zone=zone, frontend_id=frontend_par_nom,
+          name=prefixe ~ '-web') }}"
       when: notre_lb | length > 0
 
     - name: Les identifiants pêchés à la main, rassemblés pour la comparaison

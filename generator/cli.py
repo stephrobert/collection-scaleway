@@ -287,7 +287,7 @@ def _resolve(arguments: argparse.Namespace) -> int:
     # Après les conflits entre résolutions, et pas avant : un nom que deux
     # produits résolvent devient d'abord un refus, et c'est ce refus qui doit
     # ensuite écarter toute résolution restante du même nom.
-    gardees, ecartees = ecarter_les_ambigus(gardees, refus)
+    gardees, ecartees, ambigues = ecarter_les_ambigus(gardees, refus)
     refus.extend(ecartees)
     refus = list(merge_refus(refus))
 
@@ -296,6 +296,7 @@ def _resolve(arguments: argparse.Namespace) -> int:
         render_resolution(
             gardees,
             refus,
+            ambigues=ambigues,
             classifications=classifications,
             sources=sources,
         ),

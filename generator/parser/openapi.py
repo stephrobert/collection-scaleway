@@ -17,6 +17,7 @@ Ce que le document publié ne porte pas est documenté dans
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from generator.ir.enums import ApiType, HTTPMethod, ParameterLocation, Scope
@@ -1049,4 +1050,35 @@ def _first_paragraph(text: Any) -> str | None:
     if not isinstance(text, str) or not text:
         return None
     paragraph = text.strip().split("\n\n", 1)[0].strip()
-    return paragraph or None
+    return _liens_en_balisage_ansible(paragraph) or None
+
+
+#: Un lien écrit en Markdown, `[texte](adresse)`.
+#:
+#: Les contrats en portent : le contrat Kubernetes en a dix-neuf. `antsibull-docs`
+#: les refuse, parce qu'une page de module est du RST et qu'un lien Markdown y
+#: est du texte qui ressemble à un lien sans en être un.
+_LIEN_MARKDOWN = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
+
+
+def _liens_en_balisage_ansible(texte: str) -> str:
+    """Traduit les liens Markdown dans le balisage qu'Ansible documente.
+
+    **Traduire n'est pas inventer.** Le dépôt recopie les descriptions du
+    contrat et ne les réécrit pas ; ici le texte et l'adresse sont ceux du
+    contrat, et seule la syntaxe qui les relie change. Les laisser tels quels
+    ferait refuser la documentation par `antsibull-docs`, et les retirer
+    perdrait l'adresse que le contrat prenait la peine de donner.
+
+    Un lien relatif, `(#quelque-chose)`, ne mène nulle part depuis une page de
+    module : il ne garde que son texte. Ansible n'a pas de balisage pour une
+    ancre dans une page qu'il ne publie pas.
+    """
+
+    def remplacer(correspondance: re.Match[str]) -> str:
+        libelle, adresse = correspondance.group(1), correspondance.group(2)
+        if adresse.startswith("#"):
+            return libelle
+        return f"L({libelle},{adresse})"
+
+    return _LIEN_MARKDOWN.sub(remplacer, texte)

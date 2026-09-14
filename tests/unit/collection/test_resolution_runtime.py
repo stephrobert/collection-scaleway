@@ -335,3 +335,26 @@ def test_un_nom_que_deux_produits_revendiquent_ne_se_resout_pas() -> None:
     # Les deux raisons sont publiées : aucune ne vaut pour l'autre produit.
     assert "opération de liste" in resolution.UNRESOLVABLE["acl_id"]
     assert "lb le résout" in resolution.UNRESOLVABLE["acl_id"]
+
+
+def test_un_nom_ambigu_se_resout_quand_on_dit_le_produit() -> None:
+    """Refusé sauf si l'on désambiguïse, et non refusé tout court.
+
+    Retirer la possibilité de résoudre une ACL de load balancer par son nom
+    parce qu'un autre produit porte le même nom de paramètre punirait
+    l'utilisateur pour notre nommage.
+    """
+    from ansible_collections.stephrobert.scaleway.plugins.module_utils import resolution
+
+    assert "acl_id" in resolution.AMBIGUOUS
+    assert set(resolution.AMBIGUOUS["acl_id"]) == {"lb"}
+    lookup = resolution.AMBIGUOUS["acl_id"]["lb"]
+    assert lookup.operation.id == "ListAcls"
+    assert lookup.scope == ("frontend_id",)
+
+
+def test_le_refus_dun_nom_ambigu_dit_comment_le_lever() -> None:
+    """Un refus qui ne dit pas quoi faire ensuite envoie chercher au hasard."""
+    from ansible_collections.stephrobert.scaleway.plugins.module_utils import resolution
+
+    assert "service=lb" in resolution.UNRESOLVABLE["acl_id"]

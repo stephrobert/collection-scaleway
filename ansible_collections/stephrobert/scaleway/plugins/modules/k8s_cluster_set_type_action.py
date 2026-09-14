@@ -18,7 +18,7 @@ short_description: Perform an action on a Scaleway Kubernetes cluster set type
 version_added: 0.8.0
 description:
 - Change the type of a specific Kubernetes cluster. To see the possible values you can enter
-  for the `type` field, [list available cluster types](#list-available-cluster-types-for-a-cluster).
+  for the `type` field, list available cluster types.
 author:
 - Stéphane Robert (@stephrobert)
 options:

@@ -522,7 +522,7 @@
           "name": "tags",
           "type": "array",
           "item_type": "string",
-          "description": "Tags associated with the pool, see [managing tags](https://www.scaleway.com/en/docs/kubernetes/api-cli/managing-tags)."
+          "description": "Tags associated with the pool, see L(managing tags,https://www.scaleway.com/en/docs/kubernetes/api-cli/managing-tags)."
         },
         {
           "name": "placement_group_id",
@@ -896,7 +896,7 @@
           "type": "string",
           "required": false,
           "location": "body",
-          "description": "Type of the cluster. See [list available cluster types](#list-available-cluster-types-for-a-cluster) for a list of valid types."
+          "description": "Type of the cluster. See list available cluster types for a list of valid types."
         },
         {
           "name": "name",
@@ -1161,7 +1161,7 @@
           "type": "array",
           "required": false,
           "location": "body",
-          "description": "Tags associated with the pool, see [managing tags](https://www.scaleway.com/en/docs/kubernetes/api-cli/managing-tags).",
+          "description": "Tags associated with the pool, see L(managing tags,https://www.scaleway.com/en/docs/kubernetes/api-cli/managing-tags).",
           "item_type": "string"
         },
         {
@@ -2548,7 +2548,7 @@
       "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}/set-type",
       "scope": "region",
       "summary": "Change the Cluster type",
-      "description": "Change the type of a specific Kubernetes cluster. To see the possible values you can enter for the `type` field, [list available cluster types](#list-available-cluster-types-for-a-cluster).",
+      "description": "Change the type of a specific Kubernetes cluster. To see the possible values you can enter for the `type` field, list available cluster types.",
       "tags": [
         "Clusters"
       ],
