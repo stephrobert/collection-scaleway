@@ -2831,6 +2831,46 @@
       "find": "    if len(une_ligne) <= LIGNE_MAXIMALE:",
       "replace": "    if True:",
       "test": "tests/unit/generator/test_resolution.py::test_une_raison_longue_est_repliee_sans_etre_coupee"
+    },
+    {
+      "name": "exception-qui-efface-un-constat",
+      "why": "Une exception qui supprime un constat produit un problème dont plus personne ne sait qu'il existe. Elle change son statut : il reste dans la liste, compté à part, avec ce qui le couvre. C'est la raison d'être de tout ce filtre, et la seule ligne qu'il n'a pas le droit d'écrire est un rapport où le problème a disparu.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/policy_exceptions.py",
+      "find": "                \"status\": \"suppressed\" if couverture else \"open\",",
+      "replace": "                \"status\": \"open\",",
+      "test": "tests/unit/collection/test_policy_exceptions.py::test_une_exception_change_le_statut_et_nefface_rien"
+    },
+    {
+      "name": "exception-sans-raison-ni-proprietaire-acceptee",
+      "why": "Sans raison, une exception est une règle désactivée qui se cache. Sans propriétaire, il n'y a personne à qui demander si elle vaut encore. Sans échéance, ce n'est plus une exception mais une modification de la politique, écrite au mauvais endroit. Chacun de ces trois champs empêche une chose précise.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/policy_exceptions.py",
+      "find": "    if manquants:",
+      "replace": "    if manquants and False:",
+      "test": "tests/unit/collection/test_policy_exceptions.py::test_une_exception_incomplete_est_refusee"
+    },
+    {
+      "name": "exception-expiree-qui-couvre-encore",
+      "why": "L'échéance est l'information. Une exception périmée qui continue de couvrir rendrait l'échéance décorative : personne ne saurait qu'elle est passée, et le constat resterait excusé indéfiniment. Elle devient un constat à elle, de sévérité `fail`, ce qui est le seul moyen qu'elle se voie le jour où elle expire.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/policy_exceptions.py",
+      "find": "        if _instant(exception[\"expires_at\"], f\"l'échéance de l'exception {rang}\") < maintenant:",
+      "replace": "        if False:",
+      "test": "tests/unit/collection/test_policy_exceptions.py::test_une_exception_expiree_devient_un_constat_et_ne_couvre_plus"
+    },
+    {
+      "name": "exception-sur-un-nom-ambigu",
+      "why": "Mesuré sur le compte réel : deux machines acceptent le même nom dans une zone. Une exception qui désigne un nom porté par deux ressources excuserait une ressource que personne n'a désignée, ou dépendrait de l'ordre de lecture pour choisir laquelle. Les deux sont pires que de refuser en disant comment lever l'ambiguïté (ADR-019, ADR-021).",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/policy_exceptions.py",
+      "find": "        if len(trouves) > 1:",
+      "replace": "        if False:",
+      "test": "tests/unit/collection/test_policy_exceptions.py::test_un_nom_porte_par_deux_ressources_est_refuse"
+    },
+    {
+      "name": "exception-sans-selecteur-qui-couvre-tout",
+      "why": "Une exception sans sélecteur couvrirait tout le parc, ce qui est une règle retirée déguisée en exception. Retirer la règle se voit dans la politique ; une exception qui couvre tout ne se voit pas.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/policy_exceptions.py",
+      "find": "    if not isinstance(selecteur, dict):",
+      "replace": "    if not isinstance(selecteur, dict) and False:",
+      "test": "tests/unit/collection/test_policy_exceptions.py::test_une_exception_sans_selecteur_est_refusee"
     }
   ]
 }
