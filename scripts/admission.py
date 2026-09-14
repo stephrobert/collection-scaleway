@@ -39,6 +39,8 @@ verdict :
             v
     opérations récurrentes débloquées
             v
+    complémentarité avec la collection officielle
+            v
     ADMIS
 
 **Toutes les étapes ne bloquent pas, et c'est délibéré.** Une porte qui
@@ -343,6 +345,66 @@ def etape_operations(produit: str) -> Etape:
     )
 
 
+def etape_complementarite(produit: str) -> Etape:
+    """Ce produit arrive-t-il derrière la collection officielle, ou en face ?
+
+    **Le second critère d'adoption** (ADR-022). Un produit que la collection
+    officielle provisionne déjà nous laisse une place nette : ils créent, nous
+    exploitons, et un utilisateur comprend la frontière en une phrase. Un
+    produit qu'elle ne provisionne pas n'est pas refusé pour autant, sinon le
+    critère interdirait tout ce qu'elle ignore, ce qui est le plus gros de son
+    propre dépôt.
+
+    **Mesuré, jamais affirmé.** Leur dépôt porte bien plus de modules que leur
+    archive n'en sert, et un décompte fait sur le dépôt se lit exactement comme
+    un décompte juste. La mesure est versionnée sous `specs/officielle/`, et
+    cette étape ne va pas la chercher sur le réseau (ADR-022).
+    """
+    # Importé ici et pas en tête : `officielle` sait aller sur le réseau, et
+    # seule sa lecture hors ligne est employée. Le charger au plus près de son
+    # usage garde cette frontière visible.
+    from officielle import MESURE, lire
+
+    if not MESURE.exists():
+        return Etape(
+            nom="complémentarité",
+            bloquante=False,
+            tenue=False,
+            detail=(
+                "non mesurée : `mise run sync:officielle` produit "
+                f"{MESURE.relative_to(ROOT)}. Rien n'a été mesuré n'est pas "
+                "rien n'a été trouvé."
+            ),
+        )
+
+    mesure = lire()
+    livres = sorted(mesure["modules_livres"])
+    # Leur convention est `scaleway_<produit>_<ressource>`, parfois réduite au
+    # produit seul. Le rapprochement se fait donc sur ce préfixe, et il échoue
+    # proprement quand les deux catalogues nomment le produit autrement : le
+    # portail dit `kubernetes` là où le SDK dit `k8s`, mesuré.
+    leurs = [
+        nom
+        for nom in livres
+        if nom == f"scaleway_{produit}" or nom.startswith(f"scaleway_{produit}_")
+    ]
+    return Etape(
+        nom="complémentarité",
+        bloquante=False,
+        tenue=bool(leurs),
+        detail=(
+            f"{mesure['collection']} {mesure['version']} le provisionne : " + ", ".join(leurs)
+            if leurs
+            else (
+                f"{mesure['collection']} {mesure['version']} n'en livre aucun "
+                f"module sur les {len(livres)} qu'elle sert. Nos opérations "
+                "n'arrivent donc derrière personne, ce qui est un prix et non "
+                "un refus."
+            )
+        ),
+    )
+
+
 def examiner(produit: str, version: str) -> list[Etape]:
     """Les étapes d'un produit, dans l'ordre où elles s'éclairent."""
     from generator.ansible.collection import load_collection
@@ -361,6 +423,7 @@ def examiner(produit: str, version: str) -> list[Etape]:
         etape_comparaisons(plan, specs),
         etape_documentation(modules),
         etape_operations(produit),
+        etape_complementarite(produit),
     ]
 
 
