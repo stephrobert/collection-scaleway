@@ -33,6 +33,20 @@ MODULE_TEMPLATE = "module.py.j2"
 #: au-delà, le fichier produit dépasserait la longueur de ligne du dépôt.
 YAML_WIDTH = 88
 
+#: La longueur de ligne qu'`ansible-test sanity` accepte dans un module.
+#: C'est elle qui décide, pas une préférence de ce dépôt.
+LIGNE_MAXIMALE = 160
+
+#: Les largeurs d'essai, de la plus confortable à la plus étroite.
+#:
+#: **Pourquoi plusieurs.** PyYAML ne coupe jamais à l'intérieur d'un mot : il
+#: coupe à l'espace suivant. Une description du contrat Kubernetes porte une URL
+#: de plus de cent caractères au milieu d'une phrase, et la coupure arrivait donc
+#: après l'URL, sur une ligne de 196 caractères que le sanity refuse. Réduire la
+#: largeur pour tout le monde reflouerait chaque description de chaque module
+#: pour un cas ; on réduit donc seulement pour le bloc qui en a besoin.
+LARGEURS = (YAML_WIDTH, 76, 64, 56, 48)
+
 #: Marque qu'un fichier est produit par le générateur. Un fichier généré édité
 #: à la main est effacé à la prochaine génération, et `mise run check:generated`
 #: le dit avant que quelqu'un le découvre.
@@ -318,14 +332,28 @@ def _yaml_block(payload: Any) -> str:
     L'ordre vient du modèle : il est celui d'une lecture humaine, et le trier
     alphabétiquement mettrait `author` avant `description`.
     """
-    text = yaml.dump(
-        payload,
-        Dumper=_SansAncre,
-        sort_keys=False,
-        default_flow_style=False,
-        allow_unicode=True,
-        width=YAML_WIDTH,
-    )
+    for largeur in LARGEURS:
+        text = yaml.dump(
+            payload,
+            Dumper=_SansAncre,
+            sort_keys=False,
+            default_flow_style=False,
+            allow_unicode=True,
+            width=largeur,
+        )
+        if max((len(ligne) for ligne in text.splitlines()), default=0) <= LIGNE_MAXIMALE:
+            break
+    else:
+        # Aucune largeur ne suffit : un seul mot dépasse la limite, et le
+        # replier le couperait. Le dire vaut mieux que produire un fichier que
+        # le sanity refusera, et mieux encore que l'exempter en silence.
+        trop_long = max(text.splitlines(), key=len)
+        raise RenderError(
+            f"une ligne de documentation fait {len(trop_long)} caractères et "
+            f"aucune largeur de repli ne la ramène sous {LIGNE_MAXIMALE} : un "
+            f"seul mot la dépasse. Ligne : {trop_long.strip()[:120]}"
+        )
+
     if '"""' in text:
         raise RenderError("un bloc de documentation contient une triple quote")
     return text.rstrip("\n")

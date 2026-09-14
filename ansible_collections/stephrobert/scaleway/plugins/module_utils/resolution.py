@@ -8,6 +8,7 @@ d'ici à la génération suivante plutôt que de rester une promesse.
 Contrats lus :
 
     specs/scaleway/instance.v1.yml
+    specs/scaleway/k8s.v1.yml
     specs/scaleway/lb.v1.yml
 """
 
@@ -17,25 +18,6 @@ from .scaleway import Operation, ResourceLookup
 
 #: Les identifiants qu'un nom suffit à retrouver, et comment.
 RESOLUTIONS: dict[str, ResourceLookup] = {
-    "acl_id": ResourceLookup(
-        parameter="acl_id",
-        service="lb",
-        schema="scaleway.lb.v1.Acl",
-        operation=Operation(
-            id="ListAcls",
-            method="GET",
-            path="/lb/v1/zones/{zone}/frontends/{frontend_id}/acls",
-            path_params=("zone", "frontend_id"),
-            query_params=("order_by", "page", "page_size", "name"),
-            payload_field="acls",
-            is_list=True,
-            page_param="page",
-            per_page_param="page_size",
-            retry="safe",
-        ),
-        scope=("frontend_id",),
-        filters_by_name=True,
-    ),
     "backend_id": ResourceLookup(
         parameter="backend_id",
         service="lb",
@@ -72,6 +54,36 @@ RESOLUTIONS: dict[str, ResourceLookup] = {
             retry="safe",
         ),
         scope=("lb_id",),
+        filters_by_name=True,
+    ),
+    "cluster_id": ResourceLookup(
+        parameter="cluster_id",
+        service="k8s",
+        schema="scaleway.k8s.v1.Cluster",
+        operation=Operation(
+            id="ListClusters",
+            method="GET",
+            path="/k8s/v1/regions/{region}/clusters",
+            path_params=("region",),
+            query_params=(
+                "organization_id",
+                "project_id",
+                "order_by",
+                "page",
+                "page_size",
+                "name",
+                "status",
+                "type",
+                "private_network_id",
+                "version",
+            ),
+            payload_field="clusters",
+            is_list=True,
+            page_param="page",
+            per_page_param="page_size",
+            retry="safe",
+        ),
+        scope=(),
         filters_by_name=True,
     ),
     "frontend_id": ResourceLookup(
@@ -149,6 +161,25 @@ RESOLUTIONS: dict[str, ResourceLookup] = {
         scope=(),
         filters_by_name=True,
     ),
+    "node_id": ResourceLookup(
+        parameter="node_id",
+        service="k8s",
+        schema="scaleway.k8s.v1.Node",
+        operation=Operation(
+            id="ListNodes",
+            method="GET",
+            path="/k8s/v1/regions/{region}/clusters/{cluster_id}/nodes",
+            path_params=("region", "cluster_id"),
+            query_params=("pool_id", "order_by", "page", "page_size", "name", "status"),
+            payload_field="nodes",
+            is_list=True,
+            page_param="page",
+            per_page_param="page_size",
+            retry="safe",
+        ),
+        scope=("cluster_id",),
+        filters_by_name=True,
+    ),
     "placement_group_id": ResourceLookup(
         parameter="placement_group_id",
         service="instance",
@@ -166,6 +197,25 @@ RESOLUTIONS: dict[str, ResourceLookup] = {
             retry="safe",
         ),
         scope=(),
+        filters_by_name=True,
+    ),
+    "pool_id": ResourceLookup(
+        parameter="pool_id",
+        service="k8s",
+        schema="scaleway.k8s.v1.Pool",
+        operation=Operation(
+            id="ListPools",
+            method="GET",
+            path="/k8s/v1/regions/{region}/clusters/{cluster_id}/pools",
+            path_params=("region", "cluster_id"),
+            query_params=("order_by", "page", "page_size", "name", "status"),
+            payload_field="pools",
+            is_list=True,
+            page_param="page",
+            per_page_param="page_size",
+            retry="safe",
+        ),
+        scope=("cluster_id",),
         filters_by_name=True,
     ),
     "security_group_id": ResourceLookup(
@@ -310,8 +360,43 @@ RESOLUTIONS: dict[str, ResourceLookup] = {
 #: Le lookup la rend telle quelle : « inconnu » enverrait l'utilisateur
 #: chercher une faute de frappe dans un nom qui est correct.
 UNRESOLVABLE: dict[str, str] = {
+    "acl_id": (
+        "aucun schéma nommé Acl n'est rendu par une opération de liste ; lb le résout, un autre produit ne le peut pas : lequel n'est pas décidable "
+        "depuis le nom seul. `service=lb` le dit"
+    ),
     "ip_id": "Ip ne porte pas de champ name dans le contrat",
     "private_nic_id": "PrivateNIC ne porte pas de champ name dans le contrat",
     "route_id": "Route ne porte pas de champ name dans le contrat",
     "security_group_rule_id": "SecurityGroupRule ne porte pas de champ name dans le contrat",
+}
+
+
+#: Ce qu'un nom désigne dans **plusieurs** produits, rangé par produit.
+#:
+#: Le nom seul ne tranche pas, donc le lookup refuse : rendre
+#: l'identifiant du mauvais produit est pire que ne rien rendre. Mais
+#: retirer la résolution punirait l'utilisateur pour notre nommage, alors
+#: elle est servie dès que l'appelant dit de quel produit il parle.
+AMBIGUOUS: dict[str, dict[str, ResourceLookup]] = {
+    "acl_id": {
+        "lb": ResourceLookup(
+            parameter="acl_id",
+            service="lb",
+            schema="scaleway.lb.v1.Acl",
+            operation=Operation(
+                id="ListAcls",
+                method="GET",
+                path="/lb/v1/zones/{zone}/frontends/{frontend_id}/acls",
+                path_params=("zone", "frontend_id"),
+                query_params=("order_by", "page", "page_size", "name"),
+                payload_field="acls",
+                is_list=True,
+                page_param="page",
+                per_page_param="page_size",
+                retry="safe",
+            ),
+            scope=("frontend_id",),
+            filters_by_name=True,
+        ),
+    },
 }

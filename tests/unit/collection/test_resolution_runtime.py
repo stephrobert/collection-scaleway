@@ -277,13 +277,15 @@ def test_la_table_generee_s_importe_et_porte_ce_que_les_contrats_declarent(
     from ansible_collections.stephrobert.scaleway.plugins.module_utils import resolution
 
     assert set(resolution.RESOLUTIONS) == {
-        "acl_id",
         "backend_id",
         "certificate_id",
+        "cluster_id",
         "frontend_id",
         "image_id",
         "lb_id",
+        "node_id",
         "placement_group_id",
+        "pool_id",
         "security_group_id",
         "server_id",
         "snapshot_id",
@@ -301,10 +303,58 @@ def test_les_refus_de_la_table_portent_leur_raison(collection_root: Path) -> Non
     from ansible_collections.stephrobert.scaleway.plugins.module_utils import resolution
 
     assert set(resolution.UNRESOLVABLE) == {
+        "acl_id",
         "ip_id",
         "private_nic_id",
         "route_id",
         "security_group_rule_id",
     }
-    for raison in resolution.UNRESOLVABLE.values():
+    # `acl_id` est refusé pour une autre raison que les trois autres : le Load
+    # Balancer le résout et Kubernetes ne le peut pas, donc le nom désigne deux
+    # choses et laquelle n'est pas décidable.
+    for nom, raison in resolution.UNRESOLVABLE.items():
+        if nom == "acl_id":
+            assert "n'est pas décidable depuis le nom" in raison
+            continue  # sa raison est double, et l'autre moitié est testée à part
         assert "ne porte pas de champ name" in raison
+
+
+def test_un_nom_que_deux_produits_revendiquent_ne_se_resout_pas() -> None:
+    """Rendre l'identifiant du mauvais produit est pire que ne rien rendre.
+
+    `acl_id` existe dans le Load Balancer et dans Kubernetes, et ce ne sont pas
+    les mêmes ACL. Le premier le résout, le second ne le peut pas faute de champ
+    `name` : la résolution du premier restait donc seule en piste, et quelqu'un
+    qui écrit `acl_id` en pensant à une règle de cluster obtenait une règle de
+    load balancer sans que rien ne le dise.
+    """
+    from ansible_collections.stephrobert.scaleway.plugins.module_utils import resolution
+
+    assert "acl_id" not in resolution.RESOLUTIONS
+    assert "acl_id" in resolution.UNRESOLVABLE
+    # Les deux raisons sont publiées : aucune ne vaut pour l'autre produit.
+    assert "opération de liste" in resolution.UNRESOLVABLE["acl_id"]
+    assert "lb le résout" in resolution.UNRESOLVABLE["acl_id"]
+
+
+def test_un_nom_ambigu_se_resout_quand_on_dit_le_produit() -> None:
+    """Refusé sauf si l'on désambiguïse, et non refusé tout court.
+
+    Retirer la possibilité de résoudre une ACL de load balancer par son nom
+    parce qu'un autre produit porte le même nom de paramètre punirait
+    l'utilisateur pour notre nommage.
+    """
+    from ansible_collections.stephrobert.scaleway.plugins.module_utils import resolution
+
+    assert "acl_id" in resolution.AMBIGUOUS
+    assert set(resolution.AMBIGUOUS["acl_id"]) == {"lb"}
+    lookup = resolution.AMBIGUOUS["acl_id"]["lb"]
+    assert lookup.operation.id == "ListAcls"
+    assert lookup.scope == ("frontend_id",)
+
+
+def test_le_refus_dun_nom_ambigu_dit_comment_le_lever() -> None:
+    """Un refus qui ne dit pas quoi faire ensuite envoie chercher au hasard."""
+    from ansible_collections.stephrobert.scaleway.plugins.module_utils import resolution
+
+    assert "service=lb" in resolution.UNRESOLVABLE["acl_id"]

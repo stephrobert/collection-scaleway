@@ -2,7 +2,7 @@
   "service": "instance",
   "version": "v1",
   "title": "Instance API",
-  "description": "Scaleway Instances are virtual machines in the cloud. Different [Instance types](https://www.scaleway.com/en/docs/instances/reference-content/choosing-instance-type/) offer different technical specifications in terms of vCPU, RAM, bandwidth and storage. Once you have created your Instance and installed your image of choice (e.g. an operating system), you can [connect to your Instance via SSH](https://www.scaleway.com/en/docs/instances/how-to/connect-to-instance/) to use it as you wish. When you are done using the Instance, you can delete it from your account.",
+  "description": "Scaleway Instances are virtual machines in the cloud. Different L(Instance types,https://www.scaleway.com/en/docs/instances/reference-content/choosing-instance-type/) offer different technical specifications in terms of vCPU, RAM, bandwidth and storage. Once you have created your Instance and installed your image of choice (e.g. an operating system), you can L(connect to your Instance via SSH,https://www.scaleway.com/en/docs/instances/how-to/connect-to-instance/) to use it as you wish. When you are done using the Instance, you can delete it from your account.",
   "source": "instance.v1.yml",
   "enums": [
     {
@@ -2185,7 +2185,7 @@
       "path": "/instance/v1/zones/{zone}/servers",
       "scope": "zone",
       "summary": "Create an Instance",
-      "description": "Create a new Instance of the specified commercial type in the specified zone. Pay attention to the volumes parameter, which takes an object which can be used in different ways to achieve different behaviors.\nGet more information in the [Technical Information](#technical-information) section of the introduction.",
+      "description": "Create a new Instance of the specified commercial type in the specified zone. Pay attention to the volumes parameter, which takes an object which can be used in different ways to achieve different behaviors.\nGet more information in the Technical Information section of the introduction.",
       "tags": [
         "Instances"
       ],

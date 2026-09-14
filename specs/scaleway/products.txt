@@ -18,6 +18,13 @@
 instance v1
 load-balancer/zoned lb v1
 
+# Le troisième produit, et il n'entre pas sur son nombre de routes. La
+# collection officielle livre `k8s_cluster` et `k8s_pool`, tous deux en
+# `state: present/absent` : elle crée des clusters et n'offre rien pour les
+# exploiter ensuite. C'est la place que #240 décrit, derrière elle et non en
+# face. `kubernetes` sur le portail, `k8s` dans les SDK.
+kubernetes k8s v1
+
 # Suivis sans être générés. `suivi` en fin de ligne range le contrat sous
 # `suivis/`, où le générateur ne le voit pas : il n'y a ni module, ni rapport,
 # ni golden pour ces produits.

@@ -50,6 +50,16 @@ options:
     description: Exact name of the resource to resolve.
     required: true
     type: str
+  service:
+    description:
+      - >-
+        Which product the identifier belongs to, for the few names several
+        products carry. C(acl_id) means one thing on a Load Balancer and another
+        on a Kubernetes cluster, and the name alone does not say which.
+      - >-
+        Without it, such a name is refused rather than settled: returning the
+        wrong product's identifier is worse than returning none.
+    type: str
   zone:
     description: Zone the resource lives in, for zoned resources.
     type: str
@@ -146,6 +156,7 @@ from ansible.errors import AnsibleLookupError
 from ansible.plugins.lookup import LookupBase
 
 from ansible_collections.stephrobert.scaleway.plugins.module_utils.resolution import (
+    AMBIGUOUS,
     RESOLUTIONS,
     UNRESOLVABLE,
 )
@@ -163,6 +174,7 @@ from ansible_collections.stephrobert.scaleway.plugins.module_utils.scaleway impo
 DECLAREES = frozenset(
     {
         "name",
+        "service",
         "zone",
         "region",
         "profile",
@@ -213,7 +225,7 @@ class LookupModule(LookupBase):
             )
 
         parametre = str(terms[0])
-        lookup = self._table(parametre)
+        lookup = self._table(parametre, kwargs.get("service"))
 
         declarees = {nom: valeur for nom, valeur in kwargs.items() if nom in DECLAREES}
         portee = {nom: valeur for nom, valeur in kwargs.items() if nom not in DECLAREES}
@@ -248,16 +260,37 @@ class LookupModule(LookupBase):
                 f"{lookup.operation.id} a échoué : {erreur.message}"
             ) from erreur
 
-    def _table(self, parametre):
+    def _table(self, parametre, service=None):
         """La façon de résoudre cet identifiant, ou le refus qui dit pourquoi pas.
 
-        Les trois cas sont distincts, et les confondre coûterait cher :
-        l'identifiant est résoluble, il ne l'est pas et le contrat dit pourquoi,
-        ou il n'existe pas du tout. Rendre « inconnu » dans le deuxième cas
-        enverrait chercher une faute de frappe dans un nom qui est correct.
+        Les cas sont distincts, et les confondre coûterait cher : l'identifiant
+        est résoluble, il l'est dans plusieurs produits et le nom seul ne
+        tranche pas, il ne l'est pas et le contrat dit pourquoi, ou il n'existe
+        pas du tout. Rendre « inconnu » dans l'avant-dernier cas enverrait
+        chercher une faute de frappe dans un nom qui est correct.
         """
         if parametre in RESOLUTIONS:
+            if service and RESOLUTIONS[parametre].service != service:
+                raise AnsibleLookupError(
+                    f"{parametre} est résolu par "
+                    f"`{RESOLUTIONS[parametre].service}`, pas par `{service}`."
+                )
             return RESOLUTIONS[parametre]
+
+        # **Plusieurs produits portent ce nom, et il en désigne un seul à la
+        # fois.** Rendre l'identifiant du mauvais produit est pire que ne rien
+        # rendre : on refuse, mais on sert dès que l'appelant dit lequel.
+        if parametre in AMBIGUOUS:
+            par_service = AMBIGUOUS[parametre]
+            if service in par_service:
+                return par_service[service]
+            connus = ", ".join(sorted(par_service))
+            raise AnsibleLookupError(
+                f"{parametre} désigne une ressource dans plusieurs produits, et "
+                f"le nom seul ne dit pas lequel : {UNRESOLVABLE.get(parametre, '')} "
+                f"Préciser `service=` le dit. Résoluble pour : {connus}."
+                + (f" `{service}` n'en fait pas partie." if service else "")
+            )
 
         if parametre in UNRESOLVABLE:
             raise AnsibleLookupError(

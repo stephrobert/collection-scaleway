@@ -1,0 +1,3081 @@
+{
+  "service": "k8s",
+  "version": "v1",
+  "title": "Kubernetes API",
+  "description": "Kubernetes is an open-source platform that enables developers to manage their containerized applications. Scaleway Kubernetes Kapsule and Kosmos are powerful tools to help you manage your containerized workloads and services.",
+  "source": "k8s.v1.yml",
+  "enums": [
+    {
+      "name": "scaleway.k8s.v1.CNI",
+      "values": [
+        "unknown_cni",
+        "cilium",
+        "calico",
+        "kilo",
+        "none",
+        "cilium_native"
+      ],
+      "default": "unknown_cni"
+    },
+    {
+      "name": "scaleway.k8s.v1.Cluster.Status",
+      "values": [
+        "unknown",
+        "creating",
+        "ready",
+        "deleting",
+        "deleted",
+        "updating",
+        "locked",
+        "pool_required"
+      ],
+      "default": "unknown"
+    },
+    {
+      "name": "scaleway.k8s.v1.ClusterType.Availability",
+      "values": [
+        "available",
+        "scarce",
+        "shortage"
+      ],
+      "default": "available"
+    },
+    {
+      "name": "scaleway.k8s.v1.ClusterType.Resiliency",
+      "values": [
+        "unknown_resiliency",
+        "standard",
+        "high_availability"
+      ],
+      "default": "unknown_resiliency"
+    },
+    {
+      "name": "scaleway.k8s.v1.ListClustersRequest.OrderBy",
+      "values": [
+        "created_at_asc",
+        "created_at_desc",
+        "updated_at_asc",
+        "updated_at_desc",
+        "name_asc",
+        "name_desc",
+        "status_asc",
+        "status_desc",
+        "version_asc",
+        "version_desc"
+      ],
+      "default": "created_at_asc"
+    },
+    {
+      "name": "scaleway.k8s.v1.ListNodesRequest.OrderBy",
+      "values": [
+        "created_at_asc",
+        "created_at_desc",
+        "updated_at_asc",
+        "updated_at_desc",
+        "name_asc",
+        "name_desc",
+        "status_asc",
+        "status_desc",
+        "version_asc",
+        "version_desc"
+      ],
+      "default": "created_at_asc"
+    },
+    {
+      "name": "scaleway.k8s.v1.ListPoolsRequest.OrderBy",
+      "values": [
+        "created_at_asc",
+        "created_at_desc",
+        "updated_at_asc",
+        "updated_at_desc",
+        "name_asc",
+        "name_desc",
+        "status_asc",
+        "status_desc",
+        "version_asc",
+        "version_desc"
+      ],
+      "default": "created_at_asc"
+    },
+    {
+      "name": "scaleway.k8s.v1.Node.Status",
+      "values": [
+        "unknown",
+        "creating",
+        "not_ready",
+        "ready",
+        "deleting",
+        "deleted",
+        "locked",
+        "rebooting",
+        "creation_error",
+        "upgrading",
+        "starting",
+        "registering"
+      ],
+      "default": "unknown"
+    },
+    {
+      "name": "scaleway.k8s.v1.Pool.Status",
+      "values": [
+        "unknown",
+        "ready",
+        "deleting",
+        "deleted",
+        "scaling",
+        "warning",
+        "locked",
+        "upgrading"
+      ],
+      "default": "unknown"
+    },
+    {
+      "name": "scaleway.k8s.v1.Pool.VolumeType",
+      "values": [
+        "default_volume_type",
+        "l_ssd",
+        "b_ssd",
+        "sbs_5k",
+        "sbs_15k"
+      ],
+      "default": "default_volume_type"
+    },
+    {
+      "name": "scaleway.k8s.v1.Runtime",
+      "values": [
+        "unknown_runtime",
+        "containerd"
+      ],
+      "default": "unknown_runtime"
+    }
+  ],
+  "objects": [
+    {
+      "name": "scaleway.k8s.v1.ACLRule",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "ID of the ACL rule. (UUID format)"
+        },
+        {
+          "name": "ip",
+          "type": "string",
+          "description": "IP subnet to allow. (IP network)"
+        },
+        {
+          "name": "scaleway_ranges",
+          "type": "boolean",
+          "description": "Allow access to cluster from all Scaleway ranges as defined in https://www.scaleway.com/en/docs/console/account/reference-content/scaleway-network-information/#ip-ranges-used-by-scaleway.\nOnly one rule with this field set to true can be added."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Description of the ACL."
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "Region of the ACL rule."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.k8s.v1.Cluster",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Cluster ID."
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "description": "Cluster type."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Cluster name."
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "description": "Status of the cluster."
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "description": "Kubernetes version of the cluster."
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "Region in which the cluster is deployed."
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "description": "ID of the Organization owning the cluster."
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "description": "ID of the Project owning the cluster."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Tags associated with the cluster."
+        },
+        {
+          "name": "cni",
+          "type": "enum",
+          "description": "Container Network Interface (CNI) plugin running in the cluster."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Cluster description."
+        },
+        {
+          "name": "cluster_url",
+          "type": "string",
+          "description": "Kubernetes API server URL of the cluster."
+        },
+        {
+          "name": "dns_wildcard",
+          "type": "string",
+          "description": "Wildcard DNS resolving all the ready cluster nodes."
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date on which the cluster was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date on which the cluster was last updated. (RFC 3339 format)"
+        },
+        {
+          "name": "autoscaler_config",
+          "type": "object",
+          "description": "Autoscaler configuration for the cluster, see https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md for details."
+        },
+        {
+          "name": "auto_upgrade",
+          "type": "object",
+          "description": "Auto upgrade Kubernetes version of the cluster."
+        },
+        {
+          "name": "upgrade_available",
+          "type": "boolean",
+          "description": "Defines whether a new Kubernetes version is available."
+        },
+        {
+          "name": "feature_gates",
+          "type": "array",
+          "item_type": "string",
+          "description": "List of enabled feature gates."
+        },
+        {
+          "name": "admission_plugins",
+          "type": "array",
+          "item_type": "string",
+          "description": "List of enabled admission plugins."
+        },
+        {
+          "name": "open_id_connect_config",
+          "type": "object",
+          "description": "This configuration enables to update the OpenID Connect configuration of the Kubernetes API server."
+        },
+        {
+          "name": "apiserver_cert_sans",
+          "type": "array",
+          "item_type": "string",
+          "description": "Additional Subject Alternative Names for the Kubernetes API server certificate."
+        },
+        {
+          "name": "private_network_id",
+          "type": "string",
+          "description": "Private network ID for internal cluster communication."
+        },
+        {
+          "name": "commitment_ends_at",
+          "type": "string",
+          "description": "Date on which it will be possible to switch to a smaller offer. (RFC 3339 format)"
+        },
+        {
+          "name": "acl_available",
+          "type": "boolean",
+          "deprecated": true,
+          "description": "Defines whether ACL is available on the cluster."
+        },
+        {
+          "name": "iam_nodes_group_id",
+          "type": "string",
+          "description": "IAM group that nodes are members of (this field might be empty during early stage of cluster creation)."
+        },
+        {
+          "name": "pod_cidr",
+          "type": "string",
+          "description": "Subnet used for the Pod CIDR. (IP network)"
+        },
+        {
+          "name": "service_cidr",
+          "type": "string",
+          "description": "Subnet used for the Service CIDR. (IP network)"
+        },
+        {
+          "name": "service_dns_ip",
+          "type": "string",
+          "description": "IP used for the DNS Service. (IPv4 address)"
+        }
+      ]
+    },
+    {
+      "name": "scaleway.k8s.v1.ClusterType",
+      "fields": [
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Cluster type name."
+        },
+        {
+          "name": "availability",
+          "type": "enum",
+          "description": "Cluster type availability."
+        },
+        {
+          "name": "max_nodes",
+          "type": "integer",
+          "description": "Maximum number of nodes supported by the offer."
+        },
+        {
+          "name": "commitment_delay",
+          "type": "string",
+          "description": "Time period during which you can no longer switch to a lower offer. (in seconds)"
+        },
+        {
+          "name": "sla",
+          "type": "number",
+          "description": "Value of the Service Level Agreement of the offer."
+        },
+        {
+          "name": "resiliency",
+          "type": "enum",
+          "description": "Resiliency offered by the offer."
+        },
+        {
+          "name": "memory",
+          "type": "integer",
+          "description": "Max RAM allowed for the control plane. (in bytes)"
+        },
+        {
+          "name": "dedicated",
+          "type": "boolean",
+          "description": "Returns information if this offer uses dedicated resources."
+        },
+        {
+          "name": "audit_logs_supported",
+          "type": "boolean",
+          "description": "True if the offer allows activation of the audit log functionality. Please note that audit logs are sent to Cockpit."
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "The region of the cluster type."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.k8s.v1.Node",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Node ID."
+        },
+        {
+          "name": "pool_id",
+          "type": "string",
+          "description": "Pool ID of the node."
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "description": "Cluster ID of the node."
+        },
+        {
+          "name": "provider_id",
+          "type": "string",
+          "description": "Underlying instance ID. It is prefixed by instance type and location information (see https://pkg.go.dev/k8s.io/api/core/v1#NodeSpec.ProviderID)."
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "Cluster region of the node."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Name of the node."
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "description": "Status of the node."
+        },
+        {
+          "name": "error_message",
+          "type": "string",
+          "description": "Details of the error, if any occurred when managing the node."
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date on which the node was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date on which the node was last updated. (RFC 3339 format)"
+        }
+      ]
+    },
+    {
+      "name": "scaleway.k8s.v1.Pool",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Pool ID. (UUID format)"
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "description": "Cluster ID of the pool. (UUID format)"
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date on which the pool was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date on which the pool was last updated. (RFC 3339 format)"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Pool name."
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "description": "Pool status."
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "description": "Pool version."
+        },
+        {
+          "name": "node_type",
+          "type": "string",
+          "description": "Node type is the type of Scaleway Instance wanted for the pool. Nodes with insufficient memory are not eligible (DEV1-S, PLAY2-PICO, STARDUST). 'external' is a special node type used to provision instances from other cloud providers in a Kosmos Cluster."
+        },
+        {
+          "name": "autoscaling",
+          "type": "boolean",
+          "description": "Defines whether the autoscaling feature is enabled for the pool."
+        },
+        {
+          "name": "size",
+          "type": "integer",
+          "description": "Size (number of nodes) of the pool."
+        },
+        {
+          "name": "min_size",
+          "type": "integer",
+          "description": "Defines the minimum size of the pool. Note that this field is only used when autoscaling is enabled on the pool."
+        },
+        {
+          "name": "max_size",
+          "type": "integer",
+          "description": "Defines the maximum size of the pool. Note that this field is only used when autoscaling is enabled on the pool."
+        },
+        {
+          "name": "container_runtime",
+          "type": "enum",
+          "description": "Customization of the container runtime is available for each pool."
+        },
+        {
+          "name": "autohealing",
+          "type": "boolean",
+          "description": "Defines whether the autohealing feature is enabled for the pool."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Tags associated with the pool, see L(managing tags,https://www.scaleway.com/en/docs/kubernetes/api-cli/managing-tags)."
+        },
+        {
+          "name": "placement_group_id",
+          "type": "string",
+          "description": "Placement group ID in which all the nodes of the pool will be created, placement groups are limited to 20 instances. (UUID format)"
+        },
+        {
+          "name": "kubelet_args",
+          "type": "map",
+          "description": "Kubelet arguments to be used by this pool. Note that this feature is experimental."
+        },
+        {
+          "name": "upgrade_policy",
+          "type": "object",
+          "description": "Defines how node provisioning should behave during pool version upgrade."
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "Zone in which the pool's nodes will be spawned."
+        },
+        {
+          "name": "root_volume_type",
+          "type": "enum",
+          "description": "Defines the system volume disk type. Several types of volume (`volume_type`) are provided:.\n* `l_ssd` is a local block storage which means your system is stored locally on your node's hypervisor. This type is not available for all node types\n* `sbs_5k` is a remote block storage which means your system is stored on a centralized and resilient cluster with 5k IOPS limits\n* `sbs_15k` is a faster remote block storage which means your system is stored on a centralized and resilient cluster with 15k IOPS limits\n* `b_ssd` is the legacy remote block storage which means your system is stored on a centralized and resilient cluster. Not available for new pools, use `sbs_5k` or `sbs_15k` instead."
+        },
+        {
+          "name": "root_volume_size",
+          "type": "integer",
+          "description": "System volume disk size. (in bytes)"
+        },
+        {
+          "name": "public_ip_disabled",
+          "type": "boolean",
+          "description": "Defines if the public IP should be removed from Nodes. To use this feature, your Cluster must have an attached Private Network set up with a Public Gateway."
+        },
+        {
+          "name": "security_group_id",
+          "type": "string",
+          "description": "Security group ID in which all the nodes of the pool will be created. If unset, the pool will use default Kapsule security group in current zone. (UUID format)"
+        },
+        {
+          "name": "labels",
+          "type": "map",
+          "description": "Kubernetes labels applied and reconciled on the nodes."
+        },
+        {
+          "name": "taints",
+          "type": "array",
+          "item_type": "object",
+          "description": "Kubernetes taints applied and reconciled on the nodes."
+        },
+        {
+          "name": "startup_taints",
+          "type": "array",
+          "item_type": "object",
+          "description": "Kubernetes taints applied at node creation but not reconciled afterwards."
+        },
+        {
+          "name": "error_message",
+          "type": "string",
+          "description": "Details of the error, if any occurred when managing the pool."
+        },
+        {
+          "name": "max_termination_grace_period",
+          "type": "string",
+          "description": "Maximum amount of time before the API forces the drain and deletion of a `deleting` node. It overrides pods `PodDisruptionBudget` and `terminationGracePeriodSeconds`. Defaults to 15 minutes, up to 1 hour. (in seconds)"
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "Cluster region of the pool."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.k8s.v1.UserDataSummary",
+      "fields": [
+        {
+          "name": "key",
+          "type": "string",
+          "description": "Key name of a given user data."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.k8s.v1.Version",
+      "fields": [
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Name of the Kubernetes version."
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "description": "Label of the Kubernetes version."
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "Region in which this version is available."
+        },
+        {
+          "name": "available_cnis",
+          "type": "array",
+          "item_type": "enum",
+          "description": "Supported Container Network Interface (CNI) plugins for this version."
+        },
+        {
+          "name": "available_container_runtimes",
+          "type": "array",
+          "item_type": "enum",
+          "deprecated": true,
+          "description": "Supported container runtimes for this version."
+        },
+        {
+          "name": "available_feature_gates",
+          "type": "array",
+          "item_type": "string",
+          "description": "Supported feature gates for this version."
+        },
+        {
+          "name": "available_admission_plugins",
+          "type": "array",
+          "item_type": "string",
+          "description": "Supported admission plugins for this version."
+        },
+        {
+          "name": "available_kubelet_args",
+          "type": "map",
+          "description": "Supported kubelet arguments for this version."
+        },
+        {
+          "name": "deprecated_at",
+          "type": "string",
+          "description": "Date from which this version will no longer be available for provisioning. (RFC 3339 format)"
+        },
+        {
+          "name": "end_of_life_at",
+          "type": "string",
+          "description": "Date from which any remaining clusters on this version will begin to be forcibly upgraded to the next minor version. (RFC 3339 format)"
+        },
+        {
+          "name": "released_at",
+          "type": "string",
+          "description": "Date at which this version was made available by Kapsule product. (RFC 3339 format)"
+        },
+        {
+          "name": "additional_components",
+          "type": "map",
+          "description": "Map containing every sub-component version shipped with this Kapsule version."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.std.File",
+      "fields": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "content_type",
+          "type": "string"
+        },
+        {
+          "name": "content",
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "glossary": {
+    "acl_available": "Defines whether ACL is available on the cluster.",
+    "acl_id": "ID of the ACL rule to delete.",
+    "additional_components": "Map containing every sub-component version shipped with this Kapsule version.",
+    "admission_plugins": "List of enabled admission plugins.",
+    "apiserver_cert_sans": "Additional Subject Alternative Names for the Kubernetes API server certificate.",
+    "audit_logs_supported": "True if the offer allows activation of the audit log functionality. Please note that audit logs are sent to Cockpit.",
+    "auto_upgrade": "Auto upgrade Kubernetes version of the cluster.",
+    "autohealing": "Defines whether the autohealing feature is enabled for the pool.",
+    "autoscaler_config": "Autoscaler configuration for the cluster, see https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md for details.",
+    "autoscaling": "Defines whether the autoscaling feature is enabled for the pool.",
+    "availability": "Cluster type availability.",
+    "available_admission_plugins": "Supported admission plugins for this version.",
+    "available_cnis": "Supported Container Network Interface (CNI) plugins for this version.",
+    "available_container_runtimes": "Supported container runtimes for this version.",
+    "available_feature_gates": "Supported feature gates for this version.",
+    "available_kubelet_args": "Supported kubelet arguments for this version.",
+    "balance_similar_node_groups": "Detect similar node groups and balance the number of nodes between them, defaults to false.",
+    "client_id": "A client ID that all tokens must be issued for.",
+    "cluster_url": "Kubernetes API server URL of the cluster.",
+    "clusters": "Paginated returned clusters.",
+    "cni": "Container Network Interface (CNI) plugin running in the cluster.",
+    "commitment_delay": "Time period during which you can no longer switch to a lower offer. (in seconds)",
+    "commitment_ends_at": "Date on which it will be possible to switch to a smaller offer. (RFC 3339 format)",
+    "container_runtime": "Customization of the container runtime is available for each pool.",
+    "day": "Day of the week for the maintenance window.",
+    "dedicated": "Returns information if this offer uses dedicated resources.",
+    "deprecated_at": "Date from which this version will no longer be available for provisioning. (RFC 3339 format)",
+    "dns_wildcard": "Wildcard DNS resolving all the ready cluster nodes.",
+    "effect": "Effect defines the effects of Taint.",
+    "enable": "Defines whether auto upgrade is enabled for the cluster.",
+    "enabled": "Defines whether auto upgrade is enabled for the cluster.",
+    "end_of_life_at": "Date from which any remaining clusters on this version will begin to be forcibly upgraded to the next minor version. (RFC 3339 format)",
+    "estimator": "Type of resource estimator to be used in scale up.",
+    "expander": "Kubernetes autoscaler strategy to fit pods into nodes, see https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md#what-are-expanders for details.",
+    "expendable_pods_priority_cutoff": "Pods with priority below cutoff will be expendable. They can be killed without any consideration during scale down and they won't cause scale up. Pods with null priority (PodPriority disabled) are non expendable.",
+    "feature_gates": "List of enabled feature gates.",
+    "groups_claim": "JWT claim to use as the user's group.",
+    "groups_prefix": "Prefix prepended to group claims to prevent name collision (such as `system:` groups). For example, the value `oidc:` will create group names like `oidc:engineering` and `oidc:infra`.",
+    "iam_nodes_group_id": "IAM group that nodes are members of (this field might be empty during early stage of cluster creation).",
+    "ignore_daemonsets_utilization": "Ignore DaemonSet pods when calculating resource utilization for scaling down, defaults to false.",
+    "ip": "IP subnet to allow. (IP network)",
+    "issuer_url": "URL of the provider which allows the API server to discover public signing keys. Only URLs using the `https://` scheme are accepted. This is typically the provider's discovery URL without a path, for example \"https://accounts.google.com\" or \"https://login.salesforce.com\".",
+    "kubelet_args": "Kubelet arguments to be used by this pool. Note that this feature is experimental.",
+    "label": "Label of the Kubernetes version.",
+    "labels": "Kubernetes labels applied and reconciled on the nodes.",
+    "log_level": "Cluster autoscaler logging level expressed from 0 to 4 (4 being the more verbose), defaults to 2. see https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md#how-can-i-increase-the-information-that-the-ca-is-logging for details.",
+    "maintenance_window": "Maintenance window of the cluster auto upgrades.",
+    "max_graceful_termination_sec": "Maximum number of seconds the cluster autoscaler waits for pod termination when trying to scale down a node, defaults to 600 (10 minutes).",
+    "max_nodes": "Maximum number of nodes supported by the offer.",
+    "max_size": "Defines the maximum size of the pool. Note that this field is only used when autoscaling is enabled on the pool.",
+    "max_termination_grace_period": "Maximum amount of time before the API forces the drain and deletion of a `deleting` node. It overrides pods `PodDisruptionBudget` and `terminationGracePeriodSeconds`. Defaults to 15 minutes, up to 1 hour. (in seconds)",
+    "memory": "Max RAM allowed for the control plane. (in bytes)",
+    "min_size": "Defines the minimum size of the pool. Note that this field is only used when autoscaling is enabled on the pool.",
+    "node_type": "Node type is the type of Scaleway Instance wanted for the pool. Nodes with insufficient memory are not eligible (DEV1-S, PLAY2-PICO, STARDUST). 'external' is a special node type used to provision instances from other cloud providers in a Kosmos Cluster.",
+    "nodes": "Paginated returned nodes.",
+    "open_id_connect_config": "This configuration enables to update the OpenID Connect configuration of the Kubernetes API server.",
+    "organization_id": "ID of the Organization owning the cluster.",
+    "pod_cidr": "Subnet used for the Pod CIDR. (IP network)",
+    "pool_id": "Pool ID of the node.",
+    "pools": "Paginated returned pools.",
+    "private_network_id": "Private network ID for internal cluster communication.",
+    "project_id": "ID of the Project owning the cluster.",
+    "provider_id": "Underlying instance ID. It is prefixed by instance type and location information (see https://pkg.go.dev/k8s.io/api/core/v1#NodeSpec.ProviderID).",
+    "public_ip_disabled": "Defines if the public IP should be removed from Nodes. To use this feature, your Cluster must have an attached Private Network set up with a Public Gateway.",
+    "redacted": "Hide the legacy token from the kubeconfig.",
+    "released_at": "Date at which this version was made available by Kapsule product. (RFC 3339 format)",
+    "required_claim": "Multiple key=value pairs describing a required claim in the ID token. If set, the claims are verified to be present in the ID token with a matching value.",
+    "resiliency": "Resiliency offered by the offer.",
+    "root_volume_size": "System volume disk size. (in bytes)",
+    "root_volume_type": "Defines the system volume disk type. Several types of volume (`volume_type`) are provided:.\n* `l_ssd` is a local block storage which means your system is stored locally on your node's hypervisor. This type is not available for all node types\n* `sbs_5k` is a remote block storage which means your system is stored on a centralized and resilient cluster with 5k IOPS limits\n* `sbs_15k` is a faster remote block storage which means your system is stored on a centralized and resilient cluster with 15k IOPS limits\n* `b_ssd` is the legacy remote block storage which means your system is stored on a centralized and resilient cluster. Not available for new pools, use `sbs_5k` or `sbs_15k` instead.",
+    "scale_down_delay_after_add": "How long after scale up the scale down evaluation resumes.",
+    "scale_down_disabled": "Forbid cluster autoscaler to scale down the cluster, defaults to false.",
+    "scale_down_unneeded_time": "How long a node should be unneeded before it is eligible for scale down, defaults to 10 minutes.",
+    "scale_down_utilization_threshold": "Node utilization level, defined as a sum of requested resources divided by allocatable capacity, below which a node can be considered for scale down.",
+    "scaleway_ranges": "Allow access to cluster from all Scaleway ranges as defined in https://www.scaleway.com/en/docs/console/account/reference-content/scaleway-network-information/#ip-ranges-used-by-scaleway.\nOnly one rule with this field set to true can be added.",
+    "service_cidr": "Subnet used for the Service CIDR. (IP network)",
+    "service_dns_ip": "IP used for the DNS Service. (IPv4 address)",
+    "size": "Size (number of nodes) of the pool.",
+    "skip_drain": "Skip draining node from its workload (Note: this parameter is currently inactive).",
+    "skip_nodes_with_local_storage": "Cluster autoscaler will never delete nodes with pods with local storage, e.g. EmptyDir or HostPath, defaults to true.",
+    "sla": "Value of the Service Level Agreement of the offer.",
+    "start_hour": "Start time of the two-hour maintenance window.",
+    "startup_taints": "Kubernetes taints applied at node creation but not reconciled afterwards.",
+    "taints": "Kubernetes taints applied and reconciled on the nodes.",
+    "type": "Cluster type.",
+    "upgrade_available": "Defines whether a new Kubernetes version is available.",
+    "upgrade_policy": "Defines how node provisioning should behave during pool version upgrade.",
+    "upgrade_pools": "Defines whether pools will also be upgraded once the control plane is upgraded.",
+    "username_claim": "JWT claim to use as the user name. The default is `sub`, which is expected to be the end user's unique identifier. Admins can choose other claims, such as `email` or `name`, depending on their provider. However, claims other than `email` will be prefixed with the issuer URL to prevent name collision.",
+    "username_prefix": "Prefix prepended to username claims to prevent name collision (such as `system:` users). For example, the value `oidc:` will create usernames like `oidc:jane.doe`. If this flag is not provided and `username_claim` is a value other than `email`, the prefix defaults to `( Issuer URL )#` where `( Issuer URL )` is the value of `issuer_url`. The value `-` can be used to disable all prefixing.",
+    "value": "The taint value corresponding to the taint key.",
+    "version_name": "Requested version name.",
+    "with_additional_resources": "Defines whether all volumes (including retain volume type), empty Private Networks and Load Balancers with a name starting with the cluster ID will also be deleted.",
+    "zone": "Zone in which the pool's nodes will be spawned."
+  },
+  "operations": [
+    {
+      "key": "k8s.v1.ClusterAcl.AddClusterACLRules",
+      "id": "AddClusterACLRules",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster_acl",
+      "http_method": "POST",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}/acls",
+      "scope": "region",
+      "summary": "Add new ACLs",
+      "description": "Add new ACL rules for a specific cluster.",
+      "tags": [
+        "Access Control List"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the cluster whose ACLs will be added."
+        },
+        {
+          "name": "acls",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "ACLs to add.",
+          "item_type": "object"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.AddClusterACLRulesResponse",
+        "payload_field": "rules",
+        "payload_schema": "scaleway.k8s.v1.ACLRule",
+        "is_list": true
+      }
+    },
+    {
+      "key": "k8s.v1.Cluster.CreateCluster",
+      "id": "CreateCluster",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster",
+      "http_method": "POST",
+      "path": "/k8s/v1/regions/{region}/clusters",
+      "scope": "region",
+      "summary": "Create a new Cluster",
+      "description": "Create a new Kubernetes cluster in a Scaleway region.",
+      "tags": [
+        "Clusters"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Organization ID in which the cluster will be created.",
+          "deprecated": true,
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Project ID in which the cluster will be created.",
+          "nullable": true,
+          "one_of_group": "ProjectIdentifier"
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Type of the cluster. See list available cluster types for a list of valid types."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "Cluster name."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Cluster description."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Tags associated with the cluster.",
+          "item_type": "string"
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "Kubernetes version of the cluster."
+        },
+        {
+          "name": "cni",
+          "type": "enum",
+          "required": true,
+          "location": "body",
+          "description": "Container Network Interface (CNI) plugin running in the cluster.",
+          "enum_name": "scaleway.k8s.v1.CNI",
+          "enum_values": [
+            "unknown_cni",
+            "cilium",
+            "calico",
+            "kilo",
+            "none",
+            "cilium_native"
+          ],
+          "default": "unknown_cni",
+          "ref": "scaleway.k8s.v1.CNI"
+        },
+        {
+          "name": "pools",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Pools created along with the cluster.",
+          "item_type": "object"
+        },
+        {
+          "name": "autoscaler_config",
+          "type": "object",
+          "required": false,
+          "location": "body",
+          "description": "Autoscaler configuration for the cluster. It allows you to set (to an extent) your preferred autoscaler configuration, which is an implementation of the cluster-autoscaler (https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler/).",
+          "ref": "scaleway.k8s.v1.CreateClusterRequest.AutoscalerConfig"
+        },
+        {
+          "name": "auto_upgrade",
+          "type": "object",
+          "required": false,
+          "location": "body",
+          "description": "Auto upgrade configuration of the cluster. This configuration enables to set a specific 2-hour time window in which the cluster can be automatically updated to the latest patch version.",
+          "ref": "scaleway.k8s.v1.CreateClusterRequest.AutoUpgrade"
+        },
+        {
+          "name": "feature_gates",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "List of feature gates to enable.",
+          "item_type": "string"
+        },
+        {
+          "name": "admission_plugins",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "List of admission plugins to enable.",
+          "item_type": "string"
+        },
+        {
+          "name": "open_id_connect_config",
+          "type": "object",
+          "required": false,
+          "location": "body",
+          "description": "OpenID Connect configuration of the cluster. This configuration enables to update the OpenID Connect configuration of the Kubernetes API server.",
+          "ref": "scaleway.k8s.v1.CreateClusterRequest.OpenIDConnectConfig"
+        },
+        {
+          "name": "apiserver_cert_sans",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Additional Subject Alternative Names for the Kubernetes API server certificate.",
+          "item_type": "string"
+        },
+        {
+          "name": "private_network_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Private network ID for internal cluster communication (cannot be changed later).",
+          "nullable": true
+        },
+        {
+          "name": "pod_cidr",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Subnet used for the Pod CIDR (cannot be changed later). (IP network)",
+          "nullable": true
+        },
+        {
+          "name": "service_cidr",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Subnet used for the Service CIDR (cannot be changed later). (IP network)",
+          "nullable": true
+        },
+        {
+          "name": "service_dns_ip",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "IP used for the DNS Service (cannot be changes later). If unset, default to Service CIDR's network + 10. (IPv4 address)",
+          "nullable": true
+        }
+      ],
+      "mutually_exclusive": [
+        [
+          "organization_id",
+          "project_id"
+        ]
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Cluster",
+        "payload_schema": "scaleway.k8s.v1.Cluster"
+      }
+    },
+    {
+      "key": "k8s.v1.ClusterPool.CreatePool",
+      "id": "CreatePool",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster_pool",
+      "http_method": "POST",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}/pools",
+      "scope": "region",
+      "summary": "Create a new Pool in a Cluster",
+      "description": "Create a new pool in a specific Kubernetes cluster.",
+      "tags": [
+        "Pools"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Cluster ID to which the pool will be attached."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "Pool name."
+        },
+        {
+          "name": "node_type",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "Node type is the type of Scaleway Instance wanted for the pool. Nodes with insufficient memory are not eligible (DEV1-S, PLAY2-PICO, STARDUST). 'external' is a special node type used to provision instances from other cloud providers in a Kosmos Cluster."
+        },
+        {
+          "name": "placement_group_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Placement group ID in which all the nodes of the pool will be created, placement groups are limited to 20 instances.",
+          "nullable": true
+        },
+        {
+          "name": "autoscaling",
+          "type": "boolean",
+          "required": false,
+          "location": "body",
+          "description": "Defines whether the autoscaling feature is enabled for the pool."
+        },
+        {
+          "name": "size",
+          "type": "integer",
+          "required": true,
+          "location": "body",
+          "description": "Size (number of nodes) of the pool.",
+          "format": "uint32"
+        },
+        {
+          "name": "min_size",
+          "type": "integer",
+          "required": false,
+          "location": "body",
+          "description": "Defines the minimum size of the pool. Note that this field is only used when autoscaling is enabled on the pool.",
+          "format": "uint32",
+          "nullable": true
+        },
+        {
+          "name": "max_size",
+          "type": "integer",
+          "required": false,
+          "location": "body",
+          "description": "Defines the maximum size of the pool. Note that this field is only used when autoscaling is enabled on the pool.",
+          "format": "uint32",
+          "nullable": true
+        },
+        {
+          "name": "container_runtime",
+          "type": "enum",
+          "required": false,
+          "location": "body",
+          "description": "Customization of the container runtime is available for each pool.",
+          "enum_name": "scaleway.k8s.v1.Runtime",
+          "enum_values": [
+            "unknown_runtime",
+            "containerd"
+          ],
+          "default": "unknown_runtime",
+          "ref": "scaleway.k8s.v1.Runtime"
+        },
+        {
+          "name": "autohealing",
+          "type": "boolean",
+          "required": false,
+          "location": "body",
+          "description": "Defines whether the autohealing feature is enabled for the pool."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Tags associated with the pool, see L(managing tags,https://www.scaleway.com/en/docs/kubernetes/api-cli/managing-tags).",
+          "item_type": "string"
+        },
+        {
+          "name": "kubelet_args",
+          "type": "map",
+          "required": false,
+          "location": "body",
+          "description": "Kubelet arguments to be used by this pool. Note that this feature is experimental."
+        },
+        {
+          "name": "upgrade_policy",
+          "type": "object",
+          "required": false,
+          "location": "body",
+          "description": "Defines how node provisioning should behave during pool version upgrade.",
+          "ref": "scaleway.k8s.v1.CreatePoolRequest.UpgradePolicy"
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Zone in which the pool's nodes will be spawned."
+        },
+        {
+          "name": "root_volume_type",
+          "type": "enum",
+          "required": false,
+          "location": "body",
+          "description": "Defines the system volume disk type. Several types of volume (`volume_type`) are provided:.\n* `l_ssd` is a local block storage which means your system is stored locally on your node's hypervisor. This type is not available for all node types\n* `sbs_5k` is a remote block storage which means your system is stored on a centralized and resilient cluster with 5k IOPS limits\n* `sbs_15k` is a faster remote block storage which means your system is stored on a centralized and resilient cluster with 15k IOPS limits\n* `b_ssd` is the legacy remote block storage which means your system is stored on a centralized and resilient cluster. Not available for new pools, use `sbs_5k` or `sbs_15k` instead.",
+          "enum_name": "scaleway.k8s.v1.Pool.VolumeType",
+          "enum_values": [
+            "default_volume_type",
+            "l_ssd",
+            "b_ssd",
+            "sbs_5k",
+            "sbs_15k"
+          ],
+          "default": "default_volume_type",
+          "ref": "scaleway.k8s.v1.Pool.VolumeType"
+        },
+        {
+          "name": "root_volume_size",
+          "type": "integer",
+          "required": false,
+          "location": "body",
+          "description": "System volume disk size. (in bytes)",
+          "format": "uint64",
+          "nullable": true
+        },
+        {
+          "name": "public_ip_disabled",
+          "type": "boolean",
+          "required": false,
+          "location": "body",
+          "description": "Defines if the public IP should be removed from Nodes. To use this feature, your Cluster must have an attached Private Network set up with a Public Gateway."
+        },
+        {
+          "name": "security_group_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Security group ID in which all the nodes of the pool will be created. If unset, the pool will use default Kapsule security group in current zone.",
+          "nullable": true
+        },
+        {
+          "name": "labels",
+          "type": "map",
+          "required": false,
+          "location": "body",
+          "description": "Kubernetes labels applied and reconciled on the nodes."
+        },
+        {
+          "name": "taints",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Kubernetes taints applied and reconciled on the nodes.",
+          "item_type": "object"
+        },
+        {
+          "name": "startup_taints",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Kubernetes taints applied at node creation but not reconciled afterwards.",
+          "item_type": "object"
+        },
+        {
+          "name": "user_data",
+          "type": "map",
+          "required": false,
+          "location": "body",
+          "description": "User data applied and reconciled with the pool."
+        },
+        {
+          "name": "max_termination_grace_period",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Maximum amount of time before the API forces the drain and deletion of a `deleting` node. It overrides pods `PodDisruptionBudget` and `terminationGracePeriodSeconds`. Defaults to 15 minutes, up to 1 hour. (in seconds)",
+          "nullable": true
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Pool",
+        "payload_schema": "scaleway.k8s.v1.Pool"
+      }
+    },
+    {
+      "key": "k8s.v1.Acl.DeleteACLRule",
+      "id": "DeleteACLRule",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "acl",
+      "http_method": "DELETE",
+      "path": "/k8s/v1/regions/{region}/acls/{acl_id}",
+      "scope": "region",
+      "summary": "Delete an existing ACL",
+      "tags": [
+        "Access Control List"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "acl_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the ACL rule to delete."
+        }
+      ]
+    },
+    {
+      "key": "k8s.v1.Cluster.DeleteCluster",
+      "id": "DeleteCluster",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster",
+      "http_method": "DELETE",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}",
+      "scope": "region",
+      "summary": "Delete a Cluster",
+      "description": "Delete a specific Kubernetes cluster and all its associated pools and nodes, and possibly its associated Load Balancers or Block Volumes.",
+      "tags": [
+        "Clusters"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the cluster to delete."
+        },
+        {
+          "name": "with_additional_resources",
+          "type": "boolean",
+          "required": true,
+          "location": "query",
+          "description": "Defines whether all volumes (including retain volume type), empty Private Networks and Load Balancers with a name starting with the cluster ID will also be deleted."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Cluster",
+        "payload_schema": "scaleway.k8s.v1.Cluster"
+      }
+    },
+    {
+      "key": "k8s.v1.Node.DeleteNode",
+      "id": "DeleteNode",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "node",
+      "http_method": "DELETE",
+      "path": "/k8s/v1/regions/{region}/nodes/{node_id}",
+      "scope": "region",
+      "summary": "Delete a Node in a Cluster",
+      "description": "Delete a specific Node. Pool size is reduced by 1. The node will first be drained and pods will be rescheduled onto another node. Note that when there is not enough space to reschedule all the pods (such as in a one-node cluster, or with specific constraints), disruption of your applications may occur.",
+      "tags": [
+        "Nodes"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "node_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the node to replace."
+        },
+        {
+          "name": "skip_drain",
+          "type": "boolean",
+          "required": true,
+          "location": "query",
+          "description": "Skip draining node from its workload (Note: this parameter is currently inactive)."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Node",
+        "payload_schema": "scaleway.k8s.v1.Node"
+      }
+    },
+    {
+      "key": "k8s.v1.Pool.DeletePool",
+      "id": "DeletePool",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "pool",
+      "http_method": "DELETE",
+      "path": "/k8s/v1/regions/{region}/pools/{pool_id}",
+      "scope": "region",
+      "summary": "Delete a Pool in a Cluster",
+      "description": "Delete a specific pool from a cluster. Note that all the pool's nodes will also be deleted.",
+      "tags": [
+        "Pools"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "pool_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the pool to delete."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Pool",
+        "payload_schema": "scaleway.k8s.v1.Pool"
+      }
+    },
+    {
+      "key": "k8s.v1.Cluster.GetCluster",
+      "id": "GetCluster",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}",
+      "scope": "region",
+      "summary": "Get a Cluster",
+      "description": "Retrieve information about a specific Kubernetes cluster.",
+      "tags": [
+        "Clusters"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the requested cluster."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Cluster",
+        "payload_schema": "scaleway.k8s.v1.Cluster"
+      }
+    },
+    {
+      "key": "k8s.v1.ClusterKubeconfig.GetClusterKubeConfig",
+      "id": "GetClusterKubeConfig",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster_kubeconfig",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}/kubeconfig",
+      "scope": "region",
+      "summary": "Download the kubeconfig for a Cluster",
+      "description": "Download the Kubernetes cluster config file (also known as `kubeconfig`) for a specific cluster to use it with `kubectl`.\nTip: add `?dl=1` at the end of the URL to directly retrieve the base64 decoded kubeconfig. If you choose not to, the kubeconfig will be base64 encoded.",
+      "tags": [
+        "Clusters"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Cluster ID for which to download the kubeconfig."
+        },
+        {
+          "name": "redacted",
+          "type": "boolean",
+          "required": false,
+          "location": "query",
+          "description": "Hide the legacy token from the kubeconfig."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.std.File",
+        "payload_schema": "scaleway.std.File"
+      }
+    },
+    {
+      "key": "k8s.v1.Node.GetNode",
+      "id": "GetNode",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "node",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/nodes/{node_id}",
+      "scope": "region",
+      "summary": "Get a Node in a Cluster",
+      "description": "Retrieve details about a specific Kubernetes Node.",
+      "tags": [
+        "Nodes"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "node_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the requested node."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Node",
+        "payload_schema": "scaleway.k8s.v1.Node"
+      }
+    },
+    {
+      "key": "k8s.v1.Pool.GetPool",
+      "id": "GetPool",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "pool",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/pools/{pool_id}",
+      "scope": "region",
+      "summary": "Get a Pool in a Cluster",
+      "description": "Retrieve details about a specific pool in a Kubernetes cluster.",
+      "tags": [
+        "Pools"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "pool_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the requested pool."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Pool",
+        "payload_schema": "scaleway.k8s.v1.Pool"
+      }
+    },
+    {
+      "key": "k8s.v1.PoolUserData.GetUserData",
+      "id": "GetUserData",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "pool_user_data",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/pools/{pool_id}/user-data/{key}",
+      "scope": "region",
+      "summary": "Get a pool related user data",
+      "description": "Retrieve specific user data content for a given pool.\nTip: add `?dl=1` at the end of the URL to directly retrieve the base64 decoded content of your user data.",
+      "tags": [
+        "User data"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "pool_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Pool the user data are associated to."
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "User data key to retrieved."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.std.File",
+        "payload_schema": "scaleway.std.File"
+      }
+    },
+    {
+      "key": "k8s.v1.Version.GetVersion",
+      "id": "GetVersion",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "version",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/versions/{version_name}",
+      "scope": "region",
+      "summary": "Get a Version",
+      "description": "Retrieve a specific Kubernetes version and its details.",
+      "tags": [
+        "Versions"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "version_name",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Requested version name."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Version",
+        "payload_schema": "scaleway.k8s.v1.Version"
+      }
+    },
+    {
+      "key": "k8s.v1.ClusterAcl.ListClusterACLRules",
+      "id": "ListClusterACLRules",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster_acl",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}/acls",
+      "scope": "region",
+      "summary": "List ACLs",
+      "description": "List ACLs for a specific cluster.",
+      "tags": [
+        "Access Control List"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the cluster whose ACLs will be listed."
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Page number for the returned ACLs.",
+          "format": "int32"
+        },
+        {
+          "name": "page_size",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Maximum number of ACLs per page.",
+          "format": "uint32"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.ListClusterACLRulesResponse",
+        "payload_field": "rules",
+        "payload_schema": "scaleway.k8s.v1.ACLRule",
+        "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
+      }
+    },
+    {
+      "key": "k8s.v1.ClusterAvailableType.ListClusterAvailableTypes",
+      "id": "ListClusterAvailableTypes",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster_available_type",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}/available-types",
+      "scope": "region",
+      "summary": "List available cluster types for a cluster",
+      "description": "List the cluster types that a specific Kubernetes cluster is allowed to switch to.",
+      "tags": [
+        "Clusters"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Cluster ID for which the available Kubernetes types will be listed."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.ListClusterAvailableTypesResponse",
+        "payload_field": "cluster_types",
+        "payload_schema": "scaleway.k8s.v1.ClusterType",
+        "is_list": true
+      }
+    },
+    {
+      "key": "k8s.v1.ClusterAvailableVersion.ListClusterAvailableVersions",
+      "id": "ListClusterAvailableVersions",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster_available_version",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}/available-versions",
+      "scope": "region",
+      "summary": "List available versions for a Cluster",
+      "description": "List the versions that a specific Kubernetes cluster is allowed to upgrade to. Results will include every patch version greater than the current patch, as well as one minor version ahead of the current version. Any upgrade skipping a minor version will not work.",
+      "tags": [
+        "Clusters"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Cluster ID for which the available Kubernetes versions will be listed."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.ListClusterAvailableVersionsResponse",
+        "payload_field": "versions",
+        "payload_schema": "scaleway.k8s.v1.Version",
+        "is_list": true
+      }
+    },
+    {
+      "key": "k8s.v1.ClusterType.ListClusterTypes",
+      "id": "ListClusterTypes",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster_type",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/cluster-types",
+      "scope": "region",
+      "summary": "List cluster types",
+      "description": "List available cluster types and their technical details.",
+      "tags": [
+        "Cluster types"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Page number, from the paginated results, to return for cluster-types.",
+          "format": "int32"
+        },
+        {
+          "name": "page_size",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Maximum number of clusters per page.",
+          "format": "uint32"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.ListClusterTypesResponse",
+        "payload_field": "cluster_types",
+        "payload_schema": "scaleway.k8s.v1.ClusterType",
+        "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
+      }
+    },
+    {
+      "key": "k8s.v1.Cluster.ListClusters",
+      "id": "ListClusters",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/clusters",
+      "scope": "region",
+      "summary": "List Clusters",
+      "description": "List all existing Kubernetes clusters in a specific region.",
+      "tags": [
+        "Clusters"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Organization ID on which to filter the returned clusters."
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Project ID on which to filter the returned clusters."
+        },
+        {
+          "name": "order_by",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Sort order of returned clusters.",
+          "enum_name": "scaleway.k8s.v1.ListClustersRequest.OrderBy",
+          "enum_values": [
+            "created_at_asc",
+            "created_at_desc",
+            "updated_at_asc",
+            "updated_at_desc",
+            "name_asc",
+            "name_desc",
+            "status_asc",
+            "status_desc",
+            "version_asc",
+            "version_desc"
+          ],
+          "default": "created_at_asc",
+          "ref": "scaleway.k8s.v1.ListClustersRequest.OrderBy"
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Page number to return for clusters, from the paginated results.",
+          "format": "int32"
+        },
+        {
+          "name": "page_size",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Maximum number of clusters per page.",
+          "format": "uint32"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Name to filter on, only clusters containing this substring in their name will be returned."
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Status to filter on, only clusters with this status will be returned.",
+          "enum_name": "scaleway.k8s.v1.Cluster.Status",
+          "enum_values": [
+            "unknown",
+            "creating",
+            "ready",
+            "deleting",
+            "deleted",
+            "updating",
+            "locked",
+            "pool_required"
+          ],
+          "default": "unknown",
+          "ref": "scaleway.k8s.v1.Cluster.Status"
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Type to filter on, only clusters with this type will be returned."
+        },
+        {
+          "name": "private_network_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Private Network ID to filter on, only clusters within this Private Network will be returned."
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Version to filter on, only cluster matching this prefix version will be returned."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.ListClustersResponse",
+        "payload_field": "clusters",
+        "payload_schema": "scaleway.k8s.v1.Cluster",
+        "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
+      }
+    },
+    {
+      "key": "k8s.v1.ClusterNode.ListNodes",
+      "id": "ListNodes",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster_node",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}/nodes",
+      "scope": "region",
+      "summary": "List Nodes in a Cluster",
+      "description": "List all the existing nodes for a specific Kubernetes cluster.",
+      "tags": [
+        "Nodes"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Cluster ID from which the nodes will be listed from."
+        },
+        {
+          "name": "pool_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Pool ID on which to filter the returned nodes."
+        },
+        {
+          "name": "order_by",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Sort order of the returned nodes.",
+          "enum_name": "scaleway.k8s.v1.ListNodesRequest.OrderBy",
+          "enum_values": [
+            "created_at_asc",
+            "created_at_desc",
+            "updated_at_asc",
+            "updated_at_desc",
+            "name_asc",
+            "name_desc",
+            "status_asc",
+            "status_desc",
+            "version_asc",
+            "version_desc"
+          ],
+          "default": "created_at_asc",
+          "ref": "scaleway.k8s.v1.ListNodesRequest.OrderBy"
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Page number for the returned nodes.",
+          "format": "int32"
+        },
+        {
+          "name": "page_size",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Maximum number of nodes per page.",
+          "format": "uint32"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Name to filter on, only nodes containing this substring in their name will be returned."
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Status to filter on, only nodes with this status will be returned.",
+          "enum_name": "scaleway.k8s.v1.Node.Status",
+          "enum_values": [
+            "unknown",
+            "creating",
+            "not_ready",
+            "ready",
+            "deleting",
+            "deleted",
+            "locked",
+            "rebooting",
+            "creation_error",
+            "upgrading",
+            "starting",
+            "registering"
+          ],
+          "default": "unknown",
+          "ref": "scaleway.k8s.v1.Node.Status"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.ListNodesResponse",
+        "payload_field": "nodes",
+        "payload_schema": "scaleway.k8s.v1.Node",
+        "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
+      }
+    },
+    {
+      "key": "k8s.v1.ClusterPool.ListPools",
+      "id": "ListPools",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster_pool",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}/pools",
+      "scope": "region",
+      "summary": "List Pools in a Cluster",
+      "description": "List all the existing pools for a specific Kubernetes cluster.",
+      "tags": [
+        "Pools"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the cluster whose pools will be listed."
+        },
+        {
+          "name": "order_by",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Sort order of returned pools.",
+          "enum_name": "scaleway.k8s.v1.ListPoolsRequest.OrderBy",
+          "enum_values": [
+            "created_at_asc",
+            "created_at_desc",
+            "updated_at_asc",
+            "updated_at_desc",
+            "name_asc",
+            "name_desc",
+            "status_asc",
+            "status_desc",
+            "version_asc",
+            "version_desc"
+          ],
+          "default": "created_at_asc",
+          "ref": "scaleway.k8s.v1.ListPoolsRequest.OrderBy"
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Page number for the returned pools.",
+          "format": "int32"
+        },
+        {
+          "name": "page_size",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Maximum number of pools per page.",
+          "format": "uint32"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Name to filter on, only pools containing this substring in their name will be returned."
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Status to filter on, only pools with this status will be returned.",
+          "enum_name": "scaleway.k8s.v1.Pool.Status",
+          "enum_values": [
+            "unknown",
+            "ready",
+            "deleting",
+            "deleted",
+            "scaling",
+            "warning",
+            "locked",
+            "upgrading"
+          ],
+          "default": "unknown",
+          "ref": "scaleway.k8s.v1.Pool.Status"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.ListPoolsResponse",
+        "payload_field": "pools",
+        "payload_schema": "scaleway.k8s.v1.Pool",
+        "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
+      }
+    },
+    {
+      "key": "k8s.v1.PoolUserData.ListUserData",
+      "id": "ListUserData",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "pool_user_data",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/pools/{pool_id}/user-data",
+      "scope": "region",
+      "summary": "List all user data related to a given pool.",
+      "description": "This list only the user data key and not the content.",
+      "tags": [
+        "User data"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "pool_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Pool the user data are associated to."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.ListUserDataResponse",
+        "payload_field": "user_data",
+        "payload_schema": "scaleway.k8s.v1.UserDataSummary",
+        "is_list": true
+      }
+    },
+    {
+      "key": "k8s.v1.Version.ListVersions",
+      "id": "ListVersions",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "version",
+      "http_method": "GET",
+      "path": "/k8s/v1/regions/{region}/versions",
+      "scope": "region",
+      "summary": "List all available Versions",
+      "description": "List all available versions for the creation of a new Kubernetes cluster.",
+      "tags": [
+        "Versions"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.ListVersionsResponse",
+        "payload_field": "versions",
+        "payload_schema": "scaleway.k8s.v1.Version",
+        "is_list": true
+      }
+    },
+    {
+      "key": "k8s.v1.NodeReboot.RebootNode",
+      "id": "RebootNode",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "node_reboot",
+      "http_method": "POST",
+      "path": "/k8s/v1/regions/{region}/nodes/{node_id}/reboot",
+      "scope": "region",
+      "summary": "Reboot a Node in a Cluster",
+      "description": "Reboot a specific Node. The node will first be drained and pods will be rescheduled onto another node. Note that when there is not enough space to reschedule all the pods (such as in a one-node cluster, or with specific constraints), disruption of your applications may occur.",
+      "tags": [
+        "Nodes"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "node_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the node to reboot."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Node",
+        "payload_schema": "scaleway.k8s.v1.Node"
+      }
+    },
+    {
+      "key": "k8s.v1.NodeReplace.ReplaceNode",
+      "id": "ReplaceNode",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "node_replace",
+      "http_method": "POST",
+      "path": "/k8s/v1/regions/{region}/nodes/{node_id}/replace",
+      "scope": "region",
+      "summary": "Replace a Node in a Cluster",
+      "description": "Replace a specific Node. The node will first be drained and pods will be rescheduled onto another node. Note that when there is not enough space to reschedule all the pods (such as in a one-node cluster, or with specific constraints), disruption of your applications may occur.",
+      "tags": [
+        "Nodes"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "node_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the node to replace."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Node",
+        "payload_schema": "scaleway.k8s.v1.Node"
+      }
+    },
+    {
+      "key": "k8s.v1.ClusterResetAdminToken.ResetClusterAdminToken",
+      "id": "ResetClusterAdminToken",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster_reset_admin_token",
+      "http_method": "POST",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}/reset-admin-token",
+      "scope": "region",
+      "summary": "Reset the admin token of a Cluster",
+      "description": "Reset the admin token for a specific Kubernetes cluster. This will revoke the old admin token (which will not be usable afterwards) and create a new one. Note that you will need to download the kubeconfig again to keep interacting with the cluster.",
+      "tags": [
+        "Clusters"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Cluster ID on which the admin token will be renewed."
+        }
+      ]
+    },
+    {
+      "key": "k8s.v1.ClusterAcl.SetClusterACLRules",
+      "id": "SetClusterACLRules",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster_acl",
+      "http_method": "PUT",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}/acls",
+      "scope": "region",
+      "summary": "Set new ACLs",
+      "description": "Set new ACL rules for a specific cluster.",
+      "tags": [
+        "Access Control List"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the cluster whose ACLs will be set."
+        },
+        {
+          "name": "acls",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "ACLs to set.",
+          "item_type": "object"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.SetClusterACLRulesResponse",
+        "payload_field": "rules",
+        "payload_schema": "scaleway.k8s.v1.ACLRule",
+        "is_list": true
+      }
+    },
+    {
+      "key": "k8s.v1.ClusterSetType.SetClusterType",
+      "id": "SetClusterType",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster_set_type",
+      "http_method": "POST",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}/set-type",
+      "scope": "region",
+      "summary": "Change the Cluster type",
+      "description": "Change the type of a specific Kubernetes cluster. To see the possible values you can enter for the `type` field, list available cluster types.",
+      "tags": [
+        "Clusters"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the cluster to migrate from one type to another."
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "Type of the cluster. Note that some migrations are not possible (please refer to product documentation)."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Cluster",
+        "payload_schema": "scaleway.k8s.v1.Cluster"
+      }
+    },
+    {
+      "key": "k8s.v1.PoolSetLabel.SetPoolLabels",
+      "id": "SetPoolLabels",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "pool_set_label",
+      "http_method": "PUT",
+      "path": "/k8s/v1/regions/{region}/pools/{pool_id}/set-labels",
+      "scope": "region",
+      "summary": "Set a list of labels for a specific pool",
+      "description": "Apply a list of taints to all nodes of the pool (only apply to labels which was set through scaleway api).",
+      "tags": [
+        "Pools"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "pool_id",
+          "type": "string",
+          "required": true,
+          "location": "path"
+        },
+        {
+          "name": "labels",
+          "type": "map",
+          "required": false,
+          "location": "body"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Pool",
+        "payload_schema": "scaleway.k8s.v1.Pool"
+      }
+    },
+    {
+      "key": "k8s.v1.PoolSetStartupTaint.SetPoolStartupTaints",
+      "id": "SetPoolStartupTaints",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "pool_set_startup_taint",
+      "http_method": "PUT",
+      "path": "/k8s/v1/regions/{region}/pools/{pool_id}/set-startup-taints",
+      "scope": "region",
+      "summary": "Set a list of startup taints for a specific pool",
+      "description": "Apply a list of taints to new nodes of the pool which would not be reconciled by scaleway.",
+      "tags": [
+        "Pools"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "pool_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the pool to update."
+        },
+        {
+          "name": "startup_taints",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "List of startup taints to set.",
+          "item_type": "object"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Pool",
+        "payload_schema": "scaleway.k8s.v1.Pool"
+      }
+    },
+    {
+      "key": "k8s.v1.PoolSetTaint.SetPoolTaints",
+      "id": "SetPoolTaints",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "pool_set_taint",
+      "http_method": "PUT",
+      "path": "/k8s/v1/regions/{region}/pools/{pool_id}/set-taints",
+      "scope": "region",
+      "summary": "Set a list of taints for a specific pool",
+      "description": "Apply a list of taints to all nodes of the pool which will be periodically reconciled by scaleway.",
+      "tags": [
+        "Pools"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "pool_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the pool to update."
+        },
+        {
+          "name": "taints",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "List of taints to set.",
+          "item_type": "object"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Pool",
+        "payload_schema": "scaleway.k8s.v1.Pool"
+      }
+    },
+    {
+      "key": "k8s.v1.Cluster.UpdateCluster",
+      "id": "UpdateCluster",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster",
+      "http_method": "PATCH",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}",
+      "scope": "region",
+      "summary": "Update a Cluster",
+      "description": "Update information on a specific Kubernetes cluster. You can update details such as its name, description, tags and configuration. To upgrade a cluster, you will need to use the dedicated endpoint.",
+      "tags": [
+        "Clusters"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the cluster to update."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "New external name for the cluster.",
+          "nullable": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "New description for the cluster.",
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "New tags associated with the cluster.",
+          "nullable": true
+        },
+        {
+          "name": "autoscaler_config",
+          "type": "object",
+          "required": false,
+          "location": "body",
+          "description": "New autoscaler config for the cluster.",
+          "ref": "scaleway.k8s.v1.UpdateClusterRequest.AutoscalerConfig"
+        },
+        {
+          "name": "auto_upgrade",
+          "type": "object",
+          "required": false,
+          "location": "body",
+          "description": "New auto upgrade configuration for the cluster. Note that all fields needs to be set.",
+          "ref": "scaleway.k8s.v1.UpdateClusterRequest.AutoUpgrade"
+        },
+        {
+          "name": "feature_gates",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "List of feature gates to enable.",
+          "nullable": true
+        },
+        {
+          "name": "admission_plugins",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "List of admission plugins to enable.",
+          "nullable": true
+        },
+        {
+          "name": "open_id_connect_config",
+          "type": "object",
+          "required": false,
+          "location": "body",
+          "description": "OpenID Connect configuration of the cluster. This configuration enables to update the OpenID Connect configuration of the Kubernetes API server.",
+          "ref": "scaleway.k8s.v1.UpdateClusterRequest.OpenIDConnectConfig"
+        },
+        {
+          "name": "apiserver_cert_sans",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Additional Subject Alternative Names for the Kubernetes API server certificate.",
+          "nullable": true
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Cluster",
+        "payload_schema": "scaleway.k8s.v1.Cluster"
+      }
+    },
+    {
+      "key": "k8s.v1.Pool.UpdatePool",
+      "id": "UpdatePool",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "pool",
+      "http_method": "PATCH",
+      "path": "/k8s/v1/regions/{region}/pools/{pool_id}",
+      "scope": "region",
+      "summary": "Update a Pool in a Cluster",
+      "description": "Update the attributes of a specific pool, such as its desired size, autoscaling settings, and tags. To upgrade a pool, you will need to use the dedicated endpoint.",
+      "tags": [
+        "Pools"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "pool_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the pool to update."
+        },
+        {
+          "name": "autoscaling",
+          "type": "boolean",
+          "required": false,
+          "location": "body",
+          "description": "New value for the pool autoscaling enablement.",
+          "nullable": true
+        },
+        {
+          "name": "size",
+          "type": "integer",
+          "required": false,
+          "location": "body",
+          "description": "New desired pool size.",
+          "format": "uint32",
+          "nullable": true
+        },
+        {
+          "name": "min_size",
+          "type": "integer",
+          "required": false,
+          "location": "body",
+          "description": "New minimum size for the pool.",
+          "format": "uint32",
+          "nullable": true
+        },
+        {
+          "name": "max_size",
+          "type": "integer",
+          "required": false,
+          "location": "body",
+          "description": "New maximum size for the pool.",
+          "format": "uint32",
+          "nullable": true
+        },
+        {
+          "name": "autohealing",
+          "type": "boolean",
+          "required": false,
+          "location": "body",
+          "description": "New value for the pool autohealing enablement.",
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "New tags associated with the pool.",
+          "nullable": true
+        },
+        {
+          "name": "kubelet_args",
+          "type": "object",
+          "required": false,
+          "location": "body",
+          "description": "New Kubelet arguments to be used by this pool. Note that this feature is experimental.",
+          "nullable": true
+        },
+        {
+          "name": "upgrade_policy",
+          "type": "object",
+          "required": false,
+          "location": "body",
+          "description": "New upgrade policy for the pool.",
+          "ref": "scaleway.k8s.v1.UpdatePoolRequest.UpgradePolicy"
+        },
+        {
+          "name": "security_group_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Security group ID in which all the nodes of the pool will be moved.",
+          "nullable": true
+        },
+        {
+          "name": "max_termination_grace_period",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "New maximum amount of time before the API forces the drain and deletion of a `deleting` node. (in seconds)",
+          "nullable": true
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Pool",
+        "payload_schema": "scaleway.k8s.v1.Pool"
+      }
+    },
+    {
+      "key": "k8s.v1.ClusterUpgrade.UpgradeCluster",
+      "id": "UpgradeCluster",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "cluster_upgrade",
+      "http_method": "POST",
+      "path": "/k8s/v1/regions/{region}/clusters/{cluster_id}/upgrade",
+      "scope": "region",
+      "summary": "Upgrade a Cluster",
+      "description": "Upgrade a specific Kubernetes cluster and possibly its associated pools to a specific and supported Kubernetes version.",
+      "tags": [
+        "Clusters"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "cluster_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the cluster to upgrade."
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "New Kubernetes version of the cluster. Note that the version should either be a higher patch version of the same minor version or the direct minor version after the current one."
+        },
+        {
+          "name": "upgrade_pools",
+          "type": "boolean",
+          "required": false,
+          "location": "body",
+          "description": "Defines whether pools will also be upgraded once the control plane is upgraded."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Cluster",
+        "payload_schema": "scaleway.k8s.v1.Cluster"
+      }
+    },
+    {
+      "key": "k8s.v1.PoolUpgrade.UpgradePool",
+      "id": "UpgradePool",
+      "service": "k8s",
+      "version": "v1",
+      "resource": "pool_upgrade",
+      "http_method": "POST",
+      "path": "/k8s/v1/regions/{region}/pools/{pool_id}/upgrade",
+      "scope": "region",
+      "summary": "Upgrade a Pool in a Cluster",
+      "description": "Upgrade the Kubernetes version of a specific pool. Note that it only works if the targeted version matches the cluster's version.\nThis will drain and replace the nodes in that pool.",
+      "tags": [
+        "Pools"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "nl-ams",
+            "pl-waw",
+            "it-mil"
+          ]
+        },
+        {
+          "name": "pool_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the pool to upgrade."
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "New Kubernetes version for the pool."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.k8s.v1.Pool",
+        "payload_schema": "scaleway.k8s.v1.Pool"
+      }
+    }
+  ],
+  "warnings": [
+    "UpdateCluster.admission_plugins : tableau sans `items`, type des éléments inconnu",
+    "UpdateCluster.apiserver_cert_sans : tableau sans `items`, type des éléments inconnu",
+    "UpdateCluster.feature_gates : tableau sans `items`, type des éléments inconnu",
+    "UpdateCluster.tags : tableau sans `items`, type des éléments inconnu",
+    "UpdatePool.tags : tableau sans `items`, type des éléments inconnu"
+  ]
+}

@@ -164,6 +164,49 @@ SANS_CIBLE: dict[str, SansCible] = {
         preuve="amont",
         revoir_en="0.8.0",
     ),
+    **{
+        nom: SansCible(
+            raison=(
+                "Kubernetes n'a aucune cible aujourd'hui, et l'obstacle est mesuré "
+                "plutôt que supposé : feint rend `501 not_emulated` sur toute l'API "
+                "`/k8s/v1`, donc la cible `machines` ne peut exercer aucun de ces "
+                "modules. Seul le compte réel le pourrait, et il demande d'étendre la "
+                "stack avec un cluster Kapsule et son pool, dont la création prend "
+                "plusieurs minutes et dont les nœuds sont facturés tant qu'ils "
+                "vivent. **Ce qui fermerait la ligne** : l'émulation côté feint, ou "
+                "l'extension de la stack, suivies en feint#763 et en #249. Le produit "
+                "entre malgré ça parce que la collection officielle livre "
+                "`k8s_cluster` et `k8s_pool` en création seule : elle crée des "
+                "clusters et n'offre rien pour les exploiter ensuite (#240)."
+            ),
+            preuve="amont",
+            revoir_en="0.9.0",
+        )
+        # Une compréhension plutôt que vingt copies du même paragraphe :
+        # l'obstacle est le même pour tous, et vingt copies divergeraient à la
+        # première retouche.
+        for nom in (
+            "k8s_cluster",
+            "k8s_cluster_acl_action",
+            "k8s_cluster_acl_info",
+            "k8s_cluster_available_type_info",
+            "k8s_cluster_available_version_info",
+            "k8s_cluster_info",
+            "k8s_cluster_node_info",
+            "k8s_cluster_pool_info",
+            "k8s_cluster_reset_admin_token_action",
+            "k8s_cluster_set_type_action",
+            "k8s_cluster_type_info",
+            "k8s_cluster_upgrade_action",
+            "k8s_node_info",
+            "k8s_node_reboot_action",
+            "k8s_node_replace_action",
+            "k8s_pool",
+            "k8s_pool_info",
+            "k8s_pool_upgrade_action",
+            "k8s_version_info",
+        )
+    },
 }
 
 

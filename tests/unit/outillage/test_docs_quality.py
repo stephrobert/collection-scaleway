@@ -287,10 +287,32 @@ def test_le_plugin_dinventaire_entre_dans_la_mesure() -> None:
     regardait que `plugins/modules`. Surveiller les pages qu'on lit après, mais
     pas celle qu'on lit d'abord, laissait le trou au pire endroit.
     """
+    from generator.ansible.collection import load_collection
+
+    collection = load_collection()
+    modules = {
+        chemin.stem
+        for chemin in (collection.path / "plugins" / "modules").glob("*.py")
+        if not chemin.stem.startswith("_")
+    }
+    inventaires = {
+        chemin.stem
+        for chemin in (collection.path / "plugins" / "inventory").glob("*.py")
+        if not chemin.stem.startswith("_")
+    }
+
     mesure, _ = docs_quality.mesurer()
-    assert mesure.modules == 51, (
-        f"{mesure.modules} pages examinées, 50 modules et 1 plugin attendus"
+
+    # **Dérivé, et non écrit en dur.** La version précédente exigeait un compte
+    # figé, donc elle rougissait à chaque produit ajouté pour une raison qui
+    # n'avait rien à voir avec ce qu'elle mesure. Ce qu'elle tient est que la
+    # page d'inventaire entre dans la mesure au même titre que celles des
+    # modules, pas combien il y en a ce mois-ci.
+    assert mesure.modules == len(modules) + len(inventaires), (
+        f"{mesure.modules} pages examinées pour {len(modules)} module(s) et "
+        f"{len(inventaires)} plugin(s) d'inventaire"
     )
+    assert inventaires, "la collection ne porte plus de plugin d'inventaire"
 
 
 def test_les_exemples_dun_plugin_sont_des_fichiers_entiers(tmp_path: Path) -> None:

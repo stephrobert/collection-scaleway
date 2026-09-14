@@ -42,6 +42,7 @@ def render_resolution(
     *,
     classifications: Mapping[str, OperationKind],
     sources: Sequence[str],
+    ambigues: Sequence[Resolution] = (),
 ) -> str:
     """Rend le module de table, trié, donc comparable d'une génération à l'autre."""
     lignes: list[str] = [
@@ -70,23 +71,7 @@ def render_resolution(
     for resolution in sorted(resolutions, key=lambda item: item.parameter):
         lignes += [
             f'    "{resolution.parameter}": ResourceLookup(',
-            f'        parameter="{resolution.parameter}",',
-            f'        service="{resolution.service}",',
-            f'        schema="{resolution.schema}",',
-            "        operation=Operation(",
-            f'            id="{resolution.list_operation}",',
-            f'            method="{resolution.http_method}",',
-            f'            path="{resolution.path}",',
-            f"            path_params={python_literal(_chemin(resolution), indent=12)},",
-            f"            query_params={python_literal(resolution.query_params, indent=12)},",
-            f'            payload_field="{resolution.payload_field}",',
-            "            is_list=True,",
-            f"            page_param={python_literal(resolution.page_param)},",
-            f"            per_page_param={python_literal(resolution.per_page_param)},",
-            f'            retry="{_retry(resolution, classifications)}",',
-            "        ),",
-            f"        scope={python_literal(resolution.scope, indent=8)},",
-            f"        filters_by_name={resolution.filters_by_name},",
+            *_corps_de_lookup(resolution, classifications, indent=8),
             "    ),",
         ]
 
@@ -99,10 +84,107 @@ def render_resolution(
         "UNRESOLVABLE: dict[str, str] = {",
     ]
     for refuse in sorted(refus, key=lambda item: item.parameter):
-        lignes.append(f'    "{refuse.parameter}": "{refuse.reason}",')
+        lignes += _refus_rendu(refuse.parameter, refuse.reason)
+    lignes += ["}", ""]
+
+    lignes += [
+        "",
+        "#: Ce qu'un nom désigne dans **plusieurs** produits, rangé par produit.",
+        "#:",
+        "#: Le nom seul ne tranche pas, donc le lookup refuse : rendre",
+        "#: l'identifiant du mauvais produit est pire que ne rien rendre. Mais",
+        "#: retirer la résolution punirait l'utilisateur pour notre nommage, alors",
+        "#: elle est servie dès que l'appelant dit de quel produit il parle.",
+        "AMBIGUOUS: dict[str, dict[str, ResourceLookup]] = {",
+    ]
+    par_parametre: dict[str, list[Resolution]] = {}
+    for resolution in ambigues:
+        par_parametre.setdefault(resolution.parameter, []).append(resolution)
+    for parametre in sorted(par_parametre):
+        lignes.append(f'    "{parametre}": {{')
+        for resolution in sorted(par_parametre[parametre], key=lambda r: r.service):
+            lignes += [
+                f'        "{resolution.service}": ResourceLookup(',
+                *_corps_de_lookup(resolution, classifications, indent=12),
+                "        ),",
+            ]
+        lignes.append("    },")
     lignes += ["}", ""]
 
     return "\n".join(lignes)
+
+
+#: La ligne qu'`ansible-test sanity` accepte dans un fichier publié. C'est elle
+#: qui décide, pas une préférence de ce dépôt.
+LIGNE_MAXIMALE = 160
+
+
+def _refus_rendu(parametre: str, raison: str) -> list[str]:
+    """Une entrée de refus, repliée quand sa raison ne tient pas sur la ligne.
+
+    **Une raison fusionnée peut être longue.** `merge_refus` réunit celles de
+    plusieurs produits, et deux raisons mises bout à bout dépassaient la ligne
+    que le sanity accepte. Replier est la réponse ; tronquer ferait perdre
+    exactement ce que ce champ existe pour dire, et exempter le fichier
+    introduirait la première exemption de sanity du dépôt pour un défaut de mise
+    en forme.
+
+    La concaténation implicite de Python rend une seule chaîne : ce que le
+    runtime lit ne change pas.
+    """
+    une_ligne = f'    "{parametre}": "{raison}",'
+    if len(une_ligne) <= LIGNE_MAXIMALE:
+        return [une_ligne]
+
+    # Coupé aux espaces, donc jamais à l'intérieur d'un mot : une raison nomme
+    # des identifiants, et les couper les rendrait introuvables.
+    largeur = LIGNE_MAXIMALE - 16
+    morceaux: list[str] = []
+    courant = ""
+    for mot in raison.split(" "):
+        if courant and len(courant) + 1 + len(mot) > largeur:
+            morceaux.append(courant + " ")
+            courant = mot
+        else:
+            courant = f"{courant} {mot}" if courant else mot
+    morceaux.append(courant)
+
+    return [
+        f'    "{parametre}": (',
+        *[f'        "{morceau}"' for morceau in morceaux],
+        "    ),",
+    ]
+
+
+def _corps_de_lookup(
+    resolution: Resolution, classifications: Mapping[str, OperationKind], *, indent: int
+) -> list[str]:
+    """Les champs d'un `ResourceLookup`, à l'indentation demandée.
+
+    Écrit une fois plutôt que deux : `RESOLUTIONS` et `AMBIGUOUS` portent la même
+    structure, et deux copies d'un rendu finissent par diverger sur un champ que
+    l'une gagne et l'autre pas.
+    """
+    marge = " " * indent
+    return [
+        f'{marge}parameter="{resolution.parameter}",',
+        f'{marge}service="{resolution.service}",',
+        f'{marge}schema="{resolution.schema}",',
+        f"{marge}operation=Operation(",
+        f'{marge}    id="{resolution.list_operation}",',
+        f'{marge}    method="{resolution.http_method}",',
+        f'{marge}    path="{resolution.path}",',
+        f"{marge}    path_params={python_literal(_chemin(resolution), indent=indent + 4)},",
+        f"{marge}    query_params={python_literal(resolution.query_params, indent=indent + 4)},",
+        f'{marge}    payload_field="{resolution.payload_field}",',
+        f"{marge}    is_list=True,",
+        f"{marge}    page_param={python_literal(resolution.page_param)},",
+        f"{marge}    per_page_param={python_literal(resolution.per_page_param)},",
+        f'{marge}    retry="{_retry(resolution, classifications)}",',
+        f"{marge}),",
+        f"{marge}scope={python_literal(resolution.scope, indent=indent)},",
+        f"{marge}filters_by_name={resolution.filters_by_name},",
+    ]
 
 
 def _chemin(resolution: Resolution) -> tuple[str, ...]:

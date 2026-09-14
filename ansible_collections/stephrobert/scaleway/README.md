@@ -176,6 +176,30 @@ second run reports no change.
 | `instance_volume_info` | Gather information about Scaleway Instance volumes |
 | `instance_volume_type_info` | Gather information about Scaleway Instance volume types |
 
+### K8S (19 modules)
+
+| module | what it does |
+|---|---|
+| `k8s_cluster` | Manage a Scaleway Kubernetes cluster |
+| `k8s_cluster_acl_action` | Perform an action on a Scaleway Kubernetes cluster ACL |
+| `k8s_cluster_acl_info` | Gather information about Scaleway Kubernetes cluster ACLs |
+| `k8s_cluster_available_type_info` | Gather information about Scaleway Kubernetes cluster available types |
+| `k8s_cluster_available_version_info` | Gather information about Scaleway Kubernetes cluster available versions |
+| `k8s_cluster_info` | Gather information about Scaleway Kubernetes clusters |
+| `k8s_cluster_node_info` | Gather information about Scaleway Kubernetes cluster nodes |
+| `k8s_cluster_pool_info` | Gather information about Scaleway Kubernetes cluster pools |
+| `k8s_cluster_reset_admin_token_action` | Perform an action on a Scaleway Kubernetes cluster reset admin token |
+| `k8s_cluster_set_type_action` | Perform an action on a Scaleway Kubernetes cluster set type |
+| `k8s_cluster_type_info` | Gather information about Scaleway Kubernetes cluster types |
+| `k8s_cluster_upgrade_action` | Perform an action on a Scaleway Kubernetes cluster upgrade |
+| `k8s_node_info` | Gather information about Scaleway Kubernetes nodes |
+| `k8s_node_reboot_action` | Perform an action on a Scaleway Kubernetes node reboot |
+| `k8s_node_replace_action` | Perform an action on a Scaleway Kubernetes node replace |
+| `k8s_pool` | Manage a Scaleway Kubernetes pool |
+| `k8s_pool_info` | Gather information about Scaleway Kubernetes pools |
+| `k8s_pool_upgrade_action` | Perform an action on a Scaleway Kubernetes pool upgrade |
+| `k8s_version_info` | Gather information about Scaleway Kubernetes versions |
+
 ### Load Balancer (22 modules)
 
 | module | what it does |

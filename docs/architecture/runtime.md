@@ -3,7 +3,7 @@
 What `plugins/module_utils/scaleway.py` carries, why, and what it costs.
 
 <!-- compteurs:runtime-etat:début, produits par scripts/readme_counters.py -->
-State: written, measured by 310 unit tests, judged by `ansible-test sanity`, and
+State: written, measured by 313 unit tests, judged by `ansible-test sanity`, and
 exercised end to end against a local emulator and against a real Scaleway
 account.
 <!-- compteurs:runtime-etat:fin -->
@@ -11,7 +11,7 @@ account.
 ## Clearing a field
 
 <!-- compteurs:effacables:début, produits par scripts/readme_counters.py -->
-The contract marks **56 writable fields** as clearable, across 15 modules.
+The contract marks **71 writable fields** as clearable, across 17 modules.
 Clearing one is writing the empty value of its type, `""` or `[]` or `{}`,
 measured against the real account. An explicit `null` is refused, naming
 that value, because the API reads `null` as "field not provided" and would

@@ -228,6 +228,48 @@ def merge_refus(refus: Sequence[Refus]) -> tuple[Refus, ...]:
     )
 
 
+def ecarter_les_ambigus(
+    gardees: Sequence[Resolution], refus: Sequence[Refus]
+) -> tuple[tuple[Resolution, ...], tuple[Refus, ...], tuple[Resolution, ...]]:
+    """Retire une résolution dont un autre produit refuse le même nom.
+
+    **Le cas que `merge_resolutions` ne voit pas.** Elle compare des résolutions
+    entre elles, donc elle attrape `ip_id` revendiqué par deux produits qui le
+    résolvent tous les deux. Elle ne voit pas `acl_id`, que le Load Balancer
+    résout et que Kubernetes refuse faute de champ `name` : la résolution du
+    premier restait seule en piste, et quelqu'un qui écrit `acl_id` en pensant à
+    une règle de cluster obtenait une règle de load balancer, en silence.
+
+    Ce n'est pas moins ambigu qu'un nom résolu deux fois, c'est la même
+    ambiguïté vue d'un autre côté : le nom désigne deux choses, et laquelle
+    n'est pas décidable depuis le nom seul. Rendre l'identifiant du mauvais
+    produit est pire que ne rien rendre.
+
+    Le refus qui existait déjà est conservé tel quel, et celui du produit qui
+    résolvait s'y ajoute : `merge_refus` les réunira en nommant les deux.
+
+    **La résolution n'est pas jetée, elle est rangée à part.** Retirer la
+    possibilité de résoudre une ACL de load balancer par son nom parce qu'un
+    autre produit porte le même nom de paramètre punirait l'utilisateur pour
+    notre nommage. Elle ressort en troisième valeur, rangée par produit : le
+    lookup la sert quand l'appelant dit `service=`, et refuse sinon. Refusé
+    sauf si l'on désambiguïse, et non refusé tout court.
+    """
+    refuses = {refuse.parameter for refuse in refus}
+    survivantes = tuple(r for r in gardees if r.parameter not in refuses)
+    ambigues = tuple(r for r in gardees if r.parameter in refuses)
+    ecartees = tuple(
+        Refus(
+            r.parameter,
+            f"{r.service} le résout, un autre produit ne le peut pas : "
+            f"lequel n'est pas décidable depuis le nom seul. `service={r.service}` "
+            "le dit",
+        )
+        for r in ambigues
+    )
+    return survivantes, ecartees, ambigues
+
+
 def merge_resolutions(
     par_service: list[tuple[Resolution, ...]],
 ) -> tuple[tuple[Resolution, ...], tuple[Refus, ...]]:
