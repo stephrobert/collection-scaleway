@@ -7,14 +7,14 @@
 # Do not edit manually.
 #
 # Contrat    : specs/scaleway/k8s.v1.yml
-# Opérations : RebootNode
+# Opérations : RebootNode, GetNode
 # Régénérer  : mise run generate
 
 from __future__ import annotations
 
 DOCUMENTATION = r"""
 module: k8s_node_reboot_action
-short_description: Perform an action on a Scaleway Kubernetes node reboot
+short_description: Perform an action on a Scaleway Kubernetes node
 version_added: 0.8.0
 description:
 - Reboot a specific Node. The node will first be drained and pods will be rescheduled onto
@@ -50,12 +50,16 @@ attributes:
     support: none
 extends_documentation_fragment:
 - stephrobert.scaleway.scaleway
+- stephrobert.scaleway.waitable
 """
 
 EXAMPLES = r"""
 # An action is a trigger, not a state: running this a second time
 # reports `changed` again, and that is correct. Idempotence is the
 # business of the management modules.
+#
+# The module waits until the API reports the target state before
+# returning, so the next task acts on a resource that has settled.
 
 - name: Reboot
   stephrobert.scaleway.k8s_node_reboot_action:
@@ -70,6 +74,11 @@ action:
   - The operation that was triggered.
   returned: always
   type: str
+status:
+  description:
+  - State of the resource once the action completed.
+  returned: when the module waited for the action to complete
+  type: str
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402
@@ -79,6 +88,7 @@ from ansible_collections.stephrobert.scaleway.plugins.module_utils.scaleway impo
     Operation,
     run_action_module,
     scaleway_argument_spec,
+    scaleway_waitable_argument_spec,
 )
 
 #: Options propres au module, traduites depuis le contrat.
@@ -94,6 +104,7 @@ MODULE_ARGUMENT_SPEC = {
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
 ARGUMENT_SPEC: dict = {}
 ARGUMENT_SPEC.update(scaleway_argument_spec())
+ARGUMENT_SPEC.update(scaleway_waitable_argument_spec())
 ARGUMENT_SPEC.update(MODULE_ARGUMENT_SPEC)
 
 #: Ce que le module exécute, et les décisions que le générateur a prises.
@@ -106,6 +117,16 @@ MODULE = ActionModule(
         query_params=(),
     ),
     action_parameter=None,
+    read_operation=Operation(
+        id="GetNode",
+        method="GET",
+        path="/k8s/v1/regions/{region}/nodes/{node_id}",
+        path_params=("region", "node_id"),
+        query_params=(),
+        retry="safe",
+    ),
+    state_field="status",
+    wait_states={"RebootNode": "ready"},
 )
 
 

@@ -134,7 +134,7 @@ collection stephrobert.scaleway: 69 modules written out of 75 planned
   k8s_cluster_type_info                  Gather information about Scaleway Kubernetes cluster types
   k8s_cluster_upgrade_action             Perform an action on a Scaleway Kubernetes cluster upgrade
   k8s_node_info                          Gather information about Scaleway Kubernetes nodes
-  k8s_node_reboot_action                 Perform an action on a Scaleway Kubernetes node reboot
+  k8s_node_reboot_action                 Perform an action on a Scaleway Kubernetes node
   k8s_node_replace_action                Perform an action on a Scaleway Kubernetes node replace
   k8s_pool                               Manage a Scaleway Kubernetes pool
   k8s_pool_info                          Gather information about Scaleway Kubernetes pools
@@ -164,7 +164,7 @@ collection stephrobert.scaleway: 69 modules written out of 75 planned
   lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
   compute (inventory)                    instance, elastic_metal, apple_silicon
   60 modules called by the example playbook out of 69 (87.0%), which is not the same as played
-  70 published pages: 372/372 options and 92/92 returned keys documented
+  70 published pages: 372/372 options and 93/93 returned keys documented
   134/134 examples copyable as is · 79/80 returned keys list their fields
   1307 unit tests · 385 mutations proven by /falsify
   CI: 8 jobs, Générateur · collection · Image · Archive · Intégration · Plateforme d'exemple · Parcours d'accueil · Réaction sur événement
