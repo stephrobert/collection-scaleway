@@ -55,6 +55,16 @@ SURFACE: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("block.snapshot", ("block", "snapshot", "list")),
     ("ipam.ip", ("ipam", "ip", "list")),
     ("iam.ssh-key", ("iam", "ssh-key", "list")),
+    # **Un cluster Kapsule est la ressource la plus chère que cette stack sache
+    # créer**, et le contrôle ne le voyait pas : « aucun résidu » aurait été un
+    # faux vert sur exactement ce qu'on ne veut pas laisser derrière soi.
+    #
+    # Le cluster seul suffit à l'inventaire. Un pool et un nœud appartiennent à
+    # un cluster et disparaissent avec lui ; `scw k8s pool list` refuse d'ailleurs
+    # de répondre sans `cluster-id`, ce qui dit la même chose. Ce qu'un cluster
+    # crée de son côté, load balancers de service et volumes de PVC, est déjà
+    # inventorié par `lb.lb` et `block.volume`.
+    ("k8s.cluster", ("k8s", "cluster", "list")),
 )
 
 

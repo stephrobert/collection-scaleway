@@ -450,6 +450,64 @@ def api(env: dict[str, str], chemin: str) -> Any:
     return reponse.json()
 
 
+#: Le nom que Kapsule donne au groupe de sécurité qu'il crée pour un cluster.
+#: Il ne porte pas le préfixe de la plateforme, donc aucune garde qui filtre par
+#: préfixe ne le voit ; c'est `residue.py`, qui compare le compte entier à sa
+#: référence, qui l'attrape après coup.
+GROUPE_KAPSULE = "Kapsule default security group"
+
+
+def nettoyer_ce_que_kapsule_laisse(env: dict[str, str], zone: str, projet: str) -> list[str]:
+    """Supprime le groupe de sécurité qu'un cluster laisse derrière lui.
+
+    **Mesuré, pas supposé.** Le groupe a été relevé trente secondes, une minute,
+    une minute et demie, deux minutes et trois minutes après la destruction du
+    cluster, et il était là aux cinq relevés. `delete_additional_resources` le
+    laisse, et attendre ne change rien.
+
+    **Borné au projet de l'exercice**, et au nom exact : un compte peut porter
+    d'autres clusters, et balayer sur le nom seul détruirait le groupe d'un
+    cluster que personne n'a demandé de toucher.
+
+    Rend ce qui a été supprimé, pour que l'appelant le dise plutôt que de le
+    faire en silence.
+    """
+    import requests
+    from scaleway_core.profile import Profile
+
+    profil = Profile.from_config_file_and_env(None, env.get("SCW_PROFILE") or "default")
+    base = env.get("SCW_API_URL") or profil.api_url or "https://api.scaleway.com"
+    jeton = env.get("SCW_SECRET_KEY") or profil.secret_key
+    entetes = {"accept": "application/json", "x-auth-token": jeton or ""}
+
+    try:
+        groupes = api(env, f"/instance/v1/zones/{zone}/security_groups")["security_groups"]
+    except Exception as erreur:  # une lecture ratée ne bloque pas la destruction
+        print(f"groupes de sécurité illisibles : {erreur}", file=sys.stderr)
+        return []
+
+    supprimes = []
+    for groupe in groupes:
+        if groupe.get("name") != GROUPE_KAPSULE:
+            continue
+        if (groupe.get("project") or groupe.get("project_id")) != projet:
+            continue
+        reponse = requests.delete(
+            f"{base}/instance/v1/zones/{zone}/security_groups/{groupe['id']}",
+            headers=entetes,
+            timeout=30,
+        )
+        if reponse.ok:
+            supprimes.append(groupe["id"])
+        else:
+            print(
+                f"le groupe {groupe['id']} n'a pas été supprimé : "
+                f"HTTP {reponse.status_code}. `residue.py` le dira.",
+                file=sys.stderr,
+            )
+    return supprimes
+
+
 #: Un identifiant que le provider Terraform a préfixé par sa portée,
 #: `fr-par-1/<uuid>` ou `fr-par/<uuid>`. Le module qui le reçoit tel quel
 #: compose `/frontends/fr-par-1/<uuid>`, et ce que rend l'API n'est pas une
@@ -475,9 +533,9 @@ def refuser_une_sortie_portee(sorties: dict[str, Any]) -> None:
     fautives = []
     for nom, contenu in sorties.items():
         valeur = contenu.get("value") if isinstance(contenu, dict) else contenu
-        for element in valeur if isinstance(valeur, list) else [valeur]:
+        for chemin, element in _valeurs_plates(nom, valeur):
             if isinstance(element, str) and PORTEE_COLLEE.match(element):
-                fautives.append(f"{nom} = {element}")
+                fautives.append(f"{chemin} = {element}")
     if fautives:
         raise ExempleError(
             "sortie(s) Terraform portant encore leur portée :\n  "
@@ -485,6 +543,30 @@ def refuser_une_sortie_portee(sorties: dict[str, Any]) -> None:
             + "\nUn module qui les reçoit compose une URL que l'API refuse. "
             'Les dépouiller dans `outputs.tf` : reverse(split("/", ...))[0].'
         )
+
+
+def _valeurs_plates(nom: str, valeur: Any) -> list[tuple[str, Any]]:
+    """Toutes les chaînes d'une sortie, quelle que soit sa forme.
+
+    **Une sortie composite échappait à la garde.** Elle ne regardait qu'une
+    valeur ou une liste de valeurs ; un dictionnaire passait entier sans qu'aucun
+    de ses champs soit examiné. Le jour où une sortie en rend un, et c'est arrivé
+    avec le cluster Kubernetes, un identifiant portant encore sa portée serait
+    passé sans un mot.
+    """
+    if isinstance(valeur, dict):
+        return [
+            couple
+            for cle, sous_valeur in valeur.items()
+            for couple in _valeurs_plates(f"{nom}.{cle}", sous_valeur)
+        ]
+    if isinstance(valeur, (list, tuple)):
+        return [
+            couple
+            for rang, element in enumerate(valeur)
+            for couple in _valeurs_plates(f"{nom}[{rang}]", element)
+        ]
+    return [(nom, valeur)]
 
 
 def controler_plan_de_controle(env: dict[str, str], sorties: dict[str, Any]) -> None:
@@ -519,7 +601,20 @@ def controler_plan_de_controle(env: dict[str, str], sorties: dict[str, Any]) -> 
         for r in api(env, f"/vpc/v2/regions/{region}/private-networks")["private_networks"]
         if r["name"].startswith(prefixe)
     ]
-    exige(len(reseaux) == 3, f"trois réseaux privés ({len(reseaux)} trouvés)")
+    # **Trois réseaux, plus celui du cluster quand il y en a un.** Le compte était
+    # écrit en dur, et il a refusé la plateforme le jour où Kapsule est arrivé :
+    # la garde avait raison de refuser un parc qui ne correspond pas à ce que la
+    # stack déclare, c'est le nombre attendu qui avait vieilli.
+    #
+    # Il se déduit de la sortie plutôt que de la cible : `kapsule.cluster_id` est
+    # vide là où feint ne sert pas l'API Kubernetes, et renseigné sur le cloud
+    # réel. Écrire « trois sur l'émulateur, quatre sur le réel » serait un second
+    # endroit où la condition vit, et deux endroits divergent.
+    attendus = 3 + (1 if sorties.get("kapsule", {}).get("value", {}).get("cluster_id") else 0)
+    exige(
+        len(reseaux) == attendus,
+        f"{attendus} réseaux privés ({len(reseaux)} trouvés)",
+    )
 
     groupes = [
         g
@@ -968,6 +1063,18 @@ def main(argv: list[str]) -> int:
         # ressource l'aurait déjà créée au mauvais endroit.
         identifiant_projet, nom_projet = projet_vise(env, arguments)
         variables["project_id"] = identifiant_projet
+        # **Et il traverse aussi vers Ansible.** Il ne partait que dans les
+        # variables Terraform : la stack créait donc ses machines dans le projet
+        # désigné, pendant que le plugin d'inventaire et les modules lisaient le
+        # projet par défaut du profil. Mesuré le 14 septembre 2026 :
+        # « l'inventaire rend 0 machine(s), la stack en a créé 5 », sur une
+        # plateforme parfaitement déployée.
+        #
+        # Poser `SCW_DEFAULT_PROJECT_ID` ici ne contredit pas la raison d'être de
+        # `SCW_EXAMPLE_PROJECT_ID` : ce qui est refusé est l'**héritage** d'un
+        # défaut que personne n'a choisi. Une fois le projet désigné, le
+        # propager aux outils est ce qui rend la désignation effective.
+        env["SCW_DEFAULT_PROJECT_ID"] = identifiant_projet
         print(f"projet visé : {nom_projet} ({identifiant_projet})")
         variables["endpoint"] = ""
         # **Enregistrer ce que l'API répond, et pas seulement si l'assertion
@@ -1065,6 +1172,11 @@ def main(argv: list[str]) -> int:
             "frontend_tls": sorties.get("frontend_tls", {}).get("value", ""),
             "certificats_mesure": sorties.get("certificats_mesure", {}).get("value", []),
             "certificat_backend": sorties.get("certificat_backend", {}).get("value", ""),
+            # Le cluster Kubernetes n'existe que sur le cloud réel : feint rend
+            # `501 not_emulated` sur toute son API, mesuré. La sortie existe
+            # toujours et ses identifiants sont vides ailleurs, donc le playbook
+            # saute ces tâches en le disant plutôt que d'échouer (#249).
+            "kapsule": sorties.get("kapsule", {}).get("value", {}),
         }
 
         # Les modules recensés parlent à l'API et n'ont besoin d'aucune
@@ -1074,6 +1186,16 @@ def main(argv: list[str]) -> int:
         # et feint#651. Un écart entre les deux exécutions est un défaut de
         # l'émulateur, pas une fatalité.
         code = jouer("modules.yml", env, extra)
+
+        # **Joué même si `modules.yml` a échoué, et c'est délibéré.** Ces tâches
+        # vivaient à la fin de `modules.yml` : le 14 septembre 2026, une
+        # assertion sur l'ordre des certificats d'un load balancer a fait mourir
+        # le play, et aucun module Kubernetes n'a été appelé. Un playbook
+        # otage de ses voisins ne prouve rien de lui-même.
+        #
+        # Le code de sortie retient le pire des deux : un échec ici compte, il
+        # n'est simplement pas empêché par un échec là-bas.
+        code = max(code, jouer("kubernetes.yml", env, extra))
 
         if cible["ssh"]:
             controler_sortie_internet(bastion_ip)
@@ -1150,6 +1272,18 @@ def main(argv: list[str]) -> int:
             else:
                 detruit = True
             if not cible["emulateur"]:
+                # **Avant le contrôle de résidu, et pas après.** Le contrôle
+                # doit rester le juge : s'il trouve encore quelque chose, c'est
+                # que le nettoyage n'a pas suffi, et c'est cette information-là
+                # qui compte.
+                laisses = nettoyer_ce_que_kapsule_laisse(
+                    env, variables.get("zone", "fr-par-1"), variables.get("project_id", "")
+                )
+                if laisses:
+                    print(
+                        f"\n{len(laisses)} groupe(s) de sécurité laissé(s) par Kapsule, "
+                        f"supprimé(s) : {', '.join(laisses)}"
+                    )
                 verifier = [sys.executable, str(ROOT / "scripts" / "residue.py"), "verify"]
                 if lancer(verifier).returncode != 0:
                     code = 1

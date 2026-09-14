@@ -37,16 +37,27 @@
         zone: "{{ zone }}"
       register: machines
 
+    # **Le nom ne suffit plus à désigner les machines de la stack.** Les nœuds
+    # d'un pool Kapsule sont des Instances et portent le préfixe de la
+    # plateforme : cette assertion en comptait sept là où la stack en déclare
+    # cinq, mesuré le 14 septembre 2026.
+    #
+    # L'étiquette `exemple` est ce qui distingue les machines que la stack
+    # déclare de celles que la plateforme maintient pour son compte, et c'est
+    # exactement le filtre que la tâche suivante demande à l'API. Les deux
+    # désignent donc le même ensemble : c'est ce qui rend leur comparaison
+    # intéressante, l'une filtrant ici et l'autre là-bas.
     - name: L'API rend les cinq machines que la stack a créées
       ansible.builtin.assert:
         that:
-          - machines.servers | selectattr('name', 'search', prefixe)
-            | list | length == 5
+          - les_notres | length == 5
           - machines is not changed
-        fail_msg: >-
-          {{ machines.servers | selectattr('name', 'search', prefixe) | list | length }}
-          machine(s) au lieu de 5.
+        fail_msg: "{{ les_notres | length }} machine(s) au lieu de 5."
         quiet: true
+      vars:
+        les_notres: >-
+          {{ machines.servers | selectattr('name', 'search', prefixe)
+             | selectattr('tags', 'contains', 'exemple') | list }}
 
     # **`tags` s'écrit en liste, et c'est un override qui l'a rendu possible.**
     # Le contrat le déclare `string` et décrit la virgule dans sa propre
