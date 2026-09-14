@@ -224,6 +224,18 @@ run = "python scripts/generate_all.py"
 description = "Retélécharger les contrats depuis le portail Scaleway"
 run = "python scripts/sync_specs.py"
 
+[tasks."sync:officielle"]
+description = "Remesurer ce que la collection officielle livre vraiment"
+# **Leur dépôt porte soixante modules et leur archive en sert cinq.** Un
+# décompte fait sur le dépôt se trompe d'un ordre de grandeur, et il se lit
+# exactement comme un décompte juste. La mesure est donc versionnée sous
+# `specs/officielle/`, comme les contrats : leur collection évolue, et
+# l'évolution arrive comme un diff.
+#
+# Seule cette tâche va sur le réseau. `mise run admission` lit la mesure
+# écrite, et ne la cherche jamais lui-même.
+run = "python scripts/officielle.py --mesurer"
+
 [tasks."parser:coverage"]
 description = "Ce que le parser ne couvre pas, contrat par contrat"
 # À passer sur le contrat d'un produit **avant** de l'importer. Le parser ne

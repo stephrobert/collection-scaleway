@@ -2935,6 +2935,30 @@
       "find": "    return str(constat.get(\"status\") or \"open\")",
       "replace": "    return str(constat.get(\"status\") or \"\")",
       "test": "tests/unit/collection/test_audit_changes.py::test_un_nouveau_constat_bloquant_rend_action_required"
+    },
+    {
+      "name": "interdiction-fantome-qui-passe-pour-une-decision",
+      "why": "Ce dépôt s'interdit d'écrire ce que la collection officielle sert bien, et chaque interdiction nomme ce qui la sert à sa place. Le jour où ils cessent de livrer ce quelque chose, la raison tombe et l'interdiction devient un fantôme : elle se lit exactement comme une décision en vigueur, et personne ne la rouvrirait. Seul le recoupement avec ce que leur archive livre vraiment le dit (ADR-022).",
+      "file": "scripts/officielle.py",
+      "find": "        if entree[\"sert\"] not in livres",
+      "replace": "        if False",
+      "test": "tests/unit/outillage/test_officielle.py::test_une_interdiction_qui_ne_correspond_plus_est_nommee"
+    },
+    {
+      "name": "mesure-absente-lue-comme-une-mesure-vide",
+      "why": "« Je n'ai pas la mesure » et « la mesure dit non » ne sont pas la même chose. Sans ce refus, un fichier absent rendrait un rapport d'admission qui affirme que la collection officielle ne provisionne rien, ce qui est la forme même d'un faux vert : un verdict tiré de zéro fichier examiné.",
+      "file": "scripts/officielle.py",
+      "find": "    if not MESURE.exists():",
+      "replace": "    if False:",
+      "test": "tests/unit/outillage/test_officielle.py::test_une_mesure_absente_est_un_echec_de_programme_pas_un_verdict"
+    },
+    {
+      "name": "etape-de-complementarite-qui-irait-sur-le-reseau",
+      "why": "`mise run admission` doit rendre le même verdict hors ligne et deux fois de suite. Une étape qui remesurerait elle-même ferait dépendre l'admission d'un dépôt tiers et d'une connexion, et le jour où leur collection bouge, le verdict changerait sans qu'aucun diff ne le dise. C'est la raison d'être de `specs/officielle/`. La première version du contrôle regardait le nom appelé, et cette mutation l'a fait tomber : l'alias laissait `lire` dans le code et le test vert. Le contrôle porte donc sur ce qui est importé.",
+      "file": "scripts/admission.py",
+      "find": "    from officielle import MESURE, lire",
+      "replace": "    from officielle import MESURE, mesurer as lire",
+      "test": "tests/unit/outillage/test_admission_complementarite.py::test_letape_ne_va_jamais_sur_le_reseau"
     }
   ]
 }
