@@ -57,6 +57,7 @@ class InventoryConfig:
     filters: Filters
     include_raw: bool
     strict: bool
+    variables: dict[str, str]
 
     def cache_fingerprint(
         self,
@@ -113,6 +114,78 @@ def _liste(valeur: Any) -> tuple[str, ...]:
     if isinstance(valeur, str):
         return (valeur,)
     return tuple(str(item) for item in valeur)
+
+
+#: Les variables d'hôte que ce plugin pose, sans leur préfixe `scaleway_`.
+#:
+#: Recopiée ici plutôt que dérivée du plugin : `config.py` ne connaît pas le
+#: plugin, et l'inverse serait une dépendance à l'envers. Un test compare les
+#: deux, parce qu'une liste recopiée finit par ne plus correspondre.
+VARIABLES_POSEES = (
+    "id",
+    "product",
+    "name",
+    "project_id",
+    "organization_id",
+    "region",
+    "zone",
+    "state",
+    "tags",
+    "public_ipv4",
+    "public_ipv6",
+    "private_ipv4",
+    "private_ipv6",
+    "private_networks",
+    "address_source",
+)
+
+#: Ce qu'une correspondance de `variables` a le droit de nommer à sa source.
+#: Ce sont les variables d'hôte que ce plugin pose, sans leur préfixe : le
+#: fichier venu de chez eux écrit `public_ipv4`, et c'est ce nom-là qu'on lit.
+#:
+#: Mesuré sur `scaleway.scaleway` 2.7.2, leurs sources sont `id`, `tags`,
+#: `zone`, `state`, `hostname`, `public_ipv4`, `vpc_ipv4`, `vpc_ipv6`,
+#: `public_dns` et `private_dns`. Trois n'ont pas d'équivalent ici et sont
+#: traduites : `hostname` est notre `name`, `vpc_ipv4` et `vpc_ipv6` sont nos
+#: `private_ipv4` et `private_ipv6`. `public_dns` et `private_dns` ne sont pas
+#: reprises : ce plugin ne les lit pas, et les inventer serait une promesse.
+SOURCES_TRADUITES = {
+    "hostname": "name",
+    "vpc_ipv4": "private_ipv4",
+    "vpc_ipv6": "private_ipv6",
+}
+
+
+def _correspondances(valeur: Any) -> dict[str, str]:
+    """La table `destination: source` de `variables`, refusée si elle ment.
+
+    **Une source inconnue est refusée, jamais sautée.** Mesuré : leur plugin
+    ignore l'hôte entier quand la source manque, en avertissant. Une faute de
+    frappe y vide l'inventaire, et l'avertissement se noie dans le reste ; un
+    inventaire vide qu'on croit filtré est la pire forme de ce défaut, parce
+    qu'un playbook joué dessus ne touche rien et sort vert.
+    """
+    if valeur is None:
+        return {}
+    if not isinstance(valeur, dict):
+        raise ConfigError(
+            f"`variables` est une table `destination: source`, pas un "
+            f"{type(valeur).__name__}"
+        )
+
+    connues = sorted(set(VARIABLES_POSEES) | set(SOURCES_TRADUITES))
+    table: dict[str, str] = {}
+    for destination, source in valeur.items():
+        nom = SOURCES_TRADUITES.get(str(source), str(source))
+        if nom not in VARIABLES_POSEES:
+            raise ConfigError(
+                f"`variables` fait venir `{destination}` de `{source}`, que ce "
+                f"plugin ne pose pas. Les sources sont {', '.join(connues)}. "
+                "Refuser plutôt que sauter l'hôte : une faute de frappe qui "
+                "vide l'inventaire se lit comme un filtre qui a bien travaillé."
+            )
+        table[str(destination)] = nom
+    return table
 
 
 def from_options(
@@ -182,10 +255,23 @@ def from_options(
             organizations=_liste(get_option("organizations")),
             tags=_liste(get_option("tags")),
             tags_match=correspondance,
-            states=_liste(get_option("states")),
+            # **`state` est accepté comme leur nom, et il filtre comme le
+            # nôtre.** Mesuré sur `scaleway.scaleway` 2.7.2 : leur `state`
+            # filtre côté API, **sur Instance seulement**, et vaut `[running]`
+            # par défaut, si bien que leur inventaire cache les machines
+            # arrêtées sans le dire et garde toutes les Elastic Metal quel que
+            # soit leur état.
+            #
+            # Reprendre cette asymétrie reviendrait à filtrer une famille et pas
+            # les autres, ce qui n'est défendable pour personne. Reprendre leur
+            # défaut cacherait des machines aux utilisateurs d'ici. L'alias
+            # existe donc pour qu'un fichier venu de chez eux se lise, et l'écart
+            # est écrit plutôt que tu.
+            states=_liste(get_option("states")) or _liste(get_option("state")),
             exclude_tags=_liste((get_option("exclude") or {}).get("tags")),
             exclude_states=_liste((get_option("exclude") or {}).get("states")),
         ),
         include_raw=bool(get_option("include_raw")),
         strict=bool(get_option("strict")),
+        variables=_correspondances(get_option("variables")),
     )

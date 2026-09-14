@@ -159,6 +159,43 @@ options:
     type: list
     elements: str
     default: []
+  state:
+    description:
+      - The name C(scaleway.scaleway) uses for the same idea, accepted so a
+        file written for that collection reads here without being rewritten.
+        C(states) wins when both are given.
+      - >-
+        Measured on C(scaleway.scaleway) 2.7.2, and it does not filter the same
+        population: theirs filters server-side on Instance alone, so Elastic
+        Metal and Apple Silicon come back whatever their state, and it defaults
+        to C(running), which hides stopped machines without saying so. This one
+        filters every product, and keeps everything by default.
+    type: list
+    elements: str
+    default: []
+  variables:
+    description:
+      - >-
+        A C(destination: source) mapping, the shape C(scaleway.scaleway) uses.
+        The source is a host variable this plugin sets, without its
+        C(scaleway_) prefix.
+      - >-
+        C(hostname), C(vpc_ipv4) and C(vpc_ipv6) are accepted as their names for
+        C(name), C(private_ipv4) and C(private_ipv6). C(public_dns) and
+        C(private_dns) are not: this plugin does not read them, and inventing
+        them would be a promise.
+      - >-
+        A source this plugin does not set is refused, never skipped. Their
+        plugin drops the whole host when a source is missing, so a typo empties
+        the inventory and the warning drowns in the rest; a playbook then runs
+        green having touched nothing.
+      - >-
+        A source missing on one host is a different question: a machine with no
+        private address is not a configuration mistake. The variable is not set
+        for that host, and the host stays.
+      - C(compose) does the same thing with Jinja, and is not going away.
+    type: dict
+    default: {}
   exclude:
     description:
       - Drop hosts matching these tags or states, after every other filter.
@@ -544,6 +581,25 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
             variables = self._host_variables(host, selection)
             for cle, valeur in variables.items():
                 self.inventory.set_variable(nom, cle, valeur)
+
+            # **Les noms qu'un fichier venu de chez eux attend.** La table est
+            # `destination: source`, et la source est validée à la lecture de la
+            # configuration : une source inconnue est refusée là-bas, jamais
+            # sautée ici. Leur plugin ignore l'hôte entier quand la source
+            # manque, et une faute de frappe y vide l'inventaire.
+            #
+            # Une source absente **sur cet hôte-là** est une autre question :
+            # une machine sans adresse privée n'est pas une faute de
+            # configuration. La variable n'est alors pas posée, et l'hôte reste.
+            for destination, source in settings.variables.items():
+                valeur = variables.get("scaleway_" + source)
+                if valeur in (None, [], ""):
+                    self.display.vvvv(
+                        "scaleway: %s n'a pas de %s, %s n'est pas posée"
+                        % (nom, source, destination)
+                    )
+                    continue
+                self.inventory.set_variable(nom, destination, valeur)
 
             for groupe in group_names(host, settings.group_by):
                 self.inventory.add_group(groupe)

@@ -3079,6 +3079,38 @@
       "find": "    if not attendues:\n        raise AnsibleFilterError(\n            \"`required_actions` attend `actions`",
       "replace": "    if not attendues and False:\n        raise AnsibleFilterError(\n            \"`required_actions` attend `actions`",
       "test": "tests/unit/collection/test_regles_de_champs_deja_rendus.py::test_une_regle_dactions_sans_actions_est_refusee"
+    },
+    {
+      "name": "source-de-variables-inconnue-qui-saute-lhote",
+      "why": "**Le seul écart délibéré avec la collection officielle, et il est mesuré.** Leur plugin ignore l'hôte entier quand une source de `variables` manque, en avertissant. Une faute de frappe y vide l'inventaire, l'avertissement se noie dans le reste, et un playbook joué dessus ne touche rien et sort vert : un inventaire vide qu'on croit filtré est la pire forme de ce défaut. Le refus arrive donc à la lecture de la configuration, là où on sait encore quoi nommer.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/config.py",
+      "find": "        if nom not in VARIABLES_POSEES:",
+      "replace": "        if nom not in VARIABLES_POSEES and False:",
+      "test": "tests/unit/inventory/test_options_venues_de_chez_eux.py::test_une_source_inconnue_est_refusee_et_non_sautee"
+    },
+    {
+      "name": "leur-nom-detat-ignore",
+      "why": "L'alias existe pour qu'un fichier d'inventaire écrit pour `scaleway.scaleway` se lise ici sans être réécrit. L'ignorer ne produirait pas une erreur : le filtre serait simplement absent, et l'utilisateur verrait un parc plus large que celui qu'il a demandé, sans que rien ne le dise.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/config.py",
+      "find": "states=_liste(get_option(\"states\")) or _liste(get_option(\"state\")),",
+      "replace": "states=_liste(get_option(\"states\")),",
+      "test": "tests/unit/inventory/test_options_venues_de_chez_eux.py::test_leur_nom_filtre_comme_le_notre"
+    },
+    {
+      "name": "leur-nom-detat-qui-lemporte-sur-le-notre",
+      "why": "Deux noms pour une chose se contredisent un jour, et il faut dire lequel tranche. Le nôtre : c'est celui que la documentation d'ici décrit, et celui qu'un utilisateur d'ici a écrit exprès. Laisser l'alias l'emporter ferait qu'un `state` oublié dans un fichier repris de chez eux annulerait silencieusement le `states` écrit à côté.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/config.py",
+      "find": "states=_liste(get_option(\"states\")) or _liste(get_option(\"state\")),",
+      "replace": "states=_liste(get_option(\"state\")) or _liste(get_option(\"states\")),",
+      "test": "tests/unit/inventory/test_options_venues_de_chez_eux.py::test_notre_nom_lemporte_quand_les_deux_sont_donnes"
+    },
+    {
+      "name": "liste-des-sources-qui-diverge-de-ce-qui-est-pose",
+      "why": "`config.py` ne connaît pas le plugin, et l'inverse serait une dépendance à l'envers : la liste des sources acceptables y est donc recopiée. Une liste recopiée finit par ne plus correspondre, et l'écart se paie en refus d'une source parfaitement valide, ou en acceptation d'une source qui ne sera jamais posée. Le contrôle lit le code plutôt que de recopier une troisième fois.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/config.py",
+      "find": "    \"address_source\",\n)",
+      "replace": ")",
+      "test": "tests/unit/inventory/test_options_venues_de_chez_eux.py::test_les_sources_declarees_sont_celles_que_le_plugin_pose"
     }
   ]
 }
