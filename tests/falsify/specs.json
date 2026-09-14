@@ -3111,6 +3111,38 @@
       "find": "    \"address_source\",\n)",
       "replace": ")",
       "test": "tests/unit/inventory/test_options_venues_de_chez_eux.py::test_les_sources_declarees_sont_celles_que_le_plugin_pose"
+    },
+    {
+      "name": "artefact-versionne-ecrit-en-tronquant",
+      "why": "**Mesuré le 14 septembre 2026**, en guettant la taille d'un module pendant sa régénération : cinquante-six lectures hors taille finale, toutes tronquées, aux tailles `0`, `4096`, `8192` et `12288` pour un fichier de 12809 octets. `write_text` tronque puis écrit, et entre les deux le fichier est vide.\n\n`mise run check` lance la suite de tests dans le même graphe que `generate` et `golden:update`, qui réécrivent la collection entière et les golden : la fenêtre s'ouvre soixante-neuf fois par passage, pendant que pytest, `git status` et un éditeur ouvert lisent ces mêmes fichiers.",
+      "file": "generator/ecriture.py",
+      "find": "        os.replace(provisoire, chemin)",
+      "replace": "        chemin.write_text(contenu, encoding=encoding)",
+      "test": "tests/unit/generator/test_ecriture.py::test_un_lecteur_concurrent_ne_voit_jamais_un_fichier_tronque"
+    },
+    {
+      "name": "renommage-avant-que-le-contenu-soit-complet",
+      "why": "Renommer avant que les octets soient écrits rend la cible visible à moitié pleine, ce qui est le défaut qu'on ferme, déplacé d'un cran. Une interruption laisse alors un artefact versionné tronqué sur le disque : `check:generated` le dirait, mais le contenu serait perdu, et le diff qu'on relirait ensuite ne serait pas celui du changement.\n\nLa première version de cette mutation ajoutait un `os.replace` après le `fsync`, que le piège du test n'atteint jamais : elle laissait le test vert, et `/falsify` l'a dit.",
+      "file": "generator/ecriture.py",
+      "find": "        with os.fdopen(descripteur, \"w\", encoding=encoding) as fichier:\n            fichier.write(contenu)",
+      "replace": "        with os.fdopen(descripteur, \"w\", encoding=encoding) as fichier:\n            os.replace(provisoire, chemin)\n            fichier.write(contenu)",
+      "test": "tests/unit/generator/test_ecriture.py::test_une_ecriture_interrompue_ne_laisse_pas_la_cible_a_moitie"
+    },
+    {
+      "name": "interruption-qui-laisse-un-reliquat",
+      "why": "Un fichier provisoire abandonné dans le répertoire de la cible se prendrait pour un artefact : il porte le même suffixe, il est au même endroit, et `check:generated` le verrait comme un fichier non suivi de plus sans dire d'où il vient.",
+      "file": "generator/ecriture.py",
+      "find": "        Path(provisoire).unlink(missing_ok=True)",
+      "replace": "        pass",
+      "test": "tests/unit/generator/test_ecriture.py::test_une_ecriture_interrompue_ne_laisse_pas_de_reliquat"
+    },
+    {
+      "name": "provisoire-ecrit-hors-du-repertoire-cible",
+      "why": "`os.replace` n'est atomique que sur un même système de fichiers. Depuis `/tmp`, il copie, et la fenêtre qu'on cherche à fermer se rouvre exactement là où on croit l'avoir fermée : le remède aurait l'air d'en être un.",
+      "file": "generator/ecriture.py",
+      "find": "        dir=str(chemin.parent), prefix=PREFIXE, suffix=chemin.suffix",
+      "replace": "        dir=None, prefix=PREFIXE, suffix=chemin.suffix",
+      "test": "tests/unit/generator/test_ecriture.py::test_le_provisoire_vit_dans_le_repertoire_de_destination"
     }
   ]
 }

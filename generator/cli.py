@@ -31,6 +31,7 @@ from generator.ansible.resolution import (
     merge_refus,
     merge_resolutions,
 )
+from generator.ecriture import ecrire
 from generator.ir.enums import OperationKind
 from generator.overrides.loader import DEFAULT_OVERRIDES_ROOT, OverrideError
 from generator.parser.openapi import ParseError, parse_document
@@ -280,7 +281,7 @@ def _resolve(arguments: argparse.Namespace) -> int:
     # Les zones que chaque produit déclare, lues au passage : deux produits ne
     # servent pas les mêmes, et rien ne le disait au runtime (#222).
     cible_zones = collection.path / "plugins" / "module_utils" / "zones.py"
-    cible_zones.write_text(render_zones(zones_par_produit), encoding="utf-8")
+    ecrire(cible_zones, render_zones(zones_par_produit))
 
     gardees, conflits = merge_resolutions(tables)
     refus.extend(conflits)
@@ -292,7 +293,8 @@ def _resolve(arguments: argparse.Namespace) -> int:
     refus = list(merge_refus(refus))
 
     cible = collection.path / "plugins" / "module_utils" / "resolution.py"
-    cible.write_text(
+    ecrire(
+        cible,
         render_resolution(
             gardees,
             refus,
@@ -300,7 +302,6 @@ def _resolve(arguments: argparse.Namespace) -> int:
             classifications=classifications,
             sources=sources,
         ),
-        encoding="utf-8",
     )
 
     # Les refus ne vivaient que sur la sortie standard, donc ils mouraient avec
