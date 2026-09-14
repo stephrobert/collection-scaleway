@@ -20,6 +20,18 @@ argument_specs:
         elements: str
         description:
           - The zones to read. Defaults to what the contract declares.
+      scaleway_fleet_audit_products:
+        type: list
+        elements: str
+        choices: [instance, lb, k8s_cluster, k8s_node, lb_certificate]
+        description:
+          - >-
+            Which products this audit reads. Instance alone by default, which is
+            what it read before the others existed.
+          - >-
+            A rule judging a field no read product carries fails the run and
+            names what to add. It is never read for you: each product is a
+            family of API calls on a billed account.
       scaleway_fleet_audit_output:
         type: str
         default: text

@@ -69,6 +69,12 @@ def test_une_instance_devient_la_forme_que_les_regles_lisent() -> None:
         "tags": ["role=web", "env=lab"],
         "public_addresses": ["51.15.0.1"],
         "last_change": "2026-09-12T11:00:00Z",
+        # Les trois que ce produit seul porte. Une charge utile qui ne les
+        # contient pas rend une liste vide et un `None` : « rien de prévu » et
+        # « on ne sait pas » n'ont pas la même valeur, et la règle les distingue.
+        "planned_maintenance": [],
+        "end_of_service": None,
+        "allowed_actions": [],
     }
 
 
@@ -81,7 +87,10 @@ def test_la_forme_ne_laisse_passer_aucun_champ_du_produit() -> None:
     module = _module()
     fait = module.resource_facts([CHARGE], kind="instance")[0]
 
-    assert set(fait) == set(module.CHAMPS)
+    # La forme commune, plus ce que ce produit seul sait porter. Un champ de
+    # plus serait une porte ouverte ; un champ de moins se lirait comme « ce
+    # produit ne porte pas ça », et la règle qui le juge sauterait la machine.
+    assert set(fait) == set(module.CHAMPS) | set(module.SUPPLEMENTS["instance"])
     assert "commercial_type" not in fait
 
 
@@ -163,7 +172,7 @@ def test_le_load_balancer_ne_laisse_passer_aucun_champ_du_produit() -> None:
     module = _module()
     fait = module.resource_facts([CHARGE_LB], kind="lb")[0]
 
-    assert set(fait) == set(module.CHAMPS)
+    assert set(fait) == set(module.CHAMPS) | set(module.SUPPLEMENTS["lb"])
 
 
 def test_une_ressource_sans_identifiant_est_refusee() -> None:
@@ -192,3 +201,26 @@ def test_une_charge_qui_porte_un_identifiant_vide_est_refusee() -> None:
 
     with pytest.raises(Exception, match="sans identifiant"):
         module.resource_facts([{**CHARGE, "id": ""}], kind="instance")
+
+
+def test_un_normaliseur_qui_oublie_un_champ_est_refuse() -> None:
+    """Un champ oublié est indiscernable d'un champ que ce produit ne porte pas.
+
+    La règle qui le juge sauterait la ressource, et le parc sortirait conforme
+    parce que personne ne l'a regardé. La forme produite se vérifie, elle ne se
+    relit pas.
+    """
+    module = _module()
+    complet = module.NORMALISEURS["instance"]
+
+    def amnesique(charge: dict) -> dict:
+        fait = complet(charge)
+        del fait["end_of_service"]
+        return fait
+
+    module.NORMALISEURS["instance"] = amnesique
+    try:
+        with pytest.raises(Exception, match="ne rend pas la forme déclarée"):
+            module.resource_facts([CHARGE], kind="instance")
+    finally:
+        module.NORMALISEURS["instance"] = complet

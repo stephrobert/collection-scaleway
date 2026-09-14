@@ -25,6 +25,66 @@ The findings are left in `scaleway_fleet_audit_findings`, so a pipeline opens a
 ticket rather than reading a report. The shipped policy is a starting point made
 only of warnings; replacing it is the point.
 
+## The rules, and what each one reads
+
+Every rule names the field it judges, and that field comes from the common shape
+rather than from a product's own vocabulary. Adding a product adds a normaliser,
+never a line inside a rule.
+
+| rule | it reads | it answers |
+|---|---|---|
+| `required_tags` | `tags` | which machine is missing an owner |
+| `allowed_zones` | `zone` | what is running where it should not |
+| `public_ip` | `public_addresses` | what is exposed |
+| `stopped_since` | `state` | what has been off long enough to question |
+| `planned_maintenance` | `planned_maintenance` | which machine has a maintenance window coming |
+| `end_of_service` | `end_of_service` | which one runs on a type that is being retired |
+| `required_actions` | `allowed_actions` | what you can still do to it, in its current state |
+| `upgrade_available` | `upgrade_available` | which cluster is behind |
+| `expires_within` | `expires_at` | which certificate, or which cluster's version, expires soon |
+| `version_drift` | `versions_behind` | how far behind, counted rather than guessed |
+| `unhealthy_conditions` | `health_conditions` | which node is under pressure |
+
+## Which products it reads
+
+```yaml
+scaleway_fleet_audit_products:
+  - instance
+  - k8s_cluster
+  - k8s_node
+  - lb_certificate
+```
+
+Instance alone by default, which is what this audit read before the others
+existed. Each product is a family of API calls on a billed account, so it is
+never read for you.
+
+**A rule judging a field no read product carries fails the run**, naming the
+rule, the field, and which products carry it. A rule that judges nothing is a
+silence, not a compliance: it produces a green report where nobody checked
+anything, and nothing in that report would say so.
+
+**A field a product does not have is not an empty field.** A cluster has no
+allowed actions and a machine has no minor version to catch up on; the rule
+skips those resources rather than calling them compliant, because counting them
+as compliant would inflate the pass count with resources nobody looked at.
+
+**Kubernetes is regional where Instance is zonal**, and the regions are derived
+from the zones you asked for rather than listed a second time. A region that did
+not answer is named with the product it did not answer for: one that answers for
+clusters and not for versions is not the same situation as a silent one.
+
+## One thing that is measured and not contracted
+
+`scaleway.k8s.v1.Node` declares neither `conditions` nor `public_ip_v4` nor
+`public_ip_v6`, and the real API returns all three, measured on 14 September
+2026. `unhealthy_conditions` reads a field nothing watches: the day upstream
+stops returning it, no golden goes red and no drift report says so.
+
+So its **absence means unmeasured, never healthy**. A rule reading absence as
+good news would report a healthy fleet over zero fields read, and the report
+would be perfectly plausible.
+
 ## Each finding keeps its identity between runs
 
 A finding carries an `id` that is recomputed on every run and comes out the same
@@ -151,6 +211,7 @@ left behind by a destroyed machine is housekeeping, not a policy error.
 | name | type | default |
 |---|---|---|
 | `scaleway_fleet_audit_zones` | list | none |
+| `scaleway_fleet_audit_products` | list | `[instance]` |
 | `scaleway_fleet_audit_output` | str | `text` |
 | `scaleway_fleet_audit_policy` | dict | none |
 

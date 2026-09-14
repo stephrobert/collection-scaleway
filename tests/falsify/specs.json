@@ -3015,6 +3015,70 @@
       "find": "    if inconnus:",
       "replace": "    if inconnus and False:",
       "test": "tests/unit/collection/test_fleet_changes.py::test_un_niveau_inconnu_est_refuse"
+    },
+    {
+      "name": "conditions-absentes-lues-comme-un-noeud-sain",
+      "why": "**Le refus central de ces sept règles.** `conditions` est rendu par l'API et absent de `scaleway.k8s.v1.Node` : mesuré le 14 septembre 2026, la réponse porte `conditions`, `public_ip_v4` et `public_ip_v6` que le contrat ne déclare pas. Le jour où l'amont cesserait de rendre `conditions`, aucun golden ne rougirait, aucun rapport de dérive ne le dirait, et une règle qui lirait l'absence comme une bonne nouvelle annoncerait un parc en bonne santé sur zéro champ lu.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
+      "find": "    if not conditions:",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_regles_de_champs_deja_rendus.py::test_des_conditions_absentes_ne_valent_pas_un_noeud_sain"
+    },
+    {
+      "name": "produit-sans-le-champ-compte-comme-conforme",
+      "why": "Un cluster n'a pas d'action permise et une machine n'a pas de version à rattraper. Juger conformes les ressources dont la règle ne parle pas gonflerait le `PASS` de tout ce que personne n'a regardé : le rapport annoncerait un parc sain d'autant plus large qu'on lit de produits, ce qui est l'inverse de ce qu'il mesure.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
+      "find": "            if champ not in machine:",
+      "replace": "            if False:",
+      "test": "tests/unit/collection/test_regles_de_champs_deja_rendus.py::test_un_produit_qui_ne_porte_pas_le_champ_nest_pas_juge_conforme"
+    },
+    {
+      "name": "regle-sans-cible-qui-se-tait",
+      "why": "Écrire `unhealthy_conditions` dans sa politique en ne lisant que des Instances produit un rapport vert où personne n'a rien vérifié, et rien dans ce rapport ne le dit. Le silence est le seul mode de défaillance qu'un audit ne peut pas se permettre : c'est un faux vert que son propre auteur a écrit.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
+      "find": "        if not set(porteurs) & set(lus):",
+      "replace": "        if False:",
+      "test": "tests/unit/collection/test_regles_sans_cible.py::test_une_regle_sans_produit_qui_la_porte_est_nommee"
+    },
+    {
+      "name": "echeance-absente-lue-comme-echeance-lointaine",
+      "why": "Un certificat dont la date ne se lit pas, ou un cluster dont la version n'est pas au catalogue, sortiraient conformes. C'est la même famille que la zone muette : ne pas savoir quand quelque chose expire n'est pas savoir qu'il n'expire pas.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
+      "find": "    if not echeance:",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_regles_de_champs_deja_rendus.py::test_une_echeance_absente_nest_pas_une_echeance_lointaine"
+    },
+    {
+      "name": "retard-de-version-inconnu-lu-comme-a-jour",
+      "why": "Sans catalogue lu, le retard n'existe pas ; il ne vaut pas zéro. Un cluster dont on ne sait rien sortirait « à jour », et c'est la réponse la plus rassurante et la moins fondée que cette règle puisse donner (#243).",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
+      "find": "    if retard is None:",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_regles_de_champs_deja_rendus.py::test_un_retard_inconnu_nest_pas_un_cluster_a_jour"
+    },
+    {
+      "name": "majeure-differente-comptee-en-mineures",
+      "why": "Une majeure d'écart n'est pas « quelques mineures de plus » : c'est une autre question, et la compter dans le même nombre la ferait disparaître. Un cluster en `2.1.0` face à un catalogue en `1.x` sortirait avec un retard négatif, donc « à jour », ce qui est exactement faux (#243).\n\nC'est aussi la garde qui attrape une version illisible : elle ne partage sa majeure avec personne. Les deux replis de `_minorielle` sont des ceintures par-dessus cette bretelle, et `/falsify` l'a dit en laissant le test vert quand on les neutralisait l'un après l'autre.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/resource_facts.py",
+      "find": "            if derniere[0] == courante[0]",
+      "replace": "            if True",
+      "test": "tests/unit/collection/test_regles_de_champs_deja_rendus.py::test_une_majeure_differente_ne_se_compte_pas_en_mineures"
+    },
+    {
+      "name": "normaliseur-qui-oublie-un-champ-declare",
+      "why": "Un champ que le normaliseur oublie est indiscernable d'un champ que ce produit ne porte pas : la règle qui le juge sauterait la ressource, et le parc sortirait conforme parce que personne ne l'a regardé. La forme produite se vérifie, elle ne se relit pas.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/resource_facts.py",
+      "find": "        if set(ressource) != attendus:",
+      "replace": "        if False:",
+      "test": "tests/unit/collection/test_resource_facts.py::test_un_normaliseur_qui_oublie_un_champ_est_refuse"
+    },
+    {
+      "name": "actions-attendues-supposees-plutot-que-nommees",
+      "why": "Sans `actions`, la règle devrait supposer ce qu'un parc attend de ses machines. Ce dépôt ne tranche pas ça pour autrui : une liste universelle ferait rougir tous les parcs dont les conventions diffèrent, et ils sont la majorité.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_findings.py",
+      "find": "    if not attendues:\n        raise AnsibleFilterError(\n            \"`required_actions` attend `actions`",
+      "replace": "    if not attendues and False:\n        raise AnsibleFilterError(\n            \"`required_actions` attend `actions`",
+      "test": "tests/unit/collection/test_regles_de_champs_deja_rendus.py::test_une_regle_dactions_sans_actions_est_refusee"
     }
   ]
 }

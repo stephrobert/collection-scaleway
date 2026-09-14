@@ -1,0 +1,43 @@
+minor_changes:
+  - "roles - ``fleet_audit`` gains rules on fields the collection already
+    returned and nobody read: planned maintenance, end of service, allowed
+    actions, available upgrades, expiry, version drift and health conditions.
+    These were not modules to write, they were fields already travelling through
+    the plumbing."
+  - "filter - ``resource_facts`` normalises Kapsule clusters, pool nodes and
+    load balancer certificates alongside Instances and load balancers. A rule
+    still names no product field: the seam absorbs the vocabulary, as it always
+    has."
+  - "filter - a product carries what it can carry, and no more. A field a
+    product does not have is not an empty field: the rule that judges it skips
+    the resource rather than calling it compliant, because counting it as
+    compliant would inflate the pass count with resources nobody looked at."
+  - "roles - ``scaleway_fleet_audit_products`` says which products the audit
+    reads, Instance alone by default, which is what it read before the others
+    existed. A version that started querying Kubernetes and load balancers on
+    every account would multiply API calls nobody asked for."
+  - "roles - a rule judging a field no read product carries fails the run and
+    names what to add. A rule that judges nothing is a silence, not a
+    compliance: it produces a green report where nobody checked anything, and
+    nothing in that report says so."
+  - "filter - a cluster carries the end of life of the version it runs, joined
+    from the region's version catalogue at the seam rather than in a rule. One
+    rule then answers the same question for a certificate and for a cluster."
+  - "filter - node health conditions are measured, not contracted.
+    ``scaleway.k8s.v1.Node`` declares neither ``conditions`` nor
+    ``public_ip_v4`` nor ``public_ip_v6``, and the real response returns all
+    three. Their absence therefore means unmeasured and never healthy: the day
+    upstream stops returning them, no golden goes red, and a rule reading
+    absence as good news would report a healthy fleet over zero fields read."
+  - "filter - a version drift is counted within one major version. A major apart
+    is a different question, and counting it in the same number would make it
+    disappear behind a negative count that reads as up to date."
+  - "roles - a region that did not answer is named with the product it did not
+    answer for. A region that answers for clusters and not for versions is not
+    the same situation as a silent one, and a name that merged them would make
+    the report useless for acting on."
+bugfixes:
+  - "filter - an expiry in the past is reported with the number of days it
+    actually is. Python's ``timedelta.days`` floors, so a certificate expired
+    thirteen days and ten hours ago was reported as fourteen, always erring
+    towards alarm."

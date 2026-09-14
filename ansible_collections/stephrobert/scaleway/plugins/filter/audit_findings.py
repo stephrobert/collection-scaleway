@@ -110,7 +110,7 @@ def _horodatage(valeur: str, quoi: str) -> datetime:
         raise AnsibleFilterError(f"{quoi} n'est pas une date ISO 8601 : {valeur!r}") from erreur
 
 
-def _regle_etiquettes(machine: dict, parametres: dict) -> str | None:
+def _regle_etiquettes(machine: dict, parametres: dict, _maintenant: datetime) -> str | None:
     """Les étiquettes obligatoires, cherchées comme des clés `clé=valeur`.
 
     C'est la forme que ce parc emploie (`role=web`, `env=lab`), et la règle dit
@@ -125,7 +125,7 @@ def _regle_etiquettes(machine: dict, parametres: dict) -> str | None:
     return f"missing tag: {', '.join(manquantes)}" if manquantes else None
 
 
-def _regle_zones(machine: dict, parametres: dict) -> str | None:
+def _regle_zones(machine: dict, parametres: dict, _maintenant: datetime) -> str | None:
     zones = parametres.get("zones")
     if not zones:
         raise AnsibleFilterError("`allowed_zones` attend `zones`, la liste des zones permises")
@@ -134,7 +134,7 @@ def _regle_zones(machine: dict, parametres: dict) -> str | None:
     return None if zone in zones else f"zone: {zone}"
 
 
-def _regle_adresse_publique(machine: dict, _parametres: dict) -> str | None:
+def _regle_adresse_publique(machine: dict, _parametres: dict, _maintenant: datetime) -> str | None:
     """Une adresse publique n'est pas un défaut : c'est une chose à regarder.
 
     D'où la sévérité dans la politique. Un bastion en a une par construction,
@@ -161,6 +161,201 @@ def _regle_arretee_depuis(machine: dict, parametres: dict, maintenant: datetime)
     return f"stopped for {ecoules} day(s)" if ecoules >= int(jours) else None
 
 
+def _regle_maintenance_prevue(machine: dict, parametres: dict, maintenant: datetime) -> str | None:
+    """Une maintenance planifiée par le fournisseur, sur cette machine.
+
+    Mesuré le 14 septembre 2026 : le champ vaut `[]` sur une machine saine, donc
+    l'absence de maintenance est une liste vide et non un champ manquant. Une
+    liste vide est bien « rien de prévu » ; `None` serait « on ne sait pas », et
+    ce n'est pas la même réponse.
+
+    `within_days` restreint aux échéances proches, parce qu'une maintenance dans
+    six mois n'appelle pas la même chose qu'une maintenance demain.
+    """
+    prevues = machine.get("planned_maintenance")
+    if prevues is None:
+        return "no maintenance window was read for this resource"
+    if not prevues:
+        return None
+
+    jours = parametres.get("within_days")
+    if not jours:
+        return f"{len(prevues)} planned maintenance window(s)"
+
+    proches = []
+    for fenetre in prevues:
+        debut = (fenetre or {}).get("start_date") if isinstance(fenetre, dict) else None
+        if not debut:
+            # Une fenêtre sans date n'est pas une fenêtre lointaine : elle est
+            # illisible, et la taire la ferait passer pour absente.
+            proches.append("a window with no start date")
+            continue
+        reste = (_horodatage(debut, "la date de maintenance") - maintenant).days
+        if reste <= int(jours):
+            proches.append(f"in {reste} day(s)")
+    return f"planned maintenance: {', '.join(proches)}" if proches else None
+
+
+def _regle_fin_de_service(machine: dict, _parametres: dict, _maintenant: datetime) -> str | None:
+    """Le type commercial de cette machine cesse d'être offert.
+
+    Ce n'est pas une panne, c'est une échéance : la machine tourne et continuera
+    de tourner, mais elle ne se recrée pas, et le jour où elle disparaît le
+    remplacement n'existe plus. C'est exactement le genre de chose que personne
+    ne découvre au bon moment.
+    """
+    fin = machine.get("end_of_service")
+    if fin is None:
+        return "end of service was not read for this resource"
+    return "its commercial type is end of service" if fin else None
+
+
+def _regle_actions_attendues(machine: dict, parametres: dict, _maintenant: datetime) -> str | None:
+    """Ce qu'on croit pouvoir faire de cette machine, et qui n'est pas permis.
+
+    L'API dit ce qu'elle accepte **dans l'état courant**, et c'est une
+    information d'exploitation : une machine qu'on ne peut plus redémarrer ne se
+    signale autrement qu'au moment où l'on essaie, en pleine opération.
+
+    Mesuré : une machine arrêtée rend `["stop_in_place", "backup"]`, donc
+    `poweron` n'y est pas. La règle nomme ce qu'elle attend plutôt que de
+    supposer une liste universelle.
+    """
+    attendues = parametres.get("actions")
+    if not attendues:
+        raise AnsibleFilterError(
+            "`required_actions` attend `actions`, la liste des actions qu'on "
+            "veut pouvoir déclencher. Sans elle, la règle devrait supposer ce "
+            "qu'un parc attend de ses machines, et ce dépôt ne tranche pas ça "
+            "pour autrui."
+        )
+
+    permises = machine.get("allowed_actions")
+    if permises is None:
+        return "allowed actions were not read for this resource"
+    manquantes = sorted(set(attendues) - set(permises))
+    return f"cannot: {', '.join(manquantes)}" if manquantes else None
+
+
+def _regle_mise_a_jour_offerte(machine: dict, _parametres: dict, _maintenant: datetime) -> str | None:
+    """Le fournisseur offre une mise à jour de cette ressource.
+
+    **Elle signale, elle ne met pas à jour.** `UpgradeCluster` existe et ce rôle
+    ne l'appelle pas : détecter puis diagnostiquer, jamais détecter puis
+    modifier. La proposition de remédiation est un autre sujet, et c'est une
+    proposition.
+    """
+    offerte = machine.get("upgrade_available")
+    if offerte is None:
+        return "upgrade availability was not read for this resource"
+    return "an upgrade is available" if offerte else None
+
+
+def _regle_echeance(machine: dict, parametres: dict, maintenant: datetime) -> str | None:
+    """Ce qui expire, et dans combien de temps.
+
+    Une seule règle pour deux objets : un certificat de load balancer porte sa
+    propre échéance, un cluster porte celle de la version qu'il fait tourner.
+    C'est la même question posée deux fois, et lui donner deux noms obligerait à
+    écrire deux règles pour une chose.
+
+    **Une échéance absente n'est pas une échéance lointaine.** Un certificat dont
+    la date ne se lit pas, ou un cluster dont la version n'est pas au catalogue,
+    sortent comme non jugeables plutôt que comme conformes.
+    """
+    jours = parametres.get("days")
+    if not jours:
+        raise AnsibleFilterError(
+            "`expires_within` attend `days`, le nombre de jours d'avance voulu"
+        )
+
+    echeance = machine.get("expires_at")
+    if not echeance:
+        return "nothing says when this expires, so nothing says it does not"
+
+    # **Tronqué vers zéro, pas vers le bas.** `timedelta.days` plancherait :
+    # une échéance passée depuis treize jours et dix heures sortirait « expired
+    # 14 day(s) ago », ce qui est faux d'un jour et toujours du mauvais côté.
+    ecart = (_horodatage(echeance, "la date d'expiration") - maintenant).total_seconds()
+    reste = int(ecart // 86400) if ecart >= 0 else -int(-ecart // 86400)
+    if reste < 0:
+        return f"expired {-reste} day(s) ago, on {echeance}"
+    return f"expires in {reste} day(s), on {echeance}" if reste <= int(jours) else None
+
+
+def _regle_retard_de_version(machine: dict, parametres: dict, _maintenant: datetime) -> str | None:
+    """De combien de mineures cette ressource est en retard sur ce qui est offert.
+
+    **Le retard se compte, il ne s'estime pas** : le catalogue des versions est
+    lu, et le rapprochement est fait à la couture plutôt que dans cette règle.
+
+    Un retard inconnu ressort comme non jugeable. Une version absente du
+    catalogue, ou d'une autre majeure que la dernière offerte, n'est pas « à
+    jour » : c'est une question à laquelle ce compte-là ne répond pas.
+    """
+    maximum = parametres.get("max_minor_behind")
+    if maximum is None:
+        raise AnsibleFilterError(
+            "`version_drift` attend `max_minor_behind`, le nombre de versions "
+            "mineures de retard toléré"
+        )
+
+    retard = machine.get("versions_behind")
+    if retard is None:
+        version = machine.get("version") or "unknown"
+        return f"running {version}, and nothing read says how far behind that is"
+    return (
+        f"{retard} minor version(s) behind, running {machine.get('version')}"
+        if retard > int(maximum)
+        else None
+    )
+
+
+#: Ce qu'une condition de santé doit valoir pour que la ressource aille bien.
+#: Mesuré sur la réponse réelle du 14 septembre 2026, où l'API rend des chaînes
+#: `"True"` et `"False"` plutôt que des booléens.
+SANTE_ATTENDUE = {
+    "Ready": "True",
+    "DiskPressure": "False",
+    "MemoryPressure": "False",
+    "PIDPressure": "False",
+    "NetworkUnavailable": "False",
+}
+
+
+def _regle_conditions_de_sante(machine: dict, parametres: dict, _maintenant: datetime) -> str | None:
+    """Les conditions de santé que cette ressource rapporte.
+
+    **`conditions` est mesuré et non contracté.** `scaleway.k8s.v1.Node` ne le
+    déclare pas, ni `public_ip_v4` ni `public_ip_v6` ; la réponse réelle du
+    14 septembre 2026 les rend tous les trois. Le jour où l'API cesserait de
+    rendre `conditions`, aucun golden ne rougirait.
+
+    C'est pourquoi **son absence vaut « non mesuré », jamais « sain »** : une
+    règle qui lirait l'absence comme une bonne nouvelle annoncerait un parc en
+    bonne santé sur zéro champ lu, et le rapport serait parfaitement plausible.
+    """
+    attendues = parametres.get("conditions") or SANTE_ATTENDUE
+    conditions = machine.get("health_conditions")
+    if not conditions:
+        return (
+            "no health conditions were read, which is not the same as being "
+            "healthy"
+        )
+    if not isinstance(conditions, dict):
+        return f"health conditions are a {type(conditions).__name__}, not a mapping"
+
+    mauvaises = [
+        f"{nom}={conditions.get(nom)}"
+        for nom, voulue in attendues.items()
+        # Une condition que la ressource ne rapporte pas est ignorée : le jeu
+        # varie d'une version à l'autre, et exiger la présence ferait rougir un
+        # parc sain le jour où l'amont en retire une.
+        if nom in conditions and str(conditions[nom]) != str(voulue)
+    ]
+    return f"unhealthy: {', '.join(sorted(mauvaises))}" if mauvaises else None
+
+
 #: Les règles écrites, et le champ que chacune juge. Ce que la politique nomme
 #: hors de cette table est refusé : une règle qu'aucun fait ne peut trancher
 #: rendrait « conforme » pour la seule raison que personne ne l'évalue.
@@ -174,6 +369,16 @@ REGLES = {
     "allowed_zones": (_regle_zones, "zone"),
     "public_ip": (_regle_adresse_publique, "public_addresses"),
     "stopped_since": (_regle_arretee_depuis, "state"),
+    # Celles de #252, chacune sur un champ **déjà traversé et lu par
+    # personne**. Ce ne sont pas des modules à écrire : la plomberie existait,
+    # et le moteur de règles n'en exploitait qu'une poignée de champs.
+    "planned_maintenance": (_regle_maintenance_prevue, "planned_maintenance"),
+    "end_of_service": (_regle_fin_de_service, "end_of_service"),
+    "required_actions": (_regle_actions_attendues, "allowed_actions"),
+    "upgrade_available": (_regle_mise_a_jour_offerte, "upgrade_available"),
+    "expires_within": (_regle_echeance, "expires_at"),
+    "version_drift": (_regle_retard_de_version, "versions_behind"),
+    "unhealthy_conditions": (_regle_conditions_de_sante, "health_conditions"),
 }
 
 
@@ -249,11 +454,19 @@ def audit_findings(machines: object, policy: object, now: str) -> list[dict[str,
 
         fonction, champ = REGLES[nom]
         for machine in machines or []:
-            detail = (
-                fonction(machine, parametres, maintenant)
-                if nom == "stopped_since"
-                else fonction(machine, parametres)
-            )
+            # **Un produit qui ne porte pas ce champ n'est pas jugé conforme :
+            # il n'est pas jugé.** Un cluster n'a pas d'action permise, une
+            # machine n'a pas de version à rattraper. Les compter comme
+            # conformes gonflerait le `PASS` de ressources que personne n'a
+            # regardées, ce qui est le vert sur zéro champ lu (#252).
+            if champ not in machine:
+                continue
+            # **L'instant va à toutes les règles, pas à une seule.** La
+            # première version le passait au seul `stopped_since`, et chaque
+            # règle datée qui s'ajoutait allongeait la condition : une liste de
+            # noms dans un `if` est un endroit où l'on finit par en oublier un,
+            # et la règle oubliée compare alors une date à rien.
+            detail = fonction(machine, parametres, maintenant)
             if detail:
                 constats.append(
                     {
@@ -285,6 +498,59 @@ def audit_findings(machines: object, policy: object, now: str) -> list[dict[str,
     # Trié sur l'identité : elle est unique, là où deux machines homonymes
     # rendraient l'ordre dépendant de celui de la lecture.
     return sorted(constats, key=lambda constat: constat["id"])
+
+
+def rules_without_target(policy: object, products: object) -> list[str]:
+    """Les règles qu'aucun produit lu ne peut trancher, nommées avec ce qu'il faut lire.
+
+    **Une règle qui ne juge rien est un silence, pas une conformité.** Écrire
+    `unhealthy_conditions` dans sa politique en ne lisant que des Instances
+    produit un rapport vert où personne n'a rien vérifié, et rien dans ce
+    rapport ne le dit.
+
+    Le rôle refuse donc plutôt que de lire de lui-même les produits qui
+    manquent : chaque produit lu est une famille d'appels d'API sur un compte
+    facturé, et ce n'est pas une décision que ce rôle prend à la place de qui le
+    lance. Il la nomme.
+
+    Rend les règles concernées, chacune avec les produits qui portent son champ.
+    """
+    from ansible_collections.stephrobert.scaleway.plugins.filter.resource_facts import (
+        CHAMPS,
+        SUPPLEMENTS,
+    )
+
+    if not isinstance(policy, dict):
+        raise AnsibleFilterError(
+            f"une politique est un dictionnaire, pas {type(policy).__name__}"
+        )
+    if not isinstance(products, (list, tuple)):
+        raise AnsibleFilterError(
+            f"les produits lus sont une liste, pas {type(products).__name__}"
+        )
+
+    lus = [str(produit) for produit in products]
+    orphelines = []
+    for nom in sorted((policy.get("rules") or {})):
+        if nom not in REGLES:
+            # Une règle inconnue est refusée ailleurs, par `audit_findings`, et
+            # avec un message qui lui est propre. La signaler deux fois ferait
+            # deux messages pour une faute.
+            continue
+        champ = REGLES[nom][1]
+        if champ in CHAMPS:
+            # Un champ de la forme commune : tout produit lu le porte, donc la
+            # règle a une cible dès qu'on lit quelque chose.
+            continue
+        porteurs = sorted(
+            produit for produit, extras in SUPPLEMENTS.items() if champ in extras
+        )
+        if not set(porteurs) & set(lus):
+            orphelines.append(
+                f"`{nom}` juge `{champ}`, que seul(s) {', '.join(porteurs)} "
+                f"porte(nt) ; ce run lit {', '.join(lus) or 'rien'}"
+            )
+    return orphelines
 
 
 def audit_refusals(constats: object) -> list[dict[str, str]]:
@@ -333,6 +599,7 @@ class FilterModule:
     def filters(self) -> dict[str, object]:
         return {
             "audit_findings": audit_findings,
+            "rules_without_target": rules_without_target,
             "audit_refusals": audit_refusals,
             "finding_id": finding_id,
         }

@@ -559,6 +559,81 @@
           {{ scaleway_fleet_audit_findings
              | selectattr('status', 'equalto', 'suppressed') | list }}
 
+    # ---- Les règles sur des champs déjà rendus (#252, #243) ---------------
+    #
+    # Un test unitaire dit que les règles calculent ce que le test croit. Il ne
+    # dit pas qu'Ansible sait charger la forme étendue, que le rôle demande les
+    # bons produits, ni que la garde mord quand une règle ne juge rien.
+    - name: Une règle qui ne juge rien fait échouer le run plutôt que de se taire
+      block:
+        - name: Auditer des nœuds sans demander le produit
+          ansible.builtin.include_role:
+            name: stephrobert.scaleway.fleet_audit
+          vars:
+            scaleway_fleet_audit_zones: "{{ zone }}"
+            scaleway_fleet_audit_output: none
+            scaleway_fleet_audit_policy:
+              rules:
+                unhealthy_conditions:
+                  severity: warn
+
+        - name: Le run aurait dû refuser
+          ansible.builtin.fail:
+            msg: >-
+              une règle qui ne juge rien est passée en silence : le rapport
+              serait vert sur zéro champ lu
+      rescue:
+        - name: Le refus nomme la règle et ce qu'il faut lire
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_result.msg is search('unhealthy_conditions')
+              - ansible_failed_result.msg is search('k8s_node')
+            success_msg: >-
+              refus attendu : la règle juge un champ qu'aucun produit lu ne porte
+            fail_msg: >-
+              le refus ne dit pas quoi ajouter : {{ ansible_failed_result.msg }}
+
+    # Les trois règles qui ne demandent aucune lecture neuve : Instance rend
+    # déjà `maintenances`, `end_of_service` et `allowed_actions`, et personne ne
+    # les lisait.
+    - name: Auditer le parc sur des champs que la collection traversait déjà
+      ansible.builtin.include_role:
+        name: stephrobert.scaleway.fleet_audit
+      vars:
+        scaleway_fleet_audit_zones: "{{ zone }}"
+        scaleway_fleet_audit_output: none
+        scaleway_fleet_audit_policy:
+          rules:
+            planned_maintenance:
+              severity: warn
+            end_of_service:
+              severity: warn
+            required_actions:
+              severity: warn
+              actions:
+                - poweroff
+
+    - name: Les trois règles ont jugé, et sur les champs qu'elles nomment
+      ansible.builtin.assert:
+        that:
+          # Le parc de l'émulateur est sain sur les deux premières, et c'est
+          # `[]` et `false` que l'API rend, pas des champs absents.
+          - jugees | length > 0
+          - jugees | select('equalto', 'allowed_actions') | list | length > 0
+          # Une machine arrêtée ne peut pas être éteinte : c'est ce que
+          # `allowed_actions` dit, et c'est la règle qui le remonte.
+          - scaleway_fleet_audit_findings
+              | selectattr('rule', 'equalto', 'required_actions')
+              | list | length > 0
+        success_msg: >-
+          {{ scaleway_fleet_audit_findings | length }} constat(s) sur des champs
+          que la collection rendait déjà et que personne ne lisait
+        fail_msg: >-
+          les règles n'ont rien jugé : {{ scaleway_fleet_audit_findings }}
+      vars:
+        jugees: >-
+          {{ scaleway_fleet_audit_findings | map(attribute='field') | unique | list }}
+
     # ---- fleet_changes : la règle du jalon, jouée -------------------------
     #
     # « La 0.8.0 ne doit pas augmenter le nombre de notifications, elle doit
