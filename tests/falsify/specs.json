@@ -2959,6 +2959,62 @@
       "find": "    from officielle import MESURE, lire",
       "replace": "    from officielle import MESURE, mesurer as lire",
       "test": "tests/unit/outillage/test_admission_complementarite.py::test_letape_ne_va_jamais_sur_le_reseau"
+    },
+    {
+      "name": "constat-bloquant-neuf-decide-sur-le-delta",
+      "why": "Un `fail` qui apparaît pendant qu'un autre se résout laisse le compte inchangé. Décider sur le delta ferait taire le constat neuf, masqué par la bonne nouvelle du voisin, et le rapport sortirait calme sur un parc où quelque chose vient de casser. C'est le seul cas où la ligne « fail 2 (+0) » est vraie et trompeuse à la fois.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_changes.py",
+      "find": "    if bilan.get(\"new_failures\"):",
+      "replace": "    if (bilan.get(\"severities\") or {}).get(\"fail\", {}).get(\"delta\"):",
+      "test": "tests/unit/collection/test_fleet_changes.py::test_un_constat_bloquant_neuf_nest_pas_tu_par_un_autre_qui_se_resout"
+    },
+    {
+      "name": "mesure-impossible-absente-du-verdict-agrege",
+      "why": "Une zone muette n'est pas une bonne nouvelle, et un constat qu'on n'a pas pu conclure non plus. Les retirer du verdict présenterait comme un parc calme un parc que personne n'a pu lire : c'est le vert sur zéro fichier examiné, transposé à une flotte. La ligne couvre aussi l'exception périmée, dont l'échéance est toute l'information.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_changes.py",
+      "find": "        bilan.get(\"unmeasured_zones\")",
+      "replace": "        False",
+      "test": "tests/unit/collection/test_fleet_changes.py::test_une_zone_muette_pese_autant_quun_constat_bloquant"
+    },
+    {
+      "name": "infrastructure-non-comparee-comptee-a-zero",
+      "why": "Sans instantané rendu, l'infrastructure n'est pas comparée. Écrire zéro affirmerait que rien n'a bougé, alors que personne n'a regardé, et la ligne se lirait exactement comme une bonne nouvelle. C'est le même refus que pour la zone muette, un étage plus haut.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_changes.py",
+      "find": "            None\n            if diff is None\n",
+      "replace": "            0\n            if False\n",
+      "test": "tests/unit/collection/test_fleet_changes.py::test_sans_instantane_rendu_linfrastructure_nest_pas_comptee_a_zero"
+    },
+    {
+      "name": "delta-de-severite-invente-sans-run-precedent",
+      "why": "Sans les constats du run précédent, on ne sait pas ce qu'une sévérité a fait. Écrire `(+0)` affirmerait qu'elle n'a pas bougé, ce qui est une phrase que rien ne soutient, et c'est précisément la forme d'affirmation que ce dépôt refuse partout ailleurs.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_changes.py",
+      "find": "            if avant is not None\n            else None,",
+      "replace": "            if avant is not None\n            else 0,",
+      "test": "tests/unit/collection/test_fleet_changes.py::test_sans_constats_gardes_un_delta_de_severite_nest_pas_zero"
+    },
+    {
+      "name": "constat-excuse-qui-pese-dans-une-severite",
+      "why": "Quelqu'un a explicitement accepté ce constat en écrivant son exception. Le faire peser dans le bilan reviendrait à nier l'exception, et le rapport réclamerait chaque matin une action sur ce que son propriétaire a déjà tranché (#235).",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_changes.py",
+      "find": "        if not isinstance(constat, dict) or (constat.get(\"status\") or \"open\") != \"open\":",
+      "replace": "        if not isinstance(constat, dict):",
+      "test": "tests/unit/collection/test_fleet_changes.py::test_un_constat_excuse_ne_pese_dans_aucune_severite"
+    },
+    {
+      "name": "agregation-qui-garde-le-niveau-le-plus-bas",
+      "why": "Agréger plusieurs verdicts en gardant le plus bas laisserait une moitié calme masquer une moitié qui ne l'est pas : un parc dont l'audit hurle et dont l'infrastructure n'a pas bougé sortirait `quiet`. C'est la façon la plus simple de fabriquer un rapport rassurant, et elle ne se voit pas à la lecture du résultat.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_changes.py",
+      "find": "    return max(vus, key=NIVEAUX.index) if vus else \"quiet\"",
+      "replace": "    return min(vus, key=NIVEAUX.index) if vus else \"quiet\"",
+      "test": "tests/unit/collection/test_fleet_changes.py::test_le_pire_niveau_lemporte"
+    },
+    {
+      "name": "niveau-inconnu-range-au-hasard",
+      "why": "Un niveau qu'on ne sait pas ordonner ne peut pas être comparé aux autres. L'accepter le rangerait quelque part, et « quelque part » est aussi bien au-dessus d'`action_required` qu'au-dessous de `quiet` : le verdict agrégé dépendrait alors d'une faute de frappe.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_changes.py",
+      "find": "    if inconnus:",
+      "replace": "    if inconnus and False:",
+      "test": "tests/unit/collection/test_fleet_changes.py::test_un_niveau_inconnu_est_refuse"
     }
   ]
 }

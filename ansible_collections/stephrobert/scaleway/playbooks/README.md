@@ -216,6 +216,31 @@ rather than assumed to have worked. A machine that was already stopped is left
 stopped: this reboots, it does not start. A batch that does not come back stops
 the roll and names what was left to do.
 
+### "I read this every morning and I have stopped reading it"
+
+```bash
+ansible-playbook stephrobert.scaleway.fleet_changes
+ansible-playbook stephrobert.scaleway.fleet_changes -e snapshot=yesterday.json
+ansible-playbook stephrobert.scaleway.fleet_changes -e output=markdown
+```
+
+Says what moved since the last time, in one count per thing that moved. A report
+that shows the same warnings every morning stops being read by the third
+morning, and that is the failure mode of a recurring tool: it does not show.
+
+**As a role**: `stephrobert.scaleway.fleet_changes`, with
+`scaleway_fleet_changes_snapshot` and `scaleway_fleet_changes_findings`, which
+leaves its counts in `scaleway_fleet_changes_summary` and the level it earned in
+`scaleway_fleet_changes_level`.
+
+**What it does not do**: no composite score. A `83/100` looks good and cannot be
+traced back to what moved it. It also never says "no infrastructure change" when
+no snapshot was handed back: not having looked is not the same as nothing having
+moved, and it says `not compared`.
+
+**Two runs on an unchanged fleet**: the second prints one line and stops. That
+property is played by a test rather than promised here.
+
 ### "I need to look at one machine, or list a zone"
 
 ```bash

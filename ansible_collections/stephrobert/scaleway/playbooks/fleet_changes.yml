@@ -1,0 +1,37 @@
+---
+# What moved since the last time, aggregated, and quiet when nothing did.
+#
+#   ansible-playbook stephrobert.scaleway.fleet_changes
+#   ansible-playbook stephrobert.scaleway.fleet_changes -e snapshot=yesterday.json
+#   ansible-playbook stephrobert.scaleway.fleet_changes -e output=markdown
+#
+# The snapshot and the kept findings are yours, because this collection stores
+# nothing. `stephrobert.scaleway.fleet_report -e output=snapshot` produces the
+# first; the second is what `scaleway_fleet_audit_changes.current` holds.
+#
+# **This playbook is the ergonomics, the role is the operation.** What it does
+# lives in `roles/fleet_changes`, which leaves its counts in
+# `scaleway_fleet_changes_summary` and its level in
+# `scaleway_fleet_changes_level`:
+#
+#   - ansible.builtin.include_role:
+#       name: stephrobert.scaleway.fleet_changes
+#     vars:
+#       scaleway_fleet_changes_snapshot: yesterday.json
+#   - ansible.builtin.assert:
+#       that: scaleway_fleet_changes_level != 'action_required'
+#
+# Nothing is reimplemented here, and a test refuses it.
+- name: Say what moved in a Scaleway fleet, without touching it
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    snapshot: ""
+    output: text
+
+  roles:
+    - role: stephrobert.scaleway.fleet_changes
+      scaleway_fleet_changes_snapshot: "{{ snapshot }}"
+      scaleway_fleet_changes_output: "{{ output }}"

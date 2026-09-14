@@ -920,6 +920,16 @@ LIVRES: dict[str, dict[str, Any]] = {
     # l'instantané a été pris avant les redémarrages, donc la comparaison porte
     # sur un parc qui a réellement bougé entre les deux lectures.
     "fleet_diff.yml": {"variables": {"baseline": "{instantane}", "zones": "{zone}"}},
+    # **Après `fleet_diff`, et pour la même raison.** Il agrège ce que l'audit et
+    # la comparaison ont trouvé, donc il lui faut un parc qui a réellement bougé
+    # entre l'instantané et maintenant : joué plus tôt, il agrégerait le silence
+    # et ne prouverait que sa forme.
+    #
+    # **Sans constats rendus, et c'est délibéré.** Ce passage-là est une
+    # référence, ce que le rôle annonce plutôt que de le taire ; le silence du
+    # second passage est prouvé par l'intégration, qui peut jouer deux fois sans
+    # payer deux lectures du vrai cloud.
+    "fleet_changes.yml": {"variables": {"snapshot": "{instantane}"}},
 }
 
 

@@ -558,3 +558,58 @@
         couvert: >-
           {{ scaleway_fleet_audit_findings
              | selectattr('status', 'equalto', 'suppressed') | list }}
+
+    # ---- fleet_changes : la règle du jalon, jouée -------------------------
+    #
+    # « La 0.8.0 ne doit pas augmenter le nombre de notifications, elle doit
+    # augmenter le rapport signal sur bruit. » Un test unitaire dit que le
+    # filtre calcule ce que le test croit ; il ne dit pas que deux runs d'un
+    # vrai parc, avec deux lectures distinctes et l'agrégation du rôle,
+    # produisent le silence attendu (#236).
+    - name: Un premier passage de fleet_changes, qui est une référence
+      ansible.builtin.include_role:
+        name: stephrobert.scaleway.fleet_changes
+      vars:
+        scaleway_fleet_changes_zones: "{{ zone }}"
+        scaleway_fleet_changes_output: none
+
+    - name: Garder ce qu'un appelant garderait entre deux runs
+      ansible.builtin.set_fact:
+        constats_gardes: "{{ scaleway_fleet_audit_changes.current }}"
+        niveau_reference: "{{ scaleway_fleet_changes_level }}"
+
+    - name: Un second passage, en rendant le premier
+      ansible.builtin.include_role:
+        name: stephrobert.scaleway.fleet_changes
+      vars:
+        scaleway_fleet_changes_zones: "{{ zone }}"
+        scaleway_fleet_changes_output: none
+        scaleway_fleet_changes_findings: "{{ constats_gardes }}"
+
+    - name: Le second passage se tait, et rien de composite ne sort
+      ansible.builtin.assert:
+        that:
+          - niveau_reference == 'baseline'
+          - scaleway_fleet_changes_level == 'quiet'
+          - scaleway_fleet_changes_summary.new_findings == 0
+          - scaleway_fleet_changes_summary.resolved_findings == 0
+          - scaleway_fleet_changes_summary.new_failures == 0
+          - scaleway_fleet_changes_summary.not_concluded == 0
+          # Aucun instantané rendu : l'infrastructure n'est pas comparée, ce qui
+          # n'est pas « rien n'a bougé ».
+          - scaleway_fleet_changes_summary.infrastructure_changes is none
+          # Pas de score composite : un nombre composite ne se remonte pas
+          # jusqu'à ce qui l'a fait bouger.
+          - scaleway_fleet_changes_summary.keys() | select('search', 'score')
+              | list | length == 0
+          # Le rôle n'a pas réimplémenté la comparaison : elle vient de l'audit.
+          - scaleway_fleet_changes_summary.severities.warn.now
+              == scaleway_fleet_audit_changes.counts.current
+        success_msg: >-
+          premier passage `{{ niveau_reference }}`, second `quiet` :
+          {{ scaleway_fleet_changes_summary.severities.warn.now }} constat(s)
+          ouvert(s), 0 nouveau, 0 résolu, infrastructure non comparée
+        fail_msg: >-
+          un parc inchangé a produit du bruit au second passage :
+          niveau {{ scaleway_fleet_changes_level }},
+          bilan {{ scaleway_fleet_changes_summary }}

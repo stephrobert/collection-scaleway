@@ -1,0 +1,51 @@
+---
+argument_specs:
+  main:
+    short_description: Aggregate what moved in a fleet, and stay quiet when nothing did
+    description:
+      - >-
+        Read-only. It includes C(fleet_audit) and C(fleet_diff) and aggregates
+        what they left behind; it compares nothing of its own, because a second
+        comparison written here would drift from the first.
+      - >-
+        No composite score. A composite number cannot be traced back to what
+        moved it, so what comes out is one count per thing that moved, each
+        explainable on its own line.
+      - >-
+        The level is computed and never passed in: a caller able to force it
+        could produce a report that calls itself calm when it is not.
+    options:
+      scaleway_fleet_changes_zones:
+        type: list
+        elements: str
+        description:
+          - The zones to read. Defaults to what the contract declares.
+      scaleway_fleet_changes_snapshot:
+        type: str
+        default: ""
+        description:
+          - >-
+            A snapshot you kept, to compare the infrastructure against.
+            C(stephrobert.scaleway.fleet_report -e output=snapshot) produces
+            one; this collection keeps none of its own.
+          - >-
+            Left empty, the infrastructure is not compared, and the report says
+            so rather than reporting no change.
+      scaleway_fleet_changes_findings:
+        type: list
+        elements: dict
+        description:
+          - The findings of the previous audit, as you kept them.
+          - >-
+            Leaving it unset makes this run a baseline. No previous run at all
+            is not the same as a previous run that found nothing.
+      scaleway_fleet_changes_output:
+        type: str
+        default: text
+        choices: [text, json, markdown, none]
+        description:
+          - Which rendering to print. The counts are returned whatever this says.
+          - >-
+            The Markdown drops straight into a pipeline summary or a ticket.
+            This collection talks to no messaging service, which is the same
+            limit it holds for storage.

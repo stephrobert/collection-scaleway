@@ -1,0 +1,37 @@
+minor_changes:
+  - "roles - ``fleet_changes`` says what moved since the last time, in one count
+    per thing that moved. What makes a recurring tool useful is not what it can
+    do: it is that somebody wants to read it again tomorrow, and a report that
+    shows the same warnings every morning stops being read by the third
+    morning."
+  - "roles - ``fleet_changes`` reimplements nothing. It includes ``fleet_audit``
+    and ``fleet_diff`` and aggregates what they left behind; a second comparison
+    written there would drift from the first."
+  - "roles - no composite score. A ``83/100`` looks good and cannot be traced
+    back to what moved it, so every line counts one named thing and is
+    explainable on its own."
+  - "roles - the level is computed and never passed in: ``quiet``, ``changed``,
+    ``action_required`` and ``baseline``. A caller able to force it could
+    produce a report that calls itself calm when it is not, which is exactly
+    what a recurring tool must not be able to do."
+  - "roles - a new failing finding is counted, never the delta. A ``fail`` that
+    appears while another resolves leaves the count unchanged, and deciding on
+    the delta would silence the new one behind its neighbour's good news."
+  - "roles - anything that could not be measured ranks with a new failing
+    finding: an unmeasured zone, a finding that could not be concluded, an
+    expired exception, a zone two snapshots do not both cover. A fleet nobody
+    could read is not a calm fleet."
+  - "roles - a finding that persists does not demand action every morning. It
+    was already reported yesterday, and raising it again at the same rank is the
+    noise this milestone exists to remove."
+  - "roles - with no snapshot handed back, the infrastructure comes out as
+    ``not compared`` rather than as zero changes, and a severity with no earlier
+    run to compare against carries no delta rather than ``(+0)``. Not having
+    looked is not the same as nothing having moved."
+  - "roles - aggregating two verdicts keeps the higher one. Keeping the lower
+    would let a calm half hide a half that is not, which is the simplest way to
+    manufacture a reassuring report."
+  - "playbooks - ``fleet_changes`` runs the role from the command line, with
+    ``-e snapshot=<file>`` and ``-e output=text|json|markdown``. The Markdown
+    drops straight into a pipeline summary or a ticket: this collection talks to
+    no messaging service, which is the same limit it holds for storage."

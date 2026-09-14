@@ -1,0 +1,197 @@
+---
+# What moved, aggregated, and the silence when nothing did.
+#
+# What makes a recurring tool useful is not what it can do: it is that somebody
+# wants to read it again tomorrow. A version that adds notifications without
+# adding signal makes the product worse.
+#
+# **This role reimplements nothing.** It includes `fleet_audit` and `fleet_diff`
+# and aggregates what they left behind. A second comparison written here would
+# drift from the first, and a test refuses it.
+#
+# **What this role leaves behind.** `scaleway_fleet_changes_summary` holds one
+# count per thing that moved, and `scaleway_fleet_changes_level` the level it
+# earned. Everything else is prefixed with an underscore and is internal.
+
+- name: When this operation started
+  ansible.builtin.set_fact:
+    _scaleway_fleet_changes_debut: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+
+# ---- What the audit found, compared with the run you kept -----------------
+
+# `fleet_audit` fails the run on an open finding of severity fail, which is
+# right for an audit and wrong here: this role reports what **moved**, and a
+# failure that was already reported yesterday must not stop it from saying that
+# a machine appeared. The refusal is caught and the level carries it instead.
+- name: Audit the fleet, and compare with the run you kept
+  block:
+    - name: Audit
+      ansible.builtin.include_role:
+        name: stephrobert.scaleway.fleet_audit
+      vars:
+        scaleway_fleet_audit_zones: "{{ scaleway_fleet_changes_zones }}"
+        scaleway_fleet_audit_previous: "{{ scaleway_fleet_changes_findings }}"
+        scaleway_fleet_audit_output: none
+        # **La politique n'est pas renommée ici, et c'est délibéré.** Un
+        # `scaleway_fleet_changes_policy` serait un second nom pour une seule
+        # chose, et deux noms pour une chose finissent par se contredire. La
+        # politique se pose sur `scaleway_fleet_audit_policy`, que ce rôle ne
+        # touche pas : ce que l'appelant y met arrive intact jusqu'à l'audit.
+        #
+        # `omit` ne rendrait pas ce service : il vaut pour un argument de
+        # module, pas pour les `vars` d'un `include_role`, où il se transmet
+        # comme une chaîne. Mesuré : l'audit recevait une politique sans règle
+        # et refusait, à raison.
+  rescue:
+    - name: The audit refused the fleet, which is one of the things that moved
+      ansible.builtin.debug:
+        msg: >-
+          The audit refuses this fleet. That is reported below rather than
+          raised here: this operation says what moved, and stopping on a finding
+          reported yesterday would hide a machine that appeared today.
+        verbosity: 1
+
+# ---- What the infrastructure did, when a snapshot was handed back ---------
+
+- name: Compare the infrastructure with the snapshot you kept
+  ansible.builtin.include_role:
+    name: stephrobert.scaleway.fleet_diff
+  vars:
+    scaleway_fleet_diff_baseline: "{{ scaleway_fleet_changes_snapshot }}"
+    scaleway_fleet_diff_zones: "{{ scaleway_fleet_changes_zones }}"
+    scaleway_fleet_diff_output: none
+  when: scaleway_fleet_changes_snapshot | length > 0
+
+# ---- One count per thing that moved ---------------------------------------
+
+- name: What moved, in counts that are explainable line by line
+  ansible.builtin.set_fact:
+    scaleway_fleet_changes_summary: >-
+      {{ scaleway_fleet_audit_changes | stephrobert.scaleway.changes_summary(
+           diff=(scaleway_fleet_diff_result
+                 if scaleway_fleet_changes_snapshot | length > 0
+                 else none),
+           expired_exceptions=scaleway_fleet_audit_expired_exceptions,
+           unmeasured_zones=_scaleway_fleet_audit_muettes,
+           previous_findings=scaleway_fleet_changes_findings) }}
+
+# **Le niveau se calcule, il ne se passe pas en paramètre.** Un appelant qui
+# pourrait le forcer produirait un rapport qui se dit calme alors qu'il ne l'est
+# pas, et c'est la seule ligne que ce rapport n'a pas le droit d'écrire.
+#
+# Le pire des deux verdicts l'emporte : prendre le plus bas laisserait une
+# moitié calme masquer une moitié qui ne l'est pas.
+- name: The level this earned, computed and never passed in
+  ansible.builtin.set_fact:
+    # Les parenthèses autour de la somme ne sont pas cosmétiques : un filtre
+    # Jinja se lie plus fort que `+`, donc sans elles il ne s'appliquerait qu'au
+    # second opérande et rendrait une chaîne à concaténer à une liste. Mesuré.
+    scaleway_fleet_changes_level: >-
+      {{ ([scaleway_fleet_changes_summary | stephrobert.scaleway.summary_verdict]
+          + ([scaleway_fleet_diff_level] if scaleway_fleet_changes_snapshot | length > 0 else []))
+         | stephrobert.scaleway.worst_level }}
+
+- name: What happened, in a shape a machine reads
+  ansible.builtin.set_fact:
+    scaleway_fleet_changes_operation: "{{ resultat }}"
+    scaleway_operation: "{{ resultat }}"
+  vars:
+    resultat: >-
+      {{ 'fleet_changes' | stephrobert.scaleway.operation_result(
+           target=(scaleway_fleet_changes_zones | join(',')),
+           mode='apply',
+           changed=(scaleway_fleet_audit_changes.new | map(attribute='name') | list)
+                   + (scaleway_fleet_audit_changes.resolved | map(attribute='name') | list),
+           unmeasured=_scaleway_fleet_audit_muettes,
+           started_at=_scaleway_fleet_changes_debut,
+           completed_at=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}
+
+# ---- Renderings ------------------------------------------------------------
+
+# **Rien de nouveau tient en une ligne, et c'est la propriété qui compte.** Un
+# outil récurrent qui écrit un écran tous les matins finit ignoré, et la règle
+# de ce jalon est de ne pas augmenter le nombre de notifications mais le rapport
+# signal sur bruit.
+- name: Nothing moved
+  ansible.builtin.debug:
+    msg: >-
+      No change across {{ scaleway_fleet_changes_zones | length }} zone(s).
+      {{ scaleway_fleet_changes_summary.severities.fail.now | default(0) }} failing
+      and {{ scaleway_fleet_changes_summary.severities.warn.now | default(0) }} warning
+      finding(s) still open, none of them new.
+  when:
+    - scaleway_fleet_changes_level == 'quiet'
+    - scaleway_fleet_changes_output in ('text', 'markdown')
+
+- name: Nothing to compare against, and that is not a calm fleet either
+  ansible.builtin.debug:
+    msg: >-
+      First look: nothing was kept from an earlier run, so nothing is new
+      and nothing is resolved.
+      {{ scaleway_fleet_audit_changes.counts.current }} finding(s) stand.
+      Keep `scaleway_fleet_audit_changes.current` and hand it back next time,
+      and keep a snapshot with
+      `stephrobert.scaleway.fleet_report -e output=snapshot`.
+  when:
+    - scaleway_fleet_changes_level == 'baseline'
+    - scaleway_fleet_changes_output in ('text', 'markdown')
+
+- name: What moved, for a terminal
+  ansible.builtin.debug:
+    msg: |-
+      Fleet posture changes                 {{ scaleway_fleet_changes_level }}
+
+      Infrastructure changes     {{ bilan.infrastructure_changes
+                                    if bilan.infrastructure_changes is not none
+                                    else 'not compared' }}
+      New audit findings         {{ bilan.new_findings }}
+      Resolved findings          {{ bilan.resolved_findings }}
+      Persistent failures        {{ bilan.persistent_failures }}
+      Expired exceptions         {{ bilan.expired_exceptions }}
+      Unmeasured zones           {{ bilan.unmeasured_zones }}
+      Findings not concluded     {{ bilan.not_concluded }}
+      {% for severite, compte in bilan.severities.items() %}
+      {{ '%-8s' | format(severite) }} {{ compte.now }}{{ ' (%+d)' | format(compte.delta)
+                                                          if compte.delta is not none else '' }}
+      {% endfor %}
+  vars:
+    bilan: "{{ scaleway_fleet_changes_summary }}"
+  when:
+    - scaleway_fleet_changes_output == 'text'
+    - scaleway_fleet_changes_level not in ('quiet', 'baseline')
+
+- name: What moved, for a pipeline
+  ansible.builtin.debug:
+    msg: "{{ scaleway_fleet_changes_operation | combine({'summary': scaleway_fleet_changes_summary, 'level': scaleway_fleet_changes_level}) | to_nice_json }}"
+  when: scaleway_fleet_changes_output == 'json'
+
+# Le Markdown se pose tel quel dans un résumé de chaîne, un ticket, ou ce que
+# l'appelant en fait : la collection ne parle à aucun service de messagerie, et
+# c'est la même limite que pour le stockage.
+- name: What moved, for a summary or a ticket
+  ansible.builtin.debug:
+    msg: |-
+      ## Fleet posture changes
+
+      **{{ scaleway_fleet_changes_level }}**
+
+      | what moved | count |
+      |---|---|
+      | Infrastructure changes | {{ bilan.infrastructure_changes
+                                    if bilan.infrastructure_changes is not none
+                                    else 'not compared' }} |
+      | New audit findings | {{ bilan.new_findings }} |
+      | Resolved findings | {{ bilan.resolved_findings }} |
+      | Persistent failures | {{ bilan.persistent_failures }} |
+      | Expired exceptions | {{ bilan.expired_exceptions }} |
+      | Unmeasured zones | {{ bilan.unmeasured_zones }} |
+      | Findings not concluded | {{ bilan.not_concluded }} |
+      {% for severite, compte in bilan.severities.items() %}
+      | {{ severite }} | {{ compte.now }}{{ ' (%+d)' | format(compte.delta)
+                                             if compte.delta is not none else '' }} |
+      {% endfor %}
+  vars:
+    bilan: "{{ scaleway_fleet_changes_summary }}"
+  when:
+    - scaleway_fleet_changes_output == 'markdown'
+    - scaleway_fleet_changes_level not in ('quiet', 'baseline')

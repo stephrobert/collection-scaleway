@@ -1,0 +1,27 @@
+---
+# The snapshot to compare the infrastructure against, as a path to a file you
+# kept. This collection stores nothing: where a snapshot lives belongs to
+# whoever runs it. Left empty, the infrastructure is simply not compared, and
+# the report says so rather than reporting no change.
+scaleway_fleet_changes_snapshot: ""
+
+# The findings of the previous audit, as you kept them. Left unset, this run is
+# a baseline: no previous run at all is not the same as a previous run that
+# found nothing.
+scaleway_fleet_changes_findings: ~
+
+scaleway_fleet_changes_zones:
+  - fr-par-1
+  - fr-par-2
+  - fr-par-3
+  - nl-ams-1
+  - nl-ams-2
+  - nl-ams-3
+  - pl-waw-1
+  - pl-waw-2
+  - pl-waw-3
+  - it-mil-1
+
+# text for a terminal, json for a pipeline, markdown for a summary or a ticket,
+# none for a caller that wants the data and not a second report on screen.
+scaleway_fleet_changes_output: text
