@@ -32,6 +32,21 @@ from __future__ import annotations
 
 from ansible.errors import AnsibleFilterError
 
+try:  # pragma: no cover - le chemin d'import diffère entre collection et tests
+    from ansible_collections.stephrobert.scaleway.plugins.module_utils.selecteur import (
+        SelecteurError,
+        correspond,
+        etiquettes_voulues,
+        valider,
+    )
+except ImportError:  # pragma: no cover
+    from ..module_utils.selecteur import (  # type: ignore[no-redef]
+        SelecteurError,
+        correspond,
+        etiquettes_voulues,
+        valider,
+    )
+
 DOCUMENTATION = r"""
 name: select_hosts
 short_description: Resolve a selector into inventory host names
@@ -78,42 +93,6 @@ EXAMPLES = r"""
 #: se lit comme un parc vide.
 CRITERES = ("group", "name", "tags")
 
-#: Comment plusieurs étiquettes se combinent. `all` est le défaut parce qu'il
-#: rend la sélection la plus étroite : pour une opération qui écrit, se tromper
-#: du côté sûr veut dire toucher moins de machines.
-COMBINAISONS = ("all", "any")
-
-
-def _valider(selecteur: object) -> dict[str, object]:
-    if not isinstance(selecteur, dict):
-        raise AnsibleFilterError(
-            f"un sélecteur est un objet, pas {type(selecteur).__name__}. "
-            f"Il porte exactement un de {', '.join(CRITERES)}."
-        )
-
-    inconnues = sorted(set(selecteur) - set(CRITERES) - {"match"})
-    if inconnues:
-        raise AnsibleFilterError(
-            f"clé(s) de sélecteur inconnue(s) : {', '.join(inconnues)}. "
-            f"Les critères sont {', '.join(CRITERES)}. Une faute de frappe qui "
-            "sélectionnerait zéro machine se lirait comme un parc vide."
-        )
-
-    poses = sorted(critere for critere in CRITERES if selecteur.get(critere))
-    if not poses:
-        raise AnsibleFilterError(
-            f"sélecteur vide : il faut un de {', '.join(CRITERES)}. Ne rien "
-            "désigner est une décision qui se prend avant d'appeler, pas un "
-            "sélecteur qui ne désigne rien."
-        )
-    if len(poses) > 1:
-        raise AnsibleFilterError(
-            f"sélecteur qui porte {', '.join(poses)} à la fois. Deux critères "
-            "posent deux questions, et la réponse dépendrait de l'ordre dans "
-            "lequel on les lit."
-        )
-    return selecteur
-
 
 def _par_groupe(nom: str, groups: dict) -> list[str]:
     return sorted(groups.get(nom, []))
@@ -127,9 +106,7 @@ def _par_nom(cherche: str, machines: dict) -> list[str]:
     la comparaison porte sur l'inventaire, donc localement, et elle est exacte.
     """
     trouves = sorted(
-        hote
-        for hote, variables in machines.items()
-        if variables.get("scaleway_name") == cherche
+        hote for hote, variables in machines.items() if variables.get("scaleway_name") == cherche
     )
     if len(trouves) > 1:
         raise AnsibleFilterError(
@@ -140,38 +117,35 @@ def _par_nom(cherche: str, machines: dict) -> list[str]:
     return trouves
 
 
-def _par_etiquettes(etiquettes: object, combinaison: object, machines: dict) -> list[str]:
-    if not isinstance(etiquettes, (list, tuple)) or not etiquettes:
-        raise AnsibleFilterError("`tags` est une liste non vide d'étiquettes")
-
-    mode = combinaison or "all"
-    if mode not in COMBINAISONS:
-        raise AnsibleFilterError(
-            f"match={mode!r} n'est ni {' ni '.join(COMBINAISONS)}. Sans cette "
-            "précision, `tags` ne dit pas s'il faut toutes les étiquettes ou "
-            "une seule, et la sélection dépendrait de ce que le lecteur a "
-            "supposé."
-        )
-
-    voulues = {str(etiquette) for etiquette in etiquettes}
-    juge = set.issubset if mode == "all" else lambda voulu, portees: bool(voulu & portees)
+def _par_etiquettes(etiquettes: object, mode: str, machines: dict) -> list[str]:
+    """La recherche, la grammaire étant déjà validée."""
+    voulues = etiquettes_voulues(etiquettes)
     return sorted(
         hote
         for hote, variables in machines.items()
-        if juge(voulues, set(variables.get("scaleway_tags") or []))
+        if correspond(voulues, set(variables.get("scaleway_tags") or []), mode)
     )
 
 
 def select_hosts(selecteur: object, groups: object, hostvars: object) -> list[str]:
     """Les machines de l'inventaire que ce sélecteur désigne."""
-    valide = _valider(selecteur)
-    machines = dict(hostvars or {})
+    try:
+        critere, valeur, mode = valider(selecteur, CRITERES)
+    except SelecteurError as erreur:
+        # La grammaire est commune, l'erreur que le contexte attend ne l'est
+        # pas : un filtre lève `AnsibleFilterError`, et c'est ce qu'Ansible
+        # sait rapporter avec le nom du filtre fautif.
+        raise AnsibleFilterError(str(erreur)) from erreur
 
-    if valide.get("group"):
-        return _par_groupe(str(valide["group"]), dict(groups or {}))
-    if valide.get("name"):
-        return _par_nom(str(valide["name"]), machines)
-    return _par_etiquettes(valide.get("tags"), valide.get("match"), machines)
+    machines = dict(hostvars or {})
+    if critere == "group":
+        return _par_groupe(str(valeur), dict(groups or {}))
+    if critere == "name":
+        return _par_nom(str(valeur), machines)
+    try:
+        return _par_etiquettes(valeur, mode, machines)
+    except SelecteurError as erreur:
+        raise AnsibleFilterError(str(erreur)) from erreur
 
 
 class FilterModule:

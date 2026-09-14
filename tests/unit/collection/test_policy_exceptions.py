@@ -129,22 +129,35 @@ def test_une_exception_incomplete_est_refusee(manquant: str) -> None:
 
 
 def test_une_exception_sans_selecteur_est_refusee() -> None:
-    """Sans sélecteur elle couvrirait tout le parc, donc la règle serait retirée."""
+    """Sans sélecteur elle couvrirait tout le parc, donc la règle serait retirée.
+
+    **Le refus ne suffit pas, il doit dire pourquoi.** La grammaire partagée
+    refuse déjà un sélecteur absent, mais elle ne sait pas qu'il s'agit d'une
+    exception : « couvrirait tout le parc » est une raison qu'elle ne peut pas
+    connaître, et c'est celle qui fait comprendre à son auteur ce qu'il vient
+    d'écrire. `/falsify` l'a dit, en laissant ce test vert quand la garde
+    spécifique était neutralisée.
+    """
     sans = {cle: valeur for cle, valeur in _exception().items() if cle != "selector"}
 
-    with pytest.raises(Exception, match="selector"):
+    with pytest.raises(Exception, match="couvrirait alors tout le parc"):
         _juger([sans])
 
 
 def test_un_selecteur_a_deux_criteres_est_refuse() -> None:
-    """Deux critères posent deux questions, et la réponse dépendrait de l'ordre."""
-    with pytest.raises(Exception, match="exactement un"):
+    """Deux critères posent deux questions, et la réponse dépendrait de l'ordre.
+
+    Le message vient de la grammaire partagée ; le rang de l'exception vient
+    d'ici, et c'est ce qu'une politique qui en porte plusieurs rend
+    indispensable.
+    """
+    with pytest.raises(Exception, match="l'exception 1 : sélecteur qui porte"):
         _juger([_exception(selector={"name": "bastion-01", "tags": ["role=bastion"]})])
 
 
 def test_une_cle_de_selecteur_inconnue_est_refusee() -> None:
     """Une faute de frappe qui ne couvre rien se lirait comme une exception inutile."""
-    with pytest.raises(Exception, match="inconnues"):
+    with pytest.raises(Exception, match="l'exception 1 : clé\\(s\\) de sélecteur inconnue"):
         _juger([_exception(selector={"nom": "bastion-01"})])
 
 

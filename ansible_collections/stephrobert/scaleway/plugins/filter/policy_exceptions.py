@@ -30,6 +30,21 @@ from datetime import datetime, timezone
 
 from ansible.errors import AnsibleFilterError
 
+try:  # pragma: no cover - le chemin d'import diffère entre collection et tests
+    from ansible_collections.stephrobert.scaleway.plugins.module_utils.selecteur import (
+        SelecteurError,
+        correspond,
+        etiquettes_voulues,
+        valider,
+    )
+except ImportError:  # pragma: no cover
+    from ..module_utils.selecteur import (  # type: ignore[no-redef]
+        SelecteurError,
+        correspond,
+        etiquettes_voulues,
+        valider,
+    )
+
 DOCUMENTATION = r"""
 name: audit_exceptions
 short_description: Turn policy exceptions into statuses, never into deletions
@@ -90,9 +105,6 @@ OBLIGATOIRES = ("rule", "reason", "owner", "expires_at")
 #: un audit lit l'API, pas un inventaire.
 CRITERES = ("name", "tags", "id")
 
-#: Comment plusieurs étiquettes se combinent, comme pour le sélecteur d'hôtes.
-COMBINAISONS = ("all", "any")
-
 #: Le statut d'un constat. `open` est celui qu'on lit, `suppressed` celui qu'on
 #: garde sous les yeux sans agir.
 STATUTS = ("open", "suppressed")
@@ -115,9 +127,7 @@ def _instant(valeur: object, quoi: str) -> datetime:
     try:
         lu = datetime.fromisoformat(str(valeur).replace("Z", "+00:00"))
     except (TypeError, ValueError) as erreur:
-        raise AnsibleFilterError(
-            f"{quoi} n'est pas une date ISO 8601 : {valeur!r}"
-        ) from erreur
+        raise AnsibleFilterError(f"{quoi} n'est pas une date ISO 8601 : {valeur!r}") from erreur
     return lu if lu.tzinfo else lu.replace(tzinfo=timezone.utc)
 
 
@@ -145,23 +155,13 @@ def _valider(exception: object, rang: int) -> dict:
             "tout le parc, ce qui est une règle retirée et non une exception."
         )
 
-    inconnues = sorted(set(selecteur) - set(CRITERES) - {"match"})
-    if inconnues:
-        raise AnsibleFilterError(
-            f"l'exception {rang} porte des clés de sélecteur inconnues : "
-            f"{', '.join(inconnues)}. Les critères sont {', '.join(CRITERES)}. "
-            "Une faute de frappe qui ne couvrirait rien se lirait comme une "
-            "exception inutile, et une qui couvrirait tout ne se verrait pas."
-        )
-
-    poses = sorted(critere for critere in CRITERES if selecteur.get(critere))
-    if len(poses) != 1:
-        raise AnsibleFilterError(
-            f"l'exception {rang} porte {len(poses)} critère(s) "
-            f"({', '.join(poses) or 'aucun'}) : il en faut exactement un. Deux "
-            "critères posent deux questions, et la réponse dépendrait de "
-            "l'ordre dans lequel on les lit."
-        )
+    # **La grammaire vient d'ailleurs, le rang vient d'ici.** Le message commun
+    # dit ce qui ne va pas ; le préfixe dit de quelle exception il s'agit, et
+    # c'est ce qu'une politique qui en porte plusieurs rend indispensable.
+    try:
+        valider(selecteur, CRITERES, quoi=f"le `selector` de l'exception {rang}")
+    except SelecteurError as erreur:
+        raise AnsibleFilterError(f"l'exception {rang} : {erreur}") from erreur
 
     _instant(exception["expires_at"], f"l'échéance de l'exception {rang}")
     return exception
@@ -188,20 +188,12 @@ def _designees(selecteur: dict, ressources: list[dict], rang: int) -> list[str]:
             )
         return trouves
 
-    etiquettes = selecteur["tags"]
-    if not isinstance(etiquettes, (list, tuple)) or not etiquettes:
-        raise AnsibleFilterError(
-            f"l'exception {rang} : `tags` est une liste non vide d'étiquettes"
-        )
+    try:
+        voulues = etiquettes_voulues(selecteur["tags"])
+    except SelecteurError as erreur:
+        raise AnsibleFilterError(f"l'exception {rang} : {erreur}") from erreur
     mode = selecteur.get("match") or "all"
-    if mode not in COMBINAISONS:
-        raise AnsibleFilterError(
-            f"l'exception {rang} : match={mode!r} n'est ni "
-            f"{' ni '.join(COMBINAISONS)}."
-        )
-    voulues = {str(etiquette) for etiquette in etiquettes}
-    juge = set.issubset if mode == "all" else lambda v, p: bool(v & p)
-    return [r["id"] for r in ressources if juge(voulues, set(r.get("tags") or []))]
+    return [r["id"] for r in ressources if correspond(voulues, set(r.get("tags") or []), mode)]
 
 
 def _ressource_du_constat(constat: dict) -> str:
@@ -220,19 +212,13 @@ def audit_exceptions(
 ) -> dict[str, object]:
     """Les constats avec leur statut, et ce que les exceptions disent d'elles-mêmes."""
     if not isinstance(constats, (list, tuple)):
-        raise AnsibleFilterError(
-            f"les constats sont une liste, pas {type(constats).__name__}"
-        )
+        raise AnsibleFilterError(f"les constats sont une liste, pas {type(constats).__name__}")
     if not isinstance(resources, (list, tuple)):
-        raise AnsibleFilterError(
-            f"les ressources sont une liste, pas {type(resources).__name__}"
-        )
+        raise AnsibleFilterError(f"les ressources sont une liste, pas {type(resources).__name__}")
     if exceptions is None:
         exceptions = []
     if not isinstance(exceptions, (list, tuple)):
-        raise AnsibleFilterError(
-            f"les exceptions sont une liste, pas {type(exceptions).__name__}"
-        )
+        raise AnsibleFilterError(f"les exceptions sont une liste, pas {type(exceptions).__name__}")
 
     maintenant = _instant(now, "l'instant de référence")
     ressources = list(resources)

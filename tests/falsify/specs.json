@@ -2546,16 +2546,16 @@
     },
     {
       "name": "cle-de-selecteur-inconnue-ignoree",
-      "why": "`tag:` au lieu de `tags:` sélectionnerait zéro machine en silence, et une sélection vide se lit comme un parc vide. Une faute de frappe et un fait doivent se distinguer : le premier est un défaut, le second une mesure.",
-      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/select_hosts.py",
+      "why": "`tag:` au lieu de `tags:` sélectionnerait zéro machine en silence, et une sélection vide se lit comme un parc vide. Une faute de frappe et un fait doivent se distinguer : le premier est un défaut, le second une mesure. La grammaire est désormais écrite une fois dans `module_utils/selecteur.py` ; ce test reste celui de `select_hosts`, ce qui prouve que la mutualisation n'a pas desserré la garde chez son appelant.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/selecteur.py",
       "find": "    if inconnues:",
       "replace": "    if inconnues and False:",
       "test": "tests/unit/collection/test_select_hosts.py::test_une_cle_inconnue_est_refusee"
     },
     {
       "name": "etiquettes-combinees-au-hasard",
-      "why": "`tags: [production, web]` ne dit pas s'il faut toutes les étiquettes ou une seule. Sans refus sur `match`, la sélection dépendrait de ce que le lecteur a supposé, et pour une opération qui écrit, supposer `any` touche plus de machines que voulu.",
-      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/select_hosts.py",
+      "why": "`tags: [production, web]` ne dit pas s'il faut toutes les étiquettes ou une seule. Sans refus sur `match`, la sélection dépendrait de ce que le lecteur a supposé, et pour une opération qui écrit, supposer `any` touche plus de machines que voulu. La grammaire est désormais écrite une fois dans `module_utils/selecteur.py` ; ce test reste celui de `select_hosts`, ce qui prouve que la mutualisation n'a pas desserré la garde chez son appelant.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/selecteur.py",
       "find": "    if mode not in COMBINAISONS:",
       "replace": "    if mode not in COMBINAISONS and False:",
       "test": "tests/unit/collection/test_select_hosts.py::test_une_combinaison_inconnue_est_refusee"
@@ -3143,6 +3143,46 @@
       "find": "        dir=str(chemin.parent), prefix=PREFIXE, suffix=chemin.suffix",
       "replace": "        dir=None, prefix=PREFIXE, suffix=chemin.suffix",
       "test": "tests/unit/generator/test_ecriture.py::test_le_provisoire_vit_dans_le_repertoire_de_destination"
+    },
+    {
+      "name": "grammaire-qui-accepte-deux-criteres",
+      "why": "Deux critères posent deux questions, et la réponse dépendrait de l'ordre dans lequel on les lit. Pour une opération qui redémarre des machines, cet ordre décide de ce qui tombe.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/selecteur.py",
+      "find": "    if len(poses) > 1:",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_selecteur.py::test_deux_criteres_a_la_fois_sont_refuses"
+    },
+    {
+      "name": "grammaire-qui-accepte-un-selecteur-vide",
+      "why": "Un sélecteur vide désignerait tout. Ne rien désigner est une décision qui se prend avant d'appeler, pas un sélecteur qui ne désigne rien : la seconde forme agit, la première non.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/selecteur.py",
+      "find": "    if not poses:",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_selecteur.py::test_un_selecteur_vide_est_refuse"
+    },
+    {
+      "name": "grammaire-qui-accepte-une-cle-inconnue",
+      "why": "Une faute de frappe qui ne désigne rien se lit exactement comme un parc vide. `groupe` au lieu de `group`, et l'opération rapporte sereinement qu'elle n'avait rien à faire.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/selecteur.py",
+      "find": "    if inconnues:",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_selecteur.py::test_une_cle_inconnue_est_refusee_et_les_criteres_sont_nommes"
+    },
+    {
+      "name": "combinaison-detiquettes-supposee",
+      "why": "Sans `match`, `tags` ne dit pas s'il faut toutes les étiquettes ou une seule, et la sélection dépendrait de ce que le lecteur a supposé. Une valeur qu'on ne sait pas interpréter doit être refusée, pas repliée sur un défaut.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/selecteur.py",
+      "find": "    if mode not in COMBINAISONS:",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_selecteur.py::test_une_combinaison_inconnue_est_refusee"
+    },
+    {
+      "name": "etiquettes-vides-qui-designent-tout",
+      "why": "Une liste d'étiquettes vide satisfait `all` pour toute ressource : elle désignerait le parc entier, ce qui est le contraire d'un sélecteur et le contraire de ce que son auteur voulait.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/selecteur.py",
+      "find": "    if not isinstance(valeur, (list, tuple)) or not valeur:",
+      "replace": "    if not isinstance(valeur, (list, tuple)):",
+      "test": "tests/unit/collection/test_selecteur.py::test_une_liste_detiquettes_vide_est_refusee"
     }
   ]
 }
