@@ -14,6 +14,14 @@ scaleway_fleet_audit_zones:
 
 scaleway_fleet_audit_output: text
 
+# **The findings of the previous run, as you kept them.** The collection keeps
+# no history: comparing two runs needs the earlier one handed back, and where it
+# is kept is the caller's business, not this role's.
+#
+# `none` is not an empty list. No previous run at all makes this one a baseline;
+# a previous run that found nothing makes everything here new.
+scaleway_fleet_audit_previous: ~
+
 # **A starting point, not an opinion about your fleet.** Every rule here is a
 # `warn`, so a first run never fails: the point of an audit you can run daily is
 # that you read it, and a report that fails on day one is a report people turn

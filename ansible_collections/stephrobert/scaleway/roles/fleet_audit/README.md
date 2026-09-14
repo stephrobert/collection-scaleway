@@ -48,6 +48,56 @@ The field a rule judges is not part of the identity. Each rule judges exactly
 one field, so the field is derivable from the rule and distinguishes nothing more
 than the rule already does. It stays on the finding as information.
 
+## What is new, what persists, what is resolved
+
+Run daily, an audit shows the same warnings every morning, and people stop
+reading it by the third morning. That is the failure mode of a recurring tool,
+and it is more dangerous than an outage because it does not show.
+
+Hand back what the previous run found, and the role sorts this run's findings
+into three sets computed from their stable identities, with nothing guessed:
+
+```yaml
+- ansible.builtin.include_role:
+    name: stephrobert.scaleway.fleet_audit
+  vars:
+    scaleway_fleet_audit_previous: "{{ lookup('file', 'yesterday.json') | from_json }}"
+```
+
+```text
+Fleet posture changes
+
+NEW
+  FAIL instance/db-01  public_ip
+PERSISTING
+  WARN instance/web-03  required_tags
+       first seen 2026-09-10T06:00:00Z
+RESOLVED
+  instance/web-04  required_tags
+level: action_required
+```
+
+**A finding that vanished is not a finding that was resolved.** A zone that did
+not answer makes everything it held disappear, and announcing that as resolved
+tells somebody their problem is fixed when nobody looked. Those come out under
+`NOT CONCLUDED`, with which of the two cases it is.
+
+**A suppressed finding is not resolved either.** An exception changes a status,
+it does not make the problem go away, so it stays in `persisting` with its
+status.
+
+**This collection keeps no history.** `first_seen` is stamped on a new finding
+and carried over on a persisting one, so the date goes back as far as you kept
+your reports. Where you keep them is yours to decide. When a kept report carries
+none, the report says the date is unknown rather than inventing one, and there
+is no "since the last run" field at all: nothing here can derive when the
+previous run happened.
+
+`scaleway_fleet_audit_level` is computed, never passed in: `quiet` when nothing
+is new, `changed` when something moved, `action_required` on a new failing
+finding or on anything that could not be concluded, and `baseline` on a first
+run, which is neither calm nor alarming because there is nothing to compare to.
+
 ## When the answer is "yes, but that one is on purpose"
 
 A policy that is actually used meets the case within a week: this bastion *must*

@@ -2666,8 +2666,8 @@
     },
     {
       "name": "readme-de-role-qui-ne-montre-pas-lappel",
-      "why": "Galaxy refuse l'import de toute la collection quand un rôle n'a pas de README, et c'est ce qui a fait échouer la publication de la 0.7.0 après que la porte, le sanity et l'archive soient passés. La garde exige en plus que la page montre l'appel : une page publiée qui ne dit pas comment appeler la chose ne sert que d'antisèche à l'importeur. Le harnais ne sachant que substituer dans un fichier, il ne peut pas faire disparaître un README : c'est cette seconde moitié qu'il éprouve, l'existence restant tenue par l'importeur de Galaxy dans le workflow de publication. La mutation a changé de fichier en #231 : `fleet_report` montre désormais deux appels, celui du rapport et celui de l'instantané, donc neutraliser l'un laisserait l'autre satisfaire la garde. Le harnais l'a dit, en refusant un motif ambigu plutôt qu'en choisissant une occurrence.",
-      "file": "ansible_collections/stephrobert/scaleway/roles/fleet_audit/README.md",
+      "why": "Galaxy refuse l'import de toute la collection quand un rôle n'a pas de README, et c'est ce qui a fait échouer la publication de la 0.7.0 après que la porte, le sanity et l'archive soient passés. La garde exige en plus que la page montre l'appel : une page publiée qui ne dit pas comment appeler la chose ne sert que d'antisèche à l'importeur. Le harnais ne sachant que substituer dans un fichier, il ne peut pas faire disparaître un README : c'est cette seconde moitié qu'il éprouve, l'existence restant tenue par l'importeur de Galaxy dans le workflow de publication.\n\n**La cible se déplace, et c'est le signe que la garde porte sur tous les rôles.** Elle a quitté `fleet_report` en #231, puis `fleet_audit` en #234, chaque fois parce que la page s'est mise à montrer deux appels : neutraliser l'un laisse l'autre satisfaire la garde, et le harnais le dit en refusant un motif ambigu plutôt qu'en choisissant une occurrence. La cible est donc un README qui ne montre qu'un appel, et le jour où aucun n'en montrera plus qu'un, c'est que chaque page en montrera plusieurs, ce qui est une bonne nouvelle et non une garde perdue.",
+      "file": "ansible_collections/stephrobert/scaleway/roles/power_schedule/README.md",
       "find": "- ansible.builtin.include_role:",
       "replace": "- name: Call it the way the guide describes",
       "test": "tests/unit/collection/test_roles.py::test_chaque_role_porte_un_readme"
@@ -2871,6 +2871,70 @@
       "find": "    if not isinstance(selecteur, dict):",
       "replace": "    if not isinstance(selecteur, dict) and False:",
       "test": "tests/unit/collection/test_policy_exceptions.py::test_une_exception_sans_selecteur_est_refusee"
+    },
+    {
+      "name": "constat-disparu-dans-une-zone-muette-annonce-resolu",
+      "why": "C'est la pire ligne qu'un rapport de posture puisse écrire : elle dit à quelqu'un que son problème est réglé alors que personne n'a regardé. Une zone qui n'a pas répondu fait disparaître tout ce qu'elle portait, et la disparition ressemble trait pour trait à une résolution. C'est la garde que la définition du fini de #234 demande de prouver nommément.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_changes.py",
+      "find": "        elif str(zone) not in mesurees:",
+      "replace": "        elif False:",
+      "test": "tests/unit/collection/test_audit_changes.py::test_un_constat_dont_la_zone_na_pas_repondu_nest_pas_resolu"
+    },
+    {
+      "name": "constat-conserve-sans-zone-conclu-resolu",
+      "why": "Un rapport conservé qui ne dit pas dans quelle zone était le constat ne permet de conclure ni dans un sens ni dans l'autre. Trancher quand même est une affirmation que rien ne soutient, et elle tombe du côté rassurant, qui est le mauvais.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_changes.py",
+      "find": "        if not zone:",
+      "replace": "        if False:",
+      "test": "tests/unit/collection/test_audit_changes.py::test_un_constat_conserve_sans_zone_ne_se_conclut_pas_non_plus"
+    },
+    {
+      "name": "premiere-vue-reecrite-au-lieu-detre-recopiee",
+      "why": "« Première vue il y a quatre jours » n'a de valeur que si la date remonte. Réécrite à chaque run, elle vaudrait toujours aujourd'hui : le champ resterait présent, le rapport resterait plausible, et il dirait que tout vient d'apparaître.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_changes.py",
+      "find": "        if vue:",
+      "replace": "        if False:",
+      "test": "tests/unit/collection/test_audit_changes.py::test_la_premiere_vue_remonte_aussi_loin_que_lappelant_a_garde"
+    },
+    {
+      "name": "aucun-run-precedent-confondu-avec-un-run-sans-constat",
+      "why": "« Je n'ai rien à quoi comparer » et « j'ai comparé et il n'y avait rien » mènent à deux rapports opposés : le premier est une référence, le second rend tout le parc nouveau. Les confondre fait sortir un parc entier en NEW le jour où un appelant garde une liste vide, ce qui est le bruit que ce jalon existe pour éviter.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_changes.py",
+      "find": "    if previous is None:",
+      "replace": "    if not previous:",
+      "test": "tests/unit/collection/test_audit_changes.py::test_un_run_precedent_sans_constat_nest_pas_une_reference"
+    },
+    {
+      "name": "constat-sans-identite-accepte",
+      "why": "Un constat sans identité se rangerait dans les nouveaux à chaque run, et « nouveau » cesserait de vouloir dire quelque chose pour tous les autres. Le refus porte sur l'entrée, là où on sait encore quoi nommer.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_changes.py",
+      "find": "    if not identite:",
+      "replace": "    if not identite and False:",
+      "test": "tests/unit/collection/test_audit_changes.py::test_un_constat_sans_identite_est_refuse"
+    },
+    {
+      "name": "deux-constats-de-meme-identite-dans-un-run-acceptes",
+      "why": "Deux constats de même identité veulent dire que l'identité ne distingue plus ce qu'elle doit distinguer. En garder un au hasard rend le rapport dépendant de l'ordre de lecture, donc différent d'un run à l'autre sans que rien n'ait bougé.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_changes.py",
+      "find": "        if identite in table:",
+      "replace": "        if identite in table and False:",
+      "test": "tests/unit/collection/test_audit_changes.py::test_deux_constats_de_meme_identite_dans_un_run_sont_refuses"
+    },
+    {
+      "name": "zone-muette-qui-ne-pese-pas-dans-le-verdict",
+      "why": "Une zone muette n'est pas une bonne nouvelle. Ne pas la compter au même rang qu'un nouveau constat bloquant présenterait comme un parc calme un parc que personne n'a pu lire : c'est le vert sur zéro fichier examiné, transposé à une flotte.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_changes.py",
+      "find": "    if changements.get(\"unmeasured\"):",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_audit_changes.py::test_une_zone_muette_pese_autant_quun_nouveau_constat_bloquant"
+    },
+    {
+      "name": "statut-absent-qui-ne-vaut-plus-ouvert",
+      "why": "Un constat qu'aucune exception n'a traversé ne porte pas de statut. S'il ne vaut pas `open` par défaut, aucun constat neuf ne réclame plus d'action sur un audit sans exceptions, et le rapport sort calme sur un parc qui ne l'est pas.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_changes.py",
+      "find": "    return str(constat.get(\"status\") or \"open\")",
+      "replace": "    return str(constat.get(\"status\") or \"\")",
+      "test": "tests/unit/collection/test_audit_changes.py::test_un_nouveau_constat_bloquant_rend_action_required"
     }
   ]
 }
