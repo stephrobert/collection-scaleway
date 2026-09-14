@@ -1,0 +1,10 @@
+minor_changes:
+  - "filter - the selector grammar is written once. ``select_hosts`` and
+    ``audit_exceptions`` ask the same question of two populations, and both
+    validated it separately with two sets of messages that had already started
+    to diverge."
+  - "filter - what is shared is the grammar: one criterion and only one, an
+    unknown key refused, a tag combination named. The resolution is not shared,
+    and that is correct: an inventory group is not a pool, and a resource ``id``
+    has no equivalent in an inventory. The accepted criteria are the caller's
+    to decide."
