@@ -67,12 +67,52 @@
            policy=scaleway_fleet_audit_policy,
            now=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}
 
+# **Une exception change un statut, elle n'efface pas un constat.** Il reste
+# lisible, compté à part, avec ce qui le couvre : un constat effacé est un
+# problème dont plus personne ne sait qu'il existe (#235).
+#
+# Et une échéance dépassée est un constat, pas un refus : refuser toute la
+# politique parce qu'une ligne a expiré éteindrait l'audit entier, ce qui est le
+# contraire de ce qu'on veut le jour où une exception se périme.
+- name: Apply what the policy excuses, and say what it excuses
+  ansible.builtin.set_fact:
+    _scaleway_fleet_audit_juge: >-
+      {{ scaleway_fleet_audit_findings | stephrobert.scaleway.audit_exceptions(
+           exceptions=scaleway_fleet_audit_policy.exceptions | default([]),
+           resources=_scaleway_fleet_audit_faits,
+           now=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}
+
+- name: What the exceptions left
+  ansible.builtin.set_fact:
+    scaleway_fleet_audit_findings: "{{ _scaleway_fleet_audit_juge.findings }}"
+    scaleway_fleet_audit_suppressed: "{{ _scaleway_fleet_audit_juge.suppressed }}"
+    scaleway_fleet_audit_expired_exceptions: >-
+      {{ _scaleway_fleet_audit_juge.expired_exceptions }}
+    scaleway_fleet_audit_exceptions_without_target: >-
+      {{ _scaleway_fleet_audit_juge.exceptions_without_target }}
+
 - name: Sort the findings by what they demand
   ansible.builtin.set_fact:
+    # **Ce qui est couvert ne demande rien**, et c'est tout l'objet du statut :
+    # il reste dans la liste, il ne compte pas dans ce qui appelle une action.
+    # Une exception périmée, elle, compte comme un `fail` : c'est le seul moyen
+    # qu'elle se voie le jour où elle expire.
     _scaleway_fleet_audit_fail: >-
-      {{ scaleway_fleet_audit_findings | selectattr('severity', 'equalto', 'fail') | list }}
+      {{ (scaleway_fleet_audit_findings
+          | selectattr('status', 'equalto', 'open')
+          | selectattr('severity', 'equalto', 'fail') | list)
+         + scaleway_fleet_audit_expired_exceptions }}
     _scaleway_fleet_audit_warn: >-
-      {{ scaleway_fleet_audit_findings | selectattr('severity', 'equalto', 'warn') | list }}
+      {{ scaleway_fleet_audit_findings
+         | selectattr('status', 'equalto', 'open')
+         | selectattr('severity', 'equalto', 'warn') | list }}
+    # **Ce qu'un rendu montre, et le mélange est délibéré ici.** La variable de
+    # sortie garde les deux listes séparées, parce qu'une exception périmée est
+    # un problème de politique et non de machine ; mais un rapport qui ne
+    # montrerait que la première laisserait l'échéance dépassée invisible à qui
+    # lit le JSON, ce qui est le défaut que tout ce filtre existe pour éviter.
+    _scaleway_fleet_audit_publies: >-
+      {{ scaleway_fleet_audit_findings + scaleway_fleet_audit_expired_exceptions }}
     # Une machine sans constat est conforme **à cette politique**, ce qui n'est
     # pas la même chose que conforme. Le rapport nomme la politique pour que la
     # nuance reste lisible.
@@ -85,11 +125,17 @@
     # machine qui enfreint deux règles. Sur un parc où chaque machine n'en
     # enfreint qu'une, le total tombe juste par coïncidence, ce qui est la forme
     # même d'un faux vert.
+    #
+    # Seuls les constats **ouverts** y entrent : une ressource qu'une exception
+    # couvre n'est pas refusée, elle est excusée, et la compter comme refusée
+    # ferait échouer une chaîne sur ce que quelqu'un a explicitement accepté.
     _scaleway_fleet_audit_refus: >-
-      {{ scaleway_fleet_audit_findings | stephrobert.scaleway.audit_refusals }}
+      {{ scaleway_fleet_audit_findings | selectattr('status', 'equalto', 'open')
+         | list | stephrobert.scaleway.audit_refusals }}
   vars:
     _noms_en_constat: >-
-      {{ scaleway_fleet_audit_findings | map(attribute='name')
+      {{ scaleway_fleet_audit_findings | selectattr('status', 'equalto', 'open')
+         | map(attribute='name')
          | map('regex_replace', '^instance/', '') | list }}
 
 # ---- What a machine reads ------------------------------------------------
@@ -130,9 +176,19 @@
       PASS {{ _scaleway_fleet_audit_pass | length }}
       WARN {{ _scaleway_fleet_audit_warn | length }}
       FAIL {{ _scaleway_fleet_audit_fail | length }}
+      SUPPRESSED {{ scaleway_fleet_audit_suppressed }}
       {% for constat in scaleway_fleet_audit_findings %}
-      {{ constat.severity | upper }} {{ constat.name }}
+      {{ 'SUPPRESSED' if constat.status == 'suppressed' else constat.severity | upper }} {{ constat.name }}
            {{ constat.rule }}: {{ constat.detail }}
+      {% if constat.status == 'suppressed' %}     excused by {{ constat.suppressed_by }}
+      {% endif %}
+      {% endfor %}
+      {% for expiree in scaleway_fleet_audit_expired_exceptions %}
+      FAIL {{ expiree.name }}
+           {{ expiree.detail }}
+      {% endfor %}
+      {% for orpheline in scaleway_fleet_audit_exceptions_without_target %}
+      note exception on {{ orpheline.rule }} ({{ orpheline.owner }}) {{ orpheline.detail }}
       {% endfor %}
       {% if _scaleway_fleet_audit_muettes %}
       unmeasured zones: {{ _scaleway_fleet_audit_muettes | join(', ') }}
@@ -143,7 +199,7 @@
 
 - name: The audit, for a pipeline
   ansible.builtin.debug:
-    msg: "{{ scaleway_fleet_audit_findings | to_nice_json }}"
+    msg: "{{ _scaleway_fleet_audit_publies | to_nice_json }}"
   when:
     - scaleway_fleet_audit_output == 'json'
     - _scaleway_fleet_audit_mesurees | length > 0
@@ -151,10 +207,13 @@
 - name: The audit, for a ticket
   ansible.builtin.debug:
     msg: |-
-      | severity | resource | rule | detail |
-      |---|---|---|---|
-      {% for constat in scaleway_fleet_audit_findings -%}
-      | {{ constat.severity }} | {{ constat.name }} | {{ constat.rule }} | {{ constat.detail }} |
+      | status | severity | resource | rule | detail |
+      |---|---|---|---|---|
+      {% for constat in _scaleway_fleet_audit_publies -%}
+      | {{ constat.status }} | {{ constat.severity }} | {{ constat.name }} | {{ constat.rule }} | {{ constat.detail }} |
+      {% endfor -%}
+      {% for orpheline in scaleway_fleet_audit_exceptions_without_target -%}
+      | note | | exception/{{ orpheline.rule }} | {{ orpheline.owner }}: {{ orpheline.detail }} |
       {% endfor -%}
       {% if _scaleway_fleet_audit_muettes -%}
       | **zones unmeasured** | {{ _scaleway_fleet_audit_muettes | join(", ") }} | | |

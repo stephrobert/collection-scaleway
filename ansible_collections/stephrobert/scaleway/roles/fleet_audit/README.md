@@ -48,6 +48,54 @@ The field a rule judges is not part of the identity. Each rule judges exactly
 one field, so the field is derivable from the rule and distinguishes nothing more
 than the rule already does. It stays on the finding as information.
 
+## When the answer is "yes, but that one is on purpose"
+
+A policy that is actually used meets the case within a week: this bastion *must*
+carry a public address. If the only way out is to delete the rule, the rule is
+lost for the whole fleet in order to excuse one machine, and the system loses
+its value on the day it would be worth the most.
+
+```yaml
+scaleway_fleet_audit_policy:
+  rules:
+    public_ip:
+      severity: fail
+  exceptions:
+    - rule: public_ip
+      reason: entry point for the operators, reviewed with security
+      owner: platform-team
+      expires_at: "2026-12-31"
+      selector:
+        id: b20294e8-d0b9-471e-a78f-bbce79e7ca74
+```
+
+**An exception changes a status, it never deletes a finding.** The finding stays
+in `scaleway_fleet_audit_findings` with `status: suppressed` and the
+`suppressed_by` that covers it, and it is counted apart in
+`scaleway_fleet_audit_suppressed`. A finding that was erased is a problem nobody
+knows about any more, which is exactly what writing the exception, rather than
+removing the rule, is meant to avoid.
+
+`reason`, `owner` and `expires_at` are each required, and each stops one thing:
+without a reason it is a rule quietly switched off, without an owner there is
+nobody to ask whether it still holds, and without an expiry it is not an
+exception but a change to the policy written in the wrong place.
+
+The `selector` names exactly one of `id`, `name` or `tags` (with
+`match: all|any`). Two criteria ask two questions and the answer would depend on
+the order they are read in. A `name` carried by two resources is refused rather
+than resolved: two machines can share a name in one zone, so covering both would
+excuse a resource nobody named.
+
+**An expired exception becomes a finding of severity `fail`, not a refusal.**
+Refusing the whole policy over one stale line would switch off the audit on the
+day an exception expires, which is the opposite of what you want. It comes out
+in `scaleway_fleet_audit_expired_exceptions`, and it is what makes the run fail.
+
+An exception that matches nothing is reported in
+`scaleway_fleet_audit_exceptions_without_target` and nothing else: an exception
+left behind by a destroyed machine is housekeeping, not a policy error.
+
 ## Options
 
 | name | type | default |

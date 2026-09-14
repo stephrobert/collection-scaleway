@@ -442,3 +442,88 @@
       vars:
         identites_second: >-
           {{ scaleway_fleet_audit_findings | map(attribute='id') | list | sort }}
+
+    # ---- Les exceptions de politique, jouées sur les trois cas --------------
+    #
+    # Un test unitaire dit que le filtre calcule ce que le test croit. Il ne dit
+    # pas qu'Ansible sait le charger, que le rôle lui passe les ressources qu'il
+    # faut, ni que les statuts ressortent jusque dans ce que le rôle publie
+    # (#235).
+    - name: Une machine du parc, pour y accrocher une exception
+      ansible.builtin.set_fact:
+        machine_excusee: "{{ liste.servers[0] }}"
+
+    # **L'audit doit échouer, et c'est ce qu'on éprouve.** Une exception expirée
+    # est un constat de sévérité `fail`, donc le rôle refuse le parc : c'est
+    # exactement le comportement voulu, puisque l'échéance est l'information.
+    # Le `rescue` attrape ce refus pour que les assertions puissent lire ce que
+    # le rôle a laissé, plutôt que de mourir avec lui.
+    - name: Auditer avec une exception valide, une expirée, et une sans cible
+      block:
+        - ansible.builtin.include_role:
+            name: stephrobert.scaleway.fleet_audit
+      rescue:
+        - name: Le refus est attendu, l'exception expirée est un constat `fail`
+          ansible.builtin.debug:
+            msg: >-
+              l'audit a refusé le parc, ce qui est le comportement voulu :
+              {{ scaleway_fleet_audit_expired_exceptions | length }}
+              exception(s) périmée(s)
+      vars:
+        scaleway_fleet_audit_zones: "{{ zone }}"
+        scaleway_fleet_audit_output: none
+        scaleway_fleet_audit_policy:
+          rules:
+            required_tags:
+              severity: warn
+              keys: [owner]
+          exceptions:
+            - rule: required_tags
+              selector:
+                id: "{{ machine_excusee.id }}"
+              reason: Lab machine, tags are not the point here
+              owner: platform-team
+              expires_at: "2099-12-31"
+            - rule: required_tags
+              selector:
+                tags: [jamais-posee-par-personne]
+              reason: Covers nothing on purpose
+              owner: platform-team
+              expires_at: "2099-12-31"
+            - rule: required_tags
+              selector:
+                id: "{{ machine_excusee.id }}"
+              reason: Expired on purpose, to prove the deadline is information
+              owner: ancienne-equipe
+              expires_at: "2020-01-01"
+
+    - name: Les trois cas ressortent chacun à sa place
+      ansible.builtin.assert:
+        that:
+          # Le constat couvert est toujours là, avec son statut et qui l'excuse.
+          - couvert | length == 1
+          - "'platform-team' in couvert[0].suppressed_by"
+          - scaleway_fleet_audit_suppressed | int == 1
+          # L'exception périmée est un constat, pas un refus : l'audit a tourné.
+          - scaleway_fleet_audit_expired_exceptions | length == 1
+          - "'ancienne-equipe' in scaleway_fleet_audit_expired_exceptions[0].detail"
+          # Celle qui ne désigne rien est signalée, et n'a rien empêché.
+          - scaleway_fleet_audit_exceptions_without_target | length == 1
+          # Et le reste du parc n'est pas excusé au passage.
+          - scaleway_fleet_audit_findings
+              | selectattr('status', 'equalto', 'open') | list | length > 1
+        success_msg: >-
+          1 constat excusé par platform-team, 1 exception périmée devenue
+          constat, 1 exception sans cible signalée, et
+          {{ scaleway_fleet_audit_findings
+             | selectattr('status', 'equalto', 'open') | list | length }}
+          constat(s) toujours ouverts
+        fail_msg: >-
+          les exceptions ne ressortent pas comme elles devraient :
+          {{ scaleway_fleet_audit_suppressed }} couvert(s),
+          {{ scaleway_fleet_audit_expired_exceptions | length }} périmée(s),
+          {{ scaleway_fleet_audit_exceptions_without_target | length }} sans cible
+      vars:
+        couvert: >-
+          {{ scaleway_fleet_audit_findings
+             | selectattr('status', 'equalto', 'suppressed') | list }}

@@ -36,3 +36,8 @@ argument_specs:
             The rules and their severities. The shipped default is a starting
             point made only of warnings, so a first run never fails; replacing
             it is the point.
+          - >-
+            Its optional C(exceptions) key carries the exceptions. Each one
+            needs a C(rule), a C(reason), an C(owner), an C(expires_at) and a
+            C(selector) naming exactly one of C(id), C(name) or C(tags). An
+            exception marks a finding suppressed; it never removes it.
