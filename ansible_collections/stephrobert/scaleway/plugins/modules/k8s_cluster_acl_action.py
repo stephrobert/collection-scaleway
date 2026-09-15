@@ -40,6 +40,7 @@ options:
     description:
     - ACLs to add.
     type: list
+    required: true
     elements: dict
 attributes:
   check_mode:
@@ -63,6 +64,9 @@ EXAMPLES = r"""
   stephrobert.scaleway.k8s_cluster_acl_action:
     region: fr-par
     cluster_id: 11111111-2222-3333-4444-555555555555
+    acls:
+    - ip: 10.0.0.0/8
+      description: operator network
   register: result
 """
 
@@ -125,7 +129,7 @@ MODULE_ARGUMENT_SPEC = {
         "choices": ["fr-par", "nl-ams", "pl-waw", "it-mil"],
     },
     "cluster_id": {"type": "str", "required": True},
-    "acls": {"type": "list", "elements": "dict"},
+    "acls": {"type": "list", "required": True, "elements": "dict"},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
