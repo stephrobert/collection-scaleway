@@ -4,12 +4,20 @@ minor_changes:
     loaded by Ansible, their arguments built, their documentation published, and
     nothing more. Fifteen of them are now exercised by the example platform,
     which creates a Kapsule cluster and a pool, and the two declarative-state
-    modules are proven idempotent against the real API: first pass ``changed``,
-    second pass ``ok``."
-  - "The four that remain unexercised say why: their only acceptable call changes
-    the type or the version of a cluster, so the bill, and that is not a decision
-    an example makes on behalf of whoever runs it. The types and reachable
-    versions are read all the same, which is what a version-drift rule needs."
+    modules took their MANAGE path against the real API, and their idempotence
+    on tags is proven there: first pass ``changed``, second pass ``ok``. Their
+    other fields, the mappings above all, are not measured yet: that is where an
+    API injects defaults, normalises and reorders, and where idempotence
+    breaks."
+  - "Three of those that remain unexercised say the same why: their only
+    acceptable call changes the type or the version of a cluster, so the bill,
+    and that is not a decision an example makes on behalf of whoever runs it.
+    The types and reachable versions are read all the same, which is what a
+    version-drift rule needs."
+  - "The fourth is exempt for a different reason, and saying so matters:
+    replacing a node is not a question of cost but of a missing wait. Nothing
+    observes the old node gone and its replacement ready, so the operation is
+    available as a primitive and not qualified as an operation."
 bugfixes:
   - "The example platform no longer leaves a security group behind. A Kapsule
     cluster creates one for itself and ``delete_additional_resources`` does not

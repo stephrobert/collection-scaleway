@@ -263,3 +263,52 @@ def test_aucune_echeance_du_depot_nest_deja_depassee() -> None:
     from generator.ansible.collection import load_collection
 
     assert example_coverage.echeances_depassees(load_collection().version) == []
+
+
+# --- Une exemption ne cite son issue qu'à un seul endroit ------------------
+
+
+def test_aucune_raison_ne_cite_un_numero_dissue() -> None:
+    """**Deux sources pour un fait, et c'est la prose qui vieillit.**
+
+    Mesuré : la raison de `k8s_node_replace_action` renvoyait à `#244`, une issue
+    **fermée** et portant sur un autre module, pendant que le champ `issue`
+    restait vide. Personne ne l'aurait rouverte : l'exemption avait l'air suivie
+    et ne l'était pas.
+
+    Le champ `issue` est le seul endroit où un numéro a le droit d'être écrit.
+    Ce contrôle est hors ligne et ne demande rien à GitHub : il ne vérifie pas
+    qu'une issue est ouverte, il empêche qu'un numéro vive là où rien ne le
+    surveille (#276).
+    """
+    import re
+
+    fautives = {
+        nom: re.findall(r"#\d+", exemption.raison)
+        for nom, exemption in example_coverage.SANS_CIBLE.items()
+        if re.search(r"#\d+", exemption.raison)
+    }
+
+    assert fautives == {}, (
+        f"raison(s) citant un numéro d'issue en prose : {fautives}. Le champ "
+        "`issue` est le seul endroit où il a le droit d'être écrit : une prose "
+        "qui cite une issue fermée a l'air suivie et ne l'est pas."
+    )
+
+
+def test_une_exemption_qui_attend_un_travail_nomme_son_issue() -> None:
+    """Une exemption sans issue n'a personne pour la rouvrir.
+
+    Pas toutes : certaines attendent l'amont ou une décision de facture, et rien
+    ne se discute ailleurs. Celles dont `preuve` vaut `stack` attendent du
+    travail dans ce dépôt, et ce travail se suit quelque part.
+    """
+    orphelines = sorted(
+        nom
+        for nom, exemption in example_coverage.SANS_CIBLE.items()
+        if exemption.preuve == "stack" and exemption.issue is None
+    )
+
+    assert orphelines == [], (
+        f"exemption(s) qui attendent du travail ici sans issue pour le suivre : {orphelines}"
+    )
