@@ -3287,6 +3287,14 @@
       "find": "      acls:\n        required: true",
       "replace": "      acls:\n        required: false",
       "test": "tests/unit/generator/test_exemple_demonstratif.py::test_une_action_publie_un_exemple_qui_demontre[k8s_cluster_acl_action]"
+    },
+    {
+      "name": "exemption-qui-cite-une-issue-en-prose",
+      "why": "**Deux sources pour un fait, et c'est la prose qui vieillit.** Mesuré : l'exemption de `k8s_node_replace_action` renvoyait à `#244`, une issue **fermée** et portant sur un autre module, pendant que le champ `issue` restait vide. L'exemption avait l'air suivie et ne l'était pas ; personne ne l'aurait rouverte.\n\nLe contrôle est hors ligne et ne demande rien à GitHub : il ne vérifie pas qu'une issue est ouverte, il empêche qu'un numéro vive là où rien ne le surveille (#276).\n\nLa mutation remet la citation là où elle était, dans la prose d'une exemption. Elle porte sur la **donnée** et non sur le test : muter le filtre du test prouverait que le test se lit lui-même, pas qu'il attrape ce qu'il existe pour attraper.",
+      "file": "scripts/example_coverage.py",
+      "find": "\"**Ce qui fermerait la ligne** : cette attente, et une preuve \"",
+      "replace": "\"**Ce qui fermerait la ligne** : cette attente, suivie en #244. \"",
+      "test": "tests/unit/outillage/test_couverture_exemple.py::test_aucune_raison_ne_cite_un_numero_dissue"
     }
   ]
 }

@@ -86,6 +86,13 @@ class SansCible:
     preuve: str
     #: Version de la collection à partir de laquelle l'exemption se rouvre.
     revoir_en: str
+    #: L'issue où la discussion vit. **Le seul endroit où un numéro d'issue a le
+    #: droit d'être écrit** : une raison qui en cite un en prose est une seconde
+    #: source, et c'est elle qui vieillit.
+    #:
+    #: Mesuré : la raison de `k8s_node_replace_action` renvoyait à une issue
+    #: fermée, portant sur un autre module, pendant que ce champ était vide.
+    #: Personne ne l'aurait rouverte (#276).
     issue: int | None = None
 
 
@@ -108,6 +115,7 @@ SANS_CIBLE: dict[str, SansCible] = {
         ),
         preuve="stack",
         revoir_en="0.8.0",
+        issue=284,
     ),
     "instance_snapshot_action": SansCible(
         raison=(
@@ -117,6 +125,7 @@ SANS_CIBLE: dict[str, SansCible] = {
         ),
         preuve="stack",
         revoir_en="0.8.0",
+        issue=284,
     ),
     "instance_ip_action": SansCible(
         raison=(
@@ -132,6 +141,7 @@ SANS_CIBLE: dict[str, SansCible] = {
         ),
         preuve="stack",
         revoir_en="0.8.0",
+        issue=283,
     ),
     "lb_load_balancer_action": SansCible(
         raison=(
@@ -194,10 +204,12 @@ SANS_CIBLE: dict[str, SansCible] = {
             "voudrait partir. L'override porte la décision de le générer ; ce "
             "qui manque est l'attente, qui doit observer ce que le contrat "
             "déclare et non ce qu'on suppose par analogie avec une Instance. "
-            "**Ce qui fermerait la ligne** : cette attente, suivie en #244."
+            "**Ce qui fermerait la ligne** : cette attente, et une preuve "
+            "réelle qu'un nœud remplacé est revenu."
         ),
         preuve="stack",
         revoir_en="0.9.0",
+        issue=279,
     ),
 }
 
