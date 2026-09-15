@@ -33,6 +33,7 @@ from typing import Any
 import docs_quality
 import yaml
 from example_coverage import mesurer as mesurer_exemple
+from preuve_reelle import lire_releve, rapprocher
 
 from generator.ansible.collection import load_collection
 
@@ -621,6 +622,35 @@ def bloc_adoption() -> str:
     )
 
 
+def bloc_preuve_kapsule() -> str:
+    """Ce qu'un tir réel a exercé, lu dans sa transcription.
+
+    **Le quatrième étage de preuve n'entrait dans aucun document publié**, parce
+    qu'il dépend d'une exécution et qu'un bloc dérivé se recalcule hors ligne.
+    Une transcription versionnée lève l'objection : elle est un fichier, et elle
+    porte ce que le réseau a réellement transporté.
+
+    La mesure a démenti le tableau qui allait être publié à la main, sur deux
+    lignes annoncées « oui » : `GET /nodes/{id}` est portée par la lecture
+    unitaire **et** par l'attente du redémarrage, `GET /pools/{id}` par la
+    lecture **et** par le MANAGE qui lit avant d'écrire (ADR-003). La requête a
+    circulé, et rien ne dit lequel des deux l'a émise. C'est exactement la
+    différence entre dériver et affirmer.
+    """
+    resultat = rapprocher("k8s", "v1", lire_releve("k8s"))
+    etats = {
+        **{nom: "reached" for nom in resultat.atteints},
+        **{nom: "shared route only" for nom in resultat.indistincts},
+        **{nom: "not reached" for nom in resultat.muets},
+    }
+    lignes = [
+        f"| module | run of {resultat.tir.date} |",
+        "|---|---|",
+        *(f"| `{nom}` | {etats[nom]} |" for nom in sorted(etats)),
+    ]
+    return "\n".join(lignes)
+
+
 def bloc_tests_badge() -> str:
     """La phrase du questionnaire OpenSSF qui compte les tests."""
     return (
@@ -720,6 +750,7 @@ NOMMES = {
     "runtime-etat": lambda: bloc_runtime_etat(),
     "effacables": lambda: bloc_effacables(),
     "tests-badge": lambda: bloc_tests_badge(),
+    "preuve-kapsule": lambda: bloc_preuve_kapsule(),
     "modules": lambda: bloc_nombre_de_modules(),
     "adoption": lambda: bloc_adoption(),
 }
@@ -735,6 +766,7 @@ BLOCS_NOMMES: tuple[tuple[str, Path], ...] = (
     ("runtime-etat", ROOT / "docs" / "architecture" / "runtime.md"),
     ("effacables", ROOT / "docs" / "architecture" / "runtime.md"),
     ("tests-badge", ROOT / "docs" / "best-practices.md"),
+    ("preuve-kapsule", ROOT / "docs" / "guides" / "kubernetes.md"),
     ("modules", README),
     ("adoption", README),
 )
