@@ -107,6 +107,25 @@ operations:
   # celles vers lesquelles un cluster peut aller, et `ListClusterTypes` les types
   # disponibles. L'exemple renvoie donc à une lecture, pas à une constante.
 
+  k8s.v1.ClusterAcl.AddClusterACLRules:
+    parameters:
+      acls:
+        required: true
+        example:
+          - ip: 10.0.0.0/8
+            description: operator network
+        reason: >-
+          `AddClusterACLRules` sans ACL n'est pas une action utile : elle est
+          acceptée, elle ne change rien, et l'exemple publié montrait exactement
+          ça. Le contrat ne peut pas le dire à notre place, et il a raison de ne
+          pas le dire : son `requestBody` est bien `required: true`, mais la
+          propriété `acls` elle-même ne porte aucune mention `required`, et le
+          parser traduit ce qu'il lit.
+
+          La décision se prend donc ici, là où une décision se prend. Un exemple
+          publié qui ne démontre rien est une page que quelqu'un copie et qui ne
+          lui apprend pas ce que le module fait.
+
   k8s.v1.ClusterUpgrade.UpgradeCluster:
     parameters:
       version:

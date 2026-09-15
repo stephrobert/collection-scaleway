@@ -46,10 +46,12 @@ options:
     description:
     - Object Storage bucket name.
     type: str
+    required: true
   key:
     description:
     - Object key.
     type: str
+    required: true
 attributes:
   check_mode:
     description: In check mode the module reports the action it would trigger and sends nothing,
@@ -72,6 +74,8 @@ EXAMPLES = r"""
   stephrobert.scaleway.instance_snapshot_action:
     zone: fr-par-1
     snapshot_id: 11111111-2222-3333-4444-555555555555
+    bucket: backups-production
+    key: snapshots/web-1.qcow2
   register: result
 """
 
@@ -169,8 +173,8 @@ MODULE_ARGUMENT_SPEC = {
         ],
     },
     "snapshot_id": {"type": "str", "required": True},
-    "bucket": {"type": "str"},
-    "key": {"type": "str", "no_log": False},
+    "bucket": {"type": "str", "required": True},
+    "key": {"type": "str", "required": True, "no_log": False},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.

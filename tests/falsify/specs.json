@@ -3279,6 +3279,14 @@
       "find": "        \"scope\": charge.get(\"region\"),\n        \"scope_type\": \"region\",\n        \"state\": charge.get(\"status\"),\n        \"tags\": list(charge.get(\"tags\") or []),\n        # Un cluster managé n'expose pas d'adresse publique",
       "replace": "        \"scope\": charge.get(\"region\"),\n        \"state\": charge.get(\"status\"),\n        \"tags\": list(charge.get(\"tags\") or []),\n        # Un cluster managé n'expose pas d'adresse publique",
       "test": "tests/unit/collection/test_produit_complet.py::test_chaque_normaliseur_pose_une_portee_typee"
+    },
+    {
+      "name": "exemple-daction-qui-ne-demontre-rien",
+      "why": "**Un exemple copiable n'est pas encore un exemple qui démontre.** Le dépôt mesure que tous ses exemples publiés se copient tels quels : c'est une propriété syntaxique, et elle est tenue. Un exemple qui déclenche `AddClusterACLRules` sans aucune ACL la respecte parfaitement, est accepté par l'API, ne change rien, et quelqu'un le copie sans apprendre ce que le module fait.\n\nLe générateur avait raison de le produire : le `requestBody` du contrat est `required: true`, mais la propriété elle-même ne porte aucune mention `required`. C'est la décision qui manquait, pas la traduction.\n\nLa garde a trouvé un second cas au premier passage : `instance_snapshot_action` exportait un instantané sans dire dans quel bucket ni sous quelle clé (#275).",
+      "file": "generator/overrides/k8s.yml",
+      "find": "      acls:\n        required: true",
+      "replace": "      acls:\n        required: false",
+      "test": "tests/unit/generator/test_exemple_demonstratif.py::test_une_action_publie_un_exemple_qui_demontre[k8s_cluster_acl_action]"
     }
   ]
 }

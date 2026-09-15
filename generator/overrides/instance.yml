@@ -66,6 +66,27 @@ operations:
     generation: ignore
     reason: PUT de remplacement complet ; le module utilise le PATCH UpdateSecurityGroupRule.
 
+  instance.v1.Snapshot.ExportSnapshot:
+    parameters:
+      bucket:
+        required: true
+        example: backups-production
+        reason: >-
+          Exporter un instantané sans dire où ne fait rien d'utile, et l'exemple
+          publié montrait exactement ça. Le contrat ne peut pas le dire à notre
+          place : son `requestBody` est bien `required: true`, mais ni `bucket`
+          ni `key` ne portent de mention `required`, et le parser traduit ce
+          qu'il lit.
+
+          Trouvé par la garde écrite pour le même défaut sur les ACL de Kapsule,
+          qui l'a signalé au premier passage (#275).
+      key:
+        required: true
+        example: snapshots/web-1.qcow2
+        reason: >-
+          Même raison que `bucket` : les deux ensemble disent où l'export
+          atterrit, et aucun des deux seul ne suffit.
+
   instance.v1.Snapshot.SetSnapshot:
     generation: ignore
     reason: PUT de remplacement complet ; le module utilise le PATCH UpdateSnapshot.
