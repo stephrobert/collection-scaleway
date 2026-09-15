@@ -95,3 +95,60 @@ def etiquettes_voulues(valeur: object) -> set[str]:
 def correspond(voulues: set[str], portees: set[str], mode: str) -> bool:
     """Si ces étiquettes portées satisfont celles qu'on veut, dans ce mode."""
     return voulues <= portees if mode == "all" else bool(voulues & portees)
+
+
+#: Les critères qui désignent **une** chose, et où deux réponses sont une
+#: ambiguïté plutôt qu'une classe.
+#:
+#: `group` et `tags` désignent une classe : en rendre plusieurs est le but.
+#: `name` et `id` désignent une chose, et rendre la première de plusieurs ferait
+#: agir sur une ressource que personne n'a désignée (ADR-019).
+UNIQUES = ("name", "id")
+
+
+def designer(
+    selecteur: object,
+    ressources: list[dict],
+    *,
+    champs: dict[str, str],
+    quoi: str = "le sélecteur",
+) -> list[dict]:
+    """Les ressources que ce sélecteur désigne, dans la population donnée.
+
+    `champs` fait le pont entre le vocabulaire du sélecteur et celui de la
+    forme normalisée : `{"group": "pool"}` dit qu'un groupe de nœuds est un
+    pool. C'est la seule chose qui distingue une population d'une autre, et
+    c'est l'appelant qui la connaît.
+
+    Rend les ressources et non leurs identifiants : l'appelant a souvent besoin
+    de leur état pour décider, et les rechercher une seconde fois serait un
+    second chemin vers la même information.
+    """
+    critere, valeur, mode = valider(selecteur, tuple(champs), quoi=quoi)
+
+    if critere == "tags":
+        voulues = etiquettes_voulues(valeur)
+        return [
+            ressource
+            for ressource in ressources
+            if correspond(voulues, set(ressource.get(champs["tags"]) or []), mode)
+        ]
+
+    champ = champs[critere]
+    cherche = str(valeur)
+    # **La comparaison est exacte, et elle est locale.** Le filtre `name` de
+    # l'API Scaleway correspond par préfixe, ce que le contrat énonce pour les
+    # Instances : `server1` rend aussi `server100`. Ici on compare ce qui a déjà
+    # été lu, donc sans cette surprise.
+    trouvees = [
+        ressource for ressource in ressources if str(ressource.get(champ)) == cherche
+    ]
+    if critere in UNIQUES and len(trouvees) > 1:
+        raise SelecteurError(
+            f"{quoi} désigne le {critere} `{cherche}`, porté par "
+            f"{len(trouvees)} ressources. Un {critere} n'est pas une identité "
+            "ici : deux ressources peuvent le porter, mesuré sur le compte "
+            "réel. Rendre la première ferait agir sur une ressource que "
+            "personne n'a désignée (ADR-019)."
+        )
+    return trouvees

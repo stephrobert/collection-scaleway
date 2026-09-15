@@ -39,6 +39,17 @@ from pathlib import Path
 #: pouvoir dire d'où il vient plutôt que de le prendre pour un artefact.
 PREFIXE = ".ecriture-"
 
+#: **Le suffixe ne doit pas être celui de l'artefact**, et c'est une correction
+#: mesurée. La première version employait `chemin.suffix`, donc `.py` pour un
+#: module : le provisoire tombait dans le glob `plugins/modules/*.py`, un test
+#: qui énumère les modules le trouvait, et il avait disparu au moment de le
+#: lire.
+#:
+#: On avait donc échangé une fenêtre de troncature contre une fenêtre
+#: d'apparition, ce qui est le même défaut à l'envers : le lecteur ne voit plus
+#: un fichier à moitié écrit, il voit un fichier qui n'existe plus.
+SUFFIXE = ".provisoire"
+
 
 def ecrire(chemin: Path, contenu: str, *, encoding: str = "utf-8") -> None:
     """Écrit `contenu` dans `chemin`, sans jamais le laisser à moitié écrit.
@@ -54,7 +65,7 @@ def ecrire(chemin: Path, contenu: str, *, encoding: str = "utf-8") -> None:
     """
     chemin.parent.mkdir(parents=True, exist_ok=True)
     descripteur, provisoire = tempfile.mkstemp(
-        dir=str(chemin.parent), prefix=PREFIXE, suffix=chemin.suffix
+        dir=str(chemin.parent), prefix=PREFIXE, suffix=SUFFIXE
     )
     try:
         with os.fdopen(descripteur, "w", encoding=encoding) as fichier:

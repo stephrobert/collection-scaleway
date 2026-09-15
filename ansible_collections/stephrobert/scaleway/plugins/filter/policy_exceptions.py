@@ -33,15 +33,13 @@ from ansible.errors import AnsibleFilterError
 try:  # pragma: no cover - le chemin d'import diffère entre collection et tests
     from ansible_collections.stephrobert.scaleway.plugins.module_utils.selecteur import (
         SelecteurError,
-        correspond,
-        etiquettes_voulues,
+        designer,
         valider,
     )
 except ImportError:  # pragma: no cover
     from ..module_utils.selecteur import (  # type: ignore[no-redef]
         SelecteurError,
-        correspond,
-        etiquettes_voulues,
+        designer,
         valider,
     )
 
@@ -101,9 +99,16 @@ EXAMPLES = r"""
 #: une exception mais une modification de la politique, écrite ailleurs.
 OBLIGATOIRES = ("rule", "reason", "owner", "expires_at")
 
-#: Les façons de désigner une ressource dans une exception. `group` n'y est pas :
+#: Ce qu'un critère de sélecteur nomme dans la forme commune d'une ressource.
+#: L'identité est la seule chose que le contrat promette, donc `id` y est ; il
+#: n'a pas d'équivalent dans un inventaire, et c'est pourquoi la résolution ne
+#: se partage pas avec `select_hosts`.
+CHAMPS = {"name": "name", "tags": "tags", "id": "id"}
+
+#: Les façons de désigner une ressource dans une exception, déduites de ce que
+#: la résolution sait lire. Deux listes se contrediraient. `group` n'y est pas :
 #: un audit lit l'API, pas un inventaire.
-CRITERES = ("name", "tags", "id")
+CRITERES = tuple(CHAMPS)
 
 #: Le statut d'un constat. `open` est celui qu'on lit, `suppressed` celui qu'on
 #: garde sous les yeux sans agir.
@@ -169,31 +174,18 @@ def _valider(exception: object, rang: int) -> dict:
 
 def _designees(selecteur: dict, ressources: list[dict], rang: int) -> list[str]:
     """Les identifiants que ce sélecteur désigne, ou un refus s'il est ambigu."""
-    if selecteur.get("id"):
-        cherche = str(selecteur["id"])
-        return [r["id"] for r in ressources if str(r.get("id")) == cherche]
-
-    if selecteur.get("name"):
-        cherche = str(selecteur["name"])
-        trouves = [r["id"] for r in ressources if r.get("name") == cherche]
-        if len(trouves) > 1:
-            # Mesuré sur le compte réel : deux machines acceptent le même nom
-            # dans une zone. Couvrir les deux excuserait une ressource que
-            # personne n'a désignée, et n'en couvrir qu'une dépendrait de
-            # l'ordre de lecture (ADR-019, ADR-021).
-            raise AnsibleFilterError(
-                f"l'exception {rang} désigne le nom `{cherche}`, porté par "
-                f"{len(trouves)} ressources. Un nom n'est pas une identité : "
-                "désigner la ressource par son `id` lève l'ambiguïté."
-            )
-        return trouves
-
     try:
-        voulues = etiquettes_voulues(selecteur["tags"])
+        return [
+            ressource["id"]
+            for ressource in designer(
+                selecteur,
+                ressources,
+                champs=CHAMPS,
+                quoi=f"l'exception {rang}",
+            )
+        ]
     except SelecteurError as erreur:
-        raise AnsibleFilterError(f"l'exception {rang} : {erreur}") from erreur
-    mode = selecteur.get("match") or "all"
-    return [r["id"] for r in ressources if correspond(voulues, set(r.get("tags") or []), mode)]
+        raise AnsibleFilterError(str(erreur)) from erreur
 
 
 def _ressource_du_constat(constat: dict) -> str:
