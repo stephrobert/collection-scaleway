@@ -33,8 +33,7 @@ from typing import Any
 import docs_quality
 import yaml
 from example_coverage import mesurer as mesurer_exemple
-from preuve_reelle import lire as lire_transcription
-from preuve_reelle import rapprocher, tir_le_plus_recent
+from preuve_reelle import lire_releve, rapprocher
 
 from generator.ansible.collection import load_collection
 
@@ -638,7 +637,7 @@ def bloc_preuve_kapsule() -> str:
     circulé, et rien ne dit lequel des deux l'a émise. C'est exactement la
     différence entre dériver et affirmer.
     """
-    resultat = rapprocher("k8s", "v1", lire_transcription(tir_le_plus_recent("k8s")))
+    resultat = rapprocher("k8s", "v1", lire_releve("k8s"))
     etats = {
         **{nom: "reached" for nom in resultat.atteints},
         **{nom: "shared route only" for nom in resultat.indistincts},

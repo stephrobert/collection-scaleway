@@ -4,19 +4,26 @@ Le guide Kubernetes allait publier une matrice écrite à la main, et l'audit du
 15 septembre 2026 a nommé la classe de défaut qu'elle aurait rejointe : une
 affirmation qui survit à ce qui la mesurait.
 
-Elle est donc dérivée de la transcription du tir réel. Ce fichier tient les
-trois façons dont ce rapprochement peut mentir sans planter :
+Elle est donc dérivée du relevé du tir réel. Ce fichier tient les façons dont ce
+rapprochement peut mentir sans jamais planter :
 
 ```text
 il attribue mal      une route que deux modules portent crédite le premier
-il ne mesure rien    un préfixe mal dérivé écarte tout, et tout sort « non atteint »
+il ne mesure rien    un filtre mal dérivé écarte tout, et tout sort « non atteint »
 il attribue en vain  une ligne sans agent est comptée comme si on savait qui l'a émise
+il ne sert à rien    le relevé qui nourrit le bloc n'est pas dans le dépôt
 ```
+
+**Plusieurs gardes de ce fichier ont été inertes avant d'être justes**, chacune
+parce qu'elle consultait la chose même qu'elle surveillait : le filtre pour les
+unes, et pour une autre une commande dont l'échec se lisait comme une réponse.
+C'est le motif à retenir plus que les cas, et ADR-024 le porte avec sa date.
 """
 
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -26,8 +33,9 @@ from preuve_reelle import (
     _motif,
     _service,
     lire,
+    lire_releve,
     rapprocher,
-    tir_le_plus_recent,
+    releve_le_plus_recent,
 )
 
 
@@ -53,7 +61,7 @@ def test_le_tir_kapsule_credite_chaque_module_quune_route_propre_prouve() -> Non
     Elle fixe ce que le guide publie : un module dont une route n'appartient
     qu'à lui est prouvé, et le tableau le dit sans que personne l'ait tapé.
     """
-    resultat = rapprocher("k8s", "v1", lire(tir_le_plus_recent("k8s")))
+    resultat = rapprocher("k8s", "v1", lire_releve("k8s"))
 
     assert "k8s_cluster_info" in resultat.atteints
     assert "k8s_node_reboot_action" in resultat.atteints
@@ -70,7 +78,7 @@ def test_une_lecture_que_deux_modules_portent_ne_credite_personne() -> None:
 
     Le MANAGE reste prouvé : son PATCH n'appartient qu'à lui.
     """
-    resultat = rapprocher("k8s", "v1", lire(tir_le_plus_recent("k8s")))
+    resultat = rapprocher("k8s", "v1", lire_releve("k8s"))
 
     assert "k8s_pool_info" in resultat.indistincts
     assert "k8s_pool" in resultat.atteints
@@ -81,7 +89,7 @@ def test_un_module_quaucune_route_natteint_est_nomme() -> None:
 
     Un tableau qui ne listerait que les succès serait une plaquette.
     """
-    resultat = rapprocher("k8s", "v1", lire(tir_le_plus_recent("k8s")))
+    resultat = rapprocher("k8s", "v1", lire_releve("k8s"))
 
     assert "k8s_node_replace_action" in resultat.muets
 
@@ -234,3 +242,67 @@ def test_une_transcription_renommee_sans_etre_rejouee_est_refusee(tmp_path: Path
 
     with pytest.raises(PreuveError, match="s'annonce du 2026-12-25"):
         lire(chemin)
+
+
+# ---- Le relevé, seul versionné -------------------------------------------
+
+
+def test_le_releve_est_suivi_par_git(tmp_path: Path) -> None:
+    """**Le défaut qui a rendu la CI rouge, pris à sa source.**
+
+    `.gitignore` refuse `transcriptions/` avec sa raison : plusieurs
+    mégaoctets, reproductibles, qui se transmettent plutôt qu'ils ne se gardent.
+    Le relevé en sort et doit, lui, entrer dans le dépôt : sans ça, le bloc
+    dérivé se recalcule sur la machine qui a fait le tir et nulle part ailleurs.
+
+    Un `!` posé sous un répertoire barré ne ré-inclut rien, parce que git ne
+    descend pas dans un répertoire exclu. Rien ne le dit : le fichier reste
+    simplement invisible, et c'est la CI qui l'a découvert.
+
+    **Le jugement se fait dans un dépôt jetable, et pas dans celui-ci.**
+    `/falsify` recopie l'arbre sans son `.git` : `git check-ignore` y rend 128,
+    et lire « ce n'est pas zéro, donc ce n'est pas ignoré » rendait cette garde
+    inerte dans exactement le cas qu'elle doit attraper. C'est le troisième
+    exemplaire du même défaut dans ce fichier, et il mérite d'être compté :
+    **une commande qui n'a pas pu répondre ne prouve rien.**
+    """
+    releve = releve_le_plus_recent("k8s")
+    regles = (releve.parents[2] / ".gitignore").read_text(encoding="utf-8")
+
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / ".gitignore").write_text(regles, encoding="utf-8")
+    cible = tmp_path / "transcriptions" / "releves" / releve.name
+    cible.parent.mkdir(parents=True)
+    cible.write_text("{}", encoding="utf-8")
+
+    ignore = subprocess.run(
+        ["git", "check-ignore", str(cible)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    # 0 ignoré, 1 non ignoré, tout le reste git n'a pas su répondre.
+    assert ignore.returncode in {0, 1}, f"git n'a pas pu juger : {ignore.stderr.strip()}"
+    assert ignore.returncode == 1, (
+        f"{releve.name} est ignoré par git, donc le bloc dérivé qu'il nourrit ne "
+        "se recalcule que sur la machine qui a fait le tir. Un `!` sous un "
+        "répertoire barré ne ré-inclut rien : c'est `/transcriptions/*` qu'il "
+        "faut barrer, pas le répertoire."
+    )
+
+
+def test_le_releve_designe_la_transcription_dont_il_sort() -> None:
+    """Un relevé sans empreinte se laisserait rapprocher de n'importe quel tir.
+
+    Il porte donc le condensé de l'enregistrement, qui n'est pas dans le dépôt :
+    c'est ce qui permet, en le réclamant à qui l'a, de vérifier que ce relevé-là
+    vient de ce tir-là.
+    """
+    charge = json.loads(releve_le_plus_recent("k8s").read_text(encoding="utf-8"))
+
+    assert charge["empreinte"].startswith("sha256:")
+    assert len(charge["empreinte"].removeprefix("sha256:")) == 64
+    assert charge["tir"].endswith(".jsonl")
+    assert charge["agent"] == "scaleway-sdk-python"

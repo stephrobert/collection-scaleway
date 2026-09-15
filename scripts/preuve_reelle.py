@@ -2,16 +2,25 @@
 
 Le dépôt publie déjà quatre étages de preuve, et le quatrième, « joué contre une
 cible », n'entrait dans aucun document : il dépend d'une exécution, et un bloc
-dérivé doit se recalculer hors ligne. Une transcription enregistrée lève
-l'objection. Elle est un fichier versionné, donc lisible hors ligne, et elle
-porte ce que le réseau a **réellement** transporté.
+dérivé doit se recalculer hors ligne. Un **relevé** lève l'objection.
+
+La transcription du tir ne se versionne pas : plusieurs mégaoctets, qu'un diff
+ne relit pas, et que rejouer l'exercice reproduit. `.gitignore` le dit depuis
+longtemps, et un ADR écrit sans avoir lu cette décision a affirmé le contraire ;
+c'est la CI qui l'a dit, sur un bloc qu'elle ne pouvait pas recalculer.
+
+Ce qui se versionne est le relevé : quelques kilooctets, ce que la collection a
+émis, scellé par l'empreinte de l'enregistrement dont il sort. Même partage que
+partout ici, où le golden est versionné et l'exécution qui l'a produit ne l'est
+pas.
 
 L'audit du 15 septembre 2026 a nommé le manque en creux : le guide Kubernetes
 allait publier une matrice de preuve écrite à la main, et une matrice écrite à
 la main est exactement le genre d'affirmation qui survit à ce qui la mesurait.
 
 ```text
-la transcription   ce qui a circulé, avec son agent, sa méthode et son chemin
+la transcription   ce qui a circulé, avec son agent : hors dépôt, transmise
+le relevé          ce que la collection en a émis : versionné, scellé sur elle
 le plan            quel module porte quelle route
 le rapprochement   quel module a donc tourné pour de vrai
 ```
@@ -24,8 +33,9 @@ tableau du tout.
 
 Usage :
 
-    python scripts/preuve_reelle.py k8s          le rapprochement, en clair
-    python scripts/preuve_reelle.py k8s --routes  les routes émises, comptées
+    python scripts/preuve_reelle.py k8s --relever  relever la transcription du tir
+    python scripts/preuve_reelle.py k8s            le rapprochement, en clair
+    python scripts/preuve_reelle.py k8s --routes   les routes relevées, comptées
 
 Le bloc publié est écrit par `scripts/readme_counters.py`, comme tous les
 autres : deux scripts qui écriraient des blocs dérivés finiraient par ne plus
@@ -35,6 +45,7 @@ mesurer la même chose.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -44,6 +55,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TRANSCRIPTIONS = ROOT / "transcriptions"
+#: Les relevés, seuls versionnés : voir `relever`.
+RELEVES = TRANSCRIPTIONS / "releves"
 SPECS = ROOT / "specs" / "scaleway"
 
 #: L'agent que la collection annonce, et par lequel on la distingue.
@@ -288,22 +301,101 @@ def rapprocher(produit: str, version: str, tir: Tir) -> Rapprochement:
     )
 
 
-def tir_le_plus_recent(produit: str) -> Path:
-    """La transcription la plus récente de ce produit.
+#: Le nom commercial sous lequel un produit est enregistré. `kapsule` est le nom
+#: de `k8s` chez Scaleway, et le deviner d'un slug serait une supposition de
+#: plus dans un fichier qui existe pour en supprimer.
+SUJETS = {"k8s": "kapsule"}
 
-    Elles sont nommées `<sujet>-<date>.jsonl`, et le sujet n'est pas le nom du
-    produit : `kapsule` est le nom commercial de `k8s`. La correspondance est
-    donc déclarée là où elle se lit, plutôt que devinée d'un slug.
-    """
-    sujets = {"k8s": "kapsule"}
-    motif = f"{sujets.get(produit, produit)}-*.jsonl"
+
+def tir_le_plus_recent(produit: str) -> Path:
+    """La transcription la plus récente de ce produit, quand elle est là."""
+    motif = f"{SUJETS.get(produit, produit)}-*.jsonl"
     tirs = sorted(TRANSCRIPTIONS.glob(motif))
     if not tirs:
         raise PreuveError(
-            f"aucune transcription `{motif}` sous {TRANSCRIPTIONS}. Le tableau de "
-            "preuve d'un produit vient de son tir, jamais d'une liste écrite."
+            f"aucune transcription `{motif}` sous {TRANSCRIPTIONS}. Une "
+            "transcription ne se versionne pas : la relever demande celle du tir, "
+            "transmise à part."
         )
     return tirs[-1]
+
+
+def _empreinte(chemin: Path) -> str:
+    """Le condensé de la transcription, pour que le relevé désigne un tir précis."""
+    return "sha256:" + hashlib.sha256(chemin.read_bytes()).hexdigest()
+
+
+def releve_le_plus_recent(produit: str) -> Path:
+    """Le relevé le plus récent de ce produit.
+
+    Daté comme la transcription dont il sort, et pour la même raison : plusieurs
+    tirs coexistent, et un nom sans date ferait écraser la mesure de la semaine
+    dernière par celle d'aujourd'hui sans que le diff dise laquelle on perd.
+    """
+    motif = f"{SUJETS.get(produit, produit)}-*.json"
+    releves = sorted(RELEVES.glob(motif))
+    if not releves:
+        raise PreuveError(
+            f"aucun relevé `{motif}` sous {RELEVES}. Il se produit depuis la "
+            f"transcription du tir avec `python scripts/preuve_reelle.py "
+            f"{produit} --relever`, et c'est lui que le dépôt versionne."
+        )
+    return releves[-1]
+
+
+def relever(produit: str) -> Path:
+    """Extraire d'une transcription le peu qui se versionne, et le sceller.
+
+    **L'enregistrement ne se versionne pas, le relevé oui**, et la distinction
+    n'est pas une commodité. `.gitignore` refuse `transcriptions/` avec sa
+    raison : plusieurs mégaoctets, reproductibles en rejouant l'exercice, qui se
+    transmettent plutôt qu'ils ne se gardent. Un ADR écrit sans avoir lu cette
+    décision affirmait le contraire, et c'est la CI qui l'a dit.
+
+    Le relevé tient en quelques kilooctets, se relit dans un diff, et porte
+    l'empreinte de la transcription dont il sort : il désigne **ce** tir-là, et
+    pas un autre enregistrement qu'on aurait rejoué depuis.
+
+    C'est le même partage que partout ici : le golden est versionné, l'exécution
+    qui l'a produit ne l'est pas.
+    """
+    tir = lire(tir_le_plus_recent(produit))
+    releve = {
+        "tir": tir.fichier.name,
+        "date": tir.date,
+        "empreinte": _empreinte(tir.fichier),
+        "agent": AGENT,
+        # Une liste de triplets, triée : un dictionnaire à clé composée ne se
+        # sérialise pas en JSON, et l'ordre fixe rend le diff lisible.
+        "routes": [
+            [methode, chemin, combien] for (methode, chemin), combien in sorted(tir.routes.items())
+        ],
+    }
+    destination = RELEVES / f"{tir.fichier.stem}.json"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(
+        json.dumps(releve, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    return destination
+
+
+def lire_releve(produit: str) -> Tir:
+    """Le relevé versionné, qui est ce dont un bloc dérivé a besoin.
+
+    Il se relit hors ligne et sans le compte, ce qu'un bloc dérivé exige, et
+    c'est pour ça que la CI en dépend plutôt que de la transcription.
+    """
+    charge = json.loads(releve_le_plus_recent(produit).read_text(encoding="utf-8"))
+    return Tir(
+        fichier=Path(str(charge["tir"])),
+        date=str(charge["date"]),
+        routes=Counter(
+            {
+                (str(methode), str(chemin_)): int(combien)
+                for methode, chemin_, combien in charge["routes"]
+            }
+        ),
+    )
 
 
 def main(argv: list[str]) -> int:
@@ -311,9 +403,21 @@ def main(argv: list[str]) -> int:
     parseur.add_argument("produit", help="le produit, par exemple `k8s`")
     parseur.add_argument("--version", default="v1")
     parseur.add_argument("--routes", action="store_true", help="les routes émises, comptées")
+    parseur.add_argument(
+        "--relever",
+        action="store_true",
+        help="extraire de la transcription le relevé versionné, et le sceller",
+    )
     arguments = parseur.parse_args(argv[1:])
 
-    tir = lire(tir_le_plus_recent(arguments.produit))
+    if arguments.relever:
+        destination = relever(arguments.produit)
+        print(f"{destination.relative_to(ROOT)} écrit depuis la transcription du tir.")
+        return 0
+
+    # **Le relevé, pas la transcription.** C'est lui qui est versionné, donc lui
+    # que la CI peut lire : elle n'a ni le compte, ni l'enregistrement.
+    tir = lire_releve(arguments.produit)
     resultat = rapprocher(arguments.produit, arguments.version, tir)
 
     print(f"{tir.fichier.name}, tir du {tir.date}\n")

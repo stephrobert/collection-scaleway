@@ -3335,6 +3335,14 @@
       "find": "    if nommee.group(1) not in jours:",
       "replace": "    if False:",
       "test": "tests/unit/outillage/test_preuve_reelle.py::test_une_transcription_renommee_sans_etre_rejouee_est_refusee"
+    },
+    {
+      "name": "releve-invisible-de-git",
+      "why": "**Le défaut qui a rendu la CI rouge.** `.gitignore` refuse `transcriptions/`, avec sa raison : plusieurs mégaoctets, reproductibles, qui se transmettent plutôt qu'ils ne se gardent. Le relevé en sort et doit entrer dans le dépôt, sinon le bloc dérivé se recalcule sur la machine qui a fait le tir et nulle part ailleurs.\n\nUn `!` posé sous un répertoire barré ne ré-inclut rien : git ne descend pas dans un répertoire exclu, et rien ne le dit. Le fichier reste simplement invisible, et c'est la CI qui l'a découvert plutôt que moi.",
+      "file": ".gitignore",
+      "find": "/transcriptions/*\n!/transcriptions/releves/",
+      "replace": "/transcriptions/",
+      "test": "tests/unit/outillage/test_preuve_reelle.py::test_le_releve_est_suivi_par_git"
     }
   ]
 }

@@ -1,4 +1,4 @@
-# ADR-024. A recorded run is a file, so the fourth tier of proof can be published
+# ADR-024. A run is recorded, extracted, and the extract is what is versioned
 
 **Status**: accepted, 15 September 2026. Still in force.
 
@@ -29,13 +29,24 @@ objection: claims that outlive what measured them. Writing the matrix by hand
 would have created one on the same day the audit named the category.
 
 **What changed the answer is that the run was recorded.** The proxy in front of
-the real API wrote every request to a JSONL file, which is versioned in the
-repository. It carries the method, the path, the status and the user agent of
-everything that went over the wire. It is a file, so it is readable offline, and
-the objection that kept the fourth tier out of published documents does not
-apply to it.
+the real API wrote every request to a JSONL file carrying the method, the path,
+the status and the user agent of everything that went over the wire.
 
-Three facts came out of building the join, and they are why this record exists
+That recording is not in the repository, and it should not be: `.gitignore` has
+refused `transcriptions/` for a long time, with its reason written next to it.
+Several megabytes that no diff can read, reproducible by running the exercise
+again, and meant to be handed over rather than kept. The first version of this
+record asserted the opposite without having read that decision, and CI said so,
+on a derived block it could not recompute.
+
+**What is versioned is the extract.** A few kilobytes: what the collection
+emitted, with the date, sealed by the digest of the recording it came from. This
+is the same split the repository makes everywhere else, where the golden file is
+versioned and the run that produced it is not. The recording stays outside and
+can be asked for; the extract is enough for a block to recompute offline, which
+is the only property that kept the fourth tier out.
+
+Four facts came out of building the join, and they are why this record exists
 rather than a comment:
 
 * **the first attempt measured nothing, and said nothing.** It filtered emitted
@@ -50,13 +61,21 @@ rather than a comment:
 * **the derivation contradicted the hand-written table on two rows.** A read can
   belong to two modules: `GET /pools/{id}` is the info module's read and also the
   read a MANAGE module performs before writing (ADR-003). The request went out;
-  nothing in the recording says which module sent it.
+  nothing in the recording says which module sent it;
+* **an ignore rule cannot be undone from inside.** Re-including a file with `!`
+  under an excluded directory does nothing, because git does not descend into
+  one. Nothing reports this: the file is simply invisible.
 
 ## Decision
 
-**A recorded run is a versioned file, and the fourth tier of proof is derived
-from it into published blocks like the other three.** The recording is the
-source; no table of what ran is written by hand.
+**A run is recorded, the recording is extracted, and the extract is what the
+repository versions.** The fourth tier of proof is then derived into published
+blocks like the other three. No table of what ran is written by hand.
+
+**The extract is sealed on the recording it came from**, by digest. Without it,
+an extract could be matched against any run, and the date it carries would
+mean nothing. The recording is not in the repository, so the seal is what lets
+somebody who has it check that this extract came from that run.
 
 **A route that more than one module carries proves none of them.** The published
 states are three, not two:
@@ -92,10 +111,17 @@ product against the real cloud must run it behind the recording proxy, or the
 guide for that product cannot carry a proof table. That is a real constraint on
 how a qualification run is done, and it is deliberate.
 
-**The recording is a file in the repository, and it holds request metadata.** No
-bodies, no credentials, no tokens: methods, paths, statuses and headers. A
-recording that carried a payload would be a secret in a public repository, and
-nothing here checks that for you.
+**The extract carries methods, paths and counts, and nothing else.** That is not
+a precaution taken here so much as a consequence of what it is for, and it is
+worth stating because the recording it comes from is a different matter: the
+recorder masks the authentication header, measured, but a recording is not
+something to hand around casually. The extract is, and that asymmetry is most of
+why the split is worth its cost.
+
+**The recording has to be kept somewhere, and nothing here says where.** It is
+the object the seal points at, so losing it costs the ability to re-derive or
+re-check an extract. The repository deliberately does not hold it, and it also
+does not tell you what to do instead.
 
 **A proof table ages by construction, and it should.** It says "run of
 2026-09-14", not "supported". A module added after that date comes out "not
