@@ -50,3 +50,4 @@ Code says the **current** invariant. This directory says what happened.
 | [ADR-021](021-a-snapshot-is-keyed-by-kind-and-identifier.md) | A snapshot resource is keyed on its kind and its identifier, never on its name: two machines can carry one name in a zone |
 | [ADR-022](022-a-product-is-adopted-behind-the-official-collection.md) | A product is adopted behind the official collection rather than opposite it: they create it, we operate it, and what they serve well is named |
 | [ADR-023](023-a-product-is-known-to-every-seam-or-declared-absent.md) | A product is known to every seam that consumes what it produces, or its absence is declared with what would close it |
+| [ADR-024](024-a-recorded-run-is-a-file-so-it-can-be-published.md) | A recorded run is a versioned file, so what a run actually exercised is derived into published blocks rather than written by hand |

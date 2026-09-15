@@ -11,7 +11,8 @@ Two paths, and they do not need each other.
 : Install it, authenticate, list your resources, run a Day-2 operation, and
   check that a second run reports no change. The
   [task playbooks](guides/shipped-playbooks.md), the
-  [dynamic inventory](guides/dynamic-inventory.md) and the
+  [dynamic inventory](guides/dynamic-inventory.md), the
+  [Kapsule guide](guides/kubernetes.md) and the
   [module reference](guides/module-reference.md) continue from there.
 
 **[Build the collection](architecture/generator.md)**
@@ -40,6 +41,7 @@ guides/using-the-collection
 guides/shipped-playbooks
 guides/scheduling
 guides/dynamic-inventory
+guides/kubernetes
 ```
 
 ```{toctree}
@@ -88,6 +90,7 @@ adr/020-a-plan-describes-the-moment-it-was-computed
 adr/021-a-snapshot-is-keyed-by-kind-and-identifier
 adr/022-a-product-is-adopted-behind-the-official-collection
 adr/023-a-product-is-known-to-every-seam-or-declared-absent
+adr/024-a-recorded-run-is-a-file-so-it-can-be-published
 ```
 
 ```{toctree}
