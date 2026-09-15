@@ -12,11 +12,16 @@ Trois ensembles, aucune devinette, calculés depuis les identités stables des
 constats : présent avant et après, absent avant, absent après.
 
 **Un constat disparu n'est pas un constat résolu.** C'est le refus central de ce
-module. Une zone qui n'a pas répondu ce matin fait disparaître tout ce qu'elle
+module. Une portée qui n'a pas répondu ce matin fait disparaître tout ce qu'elle
 portait, et l'annoncer « résolu » est la pire ligne qu'un tel rapport puisse
 écrire : elle dit à quelqu'un que son problème est réglé alors que personne n'a
-regardé. Un constat dont la zone n'a pas été mesurée sort donc en non mesuré,
+regardé. Un constat dont la portée n'a pas été mesurée sort donc en non mesuré,
 avec ce qui l'y met.
+
+**Une portée n'est pas toujours une zone**, et la première version de ce module
+l'a payé : `fleet_audit` ne lui transmettait que les zones Instance, donc un
+constat Kapsule, dont la portée est une **région**, ne pouvait jamais devenir
+`resolved`. Le faux verdict était retourné, mais c'en était un (#272).
 
 **Un constat excusé n'est pas un constat résolu non plus.** Une exception change
 son statut, elle ne fait pas disparaître le problème (#235). Il reste dans
@@ -42,7 +47,7 @@ description:
     into new, persisting and resolved. A report that shows the same warnings
     every morning stops being read by the third morning.
   - >-
-    A finding that vanished because its zone did not answer never comes out as
+    A finding that vanished because its scope did not answer never comes out as
     resolved. It comes out as unmeasured, which is not the same thing and does
     not send anybody the message that their problem is fixed.
   - >-
@@ -60,8 +65,10 @@ options:
       no previous run, which is not the same as a previous run with no findings.
     type: list
     required: false
-  zones_measured:
-    description: The zones this run read.
+  scopes_measured:
+    description: >-
+      The scopes this run read, each as C({type, name}). A region and a zone can
+      carry lookalike names, and nothing in the string tells them apart.
     type: list
     required: true
   now:
@@ -82,16 +89,16 @@ EXAMPLES = r"""
     changements: >-
       {{ constats | stephrobert.scaleway.audit_changes(
            previous=constats_gardes | default(none),
-           zones_measured=zones_lues,
+           scopes_measured=portees_lues,
            now=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}
 """
 
 #: Pourquoi un constat disparu n'est pas conclu résolu. Deux raisons, et elles
-#: mènent à deux actions différentes : relancer la lecture de la zone, ou
+#: mènent à deux actions différentes : relancer la lecture de la portée, ou
 #: réparer un rapport conservé qui ne porte pas assez pour être comparé.
 RAISONS = {
-    "zone_muette": "its zone was not measured by this run",
-    "zone_inconnue": "the kept finding does not say which zone it was in",
+    "portee_muette": "its scope was not measured by this run",
+    "portee_inconnue": "the kept finding does not say which scope it was in",
 }
 
 
@@ -147,20 +154,28 @@ def _statut(constat: dict) -> str:
 
 def audit_changes(
     constats: object,
-    zones_measured: object,
+    scopes_measured: object,
     now: str,
     previous: object = None,
 ) -> dict[str, object]:
     """Les trois ensembles, et ce dont on ne peut rien conclure."""
-    if not isinstance(zones_measured, (list, tuple)):
+    if not isinstance(scopes_measured, (list, tuple)):
         raise AnsibleFilterError(
-            f"les zones mesurées sont une liste, pas un {type(zones_measured).__name__}"
+            f"les portées mesurées sont une liste, pas un {type(scopes_measured).__name__}"
         )
     if not now:
         raise AnsibleFilterError("l'instant de référence est requis")
 
     actuels = _en_table(constats, "les constats de ce run")
-    mesurees = {str(zone) for zone in zones_measured}
+    # **Le couple, pas le nom.** Comparer les noms nus ferait passer un constat
+    # de région `fr-par` pour mesuré parce qu'une zone `fr-par` aurait répondu,
+    # et inversement : deux portées de types différents peuvent porter des noms
+    # voisins, et rien dans la chaîne ne les distingue.
+    mesurees = {
+        (str(portee.get("type")), str(portee.get("name")))
+        for portee in scopes_measured
+        if isinstance(portee, dict)
+    }
 
     # **Aucun run précédent n'est pas un run précédent sans constat.** Annoncer
     # tout le parc comme nouveau au premier run noierait la première lecture
@@ -207,11 +222,11 @@ def audit_changes(
     indecidables: list[dict] = []
     for identite in sorted(set(anciens) - set(actuels)):
         ancien = anciens[identite]
-        zone = ancien.get("zone")
-        if not zone:
-            indecidables.append(dict(ancien, reason=RAISONS["zone_inconnue"]))
-        elif str(zone) not in mesurees:
-            indecidables.append(dict(ancien, reason=RAISONS["zone_muette"]))
+        portee = (str(ancien.get("scope_type") or ""), str(ancien.get("scope") or ""))
+        if not all(portee):
+            indecidables.append(dict(ancien, reason=RAISONS["portee_inconnue"]))
+        elif portee not in mesurees:
+            indecidables.append(dict(ancien, reason=RAISONS["portee_muette"]))
         else:
             # **`seen_resolved_at`, et pas `resolved_at`.** Ce qu'on sait est
             # qu'il n'est plus là à ce run ; le moment où quelqu'un l'a réglé est

@@ -17,7 +17,8 @@ def _constat(severite: str = "warn", identifiant: str = "aaaa", **reste: object)
     return {
         "id": f"public_ip:instance:{identifiant}",
         "name": f"instance/{identifiant}",
-        "zone": "fr-par-1",
+        "scope": "fr-par-1",
+        "scope_type": "zone",
         "rule": "public_ip",
         "severity": severite,
         "detail": "a public address is attached",
@@ -42,7 +43,7 @@ def _changements(**reste: object) -> dict:
 
 
 def _diff(**reste: object) -> dict:
-    return {"new": [], "removed": [], "changed": [], "zones_not_compared": {}, **reste}
+    return {"new": [], "removed": [], "changed": [], "scopes_not_compared": {}, **reste}
 
 
 # ---- La règle exécutable du jalon ----------------------------------------
@@ -111,7 +112,7 @@ def test_un_constat_bloquant_neuf_nest_pas_tu_par_un_autre_qui_se_resout() -> No
 
 def test_une_zone_muette_pese_autant_quun_constat_bloquant() -> None:
     """Une zone muette n'est pas une bonne nouvelle."""
-    bilan = changes_summary(_changements(), diff=_diff(), unmeasured_zones=["nl-ams-2"])
+    bilan = changes_summary(_changements(), diff=_diff(), unmeasured_scopes=["nl-ams-2"])
 
     assert summary_verdict(bilan) == "action_required"
 
@@ -137,7 +138,7 @@ def test_une_exception_perimee_reclame_une_action() -> None:
 def test_une_zone_incomparable_pese_autant() -> None:
     """Deux instantanés qui ne couvrent pas la même zone ne disent rien de cette zone."""
     bilan = changes_summary(
-        _changements(), diff=_diff(zones_not_compared={"pl-waw-1": "did not answer"})
+        _changements(), diff=_diff(scopes_not_compared={"pl-waw-1": "did not answer"})
     )
 
     assert summary_verdict(bilan) == "action_required"
@@ -167,7 +168,7 @@ def test_sans_instantane_rendu_linfrastructure_nest_pas_comptee_a_zero() -> None
     bilan = changes_summary(_changements(), diff=None)
 
     assert bilan["infrastructure_changes"] is None
-    assert bilan["zones_not_compared"] is None
+    assert bilan["scopes_not_compared"] is None
     assert summary_verdict(bilan) == "quiet"
 
 

@@ -19,7 +19,14 @@ d'objets, dépôt git, système de fichiers : la collection rend l'instantané e
 s'arrête là. Elle ne devient ni une CMDB ni un service caché, et cette limite
 est la décision, pas une étape vers autre chose (#231).
 
-**`zones_unmeasured` vit dans l'instantané lui-même.** Rien n'a été mesuré n'est
+**Une portée n'est pas toujours une zone.** Instance et Load Balancer sont
+zonaux, Kapsule est régional, et d'autres produits seront structurés autrement
+encore. L'instantané porte donc des portées **typées** : `{"type": "region",
+"name": "fr-par"}` et `{"type": "zone", "name": "fr-par-1"}` ne se confondent
+pas, alors que les deux chaînes se ressemblent assez pour qu'un rapport les
+mélange sans que rien ne le dise (#273).
+
+**`scopes_unmeasured` vit dans l'instantané lui-même.** Rien n'a été mesuré n'est
 pas rien n'a été trouvé, et un diff calculé sans cette information annoncerait la
 disparition d'un parc entier le jour où une zone ne répond pas.
 """
@@ -48,11 +55,11 @@ options:
     description: The normalised resources, as C(resource_facts) returns them.
     type: list
     required: true
-  zones_measured:
+  scopes_measured:
     description: The zones that answered.
     type: list
     required: true
-  zones_unmeasured:
+  scopes_unmeasured:
     description: The zones that were asked and did not answer.
     type: list
     default: []
@@ -77,8 +84,8 @@ EXAMPLES = r"""
   ansible.builtin.set_fact:
     snapshot: >-
       {{ faits | stephrobert.scaleway.fleet_snapshot(
-           zones_measured=zones_qui_ont_repondu,
-           zones_unmeasured=zones_muettes,
+           scopes_measured=portees_qui_ont_repondu,
+           scopes_unmeasured=portees_muettes,
            captured_at=debut,
            collection_version=version) }}
 """
@@ -98,8 +105,8 @@ ENTETE = (
     "schema_version",
     "captured_at",
     "collection_version",
-    "zones_measured",
-    "zones_unmeasured",
+    "scopes_measured",
+    "scopes_unmeasured",
     "resources",
 )
 
@@ -157,17 +164,89 @@ def _liste(valeur: object, nom: str) -> list:
     return list(valeur)
 
 
+#: Les types de portée qu'une ressource peut avoir. Un type hors de cette liste
+#: est une faute de frappe, et une portée mal typée ne se compare à rien.
+TYPES_DE_PORTEE = ("zone", "region")
+
+
+def _portee(valeur: object, quoi: str) -> dict[str, str]:
+    """Une portée, typée, refusée si elle ne l'est pas.
+
+    **Une chaîne nue est refusée plutôt que devinée.** `fr-par` est une région
+    et `fr-par-1` une zone ; rien dans la chaîne ne le dit. Deviner par la forme
+    marcherait aujourd'hui sur Scaleway et casserait au premier produit dont le
+    nommage diffère, ce qui est précisément le genre de supposition que ce dépôt
+    refuse ailleurs.
+    """
+    if not isinstance(valeur, dict):
+        raise AnsibleFilterError(
+            f"{quoi} : une portée est un objet `{{type, name}}`, pas "
+            f"{type(valeur).__name__}. `fr-par` est une région et `fr-par-1` une "
+            "zone : rien dans la chaîne ne permet de les distinguer."
+        )
+    type_de, nom = valeur.get("type"), valeur.get("name")
+    if type_de not in TYPES_DE_PORTEE:
+        raise AnsibleFilterError(
+            f"{quoi} : type={type_de!r}, qui n'est ni {' ni '.join(TYPES_DE_PORTEE)}."
+        )
+    if not nom:
+        raise AnsibleFilterError(f"{quoi} : une portée sans nom ne désigne rien.")
+    return {"type": str(type_de), "name": str(nom)}
+
+
+def as_scopes(noms: object, type_de_portee: str) -> list[dict[str, str]]:
+    """Des noms et leur type, en portées.
+
+    Le rôle lit des noms de zones ou de régions selon le produit interrogé ; le
+    type vient de ce qu'il a interrogé, pas de la forme du nom. C'est ce petit
+    filtre qui empêche un rôle d'écrire lui-même des objets `{type, name}` à la
+    main, ce qui reviendrait à recopier le schéma dans un playbook.
+    """
+    if type_de_portee not in TYPES_DE_PORTEE:
+        raise AnsibleFilterError(
+            f"type de portée {type_de_portee!r}, qui n'est ni "
+            f"{' ni '.join(TYPES_DE_PORTEE)}."
+        )
+    return [{"type": type_de_portee, "name": str(nom)} for nom in _liste(noms, "les noms")]
+
+
+def scope_label(portee: object) -> str:
+    """Une portée, lisible, avec son type.
+
+    `zone/fr-par-1` et `region/fr-par` se distinguent d'un coup d'œil là où les
+    deux noms nus se ressemblent. Un rapport qui ne dirait que le nom laisserait
+    le lecteur deviner de quoi on parle.
+    """
+    if not isinstance(portee, dict):
+        raise AnsibleFilterError(
+            f"une portée est un objet `{{type, name}}`, pas {type(portee).__name__}"
+        )
+    return f"{portee.get('type')}/{portee.get('name')}"
+
+
+def _portees(valeur: object, quoi: str) -> list[dict[str, str]]:
+    """Les portées, triées sur le couple et dédoublonnées.
+
+    Triées sur `(type, name)` et non sur le nom seul : deux portées de types
+    différents peuvent porter des noms voisins, et un tri qui les mélangerait
+    rendrait deux instantanés du même parc différents octet pour octet.
+    """
+    lues = [_portee(item, quoi) for item in _liste(valeur, quoi)]
+    uniques = {(portee["type"], portee["name"]): portee for portee in lues}
+    return [uniques[cle] for cle in sorted(uniques)]
+
+
 def fleet_snapshot(
     ressources: object,
-    zones_measured: object,
+    scopes_measured: object,
     captured_at: str,
     collection_version: str,
-    zones_unmeasured: object = (),
+    scopes_unmeasured: object = (),
 ) -> dict[str, object]:
     """L'instantané, trié, et refusant ce qu'on ne pourrait pas comparer."""
     normalisees = _liste(ressources, "les ressources")
-    mesurees = sorted(_liste(zones_measured, "zones_measured"))
-    muettes = sorted(_liste(zones_unmeasured, "zones_unmeasured"))
+    mesurees = _portees(scopes_measured, "scopes_measured")
+    muettes = _portees(scopes_unmeasured, "scopes_unmeasured")
 
     # `all` sur les deux membres, et non la vérité du tuple : `("", "")` est un
     # tuple non vide, donc vrai, et la garde écrite ainsi ne mordait pas. Le
@@ -207,8 +286,8 @@ def fleet_snapshot(
         "schema_version": SCHEMA_VERSION,
         "captured_at": captured_at,
         "collection_version": collection_version,
-        "zones_measured": mesurees,
-        "zones_unmeasured": muettes,
+        "scopes_measured": mesurees,
+        "scopes_unmeasured": muettes,
         # Trié par clé : le même parc doit produire les mêmes octets deux fois,
         # sinon deux instantanés ne se comparent pas et le fichier n'est qu'une
         # décoration. C'est la règle de déterminisme que le générateur applique
@@ -275,5 +354,7 @@ class FilterModule:
         return {
             "fleet_snapshot": fleet_snapshot,
             "snapshot_read": snapshot_read,
+            "as_scopes": as_scopes,
+            "scope_label": scope_label,
             "collection_version": collection_version,
         }

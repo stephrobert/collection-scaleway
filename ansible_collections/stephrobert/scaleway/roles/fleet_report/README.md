@@ -17,7 +17,7 @@ The report is left in C(scaleway_fleet_report_result) so a calling playbook can 
     scaleway_fleet_report_zones: [fr-par-1, fr-par-2]
 
 - ansible.builtin.assert:
-    that: scaleway_fleet_report_result.zones_unmeasured | length == 0
+    that: scaleway_fleet_report_result.scopes_unmeasured | length == 0
 ```
 
 The report is left in `scaleway_fleet_report_result`, so a calling playbook acts

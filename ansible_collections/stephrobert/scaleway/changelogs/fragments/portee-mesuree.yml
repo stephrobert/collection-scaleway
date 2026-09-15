@@ -1,0 +1,32 @@
+bugfixes:
+  - "roles - a Kapsule finding can become ``resolved``. ``fleet_audit`` passed
+    only the Instance zones as what this run measured, and Kubernetes reads are
+    regional: a finding whose scope is a region therefore came out as unmeasured
+    even when the read had answered perfectly. The false verdict was the
+    inverted one, refusing to call resolved what is, and it was a lie about a
+    measurement that succeeded."
+breaking_changes:
+  - "filter - the common shape says ``scope`` and ``scope_type`` where it said
+    ``zone``. Instance and Load Balancer are zonal, Kapsule is regional, and
+    filing a region under a field named zone worked while saying something
+    false. Nothing published ever carried the old name: the snapshot schema did
+    not exist in 0.7.0, so the vocabulary is corrected before its first
+    publication rather than migrated after."
+  - "filter - a snapshot carries typed scopes, ``{type, name}``, and refuses a
+    bare string. ``fr-par`` is a region and ``fr-par-1`` a zone; nothing in the
+    string says which, and guessing from the shape would work on Scaleway today
+    and break on the first product that names things differently."
+minor_changes:
+  - "filter - ``fleet_diff`` compares the fields a product alone carries,
+    derived from what the normaliser declares rather than listed a second time.
+    A cluster moving from one version to the next used to come out under
+    ``changed_outside_this_shape``, saying that something had moved without
+    saying what, on the most important change a managed cluster has."
+  - "roles - ``fleet_report`` can read Kapsule clusters, pools and nodes, so the
+    version that adds fleet memory can remember a cluster. It is not read by
+    default: on an account with no cluster it would carry a silent region in
+    every report, and every product is a family of API calls on a billed
+    account."
+  - "filter - a pool of nodes enters the common shape, with its version, its
+    size and its autoscaling. A cluster whose version does not move while one of
+    its pools goes up is a change the cluster alone would not report."

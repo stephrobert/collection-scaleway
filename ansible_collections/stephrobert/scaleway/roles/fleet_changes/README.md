@@ -28,7 +28,7 @@ New audit findings         2
 Resolved findings          4
 Persistent failures        1
 Expired exceptions         1
-Unmeasured zones           0
+Unmeasured scopes           0
 Findings not concluded     0
 fail     2 (+1)
 warn     6 (-3)

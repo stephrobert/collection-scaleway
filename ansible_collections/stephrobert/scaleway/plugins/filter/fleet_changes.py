@@ -53,8 +53,8 @@ options:
     description: The policy exceptions whose expiry has passed.
     type: list
     required: false
-  unmeasured_zones:
-    description: The zones this run could not read.
+  unmeasured_scopes:
+    description: The scopes this run could not read.
     type: list
     required: false
   previous_findings:
@@ -78,7 +78,7 @@ EXAMPLES = r"""
       {{ changements | stephrobert.scaleway.changes_summary(
            diff=comparaison,
            expired_exceptions=perimees,
-           unmeasured_zones=muettes,
+           unmeasured_scopes=muettes,
            previous_findings=constats_gardes) }}
 """
 
@@ -115,7 +115,7 @@ def changes_summary(
     changes: object,
     diff: object = None,
     expired_exceptions: object = None,
-    unmeasured_zones: object = None,
+    unmeasured_scopes: object = None,
     previous_findings: object = None,
 ) -> dict[str, object]:
     """Une ligne par chose qui a bougé, et rien de composite."""
@@ -130,7 +130,7 @@ def changes_summary(
         )
 
     perimees = _liste(expired_exceptions, "les exceptions périmées")
-    muettes = _liste(unmeasured_zones, "les zones muettes")
+    muettes = _liste(unmeasured_scopes, "les portées muettes")
     gardes = previous_findings
 
     comptes = changes.get("counts") or {}
@@ -188,11 +188,11 @@ def changes_summary(
         "resolved_findings": int(comptes.get("resolved") or 0),
         "persistent_failures": len(persistants),
         "expired_exceptions": len(perimees),
-        "unmeasured_zones": len(muettes),
+        "unmeasured_scopes": len(muettes),
         # Séparé des résolus, et c'est tout l'objet de #234 : un constat dont la
         # zone n'a pas répondu n'est pas un constat réglé.
         "not_concluded": int(comptes.get("unmeasured") or 0),
-        "zones_not_compared": (None if diff is None else len(diff.get("zones_not_compared") or {})),
+        "scopes_not_compared": (None if diff is None else len(diff.get("scopes_not_compared") or {})),
         "severities": severites,
     }
 
@@ -213,10 +213,10 @@ def summary_verdict(bilan: object) -> str:
         )
 
     if (
-        bilan.get("unmeasured_zones")
+        bilan.get("unmeasured_scopes")
         or bilan.get("not_concluded")
         or bilan.get("expired_exceptions")
-        or bilan.get("zones_not_compared")
+        or bilan.get("scopes_not_compared")
     ):
         return "action_required"
 

@@ -41,7 +41,7 @@ This is the defect the role exists not to commit. A zone that did not answer, an
 a zone that was simply not read this time, would both make everything it holds
 look removed, and the report would be perfectly plausible.
 
-Such zones come out under `zones_not_compared`, each with which of the two cases
+Such scopes come out under `scopes_not_compared`, each with which of the two cases
 it is, and the resources they hold are counted rather than silently dropped.
 
 ## Three levels, and only one of them asks you to read

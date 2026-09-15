@@ -20,7 +20,8 @@ def _noeud(nom: str, pool: str = "production", **reste: object) -> dict:
         "kind": "k8s_node",
         "id": f"id-{nom}",
         "name": nom,
-        "zone": "fr-par",
+        "scope": "fr-par",
+        "scope_type": "zone",
         "state": "ready",
         "pool": pool,
         **reste,
@@ -118,16 +119,16 @@ def test_une_cible_porte_ce_quil_faut_pour_redemarrer() -> None:
 
 def test_une_ressource_sans_portee_est_refusee() -> None:
     """Redémarrer sans savoir où viserait une ressource que personne n'a désignée."""
-    sans = {cle: valeur for cle, valeur in _noeud("scw-prod-1").items() if cle != "zone"}
+    sans = {cle: valeur for cle, valeur in _noeud("scw-prod-1").items() if cle != "scope"}
 
-    with pytest.raises(Exception, match="ne porte pas zone et id"):
+    with pytest.raises(Exception, match="ne porte pas scope et id"):
         reboot_target(sans, kind="k8s_node")
 
 
 def test_une_ressource_sans_identite_est_refusee() -> None:
     sans = {cle: valeur for cle, valeur in _noeud("scw-prod-1").items() if cle != "id"}
 
-    with pytest.raises(Exception, match="ne porte pas zone et id"):
+    with pytest.raises(Exception, match="ne porte pas scope et id"):
         reboot_target(sans, kind="k8s_node")
 
 

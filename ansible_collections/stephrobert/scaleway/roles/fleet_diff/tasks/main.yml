@@ -6,8 +6,8 @@
 # lives is not this role's business, and a default path would end up overwriting
 # something (#231).
 #
-# **A zone is only compared when both snapshots measured it.** A zone that did
-# not answer, and a zone that was simply not read this time, would both make
+# **A scope is only compared when both snapshots measured it.** A scope that did
+# not answer, and one that was simply not read this time, would both make
 # everything it holds look removed, and the report would be perfectly plausible.
 #
 # **What this role leaves behind.** `scaleway_fleet_diff_result` holds the
@@ -92,12 +92,12 @@
       vars:
         resultat: >-
           {{ 'fleet_diff' | stephrobert.scaleway.operation_result(
-               target=(scaleway_fleet_diff_result.zones_compared | join(',')),
+               target=(scaleway_fleet_diff_result.scopes_compared | join(',')),
                mode='apply',
                changed=(scaleway_fleet_diff_result.changed | map(attribute='name') | list)
                        + (scaleway_fleet_diff_result.new | map(attribute='name') | list)
                        + (scaleway_fleet_diff_result.removed | map(attribute='name') | list),
-               unmeasured=(scaleway_fleet_diff_result.zones_not_compared | list),
+               unmeasured=(scaleway_fleet_diff_result.scopes_not_compared | list),
                started_at=_scaleway_fleet_diff_debut,
                completed_at=now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}
 
@@ -111,7 +111,7 @@
       ansible.builtin.debug:
         msg: >-
           No change across
-          {{ scaleway_fleet_diff_result.zones_compared | length }} zone(s),
+          {{ scaleway_fleet_diff_result.scopes_compared | length }} scope(s),
           {{ scaleway_fleet_diff_result.unchanged }} resource(s) unchanged.
       when:
         - scaleway_fleet_diff_level == 'quiet'
@@ -120,14 +120,14 @@
     - name: Something could not be compared, which is not a calm fleet
       ansible.builtin.debug:
         msg: >-
-          {{ scaleway_fleet_diff_result.zones_not_compared | length }} zone(s)
+          {{ scaleway_fleet_diff_result.scopes_not_compared | length }} scope(s)
           could not be compared, holding
           {{ scaleway_fleet_diff_result.resources_not_compared }} resource(s):
-          {{ scaleway_fleet_diff_result.zones_not_compared
+          {{ scaleway_fleet_diff_result.scopes_not_compared
              | dict2items | map(attribute='key') | join(', ') }}.
           Nothing measured is not nothing changed.
       when:
-        - scaleway_fleet_diff_result.zones_not_compared | length > 0
+        - scaleway_fleet_diff_result.scopes_not_compared | length > 0
         - scaleway_fleet_diff_output != 'json'
 
     - name: What changed, for a terminal
@@ -151,10 +151,10 @@
           ## Scaleway fleet changes
 
           {% for ressource in diff.new -%}
-          * **new** `{{ ressource.kind }}/{{ ressource.name }}` in {{ ressource.zone }}
+          * **new** `{{ ressource.kind }}/{{ ressource.name }}` in {{ ressource.scope }}
           {% endfor -%}
           {% for ressource in diff.removed -%}
-          * **removed** `{{ ressource.kind }}/{{ ressource.name }}` in {{ ressource.zone }}
+          * **removed** `{{ ressource.kind }}/{{ ressource.name }}` in {{ ressource.scope }}
           {% endfor -%}
           {% for ressource in diff.changed -%}
           * **changed** `{{ ressource.kind }}/{{ ressource.name }}`
@@ -162,10 +162,10 @@
               * {{ champ }}: `{{ ecart.before }}` to `{{ ecart.after }}`
           {% endfor -%}
           {% endfor -%}
-          {% if diff.zones_not_compared -%}
+          {% if diff.scopes_not_compared -%}
           * **not compared**
-          {% for zone, raison in diff.zones_not_compared.items() -%}
-              * {{ zone }}: {{ raison }}
+          {% for portee, raison in diff.scopes_not_compared.items() -%}
+              * {{ portee }}: {{ raison }}
           {% endfor -%}
           {% endif %}
           {{ diff.unchanged }} unchanged.

@@ -126,12 +126,20 @@ def _regle_etiquettes(machine: dict, parametres: dict, _maintenant: datetime) ->
 
 
 def _regle_zones(machine: dict, parametres: dict, _maintenant: datetime) -> str | None:
-    zones = parametres.get("zones")
-    if not zones:
-        raise AnsibleFilterError("`allowed_zones` attend `zones`, la liste des zones permises")
+    """Les portées permises, dont la règle garde le nom historique.
 
-    zone = machine.get("zone")
-    return None if zone in zones else f"zone: {zone}"
+    La politique dit `allowed_zones` et `zones` parce que c'est ce qu'un
+    opérateur écrit, et c'est la forme publiée. Elle juge la **portée** de la
+    ressource, qui est une région pour un cluster : une politique qui liste des
+    zones ne couvre alors aucun cluster, et le constat qui sort le dit en
+    nommant la portée plutôt qu'en prétendant que c'est une zone.
+    """
+    permises = parametres.get("zones")
+    if not permises:
+        raise AnsibleFilterError("`allowed_zones` attend `zones`, la liste des portées permises")
+
+    portee = machine.get("scope")
+    return None if portee in permises else f"{machine.get('scope_type')}: {portee}"
 
 
 def _regle_adresse_publique(machine: dict, _parametres: dict, _maintenant: datetime) -> str | None:
@@ -366,7 +374,7 @@ def _regle_conditions_de_sante(machine: dict, parametres: dict, _maintenant: dat
 #: corrigée.
 REGLES = {
     "required_tags": (_regle_etiquettes, "tags"),
-    "allowed_zones": (_regle_zones, "zone"),
+    "allowed_zones": (_regle_zones, "scope"),
     "public_ip": (_regle_adresse_publique, "public_addresses"),
     "stopped_since": (_regle_arretee_depuis, "state"),
     # Celles de #252, chacune sur un champ **déjà traversé et lu par
@@ -481,13 +489,18 @@ def audit_findings(machines: object, policy: object, now: str) -> list[dict[str,
                         # Il reste le nom, donc lisible et non unique : c'est
                         # pourquoi il ne sert pas d'identité.
                         "name": f"{machine.get('kind', '?')}/{machine.get('name', '?')}",
-                        # **La zone, parce que sans elle un constat disparu est
-                        # indiscernable d'un constat résolu.** Comparer deux runs
-                        # demande de savoir si la zone qui portait le constat a
-                        # répondu cette fois ; sans cette information, la seule
-                        # réponse honnête serait « on ne sait pas » pour tout le
-                        # parc, et le rapport ne dirait plus rien (#234).
-                        "zone": machine.get("zone"),
+                        # **La portée, parce que sans elle un constat disparu
+                        # est indiscernable d'un constat résolu.** Comparer deux
+                        # runs demande de savoir si l'endroit qui portait le
+                        # constat a répondu cette fois ; sans cette information,
+                        # la seule réponse honnête serait « on ne sait pas » pour
+                        # tout le parc, et le rapport ne dirait plus rien (#234).
+                        #
+                        # Le **type** l'accompagne : un cluster vit dans une
+                        # région et une machine dans une zone, et deux noms
+                        # voisins ne désignent pas le même endroit (#272).
+                        "scope": machine.get("scope"),
+                        "scope_type": machine.get("scope_type"),
                         "rule": nom,
                         "field": champ,
                         "severity": severite,

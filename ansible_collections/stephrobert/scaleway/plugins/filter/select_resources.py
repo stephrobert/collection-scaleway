@@ -80,6 +80,7 @@ CHAMPS = {
     "instance": {"name": "name", "tags": "tags", "id": "id"},
     "lb": {"name": "name", "tags": "tags", "id": "id"},
     "k8s_cluster": {"name": "name", "tags": "tags", "id": "id"},
+    "k8s_pool": {"name": "name", "tags": "tags", "id": "id"},
     "k8s_node": {"group": "pool", "name": "name", "id": "id"},
     "lb_certificate": {"name": "name", "id": "id"},
 }
@@ -113,7 +114,7 @@ def select_resources(selecteur: object, resources: object, kind: str) -> list[di
 #: demande, et rien ne le déduit du reste. La forme normalisée range les deux
 #: sous `zone`, parce que c'est la portée de la ressource et non le nom que son
 #: produit lui donne.
-PORTEE = {"instance": "zone", "k8s_node": "zone"}
+PORTEE = {"instance": "scope", "k8s_node": "scope"}
 
 
 def reboot_target(ressource: object, kind: str) -> dict[str, object]:
