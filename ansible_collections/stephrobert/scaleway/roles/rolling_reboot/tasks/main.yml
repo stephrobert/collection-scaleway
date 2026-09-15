@@ -162,22 +162,32 @@
         _scaleway_rolling_reboot_illisibles: []
       when: _scaleway_rolling_reboot_produit == 'k8s_node'
 
+    # **Les deux produits passent par la forme commune.** La première version
+    # nourrissait `reboot_target` avec la charge utile brute d'Instance pour les
+    # machines et avec la forme normalisée pour les nœuds : le filtre y cherchait
+    # `scope` et trouvait `zone`, donc rien. La plateforme d'exemple l'a dit, pas
+    # l'intégration, qui ne traverse pas ce chemin.
+    #
+    # C'est exactement la classe de défaut d'ADR-023, à l'intérieur d'un rôle :
+    # deux producteurs, une forme chacun, et un consommateur qui n'en connaît
+    # qu'une.
     - name: Separate what can be rebooted from what cannot
       ansible.builtin.set_fact:
         # `server is defined` rather than `failed`: `failed_when: false`
         # rewrites that field, measured.
         _scaleway_rolling_reboot_a_redemarrer: >-
-          {{ avant.results | selectattr('server', 'defined')
-             | map(attribute='server')
-             | selectattr('state', 'equalto', 'running')
+          {{ _lues | selectattr('state', 'equalto', 'running')
              | map('stephrobert.scaleway.reboot_target', kind='instance') | list }}
         _scaleway_rolling_reboot_laissees: >-
-          {{ avant.results | selectattr('server', 'defined')
-             | map(attribute='server')
-             | rejectattr('state', 'equalto', 'running') | list }}
+          {{ _lues | rejectattr('state', 'equalto', 'running') | list }}
         _scaleway_rolling_reboot_illisibles: >-
           {{ avant.results | rejectattr('server', 'defined')
              | map(attribute='item') | list | sort }}
+      vars:
+        _lues: >-
+          {{ avant.results | selectattr('server', 'defined')
+             | map(attribute='server') | list
+             | stephrobert.scaleway.resource_facts(kind='instance') }}
       when: _scaleway_rolling_reboot_produit == 'instance'
 
     - name: Every selected machine was readable
