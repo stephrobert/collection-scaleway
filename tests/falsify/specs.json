@@ -2858,10 +2858,10 @@
     },
     {
       "name": "exception-sur-un-nom-ambigu",
-      "why": "Mesuré sur le compte réel : deux machines acceptent le même nom dans une zone. Une exception qui désigne un nom porté par deux ressources excuserait une ressource que personne n'a désignée, ou dépendrait de l'ordre de lecture pour choisir laquelle. Les deux sont pires que de refuser en disant comment lever l'ambiguïté (ADR-019, ADR-021).",
-      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/policy_exceptions.py",
-      "find": "        if len(trouves) > 1:",
-      "replace": "        if False:",
+      "why": "Mesuré sur le compte réel : deux machines acceptent le même nom dans une zone. Une exception qui désigne un nom porté par deux ressources excuserait une ressource que personne n'a désignée, ou dépendrait de l'ordre de lecture pour choisir laquelle. Les deux sont pires que de refuser en disant comment lever l'ambiguïté (ADR-019, ADR-021). La résolution a rejoint la grammaire partagée : la garde y distingue désormais ce qui désigne une chose de ce qui désigne une classe, et ce test reste celui des exceptions, ce qui prouve qu'elle sert encore son appelant.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/selecteur.py",
+      "find": "    if critere in UNIQUES and len(trouvees) > 1:",
+      "replace": "    if False:",
       "test": "tests/unit/collection/test_policy_exceptions.py::test_un_nom_porte_par_deux_ressources_est_refuse"
     },
     {
@@ -3140,8 +3140,8 @@
       "name": "provisoire-ecrit-hors-du-repertoire-cible",
       "why": "`os.replace` n'est atomique que sur un même système de fichiers. Depuis `/tmp`, il copie, et la fenêtre qu'on cherche à fermer se rouvre exactement là où on croit l'avoir fermée : le remède aurait l'air d'en être un.",
       "file": "generator/ecriture.py",
-      "find": "        dir=str(chemin.parent), prefix=PREFIXE, suffix=chemin.suffix",
-      "replace": "        dir=None, prefix=PREFIXE, suffix=chemin.suffix",
+      "find": "        dir=str(chemin.parent), prefix=PREFIXE, suffix=SUFFIXE",
+      "replace": "        dir=None, prefix=PREFIXE, suffix=SUFFIXE",
       "test": "tests/unit/generator/test_ecriture.py::test_le_provisoire_vit_dans_le_repertoire_de_destination"
     },
     {
@@ -3183,6 +3183,54 @@
       "find": "    if not isinstance(valeur, (list, tuple)) or not valeur:",
       "replace": "    if not isinstance(valeur, (list, tuple)):",
       "test": "tests/unit/collection/test_selecteur.py::test_une_liste_detiquettes_vide_est_refusee"
+    },
+    {
+      "name": "nom-ambigu-resolu-au-lieu-detre-refuse",
+      "why": "Un `name` désigne **une** chose. Deux ressources peuvent le porter, mesuré sur le compte réel, et rendre la première ferait redémarrer une machine que personne n'a désignée (ADR-019). `group` et `tags` désignent une classe, où plusieurs réponses sont le but : c'est la distinction que cette garde porte, et la confondre rendrait l'une des deux inutilisable.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/module_utils/selecteur.py",
+      "find": "    if critere in UNIQUES and len(trouvees) > 1:",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_select_resources.py::test_un_nom_porte_par_deux_ressources_est_refuse"
+    },
+    {
+      "name": "produit-inconnu-selectionne-au-mieux",
+      "why": "Sans table de correspondance, la sélection chercherait un champ qui n'existe pas sur ces ressources, donc ne désignerait rien, donc se lirait comme un parc vide. Un roulement qui ne trouve rien ne fait rien et sort vert : c'est la panne la plus silencieuse qu'il puisse avoir.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/select_resources.py",
+      "find": "    if champs is None:",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_select_resources.py::test_un_produit_inconnu_est_refuse_avec_les_connus"
+    },
+    {
+      "name": "cible-sans-portee-redemarree-quand-meme",
+      "why": "Redémarrer sans savoir dans quelle zone ou quelle région viserait une ressource que personne n'a désignée, ou rien du tout. Le refus arrive avant l'envoi, là où il ne coûte qu'un message.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/select_resources.py",
+      "find": "    if not portee or not ressource.get(\"id\"):",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_select_resources.py::test_une_ressource_sans_portee_est_refusee"
+    },
+    {
+      "name": "produit-que-le-role-ne-sait-pas-observer",
+      "why": "Un roulement sur un produit dont le retour ne s'observe pas est une temporisation déguisée : il enchaîne les vagues sans savoir si la première est revenue. C'est précisément ce que `rolling_reboot` existe pour ne pas être.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/select_resources.py",
+      "find": "    if kind not in PORTEE:",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_select_resources.py::test_un_produit_que_ce_role_ne_redemarre_pas_est_refuse"
+    },
+    {
+      "name": "roulement-qui-ecrit-autre-chose-quun-redemarrage",
+      "why": "Un roulement qui allume ce qui était éteint, ou qui migre, a fait quelque chose que personne n'a demandé. La garde porte sur la forme de l'écriture et non sur son compte : le rôle redémarre deux produits et en comptera trois, mais aucune de ses écritures ne doit jamais faire autre chose que redémarrer.",
+      "file": "ansible_collections/stephrobert/scaleway/roles/rolling_reboot/tasks/batch.yml",
+      "find": "  stephrobert.scaleway.k8s_node_reboot_action:",
+      "replace": "  stephrobert.scaleway.k8s_cluster_upgrade_action:",
+      "test": "tests/unit/collection/test_rolling_reboot.py::test_toute_ecriture_est_un_redemarrage"
+    },
+    {
+      "name": "provisoire-qui-se-fait-passer-pour-un-artefact",
+      "why": "**Une fenêtre d'apparition vaut une fenêtre de troncature.** La première version nommait le fichier provisoire avec le suffixe de sa cible, donc `.py` pour un module. Il tombait dans le glob `plugins/modules/*.py`, un test qui énumère les modules le trouvait, et il avait disparu au moment de le lire : `FileNotFoundError` sur un fichier que le glob venait de rendre.\n\nMesuré, et trouvé en corrigeant le défaut voisin : on avait échangé un lecteur qui voit un fichier à moitié écrit contre un lecteur qui voit un fichier qui n'existe plus.",
+      "file": "generator/ecriture.py",
+      "find": "SUFFIXE = \".provisoire\"",
+      "replace": "SUFFIXE = \".py\"",
+      "test": "tests/unit/generator/test_ecriture.py::test_le_suffixe_du_provisoire_nest_pas_celui_de_la_cible"
     }
   ]
 }

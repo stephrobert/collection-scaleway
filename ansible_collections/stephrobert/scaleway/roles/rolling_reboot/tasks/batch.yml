@@ -10,28 +10,58 @@
 # So each reboot is fired into an async job that carries the module's own wait,
 # and the batch waits for the jobs. `async_status` observes a job, it does not
 # sleep for a duration.
-- name: Fire the reboots of this batch
+#
+# **Deux modules, une seule grammaire de vague.** Le produit décide du module
+# appelé et de rien d'autre : la taille du lot, l'attente, et le refus d'une
+# vague qui ne revient pas sont écrits une fois. Un roulement qui dupliquerait
+# ce bloc par produit finirait avec deux comportements, et le second serait
+# celui que personne ne relit.
+- name: Fire the reboots of this batch, on Instances
   stephrobert.scaleway.instance_server_action:
-    zone: "{{ item.server.zone }}"
-    server_id: "{{ item.server.id }}"
+    zone: "{{ item.scope }}"
+    server_id: "{{ item.id }}"
     action: reboot
     wait: true
     wait_timeout: "{{ scaleway_rolling_reboot_wait_timeout }}"
-  loop: "{{ lot }}"
+  loop: "{{ lot | selectattr('kind', 'equalto', 'instance') | list }}"
   loop_control:
-    label: "{{ item.server.name }}"
+    label: "{{ item.name }}"
   # Le travail asynchrone vit plus longtemps que l'attente du module, sinon il
   # serait tué en plein redémarrage et le verdict viendrait du harnais.
   async: "{{ (scaleway_rolling_reboot_wait_timeout | int) + 60 }}"
   poll: 0
-  register: jetons
+  register: jetons_instance
+
+# Le nœud attend son propre état : le contrat déclare `rebooting` entre deux
+# `ready`, là où une Instance passe par `stopping` entre deux `running`. C'est
+# l'override qui porte cette correspondance, pas ce fichier (#244).
+- name: Fire the reboots of this batch, on pool nodes
+  stephrobert.scaleway.k8s_node_reboot_action:
+    region: "{{ item.scope }}"
+    node_id: "{{ item.id }}"
+    wait: true
+    wait_timeout: "{{ scaleway_rolling_reboot_wait_timeout }}"
+  loop: "{{ lot | selectattr('kind', 'equalto', 'k8s_node') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  async: "{{ (scaleway_rolling_reboot_wait_timeout | int) + 60 }}"
+  poll: 0
+  register: jetons_noeud
+
+# Les deux listes bout à bout : un lot ne porte qu'un produit, donc l'une des
+# deux est vide, et la suite n'a plus à savoir laquelle.
+- name: The tokens of this batch, whichever product it holds
+  ansible.builtin.set_fact:
+    jetons: >-
+      {{ (jetons_instance.results | default([]))
+         + (jetons_noeud.results | default([])) }}
 
 - name: Wait for every machine of this batch to be back
   ansible.builtin.async_status:
     jid: "{{ item.ansible_job_id }}"
-  loop: "{{ jetons.results }}"
+  loop: "{{ jetons }}"
   loop_control:
-    label: "{{ lot[ansible_loop.index0].server.name }}"
+    label: "{{ lot[ansible_loop.index0].name }}"
     extended: true
   register: retours
   until: retours.finished
@@ -48,7 +78,7 @@
     fail_msg: >-
       batch {{ numero }} did not come back:
       {{ retours.results | selectattr('failed', 'defined') | selectattr('failed')
-         | map(attribute='item.item.server.name') | list | join(', ') }}.
+         | map(attribute='item.item.name') | list | join(', ') }}.
       The roll stops here rather than continuing on a fleet a third of which
       may be down. Machines not yet rebooted:
       {{ restants | join(', ') or 'none' }}.

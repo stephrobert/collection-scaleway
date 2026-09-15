@@ -29,6 +29,29 @@ ROLE = COLLECTION / "roles" / "rolling_reboot"
 TACHES = ROLE / "tasks" / "main.yml"
 LOT = ROLE / "tasks" / "batch.yml"
 
+#: **Tous les fichiers de tâches, découverts et non listés.** Une liste écrite à
+#: la main aurait oublié `noeuds.yml` le jour où il est apparu, et une
+#: temporisation ajoutée là serait passée sous la garde qui existe précisément
+#: pour qu'aucune n'y entre.
+FICHIERS = sorted((ROLE / "tasks").glob("*.yml"))
+
+#: Les écritures que ce rôle a le droit de faire, et ce que chacune redémarre.
+#:
+#: **Une liste déclarée plutôt qu'un motif.** « Le nom contient `action` »
+#: laissait passer `k8s_cluster_upgrade_action`, qui met à jour un cluster et ne
+#: redémarre rien : `/falsify` l'a dit en laissant le test vert. Un motif devine
+#: l'intention depuis un nom ; une liste la fait décider.
+ECRITURES_PERMISES = {
+    "instance_server_action": (
+        "redémarre une Instance. L'action envoyée est contrainte à `reboot` par "
+        "`test_seule_laction_reboot_est_declenchee`, qui lit les valeurs."
+    ),
+    "k8s_node_reboot_action": (
+        "redémarre un nœud de pool. L'action **est** l'opération : il n'y a pas "
+        "de valeur à contraindre, le chemin la dit."
+    ),
+}
+
 
 def _jouer(*options: str) -> tuple[int, str]:
     resultat = subprocess.run(
@@ -65,7 +88,7 @@ def test_aucune_attente_nest_une_duree_fixe() -> None:
     mesurer autrement, parce qu'un `sleep` qui marche ne se distingue pas d'une
     attente juste tant que la machine est rapide.
     """
-    for chemin in (TACHES, LOT):
+    for chemin in FICHIERS:
         texte = chemin.read_text(encoding="utf-8")
         lignes = [
             ligne
@@ -149,10 +172,19 @@ def test_aucune_valeur_par_defaut_ne_designe_une_cible() -> None:
     )
 
 
-def test_une_seule_tache_ecrit() -> None:
-    """Le reste lit. Et un redémarrage progressif n'allume jamais rien."""
+def test_toute_ecriture_est_un_redemarrage() -> None:
+    """Le reste lit. Et un redémarrage progressif n'allume jamais rien.
+
+    **La propriété porte sur la forme de l'écriture, pas sur son compte.** Le
+    rôle redémarre deux produits depuis #244, et en comptera trois le jour où un
+    troisième sait revenir d'un redémarrage observable ; ce qui ne doit jamais
+    changer est qu'aucune écriture ne fasse autre chose que redémarrer.
+
+    Une assertion sur le compte aurait rougi à l'ajout du second produit pour
+    une raison qui n'est pas la sienne, et on l'aurait relevée sans la relire.
+    """
     appels: list[str] = []
-    for chemin in (TACHES, LOT):
+    for chemin in FICHIERS:
         appels += re.findall(
             r"^\s+stephrobert\.scaleway\.([a-z0-9_]+):",
             chemin.read_text(encoding="utf-8"),
@@ -160,8 +192,14 @@ def test_une_seule_tache_ecrit() -> None:
         )
     assert appels, "le motif ne reconnaît plus aucun appel : il ne mesure plus rien"
 
-    ecritures = [nom for nom in appels if not nom.endswith("_info")]
-    assert ecritures == ["instance_server_action"], ecritures
+    ecritures = sorted({nom for nom in appels if not nom.endswith("_info")})
+    assert ecritures, "aucune écriture : le rôle ne redémarre plus rien"
+    hors_sujet = sorted(set(ecritures) - set(ECRITURES_PERMISES))
+    assert hors_sujet == [], (
+        f"écriture(s) que ce rôle n'a pas le droit de faire : {hors_sujet}. Un "
+        "roulement qui fait autre chose que redémarrer a fait quelque chose que "
+        "personne n'a demandé."
+    )
 
 
 def test_seule_laction_reboot_est_declenchee() -> None:

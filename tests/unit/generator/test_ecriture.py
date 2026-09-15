@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from generator.ecriture import PREFIXE, ecrire
+from generator.ecriture import PREFIXE, SUFFIXE, ecrire
 
 
 def test_le_contenu_arrive_en_entier(tmp_path: Path) -> None:
@@ -149,3 +149,44 @@ def test_le_repertoire_manquant_est_cree(tmp_path: Path) -> None:
     ecrire(cible, "{}\n")
 
     assert cible.read_text(encoding="utf-8") == "{}\n"
+
+
+def test_le_provisoire_nest_pas_visible_a_qui_enumere_les_artefacts(tmp_path: Path) -> None:
+    """**Une fenêtre d'apparition vaut une fenêtre de troncature.**
+
+    La première version nommait le provisoire avec le suffixe de la cible, donc
+    `.py` pour un module. Il tombait dans le glob `plugins/modules/*.py`, un test
+    qui énumère les modules le trouvait, et il avait disparu au moment de le
+    lire : `FileNotFoundError` sur un fichier que le glob venait de rendre.
+
+    Le lecteur ne voyait plus un fichier à moitié écrit ; il voyait un fichier
+    qui n'existe plus. C'est le même défaut à l'envers.
+    """
+    cible = tmp_path / "artefact.py"
+    vus: list[str] = []
+    arret = threading.Event()
+
+    def enumerer() -> None:
+        while not arret.is_set():
+            vus.extend(chemin.name for chemin in tmp_path.glob("*.py"))
+
+    guetteur = threading.Thread(target=enumerer, daemon=True)
+    guetteur.start()
+    for _ in range(30):
+        ecrire(cible, "le contenu\n")
+    arret.set()
+    guetteur.join(timeout=2)
+
+    assert vus, "l'énumérateur n'a rien vu, le contrôle ne mesure rien"
+    assert set(vus) == {"artefact.py"}, (
+        f"le glob des artefacts a rendu autre chose : {sorted(set(vus))}"
+    )
+
+
+def test_le_suffixe_du_provisoire_nest_pas_celui_de_la_cible(tmp_path: Path) -> None:
+    """Le contrôle porte sur la déclaration, que la fenêtre soit ouverte ou non.
+
+    Le test précédent dépend d'une course ; celui-ci tient même le jour où la
+    machine est trop rapide pour l'ouvrir.
+    """
+    assert SUFFIXE not in (".py", ".json", ".yml", ".md")

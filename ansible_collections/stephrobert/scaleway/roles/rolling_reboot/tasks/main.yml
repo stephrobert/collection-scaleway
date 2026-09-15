@@ -69,16 +69,50 @@
           {{ scaleway_rolling_reboot_selector if scaleway_rolling_reboot_selector | length > 0
              else {'group': scaleway_rolling_reboot_group} }}
 
+    # **`kind` dit de quoi on parle, pas comment on le désigne.** Il ne compte
+    # donc pas parmi les critères : le sélecteur en porte toujours exactement
+    # un, et la même grammaire vaut pour une machine et pour un nœud de pool.
+    #
+    # Un nœud ne vient pas de l'inventaire : mesuré, le plugin sert Instance,
+    # Elastic Metal et Apple Silicon, et rien de Kubernetes. La liste vient donc
+    # de l'API, et `group` y désigne le **pool**, qui groupe des nœuds comme un
+    # groupe d'inventaire groupe des machines (#244).
+    - name: What kind of thing is being rolled through
+      ansible.builtin.set_fact:
+        _scaleway_rolling_reboot_produit: >-
+          {{ _scaleway_rolling_reboot_selecteur.kind | default('instance') }}
+        _scaleway_rolling_reboot_criteres: >-
+          {{ _scaleway_rolling_reboot_selecteur
+             | dict2items | rejectattr('key', 'equalto', 'kind')
+             | items2dict }}
+
+    - name: That kind is one this role knows how to reboot
+      ansible.builtin.assert:
+        that:
+          - _scaleway_rolling_reboot_produit in ['instance', 'k8s_node']
+        fail_msg: >-
+          kind={{ _scaleway_rolling_reboot_produit }} is not something this role
+          reboots. It knows `instance` and `k8s_node`. Rolling through something
+          whose return it cannot observe would be a timer wearing a roll's
+          clothes.
+        quiet: true
+
     - name: The machines it holds, read from the inventory
       ansible.builtin.set_fact:
         _scaleway_rolling_reboot_selection: >-
-          {{ _scaleway_rolling_reboot_selecteur
+          {{ _scaleway_rolling_reboot_criteres
              | stephrobert.scaleway.select_hosts(groups=groups, hostvars=hostvars) }}
+      when: _scaleway_rolling_reboot_produit == 'instance'
+
+    - name: The nodes it holds, read from the API
+      ansible.builtin.include_tasks: noeuds.yml
+      when: _scaleway_rolling_reboot_produit == 'k8s_node'
 
     - name: The selection is not empty
       ansible.builtin.assert:
         that:
           - _scaleway_rolling_reboot_selection | length > 0
+            or _scaleway_rolling_reboot_designes | default([]) | length > 0
         fail_msg: >-
           the selector `{{ _scaleway_rolling_reboot_selecteur | to_json }}` holds no host.
           {{ ('No inventory was parsed: run with `-i <name>.scaleway.yml`.
@@ -105,6 +139,28 @@
       loop: "{{ _scaleway_rolling_reboot_selection }}"
       register: avant
       failed_when: false
+      when: _scaleway_rolling_reboot_produit == 'instance'
+
+    # **Un nœud a déjà été lu.** Sa liste vient de l'API, pas de l'inventaire,
+    # donc son état est celui que cette lecture a rendu. Le relire une seconde
+    # fois serait un second chemin vers la même information, et les deux
+    # pourraient se contredire.
+    #
+    # `ready` est à un nœud ce que `running` est à une machine : le contrat le
+    # déclare, avec `rebooting` entre deux.
+    - name: Separate the nodes that can be rebooted from those that cannot
+      ansible.builtin.set_fact:
+        # La forme commune aux deux produits : `scope` est la zone d'une
+        # machine et la région d'un nœud, ce que chaque API demande à sa place.
+        _scaleway_rolling_reboot_a_redemarrer: >-
+          {{ _scaleway_rolling_reboot_designes
+             | selectattr('state', 'equalto', 'ready')
+             | map('stephrobert.scaleway.reboot_target', kind='k8s_node') | list }}
+        _scaleway_rolling_reboot_laissees: >-
+          {{ _scaleway_rolling_reboot_designes
+             | rejectattr('state', 'equalto', 'ready') | list }}
+        _scaleway_rolling_reboot_illisibles: []
+      when: _scaleway_rolling_reboot_produit == 'k8s_node'
 
     - name: Separate what can be rebooted from what cannot
       ansible.builtin.set_fact:
@@ -112,14 +168,17 @@
         # rewrites that field, measured.
         _scaleway_rolling_reboot_a_redemarrer: >-
           {{ avant.results | selectattr('server', 'defined')
-             | selectattr('server.state', 'equalto', 'running') | list }}
+             | map(attribute='server')
+             | selectattr('state', 'equalto', 'running')
+             | map('stephrobert.scaleway.reboot_target', kind='instance') | list }}
         _scaleway_rolling_reboot_laissees: >-
           {{ avant.results | selectattr('server', 'defined')
-             | rejectattr('server.state', 'equalto', 'running')
-             | map(attribute='server') | list }}
+             | map(attribute='server')
+             | rejectattr('state', 'equalto', 'running') | list }}
         _scaleway_rolling_reboot_illisibles: >-
           {{ avant.results | rejectattr('server', 'defined')
              | map(attribute='item') | list | sort }}
+      when: _scaleway_rolling_reboot_produit == 'instance'
 
     - name: Every selected machine was readable
       ansible.builtin.assert:
@@ -138,11 +197,11 @@
     - name: The plan
       ansible.builtin.debug:
         msg: >-
-          {{ scaleway_rolling_reboot_group }} : {{ a_redemarrer | length }}
+          {{ _scaleway_rolling_reboot_produit }} : {{ a_redemarrer | length }}
           to reboot in
           {{ (a_redemarrer | length / (taille | int)) | round(0, 'ceil') | int }}
           batch(es) of {{ taille }}
-          ({{ a_redemarrer | map(attribute='server.name') | list | sort
+          ({{ a_redemarrer | map(attribute='name') | list | sort
               | join(', ') or 'none' }})
           {{ ('· left alone, not running: '
               ~ (laissees | map(attribute='name') | list | sort | join(', ')))
@@ -175,7 +234,7 @@
         restants: >-
           {{ _scaleway_rolling_reboot_a_redemarrer[((index + 1)
              * (scaleway_rolling_reboot_batch_size | int)):]
-             | map(attribute='server.name') | list }}
+             | map(attribute='name') | list }}
       when:
         - not ansible_check_mode
         - _scaleway_rolling_reboot_a_redemarrer | length > 0
@@ -205,7 +264,7 @@
                target=(_scaleway_rolling_reboot_selecteur | to_json),
                mode=('check' if ansible_check_mode else 'apply'),
                changed=(_scaleway_rolling_reboot_a_redemarrer
-                        | map(attribute='server.name') | list),
+                        | map(attribute='name') | list),
                refused=_scaleway_rolling_reboot_laissees,
                refused_reason='state',
                unmeasured=_scaleway_rolling_reboot_illisibles,

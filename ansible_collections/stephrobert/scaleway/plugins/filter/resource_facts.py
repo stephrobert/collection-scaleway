@@ -101,7 +101,7 @@ SUPPLEMENTS: dict[str, tuple[str, ...]] = {
     "instance": ("planned_maintenance", "end_of_service", "allowed_actions"),
     "lb": (),
     "k8s_cluster": ("version", "upgrade_available", "expires_at", "versions_behind"),
-    "k8s_node": ("health_conditions",),
+    "k8s_node": ("health_conditions", "pool"),
     "lb_certificate": ("expires_at",),
 }
 
@@ -230,7 +230,26 @@ def _k8s_cluster(charge: dict, contexte: dict | None = None) -> dict[str, object
     }
 
 
-def _k8s_node(charge: dict) -> dict[str, object]:
+def _nom_du_pool(contexte: dict, identifiant: object) -> object:
+    """Le nom du pool que ce nœud habite, depuis ce qui a été lu.
+
+    Rapprochement fait ici, à la couture, pour la même raison que le calendrier
+    des versions : c'est la seule place où le vocabulaire d'un produit a droit
+    de cité.
+    """
+    if not identifiant:
+        return None
+    return next(
+        (
+            pool.get("name")
+            for pool in (contexte.get("pools") or [])
+            if isinstance(pool, dict) and pool.get("id") == identifiant
+        ),
+        None,
+    )
+
+
+def _k8s_node(charge: dict, contexte: dict | None = None) -> dict[str, object]:
     """Un nœud de pool, dans la forme commune.
 
     **`conditions` est mesuré, pas contracté.** Relevé le 14 septembre 2026 sur
@@ -257,6 +276,16 @@ def _k8s_node(charge: dict) -> dict[str, object]:
         ],
         "last_change": charge.get("updated_at") or charge.get("created_at"),
         "health_conditions": charge.get("conditions"),
+        # **Le nom du pool, pas son identifiant.** Un pool groupe des nœuds
+        # comme un groupe d'inventaire groupe des machines, et c'est ce nom
+        # qu'un opérateur écrit dans un sélecteur. `pool_id` est ce que l'API
+        # rend, et le faire écrire à la main serait lui demander de lire une
+        # seconde API pour désigner ce qu'il voit dans sa console.
+        #
+        # `None` quand le pool n'a pas été lu : un nœud sans pool connu n'est
+        # pas un nœud hors pool, et un sélecteur qui le prendrait pour tel
+        # agirait sur ce que personne n'a désigné.
+        "pool": _nom_du_pool(contexte or {}, charge.get("pool_id")),
     }
 
 
@@ -309,7 +338,7 @@ def _lb(charge: dict) -> dict[str, object]:
 #: Les normaliseurs qui ont besoin d'autre chose que leur propre charge utile.
 #: Déclaré plutôt que deviné par introspection : une signature qui change sans
 #: qu'on s'en aperçoive ferait passer le contexte à personne, en silence.
-AVEC_CONTEXTE = (_k8s_cluster,)
+AVEC_CONTEXTE = (_k8s_cluster, _k8s_node)
 
 NORMALISEURS = {
     "instance": _instance,

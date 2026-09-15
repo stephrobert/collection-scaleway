@@ -1,0 +1,102 @@
+# Les nœuds de pool que le sélecteur désigne, lus par l'API.
+#
+# **Ils ne viennent pas de l'inventaire, et c'est mesuré.** Le plugin sert
+# Instance, Elastic Metal et Apple Silicon ; il n'a pas de fournisseur pour
+# Kubernetes. Un `group: production` lu dans l'inventaire ne désignerait rien, et
+# la garde « trouver zéro n'autorise pas à agir sur tout » échouerait pour une
+# raison qui n'est pas la bonne (#244).
+#
+# **La grammaire reste la même**, et c'est tout l'objet : un pool groupe des
+# nœuds comme un groupe d'inventaire groupe des machines. Ce qui change est d'où
+# vient la liste, pas comment on la désigne.
+
+- name: The regions behind those zones
+  ansible.builtin.set_fact:
+    # Dérivé plutôt que redemandé : une seconde liste à tenir finirait par ne
+    # plus correspondre à la première, et personne ne le verrait.
+    _scaleway_rolling_reboot_regions: >-
+      {{ scaleway_rolling_reboot_zones
+         | map('regex_replace', '-[0-9]+$', '') | unique | list | sort }}
+
+- name: Ask each region for its clusters
+  stephrobert.scaleway.k8s_cluster_info:
+    region: "{{ item }}"
+  loop: "{{ _scaleway_rolling_reboot_regions }}"
+  register: _sonde_clusters
+  failed_when: false
+
+# **Une région muette arrête le roulement, elle ne le rétrécit pas.** Redémarrer
+# un parc qu'on ne connaît qu'en partie est exactement la façon dont un
+# roulement fait tomber ce qu'il n'a pas vu : c'est la même garde que celle qui
+# refuse une machine illisible, un produit plus loin.
+- name: Every region answered
+  ansible.builtin.assert:
+    that:
+      - muettes | length == 0
+    fail_msg: >-
+      {{ muettes | length }} region(s) did not answer: {{ muettes | join(', ') }}.
+      Rolling through a fleet that is only partly known is how a roll takes down
+      what it could not see.
+    quiet: true
+  vars:
+    muettes: >-
+      {{ _sonde_clusters.results | rejectattr('clusters', 'defined')
+         | map(attribute='item') | list | sort }}
+
+- name: The clusters those regions hold
+  ansible.builtin.set_fact:
+    _scaleway_rolling_reboot_grappes: >-
+      {{ _sonde_clusters.results | selectattr('clusters', 'defined')
+         | map(attribute='clusters') | flatten | list }}
+
+- name: Ask each cluster for its pools
+  stephrobert.scaleway.k8s_cluster_pool_info:
+    region: "{{ item.region }}"
+    cluster_id: "{{ item.id }}"
+  loop: "{{ _scaleway_rolling_reboot_grappes }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: _sonde_pools
+  failed_when: false
+
+- name: Ask each cluster for its nodes
+  stephrobert.scaleway.k8s_cluster_node_info:
+    region: "{{ item.region }}"
+    cluster_id: "{{ item.id }}"
+  loop: "{{ _scaleway_rolling_reboot_grappes }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: _sonde_noeuds
+  failed_when: false
+
+- name: Every cluster answered for its pools and its nodes
+  ansible.builtin.assert:
+    that:
+      - _sonde_pools.results | rejectattr('pools', 'defined') | list | length == 0
+      - _sonde_noeuds.results | rejectattr('nodes', 'defined') | list | length == 0
+    fail_msg: >-
+      a cluster did not answer for its pools or its nodes. A roll that only
+      knows part of a pool reboots part of it and calls that done.
+    quiet: true
+
+# La couture : le nœud porte le **nom** de son pool, pas son identifiant, parce
+# que c'est ce qu'un opérateur écrit dans un sélecteur et ce qu'il lit dans sa
+# console.
+- name: The nodes, in the shape the selector speaks
+  ansible.builtin.set_fact:
+    _scaleway_rolling_reboot_noeuds: >-
+      {{ (_sonde_noeuds.results | selectattr('nodes', 'defined')
+          | map(attribute='nodes') | flatten | list)
+         | stephrobert.scaleway.resource_facts(
+             kind='k8s_node', context={'pools': _pools}) }}
+  vars:
+    _pools: >-
+      {{ _sonde_pools.results | selectattr('pools', 'defined')
+         | map(attribute='pools') | flatten | list }}
+
+- name: The nodes the selector designates
+  ansible.builtin.set_fact:
+    _scaleway_rolling_reboot_designes: >-
+      {{ _scaleway_rolling_reboot_criteres
+         | stephrobert.scaleway.select_resources(
+             _scaleway_rolling_reboot_noeuds, kind='k8s_node') }}

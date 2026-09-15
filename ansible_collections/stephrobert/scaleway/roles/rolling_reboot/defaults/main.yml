@@ -7,6 +7,21 @@ scaleway_rolling_reboot_group: ""
 # ou des étiquettes. `group` ci-dessus en est le raccourci.
 scaleway_rolling_reboot_selector: {}
 
+# Les zones à interroger quand le sélecteur désigne des nœuds de pool. Ils ne
+# viennent pas de l'inventaire : mesuré, le plugin sert Instance, Elastic Metal
+# et Apple Silicon, et rien de Kubernetes. Les régions en sont dérivées.
+scaleway_rolling_reboot_zones:
+  - fr-par-1
+  - fr-par-2
+  - fr-par-3
+  - nl-ams-1
+  - nl-ams-2
+  - nl-ams-3
+  - pl-waw-1
+  - pl-waw-2
+  - pl-waw-3
+  - it-mil-1
+
 # One at a time is the safe default. A larger batch is a decision.
 scaleway_rolling_reboot_batch_size: 1
 

@@ -634,6 +634,75 @@
         jugees: >-
           {{ scaleway_fleet_audit_findings | map(attribute='field') | unique | list }}
 
+    # ---- rolling_reboot : une grammaire, deux produits (#244) -------------
+    #
+    # L'émulateur ne sert pas de cluster, donc ce qui se joue ici est la
+    # grammaire et ses refus, pas le roulement lui-même. Celui-ci s'éprouve sur
+    # le compte réel, où la plateforme d'exemple porte un pool.
+    - name: Un produit que ce rôle ne sait pas redémarrer est refusé
+      block:
+        - name: Rouler sur quelque chose dont il ne sait pas observer le retour
+          ansible.builtin.include_role:
+            name: stephrobert.scaleway.rolling_reboot
+          vars:
+            scaleway_rolling_reboot_selector:
+              kind: lb_certificate
+              name: www
+
+        - name: Le run aurait dû refuser
+          ansible.builtin.fail:
+            msg: >-
+              un roulement sur un produit dont le retour ne s'observe pas est
+              une temporisation déguisée, et il est parti sans rien dire
+
+      rescue:
+        - name: Le refus nomme ce que le rôle sait redémarrer
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_result.msg is search('lb_certificate')
+              - ansible_failed_result.msg is search('k8s_node')
+            success_msg: >-
+              refus attendu : le rôle nomme les produits dont il sait observer
+              le retour
+            fail_msg: >-
+              le refus ne dit pas ce qu'il sait faire : {{ ansible_failed_result.msg }}
+
+    # `kind` dit de quoi on parle, pas comment on le désigne : le sélecteur en
+    # porte toujours exactement un critère, et `kind` n'en est pas un.
+    # `kind` dit de quoi on parle, pas comment on le désigne : le sélecteur en
+    # porte toujours exactement un critère, et `kind` n'en est pas un.
+    #
+    # **La preuve est la forme du refus, pas son absence.** Ce playbook tourne
+    # sans inventaire, donc un sélecteur d'Instances ne désigne rien et le rôle
+    # refuse, à raison. Ce qui compte est qu'il refuse pour *cette* raison et
+    # non pour « deux critères à la fois », ce qui serait le cas si `kind` en
+    # était un.
+    - name: "`kind` ne compte pas parmi les critères du sélecteur"
+      block:
+        - name: Rouler avec un `kind` et un critère
+          ansible.builtin.include_role:
+            name: stephrobert.scaleway.rolling_reboot
+          vars:
+            scaleway_rolling_reboot_selector:
+              kind: instance
+              group: scw_product_instance
+
+        - name: Le run aurait dû refuser, faute d'inventaire
+          ansible.builtin.fail:
+            msg: ce playbook n'a pas d'inventaire, la sélection ne peut rien désigner
+
+      rescue:
+        - name: Le refus porte sur la sélection vide, jamais sur deux critères
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_result.msg is search('holds no host')
+              - not (ansible_failed_result.msg is search('à la fois'))
+            success_msg: >-
+              `kind` a traversé la grammaire sans compter pour un critère : le
+              refus porte sur la sélection vide
+            fail_msg: >-
+              `kind` a été pris pour un critère : {{ ansible_failed_result.msg }}
+
     # ---- fleet_changes : la règle du jalon, jouée -------------------------
     #
     # « La 0.8.0 ne doit pas augmenter le nombre de notifications, elle doit

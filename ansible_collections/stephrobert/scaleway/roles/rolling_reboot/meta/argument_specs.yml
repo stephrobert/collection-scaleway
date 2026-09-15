@@ -29,6 +29,25 @@ argument_specs:
             An ambiguous name is refused rather than settled, and an unknown key
             is refused rather than selecting nothing, because a typo and an
             empty fleet look alike.
+          - >-
+            C(kind) says what is being rolled through, C(instance) by default or
+            C(k8s_node) for the nodes of a Kubernetes pool. It is not a
+            criterion: the selector still carries exactly one of those, and the
+            same grammar holds for a machine and for a node.
+          - >-
+            For C(k8s_node), C(group) means the pool, which groups nodes the way
+            an inventory group groups machines, and the list comes from the API
+            rather than from the inventory, which serves no Kubernetes. C(tags)
+            is not accepted there: a node carries none, and passing a pool's off
+            as its own would add a hop you cannot see.
+      scaleway_rolling_reboot_zones:
+        type: list
+        elements: str
+        description:
+          - >-
+            The zones to ask when the selector designates pool nodes; the
+            regions are derived from them. Ignored for Instances, which come
+            from the inventory with their zone.
       scaleway_rolling_reboot_group:
         type: str
         default: ""
