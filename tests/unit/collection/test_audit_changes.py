@@ -11,20 +11,28 @@ from ansible_collections.stephrobert.scaleway.plugins.filter.audit_changes impor
 
 MAINTENANT = "2026-09-14T10:00:00Z"
 HIER = "2026-09-13T10:00:00Z"
-ZONES = ["fr-par-1", "fr-par-2"]
+#: Les portées sont typées : `fr-par` est une région et `fr-par-1` une zone, et
+#: rien dans la chaîne ne permet de les distinguer (#273).
+PORTEES = [
+    {"type": "zone", "name": "fr-par-1"},
+    {"type": "zone", "name": "fr-par-2"},
+]
+REGION = {"type": "region", "name": "fr-par"}
 
 
 def _constat(
     regle: str = "public_ip",
     identifiant: str = "aaaa-1111",
-    zone: str = "fr-par-1",
+    portee: str = "fr-par-1",
+    type_de_portee: str = "zone",
     severite: str = "warn",
     **reste: object,
 ) -> dict:
     return {
         "id": f"{regle}:instance:{identifiant}",
         "name": f"instance/{identifiant}",
-        "zone": zone,
+        "scope": portee,
+        "scope_type": type_de_portee,
         "rule": regle,
         "field": "public_addresses",
         "severity": severite,
@@ -33,8 +41,17 @@ def _constat(
     }
 
 
-def _comparer(actuels: list[dict], anciens: list[dict] | None, zones: list[str] = ZONES) -> dict:
-    return audit_changes(actuels, zones_measured=zones, now=MAINTENANT, previous=anciens)
+def _comparer(
+    actuels: list[dict],
+    anciens: list[dict] | None,
+    portees: list[dict] | None = None,
+) -> dict:
+    return audit_changes(
+        actuels,
+        scopes_measured=PORTEES if portees is None else portees,
+        now=MAINTENANT,
+        previous=anciens,
+    )
 
 
 # ---- Les trois ensembles -------------------------------------------------
@@ -59,7 +76,7 @@ def test_un_constat_apparu_est_nouveau_et_porte_sa_premiere_vue() -> None:
     assert changements["new"][0]["first_seen"] == MAINTENANT
 
 
-def test_un_constat_disparu_dans_une_zone_lue_est_resolu() -> None:
+def test_un_constat_disparu_dans_une_portee_lue_est_resolu() -> None:
     """La zone a répondu et le constat n'y est plus : là, on peut conclure."""
     changements = _comparer([], [_constat()])
 
@@ -71,31 +88,31 @@ def test_un_constat_disparu_dans_une_zone_lue_est_resolu() -> None:
 # ---- Le refus central ----------------------------------------------------
 
 
-def test_un_constat_dont_la_zone_na_pas_repondu_nest_pas_resolu() -> None:
+def test_un_constat_dont_la_portee_na_pas_repondu_nest_pas_resolu() -> None:
     """**La pire ligne qu'un tel rapport puisse écrire.**
 
     Annoncer « résolu » dit à quelqu'un que son problème est réglé alors que
     personne n'a regardé. Le constat sort en non mesuré, avec ce qui l'y met.
     """
-    ancien = _constat(zone="fr-par-2")
+    ancien = _constat(portee="fr-par-2")
 
-    changements = _comparer([], [ancien], zones=["fr-par-1"])
+    changements = _comparer([], [ancien], portees=[{"type": "zone", "name": "fr-par-1"}])
 
     assert changements["counts"]["resolved"] == 0
     assert changements["counts"]["unmeasured"] == 1
-    assert changements["unmeasured"][0]["reason"] == "its zone was not measured by this run"
+    assert changements["unmeasured"][0]["reason"] == "its scope was not measured by this run"
 
 
-def test_un_constat_conserve_sans_zone_ne_se_conclut_pas_non_plus() -> None:
+def test_un_constat_conserve_sans_portee_ne_se_conclut_pas_non_plus() -> None:
     """Un rapport conservé trop pauvre pour être comparé le dit, il ne tranche pas."""
     ancien = _constat()
-    del ancien["zone"]
+    del ancien["scope_type"]
 
     changements = _comparer([], [ancien])
 
     assert changements["counts"]["resolved"] == 0
     assert changements["unmeasured"][0]["reason"] == (
-        "the kept finding does not say which zone it was in"
+        "the kept finding does not say which scope it was in"
     )
 
 
@@ -180,8 +197,8 @@ def test_deux_constats_de_meme_identite_dans_un_run_sont_refuses() -> None:
 
 def test_des_zones_mesurees_qui_ne_sont_pas_une_liste_sont_refusees() -> None:
     """Une chaîne passerait le test d'appartenance caractère par caractère."""
-    with pytest.raises(Exception, match="zones mesurées sont une liste"):
-        audit_changes([], zones_measured="fr-par-1", now=MAINTENANT, previous=[])
+    with pytest.raises(Exception, match="portées mesurées sont une liste"):
+        audit_changes([], scopes_measured="fr-par-1", now=MAINTENANT, previous=[])
 
 
 # ---- Le verdict ----------------------------------------------------------
@@ -198,12 +215,16 @@ def test_un_nouveau_constat_bloquant_rend_action_required() -> None:
     assert changes_verdict(_comparer([_constat(severite="fail")], [])) == "action_required"
 
 
-def test_une_zone_muette_pese_autant_quun_nouveau_constat_bloquant() -> None:
+def test_une_portee_muette_pese_autant_quun_nouveau_constat_bloquant() -> None:
     """Une zone muette n'est pas une bonne nouvelle.
 
     La présenter comme un parc calme est le vert sur zéro fichier examiné.
     """
-    changements = _comparer([], [_constat(zone="fr-par-2")], zones=["fr-par-1"])
+    changements = _comparer(
+        [],
+        [_constat(portee="fr-par-2")],
+        portees=[{"type": "zone", "name": "fr-par-1"}],
+    )
 
     assert changes_verdict(changements) == "action_required"
 
@@ -227,3 +248,37 @@ def test_un_verdict_ne_se_calcule_pas_sur_autre_chose() -> None:
     """Un appelant qui pourrait forcer le niveau produirait un rapport qui se ment."""
     with pytest.raises(Exception, match="audit_changes"):
         changes_verdict("quiet")
+
+
+# ---- Le défaut de #272, dans les deux sens --------------------------------
+
+
+def test_un_constat_kapsule_devient_resolu_quand_sa_region_a_repondu() -> None:
+    """**Le défaut que la 0.8.0 portait avant #272.**
+
+    `fleet_audit` ne transmettait que les zones Instance, donc la région d'un
+    cluster n'était jamais dans les portées mesurées : un constat Kapsule
+    disparu sortait en « non mesuré » alors que la lecture avait parfaitement
+    répondu.
+    """
+    ancien = _constat(portee="fr-par", type_de_portee="region")
+
+    changements = _comparer([], [ancien], portees=[REGION])
+
+    assert changements["counts"]["resolved"] == 1
+    assert changements["counts"]["unmeasured"] == 0
+
+
+def test_une_zone_et_une_region_de_meme_nom_ne_se_confondent_pas() -> None:
+    """Le type est ce qui les distingue, et rien d'autre ne le peut.
+
+    Comparer les noms nus ferait passer un constat de région pour mesuré parce
+    qu'une zone au nom voisin aurait répondu. Ici la région n'a pas été lue : le
+    constat ne peut pas être conclu.
+    """
+    ancien = _constat(portee="fr-par", type_de_portee="region")
+
+    changements = _comparer([], [ancien], portees=[{"type": "zone", "name": "fr-par"}])
+
+    assert changements["counts"]["resolved"] == 0
+    assert changements["unmeasured"][0]["reason"] == "its scope was not measured by this run"

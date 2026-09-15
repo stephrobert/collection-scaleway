@@ -44,7 +44,7 @@
 
 # **Chaque produit ne sert pas les mêmes zones.** Demander au Load Balancer une
 # zone que son contrat ne déclare pas faisait ressortir cette zone comme « non
-# mesurée », à chaque exécution propre. `zones_unmeasured` porte l'affirmation
+# mesurée », à chaque exécution propre. `scopes_unmeasured` porte l'affirmation
 # la plus répétée de ce dépôt, et un signal qui crie au loup est un signal que
 # personne ne lit (#222).
 - name: What each product offers among the zones asked
@@ -75,6 +75,49 @@
   register: sonde_lb
   failed_when: false
 
+# **Kubernetes est régional**, et il entre dans l'instantané pour la même raison
+# que le reste : une version qui monte, un pool qui change de taille et un nœud
+# qui apparaît sont des changements du parc que quelqu'un doit voir. La version
+# qui ajoute la mémoire du parc et Kapsule ne peut pas se souvenir de l'un sans
+# l'autre (#274).
+- name: The regions behind those zones
+  ansible.builtin.set_fact:
+    _scaleway_fleet_report_regions: >-
+      {{ (_scaleway_fleet_report_instance.offered + _scaleway_fleet_report_lb.offered)
+         | map('regex_replace', '-[0-9]+$', '') | unique | list | sort }}
+
+- name: Ask each region for its clusters
+  stephrobert.scaleway.k8s_cluster_info:
+    region: "{{ item }}"
+  loop: "{{ _scaleway_fleet_report_regions }}"
+  register: sonde_clusters
+  failed_when: false
+  when: "'k8s_cluster' in scaleway_fleet_report_products"
+
+- name: Ask each cluster for its pools
+  stephrobert.scaleway.k8s_cluster_pool_info:
+    region: "{{ item.region }}"
+    cluster_id: "{{ item.id }}"
+  loop: "{{ sonde_clusters.results | rejectattr('skipped', 'defined') | selectattr('clusters', 'defined')
+            | map(attribute='clusters') | flatten | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: sonde_pools
+  failed_when: false
+  when: "'k8s_cluster' in scaleway_fleet_report_products"
+
+- name: Ask each cluster for its nodes
+  stephrobert.scaleway.k8s_cluster_node_info:
+    region: "{{ item.region }}"
+    cluster_id: "{{ item.id }}"
+  loop: "{{ sonde_clusters.results | rejectattr('skipped', 'defined') | selectattr('clusters', 'defined')
+            | map(attribute='clusters') | flatten | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: sonde_noeuds
+  failed_when: false
+  when: "'k8s_cluster' in scaleway_fleet_report_products"
+
 # ---- Measured, and not measured -----------------------------------------
 
 - name: Separate the zones that answered from the zones that did not
@@ -88,14 +131,39 @@
     # Les parenthèses portent le dédoublonnage : sans elles, `a + b | unique`
     # ne dédoublonne que `b`, et une zone muette des deux côtés apparaît deux
     # fois. Mesuré au premier essai.
+    _scaleway_fleet_report_grappes: >-
+      {{ sonde_clusters.results | rejectattr('skipped', 'defined') | selectattr('clusters', 'defined')
+         | map(attribute='clusters') | flatten | list }}
+    _scaleway_fleet_report_pools: >-
+      {{ sonde_pools.results | rejectattr('skipped', 'defined') | selectattr('pools', 'defined')
+         | map(attribute='pools') | flatten | list }}
+    _scaleway_fleet_report_noeuds: >-
+      {{ sonde_noeuds.results | rejectattr('skipped', 'defined') | selectattr('nodes', 'defined')
+         | map(attribute='nodes') | flatten | list }}
+    # **Les portées sont typées**, parce qu'une région et une zone peuvent
+    # porter des noms voisins et que rien dans la chaîne ne les distingue : un
+    # instantané qui les confondrait comparerait `fr-par` à `fr-par-1` sans que
+    # rien ne le dise (#273).
+    #
+    # Les parenthèses portent le dédoublonnage : sans elles, `a + b | unique`
+    # ne dédoublonne que `b`, et une portée muette des deux côtés apparaît deux
+    # fois. Mesuré au premier essai.
     _scaleway_fleet_report_muettes: >-
-      {{ ((sonde_instances.results | rejectattr('servers', 'defined')
-           | map(attribute='item') | list)
-        + (sonde_lb.results | rejectattr('lbs', 'defined')
-           | map(attribute='item') | list)) | unique | sort }}
+      {{ (((sonde_instances.results | rejectattr('servers', 'defined')
+            | map(attribute='item') | list)
+         + (sonde_lb.results | rejectattr('lbs', 'defined')
+            | map(attribute='item') | list))
+          | unique | sort | stephrobert.scaleway.as_scopes('zone'))
+        + (sonde_clusters.results | rejectattr('skipped', 'defined') | rejectattr('clusters', 'defined')
+           | map(attribute='item') | unique | sort
+           | stephrobert.scaleway.as_scopes('region')) }}
     _scaleway_fleet_report_mesurees: >-
-      {{ sonde_instances.results | selectattr('servers', 'defined')
-         | map(attribute='item') | list | sort }}
+      {{ ((sonde_instances.results | selectattr('servers', 'defined')
+           | map(attribute='item') | list | sort
+           | stephrobert.scaleway.as_scopes('zone'))
+        + (sonde_clusters.results | rejectattr('skipped', 'defined') | selectattr('clusters', 'defined')
+           | map(attribute='item') | list | sort
+           | stephrobert.scaleway.as_scopes('region'))) }}
 
 # ---- The counts ---------------------------------------------------------
 
@@ -108,9 +176,9 @@
   ansible.builtin.set_fact:
     scaleway_fleet_report_result:
       zones_asked: "{{ _scaleway_fleet_report_zones }}"
-      zones_measured: "{{ mesurees }}"
-      zones_unmeasured: "{{ _scaleway_fleet_report_muettes }}"
-      # Distinct de `zones_unmeasured`, et c'est tout l'objet du champ : une
+      scopes_measured: "{{ mesurees }}"
+      scopes_unmeasured: "{{ _scaleway_fleet_report_muettes }}"
+      # Distinct de `scopes_unmeasured`, et c'est tout l'objet du champ : une
       # zone qu'un produit n'offre pas est un fait sur le produit, pas une
       # mesure qui a manqué.
       zones_not_offered: "{{ non_offertes }}"
@@ -166,10 +234,10 @@
 - name: What a later read will be able to compare against
   ansible.builtin.set_fact:
     scaleway_fleet_report_snapshot: >-
-      {{ (machines + balanceurs)
+      {{ (machines + balanceurs + kubernetes)
          | stephrobert.scaleway.fleet_snapshot(
-             zones_measured=_scaleway_fleet_report_mesurees,
-             zones_unmeasured=_scaleway_fleet_report_muettes,
+             scopes_measured=_scaleway_fleet_report_mesurees,
+             scopes_unmeasured=_scaleway_fleet_report_muettes,
              captured_at=_scaleway_fleet_report_debut,
              collection_version=version) }}
   vars:
@@ -179,6 +247,16 @@
     balanceurs: >-
       {{ _scaleway_fleet_report_balanceurs
          | stephrobert.scaleway.resource_facts(kind='lb') }}
+    # Kapsule entre dans l'instantané : un cluster qui monte de version, un pool
+    # qui change de taille et un nœud qui apparaît sont des changements du parc
+    # que quelqu'un doit voir (#274).
+    kubernetes: >-
+      {{ (_scaleway_fleet_report_grappes
+          | stephrobert.scaleway.resource_facts(kind='k8s_cluster'))
+         + (_scaleway_fleet_report_pools
+            | stephrobert.scaleway.resource_facts(kind='k8s_pool'))
+         + (_scaleway_fleet_report_noeuds
+            | stephrobert.scaleway.resource_facts(kind='k8s_node')) }}
     # La version se lit là où elle se trouve vraiment, et ce n'est pas le même
     # fichier selon le contexte : une collection installée porte `MANIFEST.json`
     # et **pas** `galaxy.yml`, le dépôt l'inverse. Le filtre cherche les deux,
@@ -215,8 +293,9 @@
 - name: Nothing was measured, and that is not an empty fleet
   ansible.builtin.debug:
     msg: >-
-      No zone answered:
-      {{ scaleway_fleet_report_result.zones_unmeasured | join(', ') }}.
+      No scope answered:
+      {{ scaleway_fleet_report_result.scopes_unmeasured
+         | map('stephrobert.scaleway.scope_label') | join(', ') }}.
       Nothing was measured, which is not the same as nothing being there.
       `ansible-playbook stephrobert.scaleway.doctor` says why.
   when: _scaleway_fleet_report_mesurees | length == 0
@@ -257,8 +336,9 @@
       {% for statut, compte in rapport.load_balancers_by_status.items() -%}
       | lb {{ statut }} | {{ compte }} |
       {% endfor -%}
-      {% if rapport.zones_unmeasured -%}
-      | **zones unmeasured** | {{ rapport.zones_unmeasured | join(", ") }} |
+      {% if rapport.scopes_unmeasured -%}
+      | **scopes unmeasured** | {{ rapport.scopes_unmeasured
+         | map("stephrobert.scaleway.scope_label") | join(", ") }} |
       {% endif -%}
   vars:
     rapport: "{{ scaleway_fleet_report_result }}"

@@ -64,7 +64,7 @@ def sortie_muette(ansible_disponible: None) -> str:
 
 
 def test_aucune_zone_mesuree_ne_se_lit_pas_comme_un_parc_vide(sortie_muette: str) -> None:
-    assert "No zone answered" in sortie_muette
+    assert "No scope answered" in sortie_muette
     assert "which is not the same as nothing being there" in sortie_muette
 
 
@@ -79,18 +79,27 @@ def test_le_rapport_chiffre_ne_sort_pas_quand_rien_na_ete_mesure(sortie_muette: 
     assert "instances_by_state" not in sortie_muette
 
 
-def test_une_zone_muette_ne_figure_quune_fois(ansible_disponible: None) -> None:
+def test_une_portee_muette_ne_figure_quune_fois(ansible_disponible: None) -> None:
     """Elle est interrogée deux fois, pour les Instances et pour les balanceurs.
 
     La première version concaténait les deux listes et ne dédoublonnait que la
     seconde, une question de priorité dans Jinja : chaque zone apparaissait en
     double.
+
+    **Le type accompagne le nom**, parce que `fr-par` et `fr-par-1` se
+    ressemblent assez pour qu'un lecteur les confonde : le rapport sait lire
+    Kapsule, qui est régional, depuis #274.
+
+    Aucune région ici : `scaleway_fleet_report_products` vaut `[instance, lb]`
+    par défaut, et c'est délibéré. Lire Kapsule sur un compte sans cluster ferait
+    sortir une région muette à chaque rapport, donc un `action_required`
+    permanent sur un parc parfaitement calme.
     """
     _, sortie = _jouer("-e", "zones=fr-par-1", "-e", "output=json")
-    citees = re.findall(r"No zone answered: ([^.]+)\.", sortie)
+    citees = re.findall(r"No scope answered: ([^.]+)\.", sortie)
     assert citees, sortie
-    noms = [nom.strip() for nom in citees[0].split(",")]
-    assert noms == ["fr-par-1"], noms
+    noms = sorted(nom.strip() for nom in citees[0].split(","))
+    assert noms == ["zone/fr-par-1"], noms
 
 
 # --- ce que le playbook refuse --------------------------------------------

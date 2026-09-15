@@ -27,12 +27,14 @@ def _module():
     return sys.modules["fleet_diff"]
 
 
-def _ressource(identifiant, **reste):
+def _ressource(identifiant, zone=None, **reste):
+    """Une ressource normalisée. `zone=` reste le mot du test, il pose la portée."""
     base = {
         "kind": "instance",
         "id": identifiant,
         "name": f"machine-{identifiant}",
-        "zone": "fr-par-1",
+        "scope": zone or "fr-par-1",
+        "scope_type": "zone",
         "state": "running",
         "tags": [],
         "public_addresses": [],
@@ -46,8 +48,8 @@ def _instantane(ressources, mesurees=("fr-par-1",), muettes=(), quand="2026-09-1
         "schema_version": 1,
         "captured_at": quand,
         "collection_version": "0.8.0",
-        "zones_measured": sorted(mesurees),
-        "zones_unmeasured": sorted(muettes),
+        "scopes_measured": [{"type": "zone", "name": z} for z in sorted(mesurees)],
+        "scopes_unmeasured": [{"type": "zone", "name": z} for z in sorted(muettes)],
         "resources": list(ressources),
     }
 
@@ -139,7 +141,7 @@ def test_une_zone_muette_ne_fait_disparaitre_personne() -> None:
     diff = module.fleet_diff(avant, after=apres)
 
     assert diff["removed"] == []
-    assert diff["zones_not_compared"] == {"nl-ams-1": "did not answer in the later snapshot"}
+    assert diff["scopes_not_compared"] == {"zone/nl-ams-1": "did not answer in the later snapshot"}
     assert diff["resources_not_compared"] == 1
     assert module.diff_verdict(diff) == "action_required"
 
@@ -147,7 +149,7 @@ def test_une_zone_muette_ne_fait_disparaitre_personne() -> None:
 def test_une_zone_quon_a_cesse_de_lire_ne_fait_disparaitre_personne() -> None:
     """Le cas qui se voit le moins, et qui produit le même faux rapport.
 
-    Elle n'apparaît dans aucun `zones_unmeasured`, puisque personne n'a échoué à
+    Elle n'apparaît dans aucun `scopes_unmeasured`, puisque personne n'a échoué à
     la lire : on ne l'a simplement pas demandée. Sans cette règle, tout ce
     qu'elle porte passerait pour supprimé.
     """
@@ -161,7 +163,7 @@ def test_une_zone_quon_a_cesse_de_lire_ne_fait_disparaitre_personne() -> None:
     diff = module.fleet_diff(avant, after=apres)
 
     assert diff["removed"] == []
-    assert diff["zones_not_compared"] == {"nl-ams-1": "not read in the later snapshot"}
+    assert diff["scopes_not_compared"] == {"zone/nl-ams-1": "not read in the later snapshot"}
 
 
 def test_une_zone_lue_seulement_aujourdhui_ne_cree_personne() -> None:
@@ -176,7 +178,7 @@ def test_une_zone_lue_seulement_aujourdhui_ne_cree_personne() -> None:
     diff = module.fleet_diff(avant, after=apres)
 
     assert diff["new"] == []
-    assert diff["zones_not_compared"] == {"nl-ams-1": "not read in the earlier snapshot"}
+    assert diff["scopes_not_compared"] == {"zone/nl-ams-1": "not read in the earlier snapshot"}
 
 
 def test_un_horodatage_qui_bouge_seul_est_compte_a_part() -> None:
@@ -212,9 +214,9 @@ def test_comparer_un_instantane_tronque_est_refuse() -> None:
     """Un fichier tronqué et un parc vide se ressemblent."""
     module = _module()
     parc = _instantane([_ressource("a")])
-    tronque = {cle: valeur for cle, valeur in parc.items() if cle != "zones_measured"}
+    tronque = {cle: valeur for cle, valeur in parc.items() if cle != "scopes_measured"}
 
-    with pytest.raises(Exception, match="zones_measured"):
+    with pytest.raises(Exception, match="scopes_measured"):
         module.fleet_diff(tronque, after=parc)
 
 
@@ -229,5 +231,5 @@ def test_un_parc_vide_des_deux_cotes_est_calme_et_non_muet() -> None:
     diff = module.fleet_diff(vide, after=vide)
 
     assert diff["unchanged"] == 0
-    assert diff["zones_not_compared"] == {}
+    assert diff["scopes_not_compared"] == {}
     assert module.diff_verdict(diff) == "quiet"

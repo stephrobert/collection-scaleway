@@ -87,6 +87,7 @@ adr/019-a-name-filter-narrows-a-listing
 adr/020-a-plan-describes-the-moment-it-was-computed
 adr/021-a-snapshot-is-keyed-by-kind-and-identifier
 adr/022-a-product-is-adopted-behind-the-official-collection
+adr/023-a-product-is-known-to-every-seam-or-declared-absent
 ```
 
 ```{toctree}

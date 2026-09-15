@@ -15,3 +15,15 @@ scaleway_fleet_report_zones:
 
 # text for a terminal, json for a pipeline, markdown for a ticket.
 scaleway_fleet_report_output: text
+
+# **Les produits que ce rapport lit.** Instance et Load Balancer par défaut, ce
+# qu'il lisait avant que Kubernetes existe ici.
+#
+# Kapsule n'y est pas par défaut, et c'est mesuré plutôt que frileux : sur un
+# compte sans cluster, le lire ferait sortir une région muette à chaque rapport,
+# donc un `action_required` permanent sur un parc parfaitement calme. Chaque
+# produit est aussi une famille d'appels sur un compte facturé, et ce rôle ne
+# décide pas de la facture de qui le lance (#274).
+scaleway_fleet_report_products:
+  - instance
+  - lb

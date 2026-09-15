@@ -32,7 +32,8 @@ MACHINE = {
     "kind": "instance",
     "id": "680a8f82-c837-4db7-8a57-baf55798fff6",
     "name": "sonde",
-    "zone": "fr-par-1",
+    "scope": "fr-par-1",
+    "scope_type": "zone",
     "state": "running",
     "tags": [],
     "public_addresses": [],
@@ -54,7 +55,7 @@ def _module():
 
 def _instantane(module, ressources, **reste):
     defauts = {
-        "zones_measured": ["fr-par-1"],
+        "scopes_measured": [{"type": "zone", "name": "fr-par-1"}],
         "captured_at": "2026-09-13T06:00:00Z",
         "collection_version": "0.8.0",
     }
@@ -99,11 +100,14 @@ def test_linstantane_porte_les_zones_muettes() -> None:
     la disparition de tout ce qu'elle porte.
     """
     instantane = _instantane(
-        _module(), [MACHINE], zones_measured=["fr-par-1"], zones_unmeasured=["fr-par-2"]
+        _module(),
+        [MACHINE],
+        scopes_measured=[{"type": "zone", "name": "fr-par-1"}],
+        scopes_unmeasured=[{"type": "zone", "name": "fr-par-2"}],
     )
 
-    assert instantane["zones_unmeasured"] == ["fr-par-2"]
-    assert instantane["zones_measured"] == ["fr-par-1"]
+    assert instantane["scopes_unmeasured"] == [{"type": "zone", "name": "fr-par-2"}]
+    assert instantane["scopes_measured"] == [{"type": "zone", "name": "fr-par-1"}]
 
 
 def test_une_ressource_sans_cle_est_refusee() -> None:
@@ -248,3 +252,71 @@ def test_un_manifeste_illisible_ne_masque_pas_lautre_source(tmp_path, monkeypatc
     )
 
     assert module.collection_version() == "7.8.9"
+
+
+# ---- Les portées, typées --------------------------------------------------
+
+
+def test_une_portee_nue_est_refusee() -> None:
+    """Une chaîne ne dit pas si elle nomme une zone ou une région.
+
+    Deviner par la forme, `fr-par-1` contre `fr-par`, marcherait aujourd'hui sur
+    Scaleway et casserait au premier produit dont le nommage diffère. Un
+    instantané qui devinerait comparerait deux portées différentes sans que rien
+    ne le dise (#273).
+    """
+    module = _module()
+
+    with pytest.raises(Exception, match="une portée est un objet"):
+        module.fleet_snapshot(
+            [MACHINE],
+            scopes_measured=["fr-par-1"],
+            captured_at="2026-09-15T06:00:00Z",
+            collection_version="0.8.0",
+        )
+
+
+def test_un_type_de_portee_inconnu_est_refuse() -> None:
+    """Une portée mal typée ne se compare à rien, et sortirait en silence."""
+    module = _module()
+
+    with pytest.raises(Exception, match="ni zone ni region"):
+        module.fleet_snapshot(
+            [MACHINE],
+            scopes_measured=[{"type": "datacentre", "name": "fr-par-1"}],
+            captured_at="2026-09-15T06:00:00Z",
+            collection_version="0.8.0",
+        )
+
+
+def test_une_portee_sans_nom_est_refusee() -> None:
+    """Elle ne désignerait rien, ce qui est le contraire d'une portée mesurée."""
+    module = _module()
+
+    with pytest.raises(Exception, match="sans nom"):
+        module.fleet_snapshot(
+            [MACHINE],
+            scopes_measured=[{"type": "zone"}],
+            captured_at="2026-09-15T06:00:00Z",
+            collection_version="0.8.0",
+        )
+
+
+def test_deux_portees_de_types_differents_ne_se_confondent_pas() -> None:
+    """`fr-par` et `fr-par-1` sont deux portées, et toutes deux sont gardées."""
+    module = _module()
+
+    instantane = module.fleet_snapshot(
+        [MACHINE],
+        scopes_measured=[
+            {"type": "region", "name": "fr-par"},
+            {"type": "zone", "name": "fr-par-1"},
+        ],
+        captured_at="2026-09-15T06:00:00Z",
+        collection_version="0.8.0",
+    )
+
+    assert instantane["scopes_measured"] == [
+        {"type": "region", "name": "fr-par"},
+        {"type": "zone", "name": "fr-par-1"},
+    ]

@@ -260,8 +260,10 @@
           - scaleway_fleet_report_snapshot.collection_version is string
           - scaleway_fleet_report_snapshot.collection_version | length > 0
           - scaleway_fleet_report_snapshot.captured_at is string
-          - scaleway_fleet_report_snapshot.zones_measured == [zone]
-          - scaleway_fleet_report_snapshot.zones_unmeasured == []
+          - scaleway_fleet_report_snapshot.scopes_measured
+              | selectattr('type', 'equalto', 'zone') | map(attribute='name') | list == [zone]
+          - scaleway_fleet_report_snapshot.scopes_unmeasured
+              | selectattr('type', 'equalto', 'zone') | list == []
           # Toute ressource porte sa clé : c'est ce qui rend la comparaison
           # possible, et son absence est le défaut que le diff ne verrait pas.
           - scaleway_fleet_report_snapshot.resources
@@ -349,7 +351,7 @@
           - diff.removed == []
           # Une zone non comparée rendrait le verdict `action_required`, et
           # l'assertion précédente masquerait le fait qu'on n'a rien comparé.
-          - diff.zones_not_compared == {}
+          - diff.scopes_not_compared == {}
         success_msg: >-
           {{ serveur_allume }} ressort en changé sur
           {{ (diff.changed | selectattr('id', 'equalto', serveur_allume)

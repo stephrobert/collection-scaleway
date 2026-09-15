@@ -49,3 +49,4 @@ Code says the **current** invariant. This directory says what happened.
 | [ADR-020](020-a-plan-describes-the-moment-it-was-computed.md) | A plan describes the fleet as it was read, and is never replayed: the execution reads again |
 | [ADR-021](021-a-snapshot-is-keyed-by-kind-and-identifier.md) | A snapshot resource is keyed on its kind and its identifier, never on its name: two machines can carry one name in a zone |
 | [ADR-022](022-a-product-is-adopted-behind-the-official-collection.md) | A product is adopted behind the official collection rather than opposite it: they create it, we operate it, and what they serve well is named |
+| [ADR-023](023-a-product-is-known-to-every-seam-or-declared-absent.md) | A product is known to every seam that consumes what it produces, or its absence is declared with what would close it |

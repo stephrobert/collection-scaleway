@@ -2738,34 +2738,34 @@
     },
     {
       "name": "diff-qui-compare-une-zone-non-mesuree",
-      "why": "Une zone qui n'a pas répondu ferait apparaître tout ce qu'elle porte comme supprimé, et le rapport serait parfaitement plausible. C'est le défaut le plus cher que cette fonction puisse commettre : annoncer la disparition d'un parc entier le matin où l'API est indisponible.",
+      "why": "Une zone qui n'a pas répondu ferait apparaître tout ce qu'elle porte comme supprimé, et le rapport serait parfaitement plausible. C'est le défaut le plus cher que cette fonction puisse commettre : annoncer la disparition d'un parc entier le matin où l'API est indisponible. Le vocabulaire a changé en #273 : une portée n'est pas toujours une zone, et la garde porte désormais sur `scope` et son type. Le test reste le même, ce qui prouve que le renommage n'a rien desserré.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_diff.py",
-      "find": "            if ressource.get(\"zone\") in comparables",
-      "replace": "            if ressource.get(\"zone\") in comparables or True",
+      "find": "            if (str(ressource.get(\"scope_type\")), str(ressource.get(\"scope\")))\n            in comparables",
+      "replace": "            if True",
       "test": "tests/unit/collection/test_fleet_diff.py::test_une_zone_muette_ne_fait_disparaitre_personne"
     },
     {
       "name": "zone-quon-a-cesse-de-lire-passee-sous-silence",
-      "why": "Le cas qui se voit le moins : une zone que le premier instantané a lue et que le second n'a même pas demandée. Elle n'apparaît dans aucun `zones_unmeasured`, puisque personne n'a échoué à la lire. L'intersection des zones mesurées empêche déjà de la comparer, mais sans cette ligne le rapport ne dirait pas qu'elle manque, et « aucun changement » se lirait comme « rien n'a bougé ».",
+      "why": "Le cas qui se voit le moins : une zone que le premier instantané a lue et que le second n'a même pas demandée. Elle n'apparaît dans aucun `zones_unmeasured`, puisque personne n'a échoué à la lire. L'intersection des zones mesurées empêche déjà de la comparer, mais sans cette ligne le rapport ne dirait pas qu'elle manque, et « aucun changement » se lirait comme « rien n'a bougé ». Le vocabulaire a changé en #273 : une portée n'est pas toujours une zone, et la garde porte désormais sur `scope` et son type. Le test reste le même, ce qui prouve que le renommage n'a rien desserré.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_diff.py",
-      "find": "    for zone in mesurees_avant - mesurees_apres:",
-      "replace": "    for zone in set():",
+      "find": "    for portee in mesurees_avant - mesurees_apres:",
+      "replace": "    for portee in set():",
       "test": "tests/unit/collection/test_fleet_diff.py::test_une_zone_quon_a_cesse_de_lire_ne_fait_disparaitre_personne"
     },
     {
       "name": "mesure-impossible-lue-comme-un-parc-calme",
-      "why": "Une zone muette n'est pas une bonne nouvelle. La présenter comme un parc calme est le vert sur zéro fichier examiné, et c'est la seule ligne que ce rapport n'a pas le droit d'écrire.",
+      "why": "Une zone muette n'est pas une bonne nouvelle. La présenter comme un parc calme est le vert sur zéro fichier examiné, et c'est la seule ligne que ce rapport n'a pas le droit d'écrire. Le vocabulaire a changé en #273 : une portée n'est pas toujours une zone, et la garde porte désormais sur `scope` et son type. Le test reste le même, ce qui prouve que le renommage n'a rien desserré.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_diff.py",
-      "find": "    if diff.get(\"zones_not_compared\"):",
-      "replace": "    if diff.get(\"zones_not_compared\") and False:",
+      "find": "    if diff.get(\"scopes_not_compared\"):",
+      "replace": "    if False:",
       "test": "tests/unit/collection/test_fleet_diff.py::test_une_zone_muette_ne_fait_disparaitre_personne"
     },
     {
       "name": "horodatage-qui-declenche-un-changement",
-      "why": "`last_change` est un témoin, pas une propriété du parc. Une ligne de diff qui ne montre qu'un horodatage qui bouge ne donne d'action à personne, et un rapport récurrent rempli de ces lignes cesse d'être lu : c'est la règle du jalon, augmenter le rapport signal sur bruit plutôt que le nombre de notifications.",
+      "why": "`last_change` est un témoin, pas une propriété du parc. Une ligne de diff qui ne montre qu'un horodatage qui bouge ne donne d'action à personne, et un rapport récurrent rempli de ces lignes cesse d'être lu : c'est la règle du jalon, augmenter le rapport signal sur bruit plutôt que le nombre de notifications. Le vocabulaire a changé en #273 : une portée n'est pas toujours une zone, et la garde porte désormais sur `scope` et son type. Le test reste le même, ce qui prouve que le renommage n'a rien desserré.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_diff.py",
-      "find": "CHAMPS_COMPARES = (\"name\", \"zone\", \"state\", \"tags\", \"public_addresses\")",
-      "replace": "CHAMPS_COMPARES = (\"name\", \"zone\", \"state\", \"tags\", \"public_addresses\", \"last_change\")",
+      "find": "CHAMPS_COMPARES = (\"name\", \"scope\", \"state\", \"tags\", \"public_addresses\")",
+      "replace": "CHAMPS_COMPARES = (\"name\", \"scope\", \"state\", \"tags\", \"public_addresses\", \"last_change\")",
       "test": "tests/unit/collection/test_fleet_diff.py::test_un_horodatage_qui_bouge_seul_est_compte_a_part"
     },
     {
@@ -2874,17 +2874,17 @@
     },
     {
       "name": "constat-disparu-dans-une-zone-muette-annonce-resolu",
-      "why": "C'est la pire ligne qu'un rapport de posture puisse écrire : elle dit à quelqu'un que son problème est réglé alors que personne n'a regardé. Une zone qui n'a pas répondu fait disparaître tout ce qu'elle portait, et la disparition ressemble trait pour trait à une résolution. C'est la garde que la définition du fini de #234 demande de prouver nommément.",
+      "why": "C'est la pire ligne qu'un rapport de posture puisse écrire : elle dit à quelqu'un que son problème est réglé alors que personne n'a regardé. Une zone qui n'a pas répondu fait disparaître tout ce qu'elle portait, et la disparition ressemble trait pour trait à une résolution. C'est la garde que la définition du fini de #234 demande de prouver nommément. Le vocabulaire a changé en #273 : une portée n'est pas toujours une zone, et la garde porte désormais sur `scope` et son type. Le test reste le même, ce qui prouve que le renommage n'a rien desserré.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_changes.py",
-      "find": "        elif str(zone) not in mesurees:",
+      "find": "        elif portee not in mesurees:",
       "replace": "        elif False:",
       "test": "tests/unit/collection/test_audit_changes.py::test_un_constat_dont_la_zone_na_pas_repondu_nest_pas_resolu"
     },
     {
       "name": "constat-conserve-sans-zone-conclu-resolu",
-      "why": "Un rapport conservé qui ne dit pas dans quelle zone était le constat ne permet de conclure ni dans un sens ni dans l'autre. Trancher quand même est une affirmation que rien ne soutient, et elle tombe du côté rassurant, qui est le mauvais.",
+      "why": "Un rapport conservé qui ne dit pas dans quelle zone était le constat ne permet de conclure ni dans un sens ni dans l'autre. Trancher quand même est une affirmation que rien ne soutient, et elle tombe du côté rassurant, qui est le mauvais. Le vocabulaire a changé en #273 : une portée n'est pas toujours une zone, et la garde porte désormais sur `scope` et son type. Le test reste le même, ce qui prouve que le renommage n'a rien desserré.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_changes.py",
-      "find": "        if not zone:",
+      "find": "        if not all(portee):",
       "replace": "        if False:",
       "test": "tests/unit/collection/test_audit_changes.py::test_un_constat_conserve_sans_zone_ne_se_conclut_pas_non_plus"
     },
@@ -2970,9 +2970,9 @@
     },
     {
       "name": "mesure-impossible-absente-du-verdict-agrege",
-      "why": "Une zone muette n'est pas une bonne nouvelle, et un constat qu'on n'a pas pu conclure non plus. Les retirer du verdict présenterait comme un parc calme un parc que personne n'a pu lire : c'est le vert sur zéro fichier examiné, transposé à une flotte. La ligne couvre aussi l'exception périmée, dont l'échéance est toute l'information.",
+      "why": "Une zone muette n'est pas une bonne nouvelle, et un constat qu'on n'a pas pu conclure non plus. Les retirer du verdict présenterait comme un parc calme un parc que personne n'a pu lire : c'est le vert sur zéro fichier examiné, transposé à une flotte. La ligne couvre aussi l'exception périmée, dont l'échéance est toute l'information. Le vocabulaire a changé en #273 : une portée n'est pas toujours une zone, et la garde porte désormais sur `scope` et son type. Le test reste le même, ce qui prouve que le renommage n'a rien desserré.",
       "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_changes.py",
-      "find": "        bilan.get(\"unmeasured_zones\")",
+      "find": "        bilan.get(\"unmeasured_scopes\")",
       "replace": "        False",
       "test": "tests/unit/collection/test_fleet_changes.py::test_une_zone_muette_pese_autant_quun_constat_bloquant"
     },
@@ -3231,6 +3231,54 @@
       "find": "SUFFIXE = \".provisoire\"",
       "replace": "SUFFIXE = \".py\"",
       "test": "tests/unit/generator/test_ecriture.py::test_le_suffixe_du_provisoire_nest_pas_celui_de_la_cible"
+    },
+    {
+      "name": "portee-comparee-sur-le-nom-seul",
+      "why": "**Le défaut de #272, et il était retourné.** `fr-par` est une région et `fr-par-1` une zone ; comparer les noms nus ferait passer un constat de région pour mesuré parce qu'une zone au nom voisin aurait répondu, et inversement.\n\nConcrètement : un constat Kapsule ne pouvait jamais devenir « résolu ». Il sortait en « non mesuré » alors que la lecture avait parfaitement répondu. Refuser d'annoncer résolu ce qui l'est est moins grave qu'annoncer résolu ce qui ne l'est pas, et c'est un mensonge quand même, sur une mesure qui a réussi.\n\nLa première version de cette mutation visait le côté *mesuré* de la comparaison, où le type était déjà `zone` dans le test : elle ne changeait rien et laissait le test vert. C'est le côté *constat* qui porte la garde, et `/falsify` l'a dit.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/audit_changes.py",
+      "find": "        portee = (str(ancien.get(\"scope_type\") or \"\"), str(ancien.get(\"scope\") or \"\"))",
+      "replace": "        portee = (\"zone\", str(ancien.get(\"scope\") or \"\"))",
+      "test": "tests/unit/collection/test_audit_changes.py::test_un_constat_kapsule_devient_resolu_quand_sa_region_a_repondu"
+    },
+    {
+      "name": "portee-devinee-depuis-la-forme-du-nom",
+      "why": "Une chaîne nue ne dit pas si elle nomme une zone ou une région. Deviner par la forme, `fr-par-1` contre `fr-par`, marcherait aujourd'hui sur Scaleway et casserait au premier produit dont le nommage diffère : c'est exactement la supposition que ce dépôt refuse partout ailleurs, et un instantané qui la porterait comparerait deux portées différentes sans que rien ne le dise (#273).",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_snapshot.py",
+      "find": "    if not isinstance(valeur, dict):",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_fleet_snapshot.py::test_une_portee_nue_est_refusee"
+    },
+    {
+      "name": "type-de-portee-inconnu-accepte",
+      "why": "Un type hors des deux connus est une faute de frappe, et une portée mal typée ne se compare à rien : elle sortirait de toutes les comparaisons en silence, ce qui est la façon la plus discrète de perdre un morceau de parc.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_snapshot.py",
+      "find": "    if type_de not in TYPES_DE_PORTEE:",
+      "replace": "    if False:",
+      "test": "tests/unit/collection/test_fleet_snapshot.py::test_un_type_de_portee_inconnu_est_refuse"
+    },
+    {
+      "name": "champs-propres-au-produit-non-compares",
+      "why": "**Le défaut de #274.** Une liste de champs comparés globale et fermée laissait un cluster passer de 1.36 à 1.37 sans que le diff dise quoi avait changé : il le rangeait dans `changed_outside_this_shape`, sur le changement le plus important d'un cluster managé.\n\nLes champs se dérivent donc de ce que le normaliseur déclare. Une seconde liste écrite à la main oublierait le champ neuf, et ce serait celui qu'on venait d'ajouter.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/fleet_diff.py",
+      "find": "    propres = tuple(\n        champ for champ in SUPPLEMENTS.get(kind, ()) if champ not in TEMOINS\n    )",
+      "replace": "    propres = ()",
+      "test": "tests/unit/collection/test_produit_complet.py::test_chaque_champ_propre_est_compare_ou_declare_temoin"
+    },
+    {
+      "name": "produit-normalise-inconnu-du-selecteur",
+      "why": "Un produit que la collection sait normaliser et que le sélecteur ne connaît pas fait chercher un champ qui n'existe pas : la sélection ne désigne rien, et rien se lit exactement comme un parc vide. C'est la panne la plus silencieuse qu'une opération puisse avoir, et la garde l'a trouvée à son premier passage sur un produit écrit dix minutes plus tôt (ADR-023).",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/select_resources.py",
+      "find": "    \"k8s_pool\": {\"name\": \"name\", \"tags\": \"tags\", \"id\": \"id\"},\n",
+      "replace": "",
+      "test": "tests/unit/collection/test_produit_complet.py::test_chaque_produit_normalise_sait_se_selectionner"
+    },
+    {
+      "name": "normaliseur-sans-portee-typee",
+      "why": "Un normaliseur qui pose un nom sans son type laisse la comparaison deviner, et elle devinera mal le jour où une région et une zone porteront des noms voisins. Le type vient de ce qu'on a interrogé, jamais de la forme de la chaîne.",
+      "file": "ansible_collections/stephrobert/scaleway/plugins/filter/resource_facts.py",
+      "find": "        \"scope\": charge.get(\"region\"),\n        \"scope_type\": \"region\",\n        \"state\": charge.get(\"status\"),\n        \"tags\": list(charge.get(\"tags\") or []),\n        # Un cluster managé n'expose pas d'adresse publique",
+      "replace": "        \"scope\": charge.get(\"region\"),\n        \"state\": charge.get(\"status\"),\n        \"tags\": list(charge.get(\"tags\") or []),\n        # Un cluster managé n'expose pas d'adresse publique",
+      "test": "tests/unit/collection/test_produit_complet.py::test_chaque_normaliseur_pose_une_portee_typee"
     }
   ]
 }

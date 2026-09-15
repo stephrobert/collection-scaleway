@@ -72,7 +72,7 @@
                  if scaleway_fleet_changes_snapshot | length > 0
                  else none),
            expired_exceptions=scaleway_fleet_audit_expired_exceptions,
-           unmeasured_zones=_scaleway_fleet_audit_muettes,
+           unmeasured_scopes=_scaleway_fleet_audit_muettes,
            previous_findings=scaleway_fleet_changes_findings) }}
 
 # **Le niveau se calcule, il ne se passe pas en paramètre.** Un appelant qui
@@ -148,7 +148,7 @@
       Resolved findings          {{ bilan.resolved_findings }}
       Persistent failures        {{ bilan.persistent_failures }}
       Expired exceptions         {{ bilan.expired_exceptions }}
-      Unmeasured zones           {{ bilan.unmeasured_zones }}
+      Unmeasured scopes           {{ bilan.unmeasured_scopes }}
       Findings not concluded     {{ bilan.not_concluded }}
       {% for severite, compte in bilan.severities.items() %}
       {{ '%-8s' | format(severite) }} {{ compte.now }}{{ ' (%+d)' | format(compte.delta)
@@ -184,7 +184,7 @@
       | Resolved findings | {{ bilan.resolved_findings }} |
       | Persistent failures | {{ bilan.persistent_failures }} |
       | Expired exceptions | {{ bilan.expired_exceptions }} |
-      | Unmeasured zones | {{ bilan.unmeasured_zones }} |
+      | Unmeasured scopes | {{ bilan.unmeasured_scopes }} |
       | Findings not concluded | {{ bilan.not_concluded }} |
       {% for severite, compte in bilan.severities.items() %}
       | {{ severite }} | {{ compte.now }}{{ ' (%+d)' | format(compte.delta)

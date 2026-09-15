@@ -78,7 +78,18 @@ CHAMPS = (
     "kind",
     "id",
     "name",
-    "zone",
+    # **`scope` et non `zone`, et son type à côté.** Instance et Load Balancer
+    # sont zonaux, Kapsule est régional, et VPC et IPAM sont structurés autrement
+    # encore. Ranger une région dans un champ nommé `zone` marche et ment : tout
+    # ce qui compare deux runs raisonne alors sur des « zones » dont certaines
+    # n'en sont pas, et un rapport qui les mélangerait comparerait `fr-par` à
+    # `fr-par-1` sans que rien ne le dise.
+    #
+    # Le type est porté séparément parce que deux portées de types différents
+    # peuvent se ressembler : `fr-par` est une région, `fr-par-1` une zone, et
+    # rien dans la chaîne ne permet de les distinguer autrement.
+    "scope",
+    "scope_type",
     "state",
     "tags",
     "public_addresses",
@@ -101,6 +112,7 @@ SUPPLEMENTS: dict[str, tuple[str, ...]] = {
     "instance": ("planned_maintenance", "end_of_service", "allowed_actions"),
     "lb": (),
     "k8s_cluster": ("version", "upgrade_available", "expires_at", "versions_behind"),
+    "k8s_pool": ("version", "size", "autoscaling", "autohealing"),
     "k8s_node": ("health_conditions", "pool"),
     "lb_certificate": ("expires_at",),
 }
@@ -121,7 +133,8 @@ def _instance(charge: dict) -> dict[str, object]:
         "kind": "instance",
         "id": charge.get("id"),
         "name": charge.get("name"),
-        "zone": charge.get("zone"),
+        "scope": charge.get("zone"),
+        "scope_type": "zone",
         "state": charge.get("state"),
         "tags": list(charge.get("tags") or []),
         "public_addresses": _adresses(charge),
@@ -200,18 +213,18 @@ def _calendrier(contexte: dict, version: object) -> tuple[object, object]:
 def _k8s_cluster(charge: dict, contexte: dict | None = None) -> dict[str, object]:
     """Un cluster Kapsule, dans la forme commune.
 
-    Il n'a pas de zone : le contrat le place dans une **région**, et la ranger
-    sous `zone` est délibéré plutôt que commode. Tout ce qui compare deux runs
-    dans ce dépôt raisonne sur des zones lues et des zones muettes ; une
-    ressource dont la portée n'entrerait pas dans ce champ sortirait de ces
-    comparaisons sans que rien ne le dise (#234).
+    Il n'a pas de zone : le contrat le place dans une **région**, et la forme
+    commune le dit désormais plutôt que de le ranger sous un nom qui ment. La
+    première version le mettait dans un champ nommé `zone` pour entrer dans les
+    mécanismes communs ; c'est ce mensonge que `scope_type` retire (#273).
     """
     echeance, retard = _calendrier(contexte or {}, charge.get("version"))
     return {
         "kind": "k8s_cluster",
         "id": charge.get("id"),
         "name": charge.get("name"),
-        "zone": charge.get("region"),
+        "scope": charge.get("region"),
+        "scope_type": "region",
         "state": charge.get("status"),
         "tags": list(charge.get("tags") or []),
         # Un cluster managé n'expose pas d'adresse publique de ressource : son
@@ -249,6 +262,31 @@ def _nom_du_pool(contexte: dict, identifiant: object) -> object:
     )
 
 
+def _k8s_pool(charge: dict) -> dict[str, object]:
+    """Un pool de nœuds, dans la forme commune.
+
+    Il entre dans l'instantané parce qu'un pool qui change de taille, de version
+    ou d'autoscaling est un changement du parc que quelqu'un doit voir. Le
+    cluster seul ne le dirait pas : sa version peut ne pas bouger pendant que
+    celle d'un de ses pools monte.
+    """
+    return {
+        "kind": "k8s_pool",
+        "id": charge.get("id"),
+        "name": charge.get("name"),
+        "scope": charge.get("region"),
+        "scope_type": "region",
+        "state": charge.get("status"),
+        "tags": list(charge.get("tags") or []),
+        "public_addresses": [],
+        "last_change": charge.get("updated_at") or charge.get("created_at"),
+        "version": charge.get("version"),
+        "size": charge.get("size"),
+        "autoscaling": charge.get("autoscaling"),
+        "autohealing": charge.get("autohealing"),
+    }
+
+
 def _k8s_node(charge: dict, contexte: dict | None = None) -> dict[str, object]:
     """Un nœud de pool, dans la forme commune.
 
@@ -266,7 +304,8 @@ def _k8s_node(charge: dict, contexte: dict | None = None) -> dict[str, object]:
         "kind": "k8s_node",
         "id": charge.get("id"),
         "name": charge.get("name"),
-        "zone": charge.get("region"),
+        "scope": charge.get("region"),
+        "scope_type": "region",
         "state": charge.get("status"),
         "tags": [],
         "public_addresses": [
@@ -300,7 +339,8 @@ def _lb_certificate(charge: dict) -> dict[str, object]:
         "kind": "lb_certificate",
         "id": charge.get("id"),
         "name": charge.get("name"),
-        "zone": (charge.get("lb") or {}).get("zone"),
+        "scope": (charge.get("lb") or {}).get("zone"),
+        "scope_type": "zone",
         "state": charge.get("status"),
         "tags": [],
         "public_addresses": [],
@@ -322,7 +362,8 @@ def _lb(charge: dict) -> dict[str, object]:
         "kind": "lb",
         "id": charge.get("id"),
         "name": charge.get("name"),
-        "zone": charge.get("zone"),
+        "scope": charge.get("zone"),
+        "scope_type": "zone",
         "state": charge.get("status"),
         "tags": list(charge.get("tags") or []),
         "public_addresses": [
@@ -344,6 +385,7 @@ NORMALISEURS = {
     "instance": _instance,
     "lb": _lb,
     "k8s_cluster": _k8s_cluster,
+    "k8s_pool": _k8s_pool,
     "k8s_node": _k8s_node,
     "lb_certificate": _lb_certificate,
 }

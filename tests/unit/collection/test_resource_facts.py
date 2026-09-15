@@ -64,7 +64,10 @@ def test_une_instance_devient_la_forme_que_les_regles_lisent() -> None:
         "kind": "instance",
         "id": "b20294e8-d0b9-471e-a78f-bbce79e7ca74",
         "name": "web-1",
-        "zone": "fr-par-1",
+        # La forme rendue dit `scope` et son type ; `zone` est le vocabulaire de
+        # l'API d'Instance, et il reste dans la charge utile d'entrée.
+        "scope": "fr-par-1",
+        "scope_type": "zone",
         "state": "running",
         "tags": ["role=web", "env=lab"],
         "public_addresses": ["51.15.0.1"],
@@ -159,7 +162,8 @@ def test_un_load_balancer_entre_dans_la_meme_forme() -> None:
         "kind": "lb",
         "id": "9f1d0a3c-1111-4222-8333-444455556666",
         "name": "api-prod",
-        "zone": "fr-par-1",
+        "scope": "fr-par-1",
+        "scope_type": "zone",
         "state": "ready",
         "tags": ["env=prod"],
         "public_addresses": ["51.15.0.9"],

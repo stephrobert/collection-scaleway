@@ -21,6 +21,19 @@ argument_specs:
         description:
           - >-
             The zones to ask. Defaults to what the contract declares.
+      scaleway_fleet_report_products:
+        type: list
+        elements: str
+        choices: [instance, lb, k8s_cluster]
+        description:
+          - >-
+            Which products this report reads. Instance and Load Balancer by
+            default, which is what it read before Kubernetes existed here.
+          - >-
+            C(k8s_cluster) pulls in its pools and its nodes too, because a
+            cluster that moves without its pools is half a memory. On an account
+            with no cluster, asking for it makes every report carry a silent
+            region, so it is never read for you.
       scaleway_fleet_report_output:
         type: str
         default: text
