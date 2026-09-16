@@ -317,7 +317,10 @@ def _par_date(chemins: list[Path]) -> list[Path]:
         trouvee = re.search(r"\d{4}-\d{2}-\d{2}", chemin.stem)
         return trouvee.group(0) if trouvee else ""
 
-    return sorted(chemins, key=date_de)
+    # Le nom départage deux tirs du même jour : il porte l'heure depuis que
+    # sept d'entre eux se sont succédé en une journée. Sans ce second critère,
+    # l'ordre venait du système de fichiers, donc de nulle part.
+    return sorted(chemins, key=lambda c: (date_de(c), c.name))
 
 
 def tir_le_plus_recent() -> Path:

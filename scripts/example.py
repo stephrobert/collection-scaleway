@@ -319,7 +319,12 @@ def transcription_par_defaut(run_id: str) -> Path:
     Le répertoire n'est pas versionné, seuls les relevés le sont (ADR-024).
     """
     TRANSCRIPTIONS.mkdir(parents=True, exist_ok=True)
-    return TRANSCRIPTIONS / f"reel-{datetime.now(UTC).strftime('%Y-%m-%d')}-{run_id}.jsonl"
+    # **L'heure, et pas seulement le jour.** Sept tirs se sont succédé le
+    # 16 septembre 2026 : datés du seul jour, deux d'entre eux ne se
+    # départageaient plus, et le relevé repartait de l'un ou de l'autre selon
+    # l'ordre où le système rendait les fichiers. Le `run_id` ne suffit pas, il
+    # est tiré au hasard et ne s'ordonne pas.
+    return TRANSCRIPTIONS / f"reel-{datetime.now(UTC).strftime('%Y-%m-%dT%H%M%S')}-{run_id}.jsonl"
 
 
 def demarrer_proxy(chemin: str) -> subprocess.Popen[str]:
