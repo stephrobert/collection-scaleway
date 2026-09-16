@@ -41,7 +41,18 @@ __pycache__/
 # Elles ne sont pas jetables pour autant : c'est la preuve qu'ADR-015 de feint
 # réclame, « a claim about the real API is a recorded exchange ». Elles se
 # transmettent, elles ne se versionnent pas.
-/transcriptions/
+# **Le relevé, lui, se versionne**, et c'est la conséquence de la règle
+# ci-dessus plutôt que son exception. Quelques kilooctets qu'un diff relit : ce
+# que la collection a émis, scellé par l'empreinte de l'enregistrement dont il
+# sort. La transcription reste dehors, le relevé entre, et un bloc dérivé peut
+# se recalculer hors ligne (ADR-024).
+#
+# `/transcriptions/*` et non `/transcriptions/` : git ne descend pas dans un
+# répertoire exclu, donc ré-inclure un fichier sous un répertoire exclu ne fait
+# rien du tout. Écrit ici parce que la première version a `!`-inclus le relevé
+# sous un répertoire barré, et il restait invisible sans que rien ne le dise.
+/transcriptions/*
+!/transcriptions/releves/
 
 # `galaxy_importer` écrit son verdict dans le répertoire courant, sans le
 # demander et sans option pour l'en empêcher. Un mégaoctet de sortie a été

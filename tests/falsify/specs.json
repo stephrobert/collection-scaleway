@@ -3295,6 +3295,54 @@
       "find": "\"**Ce qui fermerait la ligne** : cette attente, et une preuve \"",
       "replace": "\"**Ce qui fermerait la ligne** : cette attente, suivie en #244. \"",
       "test": "tests/unit/outillage/test_couverture_exemple.py::test_aucune_raison_ne_cite_un_numero_dissue"
+    },
+    {
+      "name": "route-partagee-creditee-au-premier",
+      "why": "**Le défaut que la mesure a démenti.** `GET /pools/{id}` est portée par la lecture unitaire et par le MANAGE qui lit avant d'écrire (ADR-003). Créditer le premier de la liste rendrait un tableau parfaitement lisible où une partie des « oui » serait un tirage au sort alphabétique.\n\nCe n'est pas théorique : le tableau écrit à la main annonçait « oui » sur ces deux lignes, et c'est la dérivation qui l'a contredit.",
+      "file": "scripts/preuve_reelle.py",
+      "find": "        if len(trouves) == 1:",
+      "replace": "        if trouves:",
+      "test": "tests/unit/outillage/test_preuve_reelle.py::test_une_lecture_que_deux_modules_portent_ne_credite_personne"
+    },
+    {
+      "name": "rapprochement-en-panne-annonce-comme-parc-muet",
+      "why": "Un filtre qui ne reconnaît plus les chemins rend zéro atteint, zéro orpheline, et tous les modules « non atteint ». C'est arrivé : le filtre dérivait `/k8s/v1/regions/{region}/`, gabarit qui ne préfixe aucun chemin réel. Le tableau était lisible et entièrement faux.\n\nRien ne distingue alors « ce produit n'a jamais tourné » de « l'outil est cassé », et c'est la seconde lecture qui est vraie.",
+      "file": "scripts/preuve_reelle.py",
+      "find": "    if tir.routes and not atteints and not indistincts and not orphelines:",
+      "replace": "    if False:",
+      "test": "tests/unit/outillage/test_preuve_reelle.py::test_un_rapprochement_qui_ne_rapproche_rien_le_dit"
+    },
+    {
+      "name": "requete-sans-agent-comptee-quand-meme",
+      "why": "La transcription porte trois agents : la collection, le provider Terraform qui a bâti la plateforme, et celui des empreintes de résidu. Une ligne dont l'agent ne se lit pas n'est pas une ligne de la collection : la compter créditerait la collection de ce que Terraform a créé, ce qui est l'inverse de ce que ce tableau montre.",
+      "file": "scripts/preuve_reelle.py",
+      "find": "    raise PreuveError(\n        f\"la requête {enregistrement.get('seq')} ne porte pas d'agent, donc rien \"",
+      "replace": "    return AGENT\n    raise PreuveError(\n        f\"la requête {enregistrement.get('seq')} ne porte pas d'agent, donc rien \"",
+      "test": "tests/unit/outillage/test_preuve_reelle.py::test_une_requete_sans_agent_est_refusee"
+    },
+    {
+      "name": "gabarit-qui-deborde-sur-le-segment-suivant",
+      "why": "Sans borne sur le segment, `/clusters/{id}` reconnaît `/clusters/{id}/nodes` : deux modules revendiquent la même route, et la lecture unitaire est créditée de ce que la liste des nœuds a fait. Le tableau gagne alors des « oui » que personne n'a mesurés.",
+      "file": "scripts/preuve_reelle.py",
+      "find": "SEGMENT = \"[^/]+\"",
+      "replace": "SEGMENT = \".+\"",
+      "test": "tests/unit/outillage/test_preuve_reelle.py::test_un_gabarit_ne_deborde_pas_sur_le_segment_suivant"
+    },
+    {
+      "name": "tir-renomme-sans-etre-rejoue",
+      "why": "Renommer une transcription coûte une seconde, et le tableau publierait alors la nouvelle date sans qu'une seule requête ait été rejouée. Une preuve datée d'aujourd'hui sur des mesures d'hier se lit exactement comme une preuve fraîche.",
+      "file": "scripts/preuve_reelle.py",
+      "find": "    if nommee.group(1) not in jours:",
+      "replace": "    if False:",
+      "test": "tests/unit/outillage/test_preuve_reelle.py::test_une_transcription_renommee_sans_etre_rejouee_est_refusee"
+    },
+    {
+      "name": "releve-invisible-de-git",
+      "why": "**Le défaut qui a rendu la CI rouge.** `.gitignore` refuse `transcriptions/`, avec sa raison : plusieurs mégaoctets, reproductibles, qui se transmettent plutôt qu'ils ne se gardent. Le relevé en sort et doit entrer dans le dépôt, sinon le bloc dérivé se recalcule sur la machine qui a fait le tir et nulle part ailleurs.\n\nUn `!` posé sous un répertoire barré ne ré-inclut rien : git ne descend pas dans un répertoire exclu, et rien ne le dit. Le fichier reste simplement invisible, et c'est la CI qui l'a découvert plutôt que moi.",
+      "file": ".gitignore",
+      "find": "/transcriptions/*\n!/transcriptions/releves/",
+      "replace": "/transcriptions/",
+      "test": "tests/unit/outillage/test_preuve_reelle.py::test_le_releve_est_suivi_par_git"
     }
   ]
 }
