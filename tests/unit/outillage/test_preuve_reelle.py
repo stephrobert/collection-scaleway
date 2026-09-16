@@ -61,7 +61,7 @@ def test_le_tir_kapsule_credite_chaque_module_quune_route_propre_prouve() -> Non
     Elle fixe ce que le guide publie : un module dont une route n'appartient
     qu'à lui est prouvé, et le tableau le dit sans que personne l'ait tapé.
     """
-    resultat = rapprocher("k8s", "v1", lire_releve("k8s"))
+    resultat = rapprocher("k8s", "v1", lire_releve())
 
     assert "k8s_cluster_info" in resultat.atteints
     assert "k8s_node_reboot_action" in resultat.atteints
@@ -78,7 +78,7 @@ def test_une_lecture_que_deux_modules_portent_ne_credite_personne() -> None:
 
     Le MANAGE reste prouvé : son PATCH n'appartient qu'à lui.
     """
-    resultat = rapprocher("k8s", "v1", lire_releve("k8s"))
+    resultat = rapprocher("k8s", "v1", lire_releve())
 
     assert "k8s_pool_info" in resultat.indistincts
     assert "k8s_pool" in resultat.atteints
@@ -89,7 +89,7 @@ def test_un_module_quaucune_route_natteint_est_nomme() -> None:
 
     Un tableau qui ne listerait que les succès serait une plaquette.
     """
-    resultat = rapprocher("k8s", "v1", lire_releve("k8s"))
+    resultat = rapprocher("k8s", "v1", lire_releve())
 
     assert "k8s_node_replace_action" in resultat.muets
 
@@ -266,7 +266,7 @@ def test_le_releve_est_suivi_par_git(tmp_path: Path) -> None:
     exemplaire du même défaut dans ce fichier, et il mérite d'être compté :
     **une commande qui n'a pas pu répondre ne prouve rien.**
     """
-    releve = releve_le_plus_recent("k8s")
+    releve = releve_le_plus_recent()
     regles = (releve.parents[2] / ".gitignore").read_text(encoding="utf-8")
 
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
@@ -300,7 +300,7 @@ def test_le_releve_designe_la_transcription_dont_il_sort() -> None:
     c'est ce qui permet, en le réclamant à qui l'a, de vérifier que ce relevé-là
     vient de ce tir-là.
     """
-    charge = json.loads(releve_le_plus_recent("k8s").read_text(encoding="utf-8"))
+    charge = json.loads(releve_le_plus_recent().read_text(encoding="utf-8"))
 
     assert charge["empreinte"].startswith("sha256:")
     assert len(charge["empreinte"].removeprefix("sha256:")) == 64

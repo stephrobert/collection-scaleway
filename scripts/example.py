@@ -49,6 +49,9 @@ PLAYBOOKS = ROOT / "examples" / "playbooks"
 LIVRES_DIR = ROOT / "ansible_collections" / "stephrobert" / "scaleway" / "playbooks"
 RAPPELS = ROOT / "examples" / "callback_plugins"
 TRAVAIL = ROOT / "build" / "example"
+#: Les transcriptions des tirs réels. Hors dépôt : seuls les relevés qu'on
+#: en tire sont versionnés (ADR-024).
+TRANSCRIPTIONS = ROOT / "transcriptions"
 CLE = TRAVAIL / "cle"
 
 #: Préfixe des modules de la collection, pour les distinguer d'`ansible.builtin`.
@@ -303,6 +306,20 @@ def environnement_emulateur() -> dict[str, str]:
             "sans cette variable, Terraform et les playbooks parleraient à l'API réelle."
         )
     return valeurs
+
+
+def transcription_par_defaut(run_id: str) -> Path:
+    """Où enregistrer un tir réel quand personne n'a dit où.
+
+    **Sous `transcriptions/`, et daté**, parce que c'est là que le dépôt va les
+    chercher et que `preuve_tir` comme `preuve_reelle` lisent la date dans le
+    nom. Le `run_id` distingue deux tirs du même jour, ce qui arrive : cinq se
+    sont succédé le 16 septembre 2026.
+
+    Le répertoire n'est pas versionné, seuls les relevés le sont (ADR-024).
+    """
+    TRANSCRIPTIONS.mkdir(parents=True, exist_ok=True)
+    return TRANSCRIPTIONS / f"reel-{datetime.now(UTC).strftime('%Y-%m-%d')}-{run_id}.jsonl"
 
 
 def demarrer_proxy(chemin: str) -> subprocess.Popen[str]:
@@ -1085,6 +1102,28 @@ def main(argv: list[str]) -> int:
         # défaut que personne n'a choisi. Une fois le projet désigné, le
         # propager aux outils est ce qui rend la désignation effective.
         env["SCW_DEFAULT_PROJECT_ID"] = identifiant_projet
+
+        # **Un playbook ne lit pas le profil `scw`, les modules le font pour
+        # lui.** Sur l'émulateur, `environnement_emulateur()` pose
+        # `SCW_SECRET_KEY` et une tâche `ansible.builtin.uri` s'authentifie donc
+        # comme le quickstart. Sur le compte réel, le jeton vit dans le fichier
+        # de configuration : le runtime des modules sait l'y prendre, `uri` non.
+        #
+        # L'asymétrie ne se voyait nulle part, parce que la seule chose qui en
+        # dépend est la création hors Terraform, et qu'elle n'existait pas avant
+        # #283. Mesuré : `POST /instance/v1/zones/fr-par-1/ips` rend
+        # « authentication is denied » contre le réel, et 200 contre
+        # l'émulateur, avec le même playbook.
+        # Importé ici comme partout ailleurs dans ce fichier : le SDK n'est pas
+        # une dépendance du lanceur, seulement de la cible réelle.
+        from scaleway_core.profile import Profile
+
+        jeton = env.get("SCW_SECRET_KEY") or (
+            Profile.from_config_file_and_env(None, env.get("SCW_PROFILE") or "default").secret_key
+        )
+        if jeton:
+            env["SCW_SECRET_KEY"] = jeton
+
         print(f"projet visé : {nom_projet} ({identifiant_projet})")
         variables["endpoint"] = ""
         # **Enregistrer ce que l'API répond, et pas seulement si l'assertion
@@ -1109,12 +1148,19 @@ def main(argv: list[str]) -> int:
         # que l'API a répondu **à la création** autant qu'à la relecture, et
         # c'est justement la comparaison qui manquait. Le premier commentaire
         # écrit ici affirmait l'inverse ; la transcription l'a démenti.
-        if arguments.enregistrer:
-            proxy = demarrer_proxy(arguments.enregistrer)
-            env["SCW_API_URL"] = f"http://{PROXY}"
-            print(
-                f"les modules passent par le proxy {PROXY}, transcription : {arguments.enregistrer}"
-            )
+        # **Sur le compte réel, l'enregistrement n'est pas une option.** Il l'a
+        # été, et cinq tirs facturés sont partis sans, chacun ne rendant qu'un
+        # booléen là où la transcription aurait rendu ce que l'API a répondu.
+        # Le message de `demarrer_proxy` le disait déjà : « un run facturé qui
+        # ne mesure rien ». Il ne pouvait pas le tenir, puisque rien n'exigeait
+        # l'option qui l'appelle.
+        #
+        # `--enregistrer` choisit désormais **où**, plus **si**.
+        if not arguments.enregistrer:
+            arguments.enregistrer = str(transcription_par_defaut(run_id))
+        proxy = demarrer_proxy(arguments.enregistrer)
+        env["SCW_API_URL"] = f"http://{PROXY}"
+        print(f"les modules passent par le proxy {PROXY}, transcription : {arguments.enregistrer}")
         print("cible : le compte Scaleway réel. Prise de la référence de résidu.")
         residu = [sys.executable, str(ROOT / "scripts" / "residue.py"), "capture"]
         if lancer(residu).returncode != 0:
@@ -1174,9 +1220,8 @@ def main(argv: list[str]) -> int:
             "cible": arguments.cible,
             # L'image d'or n'existe que sur le cloud réel : la stack la met à
             # zéro ailleurs, et le playbook saute la tâche plutôt que d'échouer.
-            # La région, déclarée par la stack : les APIs régionales en ont
-            # besoin, et la déduire du nom de la zone serait deviner par la
-            # forme (#283).
+            # Les APIs régionales en ont besoin, et la déduire du nom de la
+            # zone serait deviner par la forme (#283).
             "region": sorties.get("region", {}).get("value", ""),
             "image_doree": sorties.get("image_doree", {}).get("value", ""),
             # **Même forme, et pour une raison voisine.** L'instantané que l'API
@@ -1241,7 +1286,17 @@ def main(argv: list[str]) -> int:
                 "instantane": str(TRAVAIL / "instantane.json"),
             },
         )
-        return code
+    # **Pas de `return` ici, et c'est un correctif.** Il y en avait un, et le
+    # `finally` ci-dessous pose `code = 1` quand la destruction échoue ou que du
+    # résidu subsiste. Python évalue la valeur au moment du `return` : le
+    # `finally` s'exécutait bien, affichait le bon message, et sa conclusion
+    # était jetée.
+    #
+    # Mesuré le 16 septembre 2026 : un tir qui a laissé une adresse réservée sur
+    # le compte est sorti en 0, avec « le compte n'est pas revenu à son état
+    # d'avant » écrit juste au-dessus. Le contrôle marchait ; c'est son verdict
+    # qui n'allait nulle part, et c'est la pire des deux pannes parce qu'elle
+    # ressemble à un succès.
     finally:
         if arguments.garder:
             print("\nplateforme conservée. La détruire avec :")
@@ -1332,6 +1387,11 @@ def main(argv: list[str]) -> int:
             print(f"transcription écrite : {arguments.enregistrer}")
         if cible["emulateur"] and not adopte and not arguments.garder:
             lancer([binaire("feint"), "stop", "--addr", ADRESSE], capture=True)
+
+    # Après le `finally`, donc après que la destruction et le contrôle de résidu
+    # ont eu leur mot à dire. C'est le seul endroit d'où leur verdict peut
+    # encore atteindre l'appelant.
+    return code
 
 
 if __name__ == "__main__":

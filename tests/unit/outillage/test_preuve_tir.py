@@ -83,6 +83,9 @@ def test_le_verdict_se_derive_du_run_et_ne_se_declare_pas(
     module en échec le fait basculer sans que personne ait à y penser.
     """
     monkeypatch.setattr(preuve_tir, "PREUVES", tmp_path / "preuves")
+    # L'arbre du dépôt est sale pendant qu'on développe, et son refus s'ajouterait
+    # à chaque test qui n'en juge pas. Il est jugé dans le sien.
+    monkeypatch.setattr(preuve_tir, "_git", lambda *_: "")
     artefact = _artefact(tmp_path / "run.json", modules_en_echec=["lb_frontend"])
 
     chemin = preuve_tir.sceller(artefact, commit=SHA)
@@ -95,6 +98,7 @@ def test_un_residu_fait_basculer_le_verdict(
 ) -> None:
     """Le compte est facturé : ce qui reste compte autant qu'un module rouge."""
     monkeypatch.setattr(preuve_tir, "PREUVES", tmp_path / "preuves")
+    monkeypatch.setattr(preuve_tir, "_git", lambda *_: "")
     artefact = _artefact(tmp_path / "run.json", residu="3 ressource(s)")
 
     chemin = preuve_tir.sceller(artefact, commit=SHA)
@@ -179,3 +183,22 @@ def test_une_preuve_fraiche_du_bon_commit_laisse_publier(
     _preuve(dossier)
 
     assert preuve_tir.refus(SHA, aujourdhui="2026-09-16") == []
+
+
+def test_un_arbre_sale_ne_se_scelle_pas(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """La preuve nomme un SHA, et le tir aurait tourné sur autre chose.
+
+    Mesuré le 16 septembre 2026 : une preuve a été scellée sur un arbre
+    portant des fichiers modifiés, et elle affirmait le commit d'avant. Personne
+    n'aurait pu rejouer ce qu'elle prétendait prouver.
+
+    `release.py` refusait déjà de publier depuis un arbre sale, pour la même
+    raison exactement. Le scellement ne le faisait pas, et c'est lui qui décide
+    de ce que la preuve nomme.
+    """
+    monkeypatch.setattr(preuve_tir, "PREUVES", tmp_path / "preuves")
+    monkeypatch.setattr(preuve_tir, "_git", lambda *_: " M scripts/example.py")
+    artefact = _artefact(tmp_path / "run.json")
+
+    with pytest.raises(preuve_tir.PreuveTirError, match="non versionnée"):
+        preuve_tir.sceller(artefact)

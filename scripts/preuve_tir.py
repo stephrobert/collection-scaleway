@@ -149,6 +149,27 @@ def sceller(artefact: Path, commit: str | None = None) -> Path:
             "(ADR-006)."
         )
 
+    # **Un arbre sale rend la preuve menteuse.** Elle nomme un SHA, et le tir a
+    # tourné sur autre chose : les modifications non versionnées y étaient, et le
+    # commit nommé ne les porte pas. Personne ne peut plus rejouer ce qui a été
+    # prouvé.
+    #
+    # `release.py` refusait déjà de publier depuis un arbre sale, pour la même
+    # raison exactement, et le scellement ne le faisait pas. Mesuré le
+    # 16 septembre 2026 : une preuve a été produite sur un arbre portant des
+    # fichiers modifiés, et elle affirmait le SHA d'avant.
+    sale = _git("status", "--porcelain")
+    if sale:
+        lignes = sale.splitlines()
+        raise PreuveTirError(
+            f"l'arbre porte {len(lignes)} modification(s) non versionnée(s) : le tir "
+            "a tourné dessus, et la preuve nommerait un commit qui ne les contient "
+            "pas.\n    "
+            + "\n    ".join(lignes[:5])
+            + ("\n    ..." if len(lignes) > 5 else "")
+            + "\n    Commiter, puis rejouer le tir sur l'arbre qu'on publiera."
+        )
+
     echecs = list(charge.get("modules_en_echec") or [])
     residu = str(charge["residu"])
     # Nommés avant d'entrer dans le dictionnaire : le nom du fichier les relit,

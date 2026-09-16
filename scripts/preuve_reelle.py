@@ -301,21 +301,42 @@ def rapprocher(produit: str, version: str, tir: Tir) -> Rapprochement:
     )
 
 
-#: Le nom commercial sous lequel un produit est enregistré. `kapsule` est le nom
-#: de `k8s` chez Scaleway, et le deviner d'un slug serait une supposition de
-#: plus dans un fichier qui existe pour en supprimer.
-SUJETS = {"k8s": "kapsule"}
+def _par_date(chemins: list[Path]) -> list[Path]:
+    """Triés sur la date que porte leur nom, jamais sur le nom entier.
+
+    Un tri alphabétique rangeait `kapsule-2026-09-14` après `reel-2026-09-16`
+    par la seule grâce de l'ordre des lettres. Ça marchait, et ça aurait cessé
+    au premier sujet commençant par une lettre plus haute.
+    """
+
+    def date_de(chemin: Path) -> str:
+        # Une chaîne vide pour un fichier sans date : il se range en premier,
+        # donc n'est jamais choisi comme le plus récent, et `lire` le refusera
+        # s'il l'est quand même. Rendre `.group(0)` sur une absence planterait
+        # au tri, bien avant le refus qui explique.
+        trouvee = re.search(r"\d{4}-\d{2}-\d{2}", chemin.stem)
+        return trouvee.group(0) if trouvee else ""
+
+    return sorted(chemins, key=date_de)
 
 
-def tir_le_plus_recent(produit: str) -> Path:
-    """La transcription la plus récente de ce produit, quand elle est là."""
-    motif = f"{SUJETS.get(produit, produit)}-*.jsonl"
-    tirs = sorted(TRANSCRIPTIONS.glob(motif))
+def tir_le_plus_recent() -> Path:
+    """La transcription la plus récente, quel que soit le tir qui l'a produite.
+
+    **Elle n'est pas indexée par produit, et c'est une correction.** Le premier
+    essai cherchait `kapsule-*.jsonl` pour `k8s`, avec une table de noms
+    commerciaux : un tir complet enregistré sous `reel-<date>-<run>.jsonl` était
+    donc invisible, et le relevé repartait silencieusement de la transcription
+    de la semaine d'avant.
+
+    Une transcription est un **tir**, pas un produit. Le tri par produit se fait
+    au rapprochement, sur le premier segment du chemin, et il s'y fait bien.
+    """
+    tirs = _par_date(list(TRANSCRIPTIONS.glob("*.jsonl")))
     if not tirs:
         raise PreuveError(
-            f"aucune transcription `{motif}` sous {TRANSCRIPTIONS}. Une "
-            "transcription ne se versionne pas : la relever demande celle du tir, "
-            "transmise à part."
+            f"aucune transcription sous {TRANSCRIPTIONS}. Une transcription ne se "
+            "versionne pas : la relever demande celle du tir, transmise à part."
         )
     return tirs[-1]
 
@@ -325,25 +346,24 @@ def _empreinte(chemin: Path) -> str:
     return "sha256:" + hashlib.sha256(chemin.read_bytes()).hexdigest()
 
 
-def releve_le_plus_recent(produit: str) -> Path:
-    """Le relevé le plus récent de ce produit.
+def releve_le_plus_recent() -> Path:
+    """Le relevé le plus récent.
 
     Daté comme la transcription dont il sort, et pour la même raison : plusieurs
     tirs coexistent, et un nom sans date ferait écraser la mesure de la semaine
     dernière par celle d'aujourd'hui sans que le diff dise laquelle on perd.
     """
-    motif = f"{SUJETS.get(produit, produit)}-*.json"
-    releves = sorted(RELEVES.glob(motif))
+    releves = _par_date(list(RELEVES.glob("*.json")))
     if not releves:
         raise PreuveError(
-            f"aucun relevé `{motif}` sous {RELEVES}. Il se produit depuis la "
-            f"transcription du tir avec `python scripts/preuve_reelle.py "
-            f"{produit} --relever`, et c'est lui que le dépôt versionne."
+            f"aucun relevé sous {RELEVES}. Il se produit depuis la transcription "
+            "du tir avec `python scripts/preuve_reelle.py <produit> --relever`, et "
+            "c'est lui que le dépôt versionne."
         )
     return releves[-1]
 
 
-def relever(produit: str) -> Path:
+def relever() -> Path:
     """Extraire d'une transcription le peu qui se versionne, et le sceller.
 
     **L'enregistrement ne se versionne pas, le relevé oui**, et la distinction
@@ -359,7 +379,7 @@ def relever(produit: str) -> Path:
     C'est le même partage que partout ici : le golden est versionné, l'exécution
     qui l'a produit ne l'est pas.
     """
-    tir = lire(tir_le_plus_recent(produit))
+    tir = lire(tir_le_plus_recent())
     releve = {
         "tir": tir.fichier.name,
         "date": tir.date,
@@ -379,13 +399,13 @@ def relever(produit: str) -> Path:
     return destination
 
 
-def lire_releve(produit: str) -> Tir:
+def lire_releve() -> Tir:
     """Le relevé versionné, qui est ce dont un bloc dérivé a besoin.
 
     Il se relit hors ligne et sans le compte, ce qu'un bloc dérivé exige, et
     c'est pour ça que la CI en dépend plutôt que de la transcription.
     """
-    charge = json.loads(releve_le_plus_recent(produit).read_text(encoding="utf-8"))
+    charge = json.loads(releve_le_plus_recent().read_text(encoding="utf-8"))
     return Tir(
         fichier=Path(str(charge["tir"])),
         date=str(charge["date"]),
@@ -411,13 +431,13 @@ def main(argv: list[str]) -> int:
     arguments = parseur.parse_args(argv[1:])
 
     if arguments.relever:
-        destination = relever(arguments.produit)
+        destination = relever()
         print(f"{destination.relative_to(ROOT)} écrit depuis la transcription du tir.")
         return 0
 
     # **Le relevé, pas la transcription.** C'est lui qui est versionné, donc lui
     # que la CI peut lire : elle n'a ni le compte, ni l'enregistrement.
-    tir = lire_releve(arguments.produit)
+    tir = lire_releve()
     resultat = rapprocher(arguments.produit, arguments.version, tir)
 
     print(f"{tir.fichier.name}, tir du {tir.date}\n")

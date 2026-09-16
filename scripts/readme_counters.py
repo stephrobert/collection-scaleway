@@ -637,7 +637,7 @@ def bloc_preuve_kapsule() -> str:
     circulé, et rien ne dit lequel des deux l'a émise. C'est exactement la
     différence entre dériver et affirmer.
     """
-    resultat = rapprocher("k8s", "v1", lire_releve("k8s"))
+    resultat = rapprocher("k8s", "v1", lire_releve())
     etats = {
         **{nom: "reached" for nom in resultat.atteints},
         **{nom: "shared route only" for nom in resultat.indistincts},

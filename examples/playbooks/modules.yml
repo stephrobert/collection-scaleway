@@ -1243,16 +1243,19 @@
     # plutôt qu'un module : la collection n'a pas de module de création, et lui
     # en donner un serait enseigner le contraire de ce qu'elle est (#283).
     #
-    # **`ReleaseIpToIpam` ne libère pas, il déplace.** Le contrat le dit :
-    # « The IP remains available in IPAM, which means that it is still reserved
-    # by the Organization ». L'adresse quitte le périmètre Instance et **reste
-    # réservée**, donc facturée. L'exemption parlait de « rendre une adresse à
-    # l'IPAM », ce qui laissait croire à une libération : c'est le contraire.
+    # **`ReleaseIpToIpam` ne libère pas, et il ne déplace pas non plus.** Le
+    # contrat dit « The IP remains available in IPAM, which means that it is
+    # still reserved by the Organization » : l'adresse reste réservée, donc
+    # facturée. L'exemption parlait de « rendre une adresse à l'IPAM », ce qui
+    # laissait croire à une libération.
     #
-    # D'où le `always` : ce qui a été créé ici est détruit ici, sur le chemin
-    # heureux comme sur l'autre. `residue.py` surveille `ipam.ip` autant que
-    # `instance.ip`, donc un oubli se verrait ; se reposer là-dessus serait
-    # confondre le filet et le geste.
+    # Mesuré le 16 septembre 2026, elle ne quitte pas non plus le périmètre
+    # Instance : elle y reste, **sous le même identifiant**, à l'état
+    # `detached`, et c'est par cette API-là qu'elle se supprime.
+    #
+    # D'où le `always` : ce qui a été réservé ici est libéré ici, sur le chemin
+    # heureux comme sur l'autre. `residue.py` le verrait, et s'en remettre à lui
+    # serait confondre le filet et le geste.
     - name: L'adresse que l'exemple possède, et rend
       when: cible == 'reel'
       block:
@@ -1270,10 +1273,14 @@
             status_code: [200, 201]
           register: adresse
 
+        # `ip` et non `ip_id` : le module accepte l'identifiant ou l'adresse
+        # sous un seul nom, parce que le contrat les accepte tous les deux au
+        # même endroit. Supposer `ip_id` par analogie avec les autres modules a
+        # coûté un tir réel.
         - name: Ce que l'API Instance en dit
           stephrobert.scaleway.instance_ip_info:
             zone: "{{ zone }}"
-            ip_id: "{{ adresse.json.ip.id }}"
+            ip: "{{ adresse.json.ip.id }}"
           register: lue_adresse
 
         - name: Elle porte bien l'étiquette posée à la réservation
@@ -1297,35 +1304,71 @@
             and rendue_adresse.api_type | default('') != 'not_emulated'
 
       always:
-        # **Retrouvée par son adresse, pas par son identifiant.** Rien ne dit
-        # que l'identifiant IPAM est celui que l'API Instance portait, et le
-        # supposer laisserait une réservation facturée derrière un contrôle qui
-        # a l'air vert.
-        - name: Retrouver la réservation IPAM correspondante
+        # **Les deux APIs, dans cet ordre, et chacune a sa raison.** Réserver
+        # une adresse côté Instance crée aussi une réservation IPAM adossée, et
+        # `ReleaseIpToIpam` ne fait que détacher la première de la seconde.
+        #
+        # Deux tirs réels du 16 septembre 2026 l'ont mesuré, et chacun a échoué
+        # par l'extrémité opposée :
+        #
+        #   l'action n'a pas tourné  -> l'adresse reste côté Instance, sous le
+        #                               même identifiant, à l'état `detached`,
+        #                               et IPAM refuse : 412 resource_still_in_use
+        #   l'action a tourné        -> l'adresse quitte Instance, et c'est la
+        #                               réservation IPAM qui survit, orpheline
+        #
+        # Un `always` doit survivre à un échec à n'importe quelle étape : il
+        # tente donc les deux, et tolère que l'une n'ait rien à faire. C'est ce
+        # que `status_code` dit ici, et non une négligence.
+        - name: Libérer l'adresse côté Instance, si elle y est encore
           ansible.builtin.uri:
             url: "{{ lookup('ansible.builtin.env', 'SCW_API_URL')
-              | default('https://api.scaleway.com', true) }}/ipam/v1/regions/{{ region }}/ips"
-            headers:
-              X-Auth-Token: "{{ lookup('ansible.builtin.env', 'SCW_SECRET_KEY') }}"
-          register: reservations
-          failed_when: false
-          when: adresse.json.ip.address | default('') | length > 0
-
-        - name: Libérer ce que l'exemple avait réservé
-          ansible.builtin.uri:
-            url: "{{ lookup('ansible.builtin.env', 'SCW_API_URL')
-              | default('https://api.scaleway.com', true) }}/ipam/v1/regions/{{ region }}/ips/{{ item }}"
+              | default('https://api.scaleway.com', true) }}/instance/v1/zones/{{ zone
+              }}/ips/{{ adresse.json.ip.id }}"
             method: DELETE
             headers:
               X-Auth-Token: "{{ lookup('ansible.builtin.env', 'SCW_SECRET_KEY') }}"
-            status_code: [200, 204, 404]
-          loop: >-
-            {{ (reservations.json.ips | default([]))
-               | selectattr('address', 'defined')
-               | selectattr('address', 'search', adresse.json.ip.address | default('!'))
-               | map(attribute='id') | list }}
-          loop_control: {label: "{{ item }}"}
-          when: adresse.json.ip.address | default('') | length > 0
+            status_code: [200, 204, 404, 412]
+          when: adresse.json.ip.id | default('') | length > 0
+
+        # `ipam_id` et non `id` : l'API Instance rend les deux, et ce sont deux
+        # objets. Les confondre marcherait tant que Scaleway leur donne la même
+        # valeur, ce qui est exactement le genre de coïncidence sur laquelle ce
+        # dépôt refuse de s'appuyer.
+        - name: Libérer la réservation IPAM, si elle a survécu
+          ansible.builtin.uri:
+            url: "{{ lookup('ansible.builtin.env', 'SCW_API_URL')
+              | default('https://api.scaleway.com', true) }}/ipam/v1/regions/{{ region }}/ips/{{ reservation }}"
+            method: DELETE
+            headers:
+              X-Auth-Token: "{{ lookup('ansible.builtin.env', 'SCW_SECRET_KEY') }}"
+            status_code: [200, 204, 404, 412]
+          vars:
+            reservation: "{{ adresse.json.ip.ipam_id | default(adresse.json.ip.id) }}"
+          when: reservation | default('') | length > 0
+
+        # **Le nettoyage doit se prouver, pas s'annoncer.** Les deux tâches
+        # ci-dessus tolèrent 404 et 412 pour survivre à toutes les combinaisons,
+        # donc elles passeraient au vert sans avoir rien libéré. C'est la
+        # lecture qui tranche, et elle échoue bruyamment : une adresse laissée
+        # là est facturée, et `residue.py` la trouverait de toute façon, mais
+        # après coup et sans savoir laquelle.
+        - name: Plus rien ne subsiste de cette adresse
+          stephrobert.scaleway.instance_ip_info:
+            zone: "{{ zone }}"
+          register: restantes
+          failed_when: false
+
+        - name: Et le dire ici plutôt que de le découvrir au contrôle de résidu
+          ansible.builtin.assert:
+            that:
+              - adresse.json.ip.id not in (restantes.ips | default([]) | map(attribute='id') | list)
+            fail_msg: >-
+              l'adresse {{ adresse.json.ip.address | default('?') }} est encore
+              sur le compte, donc facturée. La libérer à la main, puis corriger
+              la raison : c'est elle qui compte, pas la ressource.
+            quiet: true
+          when: adresse.json.ip.id | default('') | length > 0
 
     # ---- La route du frontend --------------------------------------------
 
@@ -1481,14 +1524,31 @@
             frontend_id: "{{ frontend_tls }}"
           register: cree
 
-        - name: La création rend les certificats dans l'ordre demandé
+        # **L'ordre n'est garanti nulle part, et c'est la mesure du 16 septembre
+        # 2026.** Le 8 septembre, `CreateFrontend` rendait l'ordre demandé et
+        # seule la relecture l'inversait ; c'est ce que cette assertion
+        # affirmait. Trois tirs réels le même jour, sans changement de code :
+        #
+        #     deux fois  rendu dans l'ordre demandé
+        #     une fois   rendu inversé, sur CreateFrontend
+        #
+        # Une propriété qui tient deux fois sur trois n'est pas une propriété.
+        # L'assertion porte donc sur ce que l'API garantit vraiment, le même
+        # ensemble de références, et l'ordre est mesuré plus bas là où il
+        # compte : l'idempotence du module, que l'override `comparison: set` de
+        # `lb.yml` protège déjà (#290).
+        - name: La création rend les certificats demandés, l'ordre en moins
           ansible.builtin.assert:
             that:
-              - cree.result.certificate_ids == certificats_mesure
+              - cree.result.certificate_ids | sort == certificats_mesure | sort
             fail_msg: >-
               demandé {{ certificats_mesure }}, rendu
-              {{ cree.result.certificate_ids }} : l'API réordonne à la création.
-            success_msg: l'ordre de création est conservé
+              {{ cree.result.certificate_ids }} : ce ne sont pas les mêmes
+              certificats, et l'ordre n'y est pour rien.
+            success_msg: >-
+              les certificats demandés sont là ; l'ordre
+              {{ 'est conservé' if cree.result.certificate_ids == certificats_mesure
+                 else "a changé, ce que l'API ne garantit pas" }}
 
         # Le nom d'un certificat est ce qu'un module de gestion peut réécrire :
         # c'est ce qui donne enfin une cible à `lb_certificate`, jusqu'ici

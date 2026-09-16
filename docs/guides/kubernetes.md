@@ -226,6 +226,14 @@ between two `ready`, and the module watches the node leave its state before
 accepting that it came back. A batch that does not come back stops the roll and
 names what was left to do.
 
+**Raise the timeout for nodes.** The default is 300 seconds, inherited from
+machines, and a machine only has to reboot. A node is drained, rebooted, and
+then has to **rejoin the cluster**, and that last part is what overruns. Measured
+across two real runs on the same day: one node came back inside the default, the
+next did not. Pass `scaleway_rolling_reboot_wait_timeout` generously; a roll that
+gives up on a node that was going to return has to be restarted by hand, and one
+that waits a little longer costs nothing.
+
 **The drain is Scaleway's, not ours.** `RebootNode` drains the node and
 reschedules its Pods; this collection never calls `kubectl` and never will. But
 the operation succeeding depends on available capacity and on your workloads'
@@ -291,7 +299,7 @@ this table is read out of it, never written by hand. It separates what this
 collection emitted from what Terraform emitted, by user agent.
 
 <!-- compteurs:preuve-kapsule:début, produits par scripts/readme_counters.py -->
-| module | run of 2026-09-14 |
+| module | run of 2026-09-16 |
 |---|---|
 | `k8s_cluster` | reached |
 | `k8s_cluster_acl_action` | reached |
