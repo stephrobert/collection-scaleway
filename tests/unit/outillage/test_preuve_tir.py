@@ -220,7 +220,7 @@ def test_une_preuve_ne_peut_pas_vivre_dans_le_commit_quelle_atteste(
     dossier = tmp_path / "preuves"
     monkeypatch.setattr(preuve_tir, "PREUVES", dossier)
     _preuve(dossier, commit="1111111111111111111111111111111111111111")
-    monkeypatch.setattr(preuve_tir, "_seule_la_preuve_les_separe", lambda ancetre, commit: True)
+    monkeypatch.setattr(preuve_tir, "_meme_archive_publiee", lambda ancetre, commit: True)
 
     assert preuve_tir.refus(SHA, aujourdhui="2026-09-16") == []
 
@@ -246,7 +246,8 @@ def test_un_ancetre_qui_change_autre_chose_que_la_preuve_est_refuse(
     lancer("init", "-q")
     lancer("config", "user.email", "t@t")
     lancer("config", "user.name", "t")
-    (depot / "code.py").write_text("x = 1\n", encoding="utf-8")
+    (depot / "ansible_collections").mkdir()
+    (depot / "ansible_collections" / "module.py").write_text("x = 1\n", encoding="utf-8")
     lancer("add", "-A")
     lancer("commit", "-qm", "socle")
     socle = subprocess.run(
@@ -255,7 +256,7 @@ def test_un_ancetre_qui_change_autre_chose_que_la_preuve_est_refuse(
 
     monkeypatch.setattr(preuve_tir, "ROOT", depot)
 
-    # Un commit qui n'ajoute qu'une preuve : c'est le décalage admis.
+    # Un commit qui n'ajoute qu'une preuve : l'archive publiée ne bouge pas.
     (depot / "preuves").mkdir()
     (depot / "preuves" / "tir.json").write_text("{}", encoding="utf-8")
     lancer("add", "-A")
@@ -264,17 +265,38 @@ def test_un_ancetre_qui_change_autre_chose_que_la_preuve_est_refuse(
         ["git", "rev-parse", "HEAD"], cwd=depot, capture_output=True, text=True, check=True
     ).stdout.strip()
 
-    assert preuve_tir._seule_la_preuve_les_separe(socle, avec_preuve)
+    assert preuve_tir._meme_archive_publiee(socle, avec_preuve)
 
-    # Un commit qui touche le code : l'arbre n'est plus celui qui a tourné.
-    (depot / "code.py").write_text("x = 2\n", encoding="utf-8")
+    # Un commit qui touche un module : ce qu'on publierait n'est plus ce qui a tourné.
+    (depot / "ansible_collections" / "module.py").write_text("x = 2\n", encoding="utf-8")
     lancer("add", "-A")
     lancer("commit", "-qm", "du code")
     avec_code = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=depot, capture_output=True, text=True, check=True
     ).stdout.strip()
 
-    assert not preuve_tir._seule_la_preuve_les_separe(socle, avec_code), (
-        "un commit d'écart qui touche le code a été accepté : la preuve nommerait "
-        "un arbre que le tir n'a pas joué."
+    assert not preuve_tir._meme_archive_publiee(socle, avec_code), (
+        "un commit qui change l'archive publiée a été accepté : un utilisateur "
+        "installerait autre chose que ce qui a tourné."
+    )
+
+
+def test_le_perimetre_de_la_preuve_est_celui_de_larchive() -> None:
+    """La preuve couvre ce qui est publié, pas le dépôt entier.
+
+    **Le premier critère exigeait un arbre entier identique, et il était
+    invivable** : corriger l'outillage de release après le tir invalidait le
+    tir, donc chaque correction en réclamait un nouveau, facturé. Ce module dit
+    lui-même qu'une garde impossible à satisfaire se fait désactiver dans le
+    mois ; c'en était une.
+
+    Le périmètre doit rester celui de l'archive : l'élargir laisserait un module
+    changer entre le tir et la publication, ce qui est précisément ce que la
+    preuve interdit.
+    """
+    assert preuve_tir.PUBLIE == "ansible_collections/", (
+        "le périmètre de la preuve n'est plus celui de l'archive publiée. "
+        "`ansible-galaxy collection build` ne construit que ce répertoire : "
+        "restreindre plus laisserait un module bouger sans invalider le tir, "
+        "élargir rendrait la garde impossible à satisfaire."
     )

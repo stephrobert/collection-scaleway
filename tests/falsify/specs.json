@@ -3402,10 +3402,10 @@
     },
     {
       "name": "decalage-de-preuve-ouvert-a-tout",
-      "why": "Une preuve ne peut pas vivre dans le commit qu'elle atteste : le tir se joue sur un arbre propre, et la commiter en crée un autre. Le décalage d'un commit est donc admis, et il doit rester **étroit** : un ancêtre dont le contenu ne diffère que sous `preuves/`.\n\nOuvert à tout, il devient une porte dérobée : n'importe quel commit d'écart passerait, y compris un qui change le code, et la preuve ne parlerait plus de ce qu'on publie. La garde entière se réduirait alors à « une preuve existe quelque part ».",
+      "why": "Une preuve ne peut pas vivre dans le commit qu'elle atteste : le tir se joue sur un arbre propre, et la commiter en crée un autre. Le décalage est donc admis tant que **l'archive publiée** ne bouge pas : ce qu'un utilisateur installera est alors exactement ce qui a tourné.\n\nOuvert à tout, il devient une porte dérobée : un module pourrait changer entre le tir et la publication sans que la preuve cesse d'être acceptée, et la garde entière se réduirait à « une preuve existe quelque part ».",
       "file": "scripts/preuve_tir.py",
-      "find": "    touches = _git(\"diff\", \"--name-only\", ancetre, commit).splitlines()\n    return bool(touches) and all(chemin.startswith(\"preuves/\") for chemin in touches)",
-      "replace": "    _git(\"diff\", \"--name-only\", ancetre, commit)\n    return True",
+      "find": "    return not _git(\"diff\", \"--name-only\", ancetre, commit, \"--\", PUBLIE).strip()",
+      "replace": "    _git(\"diff\", \"--name-only\", ancetre, commit, \"--\", PUBLIE)\n    return True",
       "test": "tests/unit/outillage/test_preuve_tir.py::test_un_ancetre_qui_change_autre_chose_que_la_preuve_est_refuse"
     }
   ]

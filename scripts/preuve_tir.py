@@ -198,8 +198,26 @@ def sceller(artefact: Path, commit: str | None = None) -> Path:
     return destination
 
 
-def _seule_la_preuve_les_separe(ancetre: str, commit: str) -> bool:
-    """Ces deux commits ne diffèrent-ils que par ce qui vit sous `preuves/` ?
+#: Ce que la publication emporte, et donc ce que la preuve doit couvrir.
+#:
+#: **Une version publiée, c'est cette archive et rien d'autre.**
+#: `ansible-galaxy collection build` la construit depuis ce répertoire ; le
+#: générateur, les contrats, les tests et la stack d'exemple n'y sont pas.
+#:
+#: Le premier critère écrit ici exigeait un arbre **entier** identique entre le
+#: tir et la publication. Il était invivable : corriger l'outillage de release
+#: après le tir invalidait le tir, donc chaque correction en réclamait un
+#: nouveau, facturé. Ce fichier dit lui-même qu'une garde impossible à
+#: satisfaire se fait désactiver dans le mois ; c'en était une.
+#:
+#: Ce qui est publié a été joué : c'est ce que la preuve promet, et c'est tout
+#: ce qu'elle a à vérifier. Changer un module invalide le tir. Changer
+#: `scripts/preuve_tir.py` ne change rien à ce qu'un utilisateur installe.
+PUBLIE = "ansible_collections/"
+
+
+def _meme_archive_publiee(ancetre: str, commit: str) -> bool:
+    """Ces deux commits publieraient-ils exactement la même archive ?
 
     **Une preuve ne peut pas être dans le commit qu'elle atteste.** Le tir se
     joue sur un arbre propre, la preuve nomme ce commit-là, et la commiter en
@@ -207,9 +225,9 @@ def _seule_la_preuve_les_separe(ancetre: str, commit: str) -> bool:
     quelque chose d'impossible, et la garde se serait fait désactiver dans le
     mois.
 
-    Le décalage admis est donc étroit et vérifiable : un commit d'écart, dont le
-    contenu ne bouge que là où les preuves vivent. Tout le reste de l'arbre est
-    celui qui a tourné.
+    Le décalage admis est donc celui-ci : un ancêtre dont **l'archive publiée**
+    est identique à celle de HEAD. Ce qu'un utilisateur installera est alors
+    exactement ce qui a tourné contre le compte.
     """
     if not ancetre or ancetre == commit:
         return True
@@ -221,8 +239,7 @@ def _seule_la_preuve_les_separe(ancetre: str, commit: str) -> bool:
     )
     if ancestral.returncode != 0:
         return False
-    touches = _git("diff", "--name-only", ancetre, commit).splitlines()
-    return bool(touches) and all(chemin.startswith("preuves/") for chemin in touches)
+    return not _git("diff", "--name-only", ancetre, commit, "--", PUBLIE).strip()
 
 
 def pour(commit: str) -> Preuve:
@@ -236,7 +253,7 @@ def pour(commit: str) -> Preuve:
         preuve
         for chemin in sorted(PREUVES.glob("tir-*.json"))
         if (preuve := _lire(chemin)).commit == commit
-        or _seule_la_preuve_les_separe(preuve.commit, commit)
+        or _meme_archive_publiee(preuve.commit, commit)
     ]
     if not trouvees:
         raise PreuveTirError(
