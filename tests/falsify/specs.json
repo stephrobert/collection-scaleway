@@ -3402,11 +3402,11 @@
     },
     {
       "name": "decalage-de-preuve-ouvert-a-tout",
-      "why": "Une preuve ne peut pas vivre dans le commit qu'elle atteste : le tir se joue sur un arbre propre, et la commiter en crée un autre. Le décalage est donc admis tant que **l'archive publiée** ne bouge pas : ce qu'un utilisateur installera est alors exactement ce qui a tourné.\n\nOuvert à tout, il devient une porte dérobée : un module pourrait changer entre le tir et la publication sans que la preuve cesse d'être acceptée, et la garde entière se réduirait à « une preuve existe quelque part ».",
+      "why": "Une preuve ne peut pas vivre dans le commit qu'elle atteste : le tir se joue sur un arbre propre, et la commiter en crée un autre. Le décalage est donc admis tant que **l'archive publiée** ne bouge pas : ce qu'un utilisateur installera est alors exactement ce qui a tourné.\n\nOuvert à tout, il devient une porte dérobée : un module pourrait changer entre le tir et la publication sans que la preuve cesse d'être acceptée, et la garde entière se réduirait à « une preuve existe quelque part ».\n\n**La comparaison porte sur l'identifiant de l'arbre, pas sur deux commits.** Comparer deux commits exige que les deux existent : un commit de branche squashée puis supprimée n'est atteignable depuis rien, donc absent du clone de la CI. La release 0.8.0 est passée en local et a été refusée en CI pour cette seule raison.",
       "file": "scripts/preuve_tir.py",
-      "find": "    return compare.returncode == 0 and not compare.stdout.strip()",
+      "find": "    return ici.returncode == 0 and ici.stdout.strip() == preuve.arbre_publie",
       "replace": "    return True",
-      "test": "tests/unit/outillage/test_preuve_tir.py::test_un_ancetre_qui_change_autre_chose_que_la_preuve_est_refuse"
+      "test": "tests/unit/outillage/test_preuve_tir.py::test_une_archive_differente_est_refusee"
     }
   ]
 }

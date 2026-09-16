@@ -6,5 +6,6 @@
   "modules_joues": 62,
   "modules_en_echec": [],
   "run_id": "773642482",
-  "empreinte": "sha256:7ca27f55192a67535429d3ccd11e25175d0f545fe6b6ae38090124975531b586"
+  "empreinte": "sha256:7ca27f55192a67535429d3ccd11e25175d0f545fe6b6ae38090124975531b586",
+  "arbre_publie": "b3cb583626073603441e1d15c5e1669f579f716e"
 }
