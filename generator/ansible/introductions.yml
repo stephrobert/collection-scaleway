@@ -34,7 +34,7 @@
 # fragments de changelog impliquent : un module neuf stampé `0.5.0` dans une
 # version qui sortira en `1.0.0` publierait une date fausse dès son premier
 # jour.
-en_preparation: "0.8.0"
+en_preparation: "0.8.1"
 
 apparitions:
 
@@ -556,3 +556,162 @@ apparitions:
         - servers
       instance_volume_type_info:
         - volumes
+
+  "0.8.0":
+    modules:
+      - k8s_cluster
+      - k8s_cluster_acl_action
+      - k8s_cluster_acl_info
+      - k8s_cluster_available_type_info
+      - k8s_cluster_available_version_info
+      - k8s_cluster_info
+      - k8s_cluster_node_info
+      - k8s_cluster_pool_info
+      - k8s_cluster_reset_admin_token_action
+      - k8s_cluster_set_type_action
+      - k8s_cluster_type_info
+      - k8s_cluster_upgrade_action
+      - k8s_node_info
+      - k8s_node_reboot_action
+      - k8s_node_replace_action
+      - k8s_pool
+      - k8s_pool_info
+      - k8s_pool_upgrade_action
+      - k8s_version_info
+    options:
+      k8s_cluster:
+        - admission_plugins
+        - apiserver_cert_sans
+        - auto_upgrade
+        - autoscaler_config
+        - cluster_id
+        - description
+        - feature_gates
+        - name
+        - open_id_connect_config
+        - region
+        - tags
+      k8s_cluster_acl_action:
+        - acls
+        - cluster_id
+        - region
+      k8s_cluster_acl_info:
+        - cluster_id
+        - region
+      k8s_cluster_available_type_info:
+        - cluster_id
+        - region
+      k8s_cluster_available_version_info:
+        - cluster_id
+        - region
+      k8s_cluster_info:
+        - cluster_id
+        - name
+        - order_by
+        - private_network_id
+        - region
+        - status
+        - type
+        - version
+      k8s_cluster_node_info:
+        - cluster_id
+        - name
+        - order_by
+        - pool_id
+        - region
+        - status
+      k8s_cluster_pool_info:
+        - cluster_id
+        - name
+        - order_by
+        - region
+        - status
+      k8s_cluster_reset_admin_token_action:
+        - cluster_id
+        - region
+      k8s_cluster_set_type_action:
+        - cluster_id
+        - region
+        - type
+      k8s_cluster_type_info:
+        - region
+      k8s_cluster_upgrade_action:
+        - cluster_id
+        - region
+        - upgrade_pools
+        - version
+      k8s_node_info:
+        - node_id
+        - region
+      k8s_node_reboot_action:
+        - node_id
+        - region
+      k8s_node_replace_action:
+        - node_id
+        - region
+      k8s_pool:
+        - autohealing
+        - autoscaling
+        - kubelet_args
+        - max_size
+        - max_termination_grace_period
+        - min_size
+        - pool_id
+        - region
+        - security_group_id
+        - size
+        - tags
+        - upgrade_policy
+      k8s_pool_info:
+        - pool_id
+        - region
+      k8s_pool_upgrade_action:
+        - pool_id
+        - region
+        - version
+      k8s_version_info:
+        - region
+        - version_name
+    retours:
+      k8s_cluster:
+        - resource
+      k8s_cluster_acl_action:
+        - action
+        - rules
+      k8s_cluster_acl_info:
+        - rules
+      k8s_cluster_available_type_info:
+        - cluster_types
+      k8s_cluster_available_version_info:
+        - versions
+      k8s_cluster_info:
+        - clusters
+        - result
+      k8s_cluster_node_info:
+        - nodes
+      k8s_cluster_pool_info:
+        - pools
+      k8s_cluster_reset_admin_token_action:
+        - action
+      k8s_cluster_set_type_action:
+        - action
+      k8s_cluster_type_info:
+        - cluster_types
+      k8s_cluster_upgrade_action:
+        - action
+      k8s_node_info:
+        - result
+      k8s_node_reboot_action:
+        - action
+        - status
+      k8s_node_replace_action:
+        - action
+      k8s_pool:
+        - resource
+      k8s_pool_info:
+        - result
+      k8s_pool_upgrade_action:
+        - action
+      k8s_version_info:
+        - result
+        - versions

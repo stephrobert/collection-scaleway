@@ -19,6 +19,7 @@ from generator.ansible.collection import load_collection
 from generator.ansible.introductions import (
     Introductions,
     IntroductionsError,
+    _rang,
     load_introductions,
 )
 from generator.ansible.models import build_module_specs
@@ -70,17 +71,31 @@ def test_chaque_module_livre_publie_la_date_que_le_journal_lui_donne() -> None:
     assert ecarts == [], "\n".join(ecarts)
 
 
-def test_aucun_module_livre_nannonce_la_version_courante_de_la_collection() -> None:
-    """L'invariant qui dit que la date n'est plus un horodatage.
+def test_la_version_en_preparation_devance_celle_qui_est_publiee() -> None:
+    """L'invariant qui fait qu'une date d'apparition n'est pas un horodatage.
 
-    Il tient tant que la version en préparation est postérieure à celle qui est
-    publiée, ce que `scripts/introductions.py` refuse de laisser dériver.
+    Un module écrit pendant le cycle prend la version en préparation. Si elle
+    n'avait pas devancé la version publiée, il prétendrait dater d'une version
+    déjà sortie, et personne ne pourrait plus le corriger : une version publiée
+    est immuable (ADR-013).
+
+    **Ce test regardait les modules, et il ne pouvait pas tenir un jour de
+    release.** Il refusait qu'un module porte la version que `galaxy.yml`
+    déclare, ce qui est exactement l'état normal d'une version qu'on
+    s'apprête à publier : les modules Kubernetes datent de 0.8.0, et `galaxy.yml`
+    disait 0.8.0. Il tombait donc au seul moment où il comptait, et
+    n'avait jamais tourné dans cet état.
+
+    Il porte désormais sur ce que sa propre description énonçait.
     """
+    journal = load_introductions()
     courante = load_collection().version
-    livres = [f for f in sorted(MODULES.glob("*.py")) if f.name != "__init__.py"]
-    coupables = [f.stem for f in livres if _documentation(f).get("version_added") == courante]
-    assert livres, "aucun module examiné : un contrôle qui ne regarde rien passe toujours"
-    assert coupables == []
+
+    assert _rang(journal.en_preparation) > _rang(courante), (
+        f"la version en préparation est {journal.en_preparation} et la collection "
+        f"déclare {courante} : un module écrit maintenant prétendrait dater d'une "
+        "version déjà publiée, que personne ne peut plus corriger."
+    )
 
 
 # --- Ce que le modèle construit --------------------------------------------
@@ -267,3 +282,65 @@ def test_sans_journal_le_modele_ne_date_rien_de_particulier() -> None:
     assert vide.module("nimporte") == "9.9.9"
     assert vide.option("nimporte", "option") is None
     assert vide.retour("nimporte", "cle") is None
+
+
+def test_un_membre_nest_jamais_date_apres_son_module() -> None:
+    """Une option ne peut pas être postérieure au module qui la porte.
+
+    **Mesuré en préparant la 0.8.0, et c'est un défaut de publication.** Le
+    figement datait les modules neufs et laissait leurs membres hors du
+    journal, au motif que les inscrire publierait un badge identique sur chaque
+    ligne. `Introductions._posterieure` tait déjà ce cas, donc l'inscription ne
+    publiait rien ; le saut, lui, laissait les membres orphelins.
+
+    `en_preparation` avançant ensuite à `0.8.1`, chaque option d'un module daté
+    `0.8.0` recevait `version_added: 0.8.1` au rendu suivant. Une date fausse
+    dès le premier jour, sur une version immuable une fois publiée (ADR-013).
+
+    La garde porte sur le journal versionné, pas sur une construction : c'est
+    lui qui décide de ce que les pages publieront.
+    """
+    journal = load_introductions()
+
+    fautives = [
+        (module, nom, version, journal.module(module))
+        for table in (journal.options, journal.retours)
+        for (module, nom), version in table.items()
+        if module in journal.modules and _rang(version) < _rang(journal.module(module))
+    ]
+
+    assert fautives == [], "des membres sont datés avant le module qui les porte : " + ", ".join(
+        f"{m}.{n} en {v} alors que {m} date de {d}" for m, n, v, d in fautives
+    )
+
+
+def test_le_figement_inscrit_aussi_les_membres_dun_module_neuf(tmp_path: Path) -> None:
+    """Sans eux, ils basculent sur la version suivante au rendu d'après.
+
+    Le test précédent lit le journal **déjà écrit**, donc il dit l'état du dépôt
+    et ne peut rien dire du code qui l'écrit. Celui-ci fige pour de vrai, sur un
+    journal de laboratoire, et regarde ce que le fichier a reçu.
+
+    C'est la différence entre vérifier une donnée et vérifier un comportement,
+    et la mutation qui remet le saut ne mordait que sur le second.
+    """
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import introductions as figeur
+
+    chemin = tmp_path / "introductions.yml"
+    chemin.write_text('en_preparation: "0.9.0"\n\napparitions:\n', encoding="utf-8")
+    journal = Introductions(
+        modules={},
+        options={},
+        retours={},
+        en_preparation="0.9.0",
+    )
+
+    figeur.enregistrer(journal, "0.9.0", chemin)
+    ecrit = chemin.read_text(encoding="utf-8")
+
+    assert "options:" in ecrit, (
+        "le figement n'a inscrit aucune option : celles d'un module neuf restent "
+        "hors du journal, et le rendu suivant les datera de la version d'après, "
+        "donc postérieures au module qui les porte."
+    )

@@ -1,8 +1,0 @@
-bugfixes:
-  - "generator - a generated module, a golden and the runtime's resolution
-    tables are written atomically, so a concurrent reader never sees an empty
-    file. Measured while regenerating one module: fifty-six reads at a size
-    other than the final one, all truncated, at 0, 4096, 8192 and 12288 bytes
-    for a 12809-byte file."
-  - "generator - an interrupted generation no longer leaves a half-written
-    versioned artefact on disk, nor a leftover temporary file next to it."

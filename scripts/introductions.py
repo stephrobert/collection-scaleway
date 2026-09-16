@@ -176,11 +176,18 @@ def enregistrer(journal: Introductions, version: str, chemin: Path) -> list[str]
     options: dict[str, list[str]] = {}
     retours: dict[str, list[str]] = {}
     for genre, module, nom in membres:
-        # Les membres d'un module neuf ne se datent pas séparément : ils
-        # héritent de la date de leur module, et les inscrire ferait publier un
-        # badge identique sur chaque ligne de la page.
-        if module not in journal.modules:
-            continue
+        # **Les membres d'un module neuf s'inscrivent aussi, et c'est une
+        # correction.** Ils étaient sautés, au motif que les inscrire ferait
+        # publier un badge identique sur chaque ligne de la page. C'est faux :
+        # `Introductions._posterieure` tait déjà la version d'un membre quand
+        # elle est celle de son module, donc l'inscription ne publie rien.
+        #
+        # Ce que le saut produisait, en revanche, est une date fausse dès le
+        # premier jour. Mesuré en préparant la 0.8.0 : le figement date le
+        # module, laisse ses membres hors du journal, et `en_preparation` avance
+        # à 0.8.1. Au rendu suivant, chaque option d'un module daté 0.8.0
+        # recevait `version_added: 0.8.1`, c'est-à-dire postérieure au module
+        # qui la porte, ce qui ne peut pas être vrai (ADR-013).
         deja = journal.options if genre == "option" else journal.retours
         if (module, nom) not in deja:
             (options if genre == "option" else retours).setdefault(module, []).append(nom)

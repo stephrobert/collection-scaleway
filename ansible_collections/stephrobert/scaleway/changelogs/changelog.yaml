@@ -1143,3 +1143,464 @@ releases:
       - rulebook.yml
       - selector.yml
     release_date: '2026-09-12'
+  0.8.0:
+    changes:
+      breaking_changes:
+        - filter - a snapshot carries typed scopes, ``{type, name}``, and refuses
+          a bare string. ``fr-par`` is a region and ``fr-par-1`` a zone; nothing in
+          the string says which, and guessing from the shape would work on Scaleway
+          today and break on the first product that names things differently.
+        - 'filter - the common shape says ``scope`` and ``scope_type`` where it said
+          ``zone``. Instance and Load Balancer are zonal, Kapsule is regional, and
+          filing a region under a field named zone worked while saying something false.
+          Nothing published ever carried the old name: the snapshot schema did not
+          exist in 0.7.0, so the vocabulary is corrected before its first publication
+          rather than migrated after.'
+      bugfixes:
+        - 'The example platform no longer leaves a security group behind. A Kapsule
+          cluster creates one for itself and ``delete_additional_resources`` does
+          not take it: measured five times over three minutes after the cluster was
+          destroyed, it was still there every time. It does not carry the platform''s
+          prefix, so the guards that filter by prefix ignore it; the launcher now
+          removes it after destruction and before the residue check, so that check
+          stays the judge.'
+        - 'The public gateway waits up to sixty minutes instead of ten. Measured on
+          a real account: one took fifty-six minutes to reach ``running``. The provider
+          gave up at ten, never recorded the resource, and the destroy that followed
+          took eighteen resources and left that one behind, billed and outside the
+          state. A timeout that gives up does not leave a half-created resource, it
+          leaves a whole one nobody tracks.'
+        - The published archive no longer carries ``changelogs/.plugin-cache.yaml``,
+          a cache ``antsibull-changelog`` rebuilds and git ignores. A fresh clone
+          does not have it, so the CI published an archive without it while a workstation
+          build published one with it, under the same version number, and a version
+          published on Galaxy is immutable. Packaging now asks git what it ignores
+          under the collection and refuses an archive that carries any of it.
+        - 'filter - an audit finding identified its resource by name, and a name is
+          not an identity: measured on a real account, two machines accept the same
+          name in one zone and the API then returns two distinct identifiers. Two
+          homonymous machines produced indistinguishable findings, and grouping refusals
+          by name merged them into one, so the count of examined resources was short
+          by one. Both now go through the resource identifier.'
+        - filter - an expiry in the past is reported with the number of days it actually
+          is. Python's ``timedelta.days`` floors, so a certificate expired thirteen
+          days and ten hours ago was reported as fourteen, always erring towards alarm.
+        - 'generator - a generated module, a golden and the runtime''s resolution
+          tables are written atomically, so a concurrent reader never sees an empty
+          file. Measured while regenerating one module: fifty-six reads at a size
+          other than the final one, all truncated, at 0, 4096, 8192 and 12288 bytes
+          for a 12809-byte file.'
+        - generator - an interrupted generation no longer leaves a half-written versioned
+          artefact on disk, nor a leftover temporary file next to it.
+        - modules - ``instance_snapshot_action`` requires the bucket and the key it
+          exports to, and its example shows both. Exporting a snapshot without saying
+          where does nothing useful, and it had the same shape of defect, found by
+          the guard written for the first one.
+        - 'modules - ``k8s_cluster_acl_action`` requires the ACLs it adds, and its
+          published example shows one. Adding no ACL is accepted by the API, changes
+          nothing, and the example was perfectly copyable: somebody copying it learned
+          nothing about what the module does.'
+        - modules - ``k8s_node_reboot_action`` waits for the node to be back before
+          returning, instead of returning on an accepted trigger. A rolling reboot
+          would have moved to the next batch while the first was still rebooting,
+          which is the whole thing a rolling reboot exists to avoid.
+        - modules - a documentation line no longer exceeds what ``ansible-test sanity``
+          accepts. PyYAML never breaks inside a word, so a description carrying a
+          URL of over a hundred characters in mid-sentence was wrapped after the URL,
+          on a line of nearly two hundred characters. The rendering now narrows its
+          width for the one block that needs it rather than reflowing every description
+          in every module.
+        - 'modules - the wait observes what the contract declares: ``status``, not
+          the ``state`` Instance uses, and ``ready`` after passing through ``rebooting``.
+          Waiting on the wrong field would fail the action after ``wait_timeout``
+          on a node that had come back.'
+        - 'roles - a Kapsule finding can become ``resolved``. ``fleet_audit`` passed
+          only the Instance zones as what this run measured, and Kubernetes reads
+          are regional: a finding whose scope is a region therefore came out as unmeasured
+          even when the read had answered perfectly. The false verdict was the inverted
+          one, refusing to call resolved what is, and it was a lie about a measurement
+          that succeeded.'
+      minor_changes:
+        - A guide for operating a Kapsule cluster, covering what to read before touching
+          anything, auditing a version before it audits you, changing what a cluster
+          or a pool holds, rolling through node reboots, and what is deliberately
+          not supported (https://github.com/stephrobert/collection-scaleway/issues/280).
+        - 'The Kubernetes modules have now run against the real API. Nineteen modules
+          were shipped in this cycle without a single call ever reaching Scaleway:
+          loaded by Ansible, their arguments built, their documentation published,
+          and nothing more. Fifteen of them are now exercised by the example platform,
+          which creates a Kapsule cluster and a pool, and the two declarative-state
+          modules took their MANAGE path against the real API, and their idempotence
+          on tags is proven there: first pass ``changed``, second pass ``ok``. Their
+          other fields, the mappings above all, are not measured yet: that is where
+          an API injects defaults, normalises and reorders, and where idempotence
+          breaks.'
+        - 'The fourth unexercised Kubernetes action, ``k8s_node_replace_action``, is exempt for a different reason, and saying so matters: replacing
+          a node is not a question of cost but of a missing wait. Nothing observes
+          the old node gone and its replacement ready, so the operation is available
+          as a primitive and not qualified as an operation.'
+        - The guide's proof table is derived from the recorded real-cloud run rather
+          than written by hand, and distinguishes a module a run proves from one whose
+          only exercised route is shared with another module (https://github.com/stephrobert/collection-scaleway/issues/280).
+        - 'Three of the four Kubernetes action modules the example leaves unexercised say the same why: their only acceptable
+          call changes the type or the version of a cluster, so the bill, and that
+          is not a decision an example makes on behalf of whoever runs it. The types
+          and reachable versions are read all the same, which is what a version-drift
+          rule needs.'
+        - filter - ``fleet_diff`` compares the fields a product alone carries, derived
+          from what the normaliser declares rather than listed a second time. A cluster
+          moving from one version to the next used to come out under ``changed_outside_this_shape``,
+          saying that something had moved without saying what, on the most important
+          change a managed cluster has.
+        - 'filter - ``fleet_snapshot`` builds the snapshot and ``snapshot_read`` refuses
+          one this collection cannot read: an unknown ``schema_version``, or a truncated
+          file. A truncated file and an empty fleet look alike, and only the second
+          one is information.'
+        - 'filter - ``resource_facts`` normalises Kapsule clusters, pool nodes and
+          load balancer certificates alongside Instances and load balancers. A rule
+          still names no product field: the seam absorbs the vocabulary, as it always
+          has.'
+        - 'filter - ``resource_facts`` now carries the resource identifier, and knows
+          load balancers as well as Instances. A load balancer names its state ``status``,
+          its addresses live under ``ip[].ip_address`` and its dates are ``updated_at``
+          and ``created_at``: absorbing those three differences is what this seam
+          exists for, so no audit rule has to know them.'
+        - filter - ``select_resources`` says what a selector designates among resources
+          read from the API, the counterpart of ``select_hosts`` for what does not
+          come from the inventory. An ambiguous ``name`` is refused; several nodes
+          in a pool are the point, not an ambiguity.
+        - filter - a cluster carries the end of life of the version it runs, joined
+          from the region's version catalogue at the seam rather than in a rule. One
+          rule then answers the same question for a certificate and for a cluster.
+        - 'filter - a finding also carries the C(field) the rule judges, which is
+          information rather than identity: each rule judges exactly one field, so
+          the field adds nothing the rule does not already say. A test holds that
+          invariant, because the day a rule judged two fields two distinct findings
+          would share one identity.'
+        - filter - a finding now carries the ``zone`` it was found in. Without it
+          a vanished finding is indistinguishable from a resolved one, and the only
+          honest answer would be to conclude nothing about the whole fleet.
+        - filter - a node carries the name of the pool it lives in, joined at the
+          seam. It is the name an operator writes in a selector and reads in the console,
+          where ``pool_id`` is what the API returns.
+        - filter - a pool of nodes enters the common shape, with its version, its
+          size and its autoscaling. A cluster whose version does not move while one
+          of its pools goes up is a change the cluster alone would not report.
+        - 'filter - a product carries what it can carry, and no more. A field a product
+          does not have is not an empty field: the rule that judges it skips the resource
+          rather than calling it compliant, because counting it as compliant would
+          inflate the pass count with resources nobody looked at.'
+        - filter - a version drift is counted within one major version. A major apart
+          is a different question, and counting it in the same number would make it
+          disappear behind a negative count that reads as up to date.
+        - filter - every audit finding now carries an C(id) that is recomputed on
+          every run and comes out the same tomorrow for the same problem on the same
+          resource. Nothing random, nothing timestamped, or everything would be new
+          each morning. It is what lets a later version count findings as new, persisting
+          or resolved without a heuristic.
+        - 'filter - node health conditions are measured, not contracted. ``scaleway.k8s.v1.Node``
+          declares neither ``conditions`` nor ``public_ip_v4`` nor ``public_ip_v6``,
+          and the real response returns all three. Their absence therefore means unmeasured
+          and never healthy: the day upstream stops returning them, no golden goes
+          red, and a rule reading absence as good news would report a healthy fleet
+          over zero fields read.'
+        - filter - the selector grammar is written once. ``select_hosts`` and ``audit_exceptions``
+          ask the same question of two populations, and both validated it separately
+          with two sets of messages that had already started to diverge.
+        - 'filter - what is shared is the grammar: one criterion and only one, an
+          unknown key refused, a tag combination named. The resolution is not shared,
+          and that is correct: an inventory group is not a pool, and a resource ``id``
+          has no equivalent in an inventory. The accepted criteria are the caller''s
+          to decide.'
+        - 'generator - an action whose body carries parameters no longer publishes
+          an example that supplies none. The contract cannot settle this: its ``requestBody``
+          is required while the properties inside it are not, and the parser translates
+          what it reads. The decision belongs to an override, with its reason, and
+          a guard now refuses the silence.'
+        - 'inventory - ``state`` is accepted as the name ``scaleway.scaleway`` uses
+          for the same idea, so a file written for that collection reads here without
+          being rewritten. ``states`` wins when both are given: it is the one this
+          documentation describes, and the one a user here wrote on purpose.'
+        - 'inventory - ``variables`` takes a ``destination: source`` mapping, the
+          shape ``scaleway.scaleway`` uses, where the source is a host variable this
+          plugin sets without its ``scaleway_`` prefix. ``hostname``, ``vpc_ipv4``
+          and ``vpc_ipv6`` are accepted as their names for ``name``, ``private_ipv4``
+          and ``private_ipv6``.'
+        - inventory - a ``variables`` source this plugin does not set is refused,
+          and the refusal names the sources that exist. Their plugin drops the whole
+          host instead, so a typo empties the inventory, the warning drowns in the
+          rest, and a playbook then runs green having touched nothing.
+        - 'inventory - a source missing on one host is a different question from a
+          source that does not exist. A machine with no private address is not a configuration
+          mistake: the variable is not set for that host, and the host stays.'
+        - 'lookup - ``resource_id`` no longer resolves a name that one product resolves
+          and another refuses. ``acl_id`` exists in both the Load Balancer and Kubernetes,
+          and they are not the same ACLs: the first resolved it, the second cannot
+          for want of a name field, so the first one''s resolution stood alone and
+          somebody writing ``acl_id`` while thinking of a cluster rule got a load
+          balancer rule in silence. Returning the wrong product''s identifier is worse
+          than returning none.'
+        - 'modules - Kubernetes is the third product, and it does not enter on its
+          number of routes. The official Scaleway collection ships ``k8s_cluster``
+          and ``k8s_pool``, both ``state: present/absent``: it creates clusters and
+          offers nothing to operate them afterwards. This collection arrives behind
+          it rather than facing it. Nineteen modules: the clusters, their pools, their
+          nodes, the versions a cluster can move to, and the actions that upgrade,
+          reboot or replace.'
+        - modules - ``k8s_cluster_available_version_info`` next to ``k8s_cluster_info``
+          is what makes version drift a measurement rather than an impression, and
+          it is the question nobody serves today.
+        - modules - ``k8s_node_reboot_action`` gains ``wait`` and ``wait_timeout``,
+          and returns the state the node settled in.
+        - 'playbooks - ``fleet_changes`` runs the role from the command line, with
+          ``-e snapshot=<file>`` and ``-e output=text|json|markdown``. The Markdown
+          drops straight into a pipeline summary or a ticket: this collection talks
+          to no messaging service, which is the same limit it holds for storage.'
+        - playbooks - ``fleet_report`` accepts ``-e snapshot_to=<file>`` and writes
+          the snapshot there. Redirecting the playbook's output would have captured
+          Ansible's own decoration rather than JSON, which is what the previous instruction
+          suggested.
+        - roles - ``first_seen`` is stamped on a new finding and carried over on a
+          persisting one, so the date goes back as far as the caller kept its reports.
+          A kept report that carries none says the date is unknown rather than inventing
+          one.
+        - roles - ``fleet_audit`` accepts ``scaleway_fleet_audit_previous``, the findings
+          of the previous run as you kept them, and sorts this run's findings into
+          new, persisting and resolved. Run daily, an audit that shows the same warnings
+          every morning stops being read by the third morning, which is the failure
+          mode of a recurring tool and more dangerous than an outage because it does
+          not show.
+        - 'roles - ``fleet_audit`` gains rules on fields the collection already returned
+          and nobody read: planned maintenance, end of service, allowed actions, available
+          upgrades, expiry, version drift and health conditions. These were not modules
+          to write, they were fields already travelling through the plumbing.'
+        - roles - ``fleet_changes`` reimplements nothing. It includes ``fleet_audit``
+          and ``fleet_diff`` and aggregates what they left behind; a second comparison
+          written there would drift from the first.
+        - 'roles - ``fleet_changes`` says what moved since the last time, in one count
+          per thing that moved. What makes a recurring tool useful is not what it
+          can do: it is that somebody wants to read it again tomorrow, and a report
+          that shows the same warnings every morning stops being read by the third
+          morning.'
+        - roles - ``fleet_diff`` only compares a zone both snapshots measured. A zone
+          that did not answer, and a zone that was simply not read this time, would
+          both make everything it holds look removed, and the report would be perfectly
+          plausible. Such zones come out named, each with which of the two cases it
+          is, and the resources they hold are counted rather than dropped.
+        - roles - ``fleet_diff`` says what changed between a snapshot you kept and
+          the fleet as it is now, or between two snapshots. A report that announces
+          the same count every morning stops being read by the third morning; the
+          useful question is why there are two more today.
+        - 'roles - ``fleet_report`` accepts ``output: none``, for a caller that includes
+          it for its data and for which a second report on screen is noise.'
+        - 'roles - ``fleet_report`` can read Kapsule clusters, pools and nodes, so
+          the version that adds fleet memory can remember a cluster. It is not read
+          by default: on an account with no cluster it would carry a silent region
+          in every report, and every product is a family of API calls on a billed
+          account.'
+        - 'roles - ``fleet_report`` now also leaves a versioned snapshot in ``scaleway_fleet_report_snapshot``,
+          so a later run can say what changed rather than what exists. It costs no
+          extra call, because the payloads are already in memory. Every resource carries
+          its kind and its identifier, and that pair is the key: measured on a real
+          account, two machines can carry the same name in one zone and the API then
+          returns two distinct identifiers, so a snapshot keyed on names would merge
+          them into one resource that changed. The snapshot also carries the zones
+          that did not answer, because a comparison computed without them would announce
+          the disappearance of a whole fleet. ``-e output=snapshot`` prints it; where
+          it is kept belongs to the caller, and this collection stores nothing.'
+        - roles - ``kind`` says what is being rolled through, not how it is designated.
+          It is not a criterion, so the selector still carries exactly one of them
+          and one grammar validates both products.
+        - 'roles - ``reason``, ``owner`` and ``expires_at`` are required on every
+          exception, and each stops one thing: without a reason it is a rule quietly
+          switched off, without an owner there is nobody to ask whether it still holds,
+          and without an expiry it is not an exception but a change to the policy
+          written in the wrong place.'
+        - 'roles - ``rolling_reboot`` rolls through the nodes of a Kubernetes pool
+          with the same grammar as machines: ``kind: k8s_node`` plus one of ``group``,
+          ``name`` or ``id``. Somebody who knows how to roll through machines learns
+          nothing new.'
+        - 'roles - ``scaleway_fleet_audit_level`` is computed and never passed in:
+          ``quiet``, ``changed``, ``action_required`` on a new failing finding or
+          on anything that could not be concluded, and ``baseline`` on a first run.
+          A caller able to force it could produce a report that calls itself calm
+          when it is not.'
+        - roles - ``scaleway_fleet_audit_products`` says which products the audit
+          reads, Instance alone by default, which is what it read before the others
+          existed. A version that started querying Kubernetes and load balancers on
+          every account would multiply API calls nobody asked for.
+        - 'roles - ``tags`` is not accepted for nodes. Measured: ``scaleway.k8s.v1.Node``
+          carries none, ``scaleway.k8s.v1.Pool`` does, and passing a pool''s tags
+          off as its nodes'' would add a hop you cannot see.'
+        - 'roles - a ``name`` carried by two resources is refused rather than resolved.
+          Measured on a real account: two machines accept the same name in one zone,
+          so covering both would excuse a resource nobody named, and covering one
+          would depend on the read order.'
+        - roles - a finding that persists does not demand action every morning. It
+          was already reported yesterday, and raising it again at the same rank is
+          the noise this milestone exists to remove.
+        - roles - a finding that vanished because its zone did not answer never comes
+          out as resolved. A zone that did not answer makes everything it held disappear,
+          and announcing that as resolved tells somebody their problem is fixed when
+          nobody looked. Those come out under their own heading, each with which of
+          the two cases it is.
+        - roles - a first run is a baseline rather than a fleet where everything is
+          new. No previous run at all and a previous run that found nothing lead to
+          opposite reports, and a caller keeping an empty list would otherwise flood
+          a whole fleet into the new set.
+        - roles - a last-change timestamp that moved on its own does not make a change.
+          It is a witness rather than a property, and a diff line showing only a timestamp
+          gives nobody an action; those resources are counted apart, neither hidden
+          nor presented as actionable.
+        - roles - a new failing finding is counted, never the delta. A ``fail`` that
+          appears while another resolves leaves the count unchanged, and deciding
+          on the delta would silence the new one behind its neighbour's good news.
+        - 'roles - a policy now carries ``exceptions``, for the case every used policy
+          meets within a week: yes, that bastion must have a public address. Without
+          them the only way out is to delete the rule, which loses it for the whole
+          fleet in order to excuse one machine.'
+        - roles - a region that did not answer is named with the product it did not
+          answer for. A region that answers for clusters and not for versions is not
+          the same situation as a silent one, and a name that merged them would make
+          the report useless for acting on.
+        - roles - a region that did not answer stops the roll rather than narrowing
+          it. Rolling through a fleet that is only partly known is how a roll takes
+          down what it could not see.
+        - 'roles - a rule judging a field no read product carries fails the run and
+          names what to add. A rule that judges nothing is a silence, not a compliance:
+          it produces a green report where nobody checked anything, and nothing in
+          that report says so.'
+        - roles - a selector names exactly one of ``id``, ``name`` or ``tags``. Two
+          criteria ask two questions and the answer would depend on the order they
+          are read in, and a selector with no criterion at all would cover the whole
+          fleet, which is a removed rule wearing an exception's clothes.
+        - roles - a suppressed finding is not a resolved one. An exception changes
+          a status, it does not make the problem go away, so it stays among the persisting
+          findings with its status.
+        - roles - aggregating two verdicts keeps the higher one. Keeping the lower
+          would let a calm half hide a half that is not, which is the simplest way
+          to manufacture a reassuring report.
+        - 'roles - an exception changes a finding''s status, it never removes it.
+          The finding stays readable with ``status: suppressed`` and the ``suppressed_by``
+          that covers it, and it is counted apart. A finding that was erased is a
+          problem nobody knows about any more, which is what writing the exception
+          rather than removing the rule is meant to avoid.'
+        - roles - an exception that matches nothing is reported and not refused. One
+          left behind by a destroyed machine is housekeeping, not a policy error.
+        - roles - an expired exception becomes a finding of severity ``fail`` rather
+          than a refusal. Refusing the whole policy over one stale line would switch
+          off the audit on the day an exception expires, which is the opposite of
+          what is wanted then.
+        - 'roles - anything that could not be measured ranks with a new failing finding:
+          an unmeasured zone, a finding that could not be concluded, an expired exception,
+          a zone two snapshots do not both cover. A fleet nobody could read is not
+          a calm fleet.'
+        - roles - for nodes, ``group`` means the pool, which groups nodes the way
+          an inventory group groups machines. The list comes from the API rather than
+          the inventory, which serves Instance, Elastic Metal and Apple Silicon and
+          nothing from Kubernetes.
+        - roles - no composite score. A ``83/100`` looks good and cannot be traced
+          back to what moved it, so every line counts one named thing and is explainable
+          on its own.
+        - roles - the JSON and Markdown renderings of ``fleet_audit`` now carry the
+          expired exceptions alongside the fleet's findings, and the status of each.
+          A pipeline reading the JSON would otherwise never see the expiry, which
+          is the very failure this filter exists to prevent, one level up.
+        - 'roles - the level a comparison earns is computed, never passed in: ``quiet``
+          when nothing is new, ``changed`` when something moved, and ``action_required``
+          when something could not be measured. A caller able to force it could produce
+          a report that calls itself calm when it is not. Nothing new prints one line,
+          on purpose.'
+        - 'roles - the level is computed and never passed in: ``quiet``, ``changed``,
+          ``action_required`` and ``baseline``. A caller able to force it could produce
+          a report that calls itself calm when it is not, which is exactly what a
+          recurring tool must not be able to do.'
+        - 'roles - there is deliberately no ``since`` field. Nothing in a set of kept
+          findings says when the previous run happened: the oldest ``first_seen``
+          dates the oldest finding, and on a run where nothing was new it dates nothing
+          at all.'
+        - roles - with no snapshot handed back, the infrastructure comes out as ``not
+          compared`` rather than as zero changes, and a severity with no earlier run
+          to compare against carries no delta rather than ``(+0)``. Not having looked
+          is not the same as nothing having moved.
+    fragments:
+      - archive-sans-artefact.yml
+      - attente-redemarrage-noeud.yml
+      - constats-nouveaux-persistants-resolus.yml
+      - ecriture-atomique.yml
+      - exceptions-politique.yml
+      - exemple-demonstratif.yml
+      - fleet-changes.yml
+      - fleet-diff.yml
+      - grammaire-du-selecteur.yml
+      - guide-kapsule.yml
+      - identite-finding.yml
+      - instantane.yml
+      - kubernetes-eprouve.yml
+      - kubernetes.yml
+      - options-venues-de-chez-eux.yml
+      - portee-mesuree.yml
+      - regles-de-champs-deja-rendus.yml
+      - rolling-reboot-pool.yml
+    modules:
+      - description: Manage a Scaleway Kubernetes cluster.
+        name: k8s_cluster
+        namespace: ''
+      - description: Perform an action on a Scaleway Kubernetes cluster ACL.
+        name: k8s_cluster_acl_action
+        namespace: ''
+      - description: Gather information about Scaleway Kubernetes cluster ACLs.
+        name: k8s_cluster_acl_info
+        namespace: ''
+      - description: Gather information about Scaleway Kubernetes cluster available
+          types.
+        name: k8s_cluster_available_type_info
+        namespace: ''
+      - description: Gather information about Scaleway Kubernetes cluster available
+          versions.
+        name: k8s_cluster_available_version_info
+        namespace: ''
+      - description: Gather information about Scaleway Kubernetes clusters.
+        name: k8s_cluster_info
+        namespace: ''
+      - description: Gather information about Scaleway Kubernetes cluster nodes.
+        name: k8s_cluster_node_info
+        namespace: ''
+      - description: Gather information about Scaleway Kubernetes cluster pools.
+        name: k8s_cluster_pool_info
+        namespace: ''
+      - description: Perform an action on a Scaleway Kubernetes cluster reset admin
+          token.
+        name: k8s_cluster_reset_admin_token_action
+        namespace: ''
+      - description: Perform an action on a Scaleway Kubernetes cluster set type.
+        name: k8s_cluster_set_type_action
+        namespace: ''
+      - description: Gather information about Scaleway Kubernetes cluster types.
+        name: k8s_cluster_type_info
+        namespace: ''
+      - description: Perform an action on a Scaleway Kubernetes cluster upgrade.
+        name: k8s_cluster_upgrade_action
+        namespace: ''
+      - description: Gather information about Scaleway Kubernetes nodes.
+        name: k8s_node_info
+        namespace: ''
+      - description: Perform an action on a Scaleway Kubernetes node.
+        name: k8s_node_reboot_action
+        namespace: ''
+      - description: Perform an action on a Scaleway Kubernetes node replace.
+        name: k8s_node_replace_action
+        namespace: ''
+      - description: Manage a Scaleway Kubernetes pool.
+        name: k8s_pool
+        namespace: ''
+      - description: Gather information about Scaleway Kubernetes pools.
+        name: k8s_pool_info
+        namespace: ''
+      - description: Perform an action on a Scaleway Kubernetes pool upgrade.
+        name: k8s_pool_upgrade_action
+        namespace: ''
+      - description: Gather information about Scaleway Kubernetes versions.
+        name: k8s_version_info
+        namespace: ''
+    release_date: '2026-09-16'
