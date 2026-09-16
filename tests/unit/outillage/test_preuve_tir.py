@@ -20,6 +20,7 @@ elle a laissé du résidu        le compte est facturé pour ce qui reste
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import preuve_tir
@@ -202,3 +203,100 @@ def test_un_arbre_sale_ne_se_scelle_pas(tmp_path: Path, monkeypatch: pytest.Monk
 
     with pytest.raises(preuve_tir.PreuveTirError, match="non versionnée"):
         preuve_tir.sceller(artefact)
+
+
+def test_une_preuve_ne_peut_pas_vivre_dans_le_commit_quelle_atteste(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sinon la garde demanderait l'impossible, et finirait désactivée.
+
+    Le tir se joue sur un arbre propre, la preuve nomme ce commit-là, et la
+    commiter en crée forcément un autre. Exiger qu'elle désigne HEAD ne peut
+    jamais être satisfait.
+
+    Le décalage admis est étroit : un ancêtre dont le contenu ne diffère que
+    sous `preuves/`. Tout le reste de l'arbre est celui qui a tourné.
+    """
+    dossier = tmp_path / "preuves"
+    monkeypatch.setattr(preuve_tir, "PREUVES", dossier)
+    _preuve(dossier, commit="1111111111111111111111111111111111111111")
+    monkeypatch.setattr(preuve_tir, "_meme_archive_publiee", lambda ancetre, commit: True)
+
+    assert preuve_tir.refus(SHA, aujourdhui="2026-09-16") == []
+
+
+def test_un_ancetre_qui_change_autre_chose_que_la_preuve_est_refuse(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Le décalage ne doit pas devenir une porte dérobée.
+
+    Un commit d'écart qui touche le code est un arbre différent de celui qui a
+    tourné, et la preuve ne parle plus de ce qu'on publie.
+
+    **Le jugement se fait dans un dépôt jetable**, parce que la question est
+    « que contient ce diff » et qu'y répondre demande de vrais commits. Patcher
+    la fonction aurait rendu le test vert quoi qu'elle fasse, ce qui est
+    exactement ce que la mutation a montré.
+    """
+    depot = tmp_path / "depot"
+    depot.mkdir()
+    lancer = lambda *a: subprocess.run(  # noqa: E731
+        ["git", *a], cwd=depot, capture_output=True, check=True
+    )
+    lancer("init", "-q")
+    lancer("config", "user.email", "t@t")
+    lancer("config", "user.name", "t")
+    (depot / "ansible_collections").mkdir()
+    (depot / "ansible_collections" / "module.py").write_text("x = 1\n", encoding="utf-8")
+    lancer("add", "-A")
+    lancer("commit", "-qm", "socle")
+    socle = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=depot, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    monkeypatch.setattr(preuve_tir, "ROOT", depot)
+
+    # Un commit qui n'ajoute qu'une preuve : l'archive publiée ne bouge pas.
+    (depot / "preuves").mkdir()
+    (depot / "preuves" / "tir.json").write_text("{}", encoding="utf-8")
+    lancer("add", "-A")
+    lancer("commit", "-qm", "la preuve")
+    avec_preuve = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=depot, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    assert preuve_tir._meme_archive_publiee(socle, avec_preuve)
+
+    # Un commit qui touche un module : ce qu'on publierait n'est plus ce qui a tourné.
+    (depot / "ansible_collections" / "module.py").write_text("x = 2\n", encoding="utf-8")
+    lancer("add", "-A")
+    lancer("commit", "-qm", "du code")
+    avec_code = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=depot, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    assert not preuve_tir._meme_archive_publiee(socle, avec_code), (
+        "un commit qui change l'archive publiée a été accepté : un utilisateur "
+        "installerait autre chose que ce qui a tourné."
+    )
+
+
+def test_le_perimetre_de_la_preuve_est_celui_de_larchive() -> None:
+    """La preuve couvre ce qui est publié, pas le dépôt entier.
+
+    **Le premier critère exigeait un arbre entier identique, et il était
+    invivable** : corriger l'outillage de release après le tir invalidait le
+    tir, donc chaque correction en réclamait un nouveau, facturé. Ce module dit
+    lui-même qu'une garde impossible à satisfaire se fait désactiver dans le
+    mois ; c'en était une.
+
+    Le périmètre doit rester celui de l'archive : l'élargir laisserait un module
+    changer entre le tir et la publication, ce qui est précisément ce que la
+    preuve interdit.
+    """
+    assert preuve_tir.PUBLIE == "ansible_collections/", (
+        "le périmètre de la preuve n'est plus celui de l'archive publiée. "
+        "`ansible-galaxy collection build` ne construit que ce répertoire : "
+        "restreindre plus laisserait un module bouger sans invalider le tir, "
+        "élargir rendrait la garde impossible à satisfaire."
+    )

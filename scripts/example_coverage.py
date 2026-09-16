@@ -130,24 +130,28 @@ SANS_CIBLE: dict[str, SansCible] = {
             "`/lb/v1/zones/{zone}/lbs/{id}/migrate`, mesuré, et l'API refuse "
             "toujours le non-changement. **Ce qui fermerait la ligne** : que "
             "l'exercice accepte de payer une migration, ce qui est une décision "
-            "de facture et non une décision technique."
+            "de facture et non une décision technique. Revu à la coupe de la 0.8.0 : "
+            "l'obstacle n'est pas une mesure qui pourrait bouger, c'est une décision de "
+            "facture, et rien de ce cycle ne l'a prise."
         ),
         preuve="reel",
-        revoir_en="0.8.0",
+        revoir_en="0.9.0",
     ),
     "lb_subscriber": SansCible(
         raison=(
             "demande un destinataire d'alertes, et le provider Terraform ne déclare "
             "aucune ressource `scaleway_lb_subscriber` : il n'existe aucun moyen d'en "
-            "créer un que la destruction emporte. Revu à la coupe de la 0.7.0 sur la "
-            "documentation du provider, avec témoins : `lb_subscriber.md` rend 404 là "
-            "où `lb_backend.md` et `instance_snapshot.md` rendent 200 et où un nom "
-            "inventé rend 404. La méthode discrimine, donc l'absence est un fait et "
-            "non une supposition. **Ce qui fermerait la ligne** vient de l'amont, pas "
-            "d'ici."
+            "créer un que la destruction emporte. **Revu à la coupe de la 0.8.0, et la "
+            "méthode a dû changer.** Celle de la revue précédente interrogeait la "
+            "documentation du registre Terraform et ne discrimine plus : un nom inventé "
+            "y rend 200 comme les autres. La mesure porte désormais sur le schéma du "
+            "provider installé, `terraform providers schema -json`, qui déclare 155 "
+            "ressources : `scaleway_lb_subscriber` y est absente là où "
+            "`scaleway_lb_backend` et `scaleway_instance_snapshot` sont présentes. "
+            "**Ce qui fermerait la ligne** vient de l'amont, pas d'ici."
         ),
         preuve="amont",
-        revoir_en="0.8.0",
+        revoir_en="0.9.0",
     ),
     **{
         nom: SansCible(

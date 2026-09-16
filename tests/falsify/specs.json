@@ -3391,6 +3391,22 @@
       "find": "    sale = _git(\"status\", \"--porcelain\")\n    if sale:",
       "replace": "    sale = _git(\"status\", \"--porcelain\")\n    if False:",
       "test": "tests/unit/outillage/test_preuve_tir.py::test_un_arbre_sale_ne_se_scelle_pas"
+    },
+    {
+      "name": "membre-date-apres-le-module-qui-le-porte",
+      "why": "**Mesuré en préparant la 0.8.0.** Le figement datait les modules neufs et laissait leurs membres hors du journal, au motif que les inscrire publierait un badge identique sur chaque ligne. C'était faux : `_posterieure` tait déjà la version d'un membre quand elle est celle de son module.\n\nCe que le saut produisait, en revanche : `en_preparation` avançant à 0.8.1, chaque option d'un module daté 0.8.0 recevait `version_added: 0.8.1` au rendu suivant. Postérieure au module qui la porte, ce qui ne peut pas être vrai, et publié pour toujours puisqu'une version ne se reprend pas (ADR-013).",
+      "file": "scripts/introductions.py",
+      "find": "        deja = journal.options if genre == \"option\" else journal.retours\n        if (module, nom) not in deja:",
+      "replace": "        if module not in journal.modules:\n            continue\n        deja = journal.options if genre == \"option\" else journal.retours\n        if (module, nom) not in deja:",
+      "test": "tests/unit/generator/test_introductions.py::test_le_figement_inscrit_aussi_les_membres_dun_module_neuf"
+    },
+    {
+      "name": "decalage-de-preuve-ouvert-a-tout",
+      "why": "Une preuve ne peut pas vivre dans le commit qu'elle atteste : le tir se joue sur un arbre propre, et la commiter en crée un autre. Le décalage est donc admis tant que **l'archive publiée** ne bouge pas : ce qu'un utilisateur installera est alors exactement ce qui a tourné.\n\nOuvert à tout, il devient une porte dérobée : un module pourrait changer entre le tir et la publication sans que la preuve cesse d'être acceptée, et la garde entière se réduirait à « une preuve existe quelque part ».",
+      "file": "scripts/preuve_tir.py",
+      "find": "    return not _git(\"diff\", \"--name-only\", ancetre, commit, \"--\", PUBLIE).strip()",
+      "replace": "    _git(\"diff\", \"--name-only\", ancetre, commit, \"--\", PUBLIE)\n    return True",
+      "test": "tests/unit/outillage/test_preuve_tir.py::test_un_ancetre_qui_change_autre_chose_que_la_preuve_est_refuse"
     }
   ]
 }
