@@ -20,6 +20,15 @@ output "run_id" {
   value       = var.run_id
 }
 
+# **Déclarée plutôt que dérivée du nom de la zone.** `fr-par-1` donne `fr-par`
+# en coupant deux caractères, ce qui marche aujourd'hui et casse au premier
+# nommage qui diffère. C'est la supposition que ce dépôt refuse partout
+# ailleurs, et un playbook publié n'est pas l'endroit où l'introduire (#283).
+output "region" {
+  description = "La région de la plateforme, pour les APIs régionales comme IPAM."
+  value       = var.region
+}
+
 output "reseau_web" {
   description = "Le réseau privé par lequel l'inventaire doit joindre le tier web."
   value       = scaleway_vpc_private_network.web.name

@@ -1174,6 +1174,10 @@ def main(argv: list[str]) -> int:
             "cible": arguments.cible,
             # L'image d'or n'existe que sur le cloud réel : la stack la met à
             # zéro ailleurs, et le playbook saute la tâche plutôt que d'échouer.
+            # La région, déclarée par la stack : les APIs régionales en ont
+            # besoin, et la déduire du nom de la zone serait deviner par la
+            # forme (#283).
+            "region": sorties.get("region", {}).get("value", ""),
             "image_doree": sorties.get("image_doree", {}).get("value", ""),
             # **Même forme, et pour une raison voisine.** L'instantané que l'API
             # Instance voit est taillé dans une racine `l_ssd`, et démarrer sur

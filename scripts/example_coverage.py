@@ -118,22 +118,6 @@ SANS_CIBLE: dict[str, SansCible] = {
         revoir_en="0.9.0",
         issue=288,
     ),
-    "instance_ip_action": SansCible(
-        raison=(
-            "rend une adresse à l'IPAM. Toutes les adresses de la stack appartiennent à "
-            "Terraform : en rendre une laisserait son état en désaccord avec le compte, "
-            "et c'est exactement le résidu que la règle du dépôt interdit. Revu à la coupe "
-            "de la 0.6.0 : l'obstacle n'est pas l'API, c'est que l'exemple ne possède "
-            "aucune adresse à lui. **Le chemin qui fermerait la ligne** : que le playbook "
-            "en crée une hors de Terraform, comme le quickstart peuple son parc, puis la "
-            "rende avec ce module. Le contrôle de résidu est différentiel, donc créer et "
-            "rendre dans le même run ne laisse rien derrière. C'est du travail, pas une "
-            "impossibilité, et le dire évite de rouvrir la question par le mauvais bout."
-        ),
-        preuve="stack",
-        revoir_en="0.8.0",
-        issue=283,
-    ),
     "lb_load_balancer_action": SansCible(
         raison=(
             "migre un load balancer vers un autre type commercial, et **refuse le "

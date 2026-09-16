@@ -1234,6 +1234,99 @@
         and repris_instantane.api_type | default('') != 'not_emulated'
       when: instantane_instance | default('') | length > 0
 
+    # ---- Une adresse qui appartient à l'exemple, et qu'il rend ------------
+    #
+    # **L'obstacle n'a jamais été l'API, c'est la propriété.** Toutes les
+    # adresses de la stack appartiennent à Terraform : en rendre une laisserait
+    # son état en désaccord avec le compte. L'exemple s'en crée donc une, hors
+    # de Terraform, comme le quickstart peuple son parc, et `ansible.builtin.uri`
+    # plutôt qu'un module : la collection n'a pas de module de création, et lui
+    # en donner un serait enseigner le contraire de ce qu'elle est (#283).
+    #
+    # **`ReleaseIpToIpam` ne libère pas, il déplace.** Le contrat le dit :
+    # « The IP remains available in IPAM, which means that it is still reserved
+    # by the Organization ». L'adresse quitte le périmètre Instance et **reste
+    # réservée**, donc facturée. L'exemption parlait de « rendre une adresse à
+    # l'IPAM », ce qui laissait croire à une libération : c'est le contraire.
+    #
+    # D'où le `always` : ce qui a été créé ici est détruit ici, sur le chemin
+    # heureux comme sur l'autre. `residue.py` surveille `ipam.ip` autant que
+    # `instance.ip`, donc un oubli se verrait ; se reposer là-dessus serait
+    # confondre le filet et le geste.
+    - name: L'adresse que l'exemple possède, et rend
+      when: cible == 'reel'
+      block:
+        - name: Réserver une adresse qui n'appartient pas à Terraform
+          ansible.builtin.uri:
+            url: "{{ lookup('ansible.builtin.env', 'SCW_API_URL')
+              | default('https://api.scaleway.com', true) }}/instance/v1/zones/{{ zone }}/ips"
+            method: POST
+            headers:
+              X-Auth-Token: "{{ lookup('ansible.builtin.env', 'SCW_SECRET_KEY') }}"
+            body_format: json
+            body:
+              project: "{{ lookup('ansible.builtin.env', 'SCW_DEFAULT_PROJECT_ID') }}"
+              tags: [exemple, "{{ marque }}"]
+            status_code: [200, 201]
+          register: adresse
+
+        - name: Ce que l'API Instance en dit
+          stephrobert.scaleway.instance_ip_info:
+            zone: "{{ zone }}"
+            ip_id: "{{ adresse.json.ip.id }}"
+          register: lue_adresse
+
+        - name: Elle porte bien l'étiquette posée à la réservation
+          ansible.builtin.assert:
+            that:
+              - "'exemple' in (lue_adresse.ip.tags | default([]))"
+            fail_msg: >-
+              l'adresse réservée ne porte pas ses étiquettes : la création hors
+              Terraform n'a pas fait ce qu'on croit.
+            quiet: true
+
+        # Ce que cette issue existait pour exercer. Une seule fois : l'action
+        # déplace l'adresse hors du périmètre Instance, donc un second appel ne
+        # trouverait plus rien à déplacer.
+        - name: La rendre à l'IPAM, où elle reste réservée
+          stephrobert.scaleway.instance_ip_action:
+            zone: "{{ zone }}"
+            ip_id: "{{ adresse.json.ip.id }}"
+          register: rendue_adresse
+          failed_when: rendue_adresse.failed | default(false)
+            and rendue_adresse.api_type | default('') != 'not_emulated'
+
+      always:
+        # **Retrouvée par son adresse, pas par son identifiant.** Rien ne dit
+        # que l'identifiant IPAM est celui que l'API Instance portait, et le
+        # supposer laisserait une réservation facturée derrière un contrôle qui
+        # a l'air vert.
+        - name: Retrouver la réservation IPAM correspondante
+          ansible.builtin.uri:
+            url: "{{ lookup('ansible.builtin.env', 'SCW_API_URL')
+              | default('https://api.scaleway.com', true) }}/ipam/v1/regions/{{ region }}/ips"
+            headers:
+              X-Auth-Token: "{{ lookup('ansible.builtin.env', 'SCW_SECRET_KEY') }}"
+          register: reservations
+          failed_when: false
+          when: adresse.json.ip.address | default('') | length > 0
+
+        - name: Libérer ce que l'exemple avait réservé
+          ansible.builtin.uri:
+            url: "{{ lookup('ansible.builtin.env', 'SCW_API_URL')
+              | default('https://api.scaleway.com', true) }}/ipam/v1/regions/{{ region }}/ips/{{ item }}"
+            method: DELETE
+            headers:
+              X-Auth-Token: "{{ lookup('ansible.builtin.env', 'SCW_SECRET_KEY') }}"
+            status_code: [200, 204, 404]
+          loop: >-
+            {{ (reservations.json.ips | default([]))
+               | selectattr('address', 'defined')
+               | selectattr('address', 'search', adresse.json.ip.address | default('!'))
+               | map(attribute='id') | list }}
+          loop_control: {label: "{{ item }}"}
+          when: adresse.json.ip.address | default('') | length > 0
+
     # ---- La route du frontend --------------------------------------------
 
     - name: Réécrire la route à l'identique
