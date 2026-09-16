@@ -225,21 +225,32 @@ def _meme_archive_publiee(ancetre: str, commit: str) -> bool:
     quelque chose d'impossible, et la garde se serait fait désactiver dans le
     mois.
 
-    Le décalage admis est donc celui-ci : un ancêtre dont **l'archive publiée**
-    est identique à celle de HEAD. Ce qu'un utilisateur installera est alors
-    exactement ce qui a tourné contre le compte.
+    Le décalage admis est donc celui-ci : **l'archive publiée est identique**
+    entre le commit prouvé et celui qu'on publie. Ce qu'un utilisateur
+    installera est alors exactement ce qui a tourné contre le compte.
+
+    **L'ancestralité n'est pas exigée, et c'est une correction.** Elle l'était,
+    et elle interdisait le squash-merge : le commit prouvé vit sur la branche,
+    le commit publié est celui que la fusion écrase, et le premier n'est jamais
+    ancêtre du second. La porte refusait donc toute release fusionnée ainsi,
+    c'est-à-dire toutes celles de ce dépôt.
+
+    Elle n'apportait rien de plus : si les deux archives sont identiques, ce qui
+    est publié a été joué, et l'ordre des commits n'y change rien.
     """
     if not ancetre or ancetre == commit:
         return True
-    ancestral = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", ancetre, commit],
+    # **Une commande qui n'a pas pu répondre ne prouve rien.** Un commit inconnu
+    # du dépôt fait échouer `git diff` ; lire cet échec comme « les archives sont
+    # identiques » accepterait n'importe quelle preuve étrangère.
+    compare = subprocess.run(
+        ["git", "diff", "--name-only", ancetre, commit, "--", PUBLIE],
         cwd=ROOT,
         capture_output=True,
+        text=True,
         check=False,
     )
-    if ancestral.returncode != 0:
-        return False
-    return not _git("diff", "--name-only", ancetre, commit, "--", PUBLIE).strip()
+    return compare.returncode == 0 and not compare.stdout.strip()
 
 
 def pour(commit: str) -> Preuve:
