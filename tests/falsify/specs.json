@@ -3399,6 +3399,14 @@
       "find": "        deja = journal.options if genre == \"option\" else journal.retours\n        if (module, nom) not in deja:",
       "replace": "        if module not in journal.modules:\n            continue\n        deja = journal.options if genre == \"option\" else journal.retours\n        if (module, nom) not in deja:",
       "test": "tests/unit/generator/test_introductions.py::test_le_figement_inscrit_aussi_les_membres_dun_module_neuf"
+    },
+    {
+      "name": "decalage-de-preuve-ouvert-a-tout",
+      "why": "Une preuve ne peut pas vivre dans le commit qu'elle atteste : le tir se joue sur un arbre propre, et la commiter en crée un autre. Le décalage d'un commit est donc admis, et il doit rester **étroit** : un ancêtre dont le contenu ne diffère que sous `preuves/`.\n\nOuvert à tout, il devient une porte dérobée : n'importe quel commit d'écart passerait, y compris un qui change le code, et la preuve ne parlerait plus de ce qu'on publie. La garde entière se réduirait alors à « une preuve existe quelque part ».",
+      "file": "scripts/preuve_tir.py",
+      "find": "    touches = _git(\"diff\", \"--name-only\", ancetre, commit).splitlines()\n    return bool(touches) and all(chemin.startswith(\"preuves/\") for chemin in touches)",
+      "replace": "    _git(\"diff\", \"--name-only\", ancetre, commit)\n    return True",
+      "test": "tests/unit/outillage/test_preuve_tir.py::test_un_ancetre_qui_change_autre_chose_que_la_preuve_est_refuse"
     }
   ]
 }

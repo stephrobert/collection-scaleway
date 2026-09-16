@@ -20,6 +20,7 @@ elle a laissé du résidu        le compte est facturé pour ce qui reste
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import preuve_tir
@@ -202,3 +203,78 @@ def test_un_arbre_sale_ne_se_scelle_pas(tmp_path: Path, monkeypatch: pytest.Monk
 
     with pytest.raises(preuve_tir.PreuveTirError, match="non versionnée"):
         preuve_tir.sceller(artefact)
+
+
+def test_une_preuve_ne_peut_pas_vivre_dans_le_commit_quelle_atteste(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sinon la garde demanderait l'impossible, et finirait désactivée.
+
+    Le tir se joue sur un arbre propre, la preuve nomme ce commit-là, et la
+    commiter en crée forcément un autre. Exiger qu'elle désigne HEAD ne peut
+    jamais être satisfait.
+
+    Le décalage admis est étroit : un ancêtre dont le contenu ne diffère que
+    sous `preuves/`. Tout le reste de l'arbre est celui qui a tourné.
+    """
+    dossier = tmp_path / "preuves"
+    monkeypatch.setattr(preuve_tir, "PREUVES", dossier)
+    _preuve(dossier, commit="1111111111111111111111111111111111111111")
+    monkeypatch.setattr(preuve_tir, "_seule_la_preuve_les_separe", lambda ancetre, commit: True)
+
+    assert preuve_tir.refus(SHA, aujourdhui="2026-09-16") == []
+
+
+def test_un_ancetre_qui_change_autre_chose_que_la_preuve_est_refuse(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Le décalage ne doit pas devenir une porte dérobée.
+
+    Un commit d'écart qui touche le code est un arbre différent de celui qui a
+    tourné, et la preuve ne parle plus de ce qu'on publie.
+
+    **Le jugement se fait dans un dépôt jetable**, parce que la question est
+    « que contient ce diff » et qu'y répondre demande de vrais commits. Patcher
+    la fonction aurait rendu le test vert quoi qu'elle fasse, ce qui est
+    exactement ce que la mutation a montré.
+    """
+    depot = tmp_path / "depot"
+    depot.mkdir()
+    lancer = lambda *a: subprocess.run(  # noqa: E731
+        ["git", *a], cwd=depot, capture_output=True, check=True
+    )
+    lancer("init", "-q")
+    lancer("config", "user.email", "t@t")
+    lancer("config", "user.name", "t")
+    (depot / "code.py").write_text("x = 1\n", encoding="utf-8")
+    lancer("add", "-A")
+    lancer("commit", "-qm", "socle")
+    socle = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=depot, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    monkeypatch.setattr(preuve_tir, "ROOT", depot)
+
+    # Un commit qui n'ajoute qu'une preuve : c'est le décalage admis.
+    (depot / "preuves").mkdir()
+    (depot / "preuves" / "tir.json").write_text("{}", encoding="utf-8")
+    lancer("add", "-A")
+    lancer("commit", "-qm", "la preuve")
+    avec_preuve = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=depot, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    assert preuve_tir._seule_la_preuve_les_separe(socle, avec_preuve)
+
+    # Un commit qui touche le code : l'arbre n'est plus celui qui a tourné.
+    (depot / "code.py").write_text("x = 2\n", encoding="utf-8")
+    lancer("add", "-A")
+    lancer("commit", "-qm", "du code")
+    avec_code = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=depot, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    assert not preuve_tir._seule_la_preuve_les_separe(socle, avec_code), (
+        "un commit d'écart qui touche le code a été accepté : la preuve nommerait "
+        "un arbre que le tir n'a pas joué."
+    )

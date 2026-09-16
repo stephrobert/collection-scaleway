@@ -198,6 +198,33 @@ def sceller(artefact: Path, commit: str | None = None) -> Path:
     return destination
 
 
+def _seule_la_preuve_les_separe(ancetre: str, commit: str) -> bool:
+    """Ces deux commits ne diffèrent-ils que par ce qui vit sous `preuves/` ?
+
+    **Une preuve ne peut pas être dans le commit qu'elle atteste.** Le tir se
+    joue sur un arbre propre, la preuve nomme ce commit-là, et la commiter en
+    crée forcément un autre : exiger qu'elle désigne HEAD, c'est demander
+    quelque chose d'impossible, et la garde se serait fait désactiver dans le
+    mois.
+
+    Le décalage admis est donc étroit et vérifiable : un commit d'écart, dont le
+    contenu ne bouge que là où les preuves vivent. Tout le reste de l'arbre est
+    celui qui a tourné.
+    """
+    if not ancetre or ancetre == commit:
+        return True
+    ancestral = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", ancetre, commit],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+    )
+    if ancestral.returncode != 0:
+        return False
+    touches = _git("diff", "--name-only", ancetre, commit).splitlines()
+    return bool(touches) and all(chemin.startswith("preuves/") for chemin in touches)
+
+
 def pour(commit: str) -> Preuve:
     """La preuve qui désigne ce commit, ou un refus qui dit ce qui manque."""
     if not PREUVES.is_dir():
@@ -209,6 +236,7 @@ def pour(commit: str) -> Preuve:
         preuve
         for chemin in sorted(PREUVES.glob("tir-*.json"))
         if (preuve := _lire(chemin)).commit == commit
+        or _seule_la_preuve_les_separe(preuve.commit, commit)
     ]
     if not trouvees:
         raise PreuveTirError(
