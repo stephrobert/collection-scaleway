@@ -163,7 +163,7 @@ collection stephrobert.scaleway: 69 modules written out of 75 planned
   lb_subscriber                          Manage a Scaleway Load Balancer subscriber
   lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
   compute (inventory)                    instance, elastic_metal, apple_silicon
-  60 modules called by the example playbook out of 69 (87.0%), which is not the same as played
+  61 modules called by the example playbook out of 69 (88.4%), which is not the same as played
   70 published pages: 374/374 options and 93/93 returned keys documented
   134/134 examples copyable as is · 79/80 returned keys list their fields
   1402 unit tests · 418 mutations proven by /falsify

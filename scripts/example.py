@@ -1175,6 +1175,12 @@ def main(argv: list[str]) -> int:
             # L'image d'or n'existe que sur le cloud réel : la stack la met à
             # zéro ailleurs, et le playbook saute la tâche plutôt que d'échouer.
             "image_doree": sorties.get("image_doree", {}).get("value", ""),
+            # **Même forme, et pour une raison voisine.** L'instantané que l'API
+            # Instance voit est taillé dans une racine `l_ssd`, et démarrer sur
+            # une racine locale demande une image locale que l'émulateur ne sert
+            # pas. La sortie vaut donc la chaîne vide ailleurs, et le playbook
+            # saute la tâche en le disant plutôt que d'échouer (#284).
+            "instantane_instance": sorties.get("instantane_instance", {}).get("value", ""),
             # La mesure d'ordre de #119. Les trois sorties existent toujours et
             # sont vides hors du cloud réel : feint décline `CreateCertificate`,
             # avec sa raison, et le playbook saute la mesure sur une liste vide

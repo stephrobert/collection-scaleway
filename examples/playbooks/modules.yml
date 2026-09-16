@@ -1203,6 +1203,37 @@
         and repris_image.api_type | default('') != 'not_emulated'
       when: image_doree | default('') | length > 0
 
+    # ---- L'instantané que l'API Instance voit ----------------------------
+    #
+    # **Il lui fallait un volume que cette API voie et qui ne soit pas vide**, et
+    # la stack n'en avait aucun : tout son stockage est du SBS, que
+    # `instance/v1` ne liste pas, et son `l_ssd` détaché refusait l'instantané
+    # avec « cannot create a RO disk from an empty disk ».
+    #
+    # La racine `l_ssd` d'une machine web tient les deux conditions, sans rien
+    # ajouter à la facture : le boot l'écrit. Vide hors du cloud réel, où
+    # l'émulateur ne sert pas d'image locale (#284).
+
+    - name: Écrire le tag de l'instantané
+      stephrobert.scaleway.instance_snapshot:
+        zone: "{{ zone }}"
+        snapshot_id: "{{ instantane_instance }}"
+        tags: [exemple, "{{ marque }}"]
+      register: ecrit_instantane
+      failed_when: ecrit_instantane.failed | default(false)
+        and ecrit_instantane.api_type | default('') != 'not_emulated'
+      when: instantane_instance | default('') | length > 0
+
+    - name: Réécrire le tag de l'instantané, à l'identique
+      stephrobert.scaleway.instance_snapshot:
+        zone: "{{ zone }}"
+        snapshot_id: "{{ instantane_instance }}"
+        tags: [exemple, "{{ marque }}"]
+      register: repris_instantane
+      failed_when: repris_instantane.failed | default(false)
+        and repris_instantane.api_type | default('') != 'not_emulated'
+      when: instantane_instance | default('') | length > 0
+
     # ---- La route du frontend --------------------------------------------
 
     - name: Réécrire la route à l'identique

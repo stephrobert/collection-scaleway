@@ -101,31 +101,22 @@ class SansCible:
 PREUVES: frozenset[str] = frozenset({"stack", "reel", "amont"})
 
 SANS_CIBLE: dict[str, SansCible] = {
-    "instance_snapshot": SansCible(
-        raison=(
-            "demande un instantané que l'API Instance liste. Celui de la stack passe par "
-            "l'API Block, seule à voir un volume SBS, et l'API Instance ne le liste pas : "
-            "c'est le contrat, pas un défaut. En tailler un dans le volume `l_ssd` échoue : "
-            "« cannot create a RO disk from an empty disk », mesuré sur le compte réel. "
-            "Revu à la coupe de la 0.6.0 : rien de ce cycle ne touche à cette mesure. "
-            "**Ce qui n'est pas mesuré, et qui fermerait la ligne** : le refus porte sur un "
-            "`l_ssd` *vide*. Un volume `l_ssd` écrit par la stack, puis instantanéisé, n'a "
-            "jamais été essayé, et c'est par là que la prochaine revue doit commencer "
-            "plutôt que de remesurer le refus connu."
-        ),
-        preuve="stack",
-        revoir_en="0.8.0",
-        issue=284,
-    ),
     "instance_snapshot_action": SansCible(
         raison=(
-            "exporte un instantané, donc il lui en faut un : même raison que "
-            "`instance_snapshot`, et le même volume vide. Cette ligne se ferme avec "
-            "l'autre ou ne se ferme pas : elle n'a pas d'obstacle propre."
+            "exporte un instantané vers un bucket Object Storage, et la stack n'en "
+            "déclare aucun. **Son obstacle n'était pas celui qu'on croyait** : on le "
+            "disait sans obstacle propre, en attente d'un instantané, et la stack en a "
+            "un depuis que la racine d'une machine web est un `l_ssd`. Ce qui manque est "
+            "un produit de plus, et une attente : l'export est asynchrone, donc il faut "
+            "l'observer fini avant de détruire, sinon le résidu part dans un bucket que "
+            "personne ne regarde. "
+            "**Ce qui fermerait la ligne** : un `scaleway_object_bucket` en "
+            "`force_destroy`, et l'état de l'instantané observé jusqu'à ce qu'il quitte "
+            "`exporting`. Mesuré possible, pas encore fait."
         ),
         preuve="stack",
-        revoir_en="0.8.0",
-        issue=284,
+        revoir_en="0.9.0",
+        issue=288,
     ),
     "instance_ip_action": SansCible(
         raison=(
