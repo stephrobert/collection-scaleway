@@ -217,10 +217,23 @@ operations:
   #     seq 288  GetFrontend                                  rendu [28856172, cfcb677d]
   #     seq 467  GetFrontend                                  rendu [28856172, cfcb677d]
   #
-  # **L'écriture répond dans l'ordre demandé, la relecture l'inverse**, et elle
-  # est stable : deux `GetFrontend` séparés de deux cents échanges rendent le
-  # même ordre. Sans cet override, `lb_frontend` comparerait `[a, b]` à `[b, a]`
-  # et rendrait `changed` à chaque exécution, indéfiniment.
+  # **Ce que cette mesure a d'abord conclu était trop étroit.** Elle disait
+  # « l'écriture répond dans l'ordre demandé, la relecture l'inverse », et
+  # tenait la relecture pour stable. Deux mesures du 16 septembre 2026, chacune
+  # sur sa propre transcription, l'ont démentie dans les deux sens :
+  #
+  #     16 sept., tir 5   CreateFrontend  envoyé [a, b]  rendu [b, a]
+  #     16 sept., tir 6   CreateFrontend  envoyé [a, b]  rendu [a, b]
+  #                       GetFrontend ×9                 rendu [a, b]
+  #
+  # Donc ni « conservé » ni « inversé » : **l'ordre n'est pas garanti**. Il est
+  # stable à l'intérieur d'un run, et varie d'un run à l'autre, ce qui est la
+  # forme la plus trompeuse : trois runs suffisent à croire à une règle.
+  #
+  # Sans cet override, `lb_frontend` comparerait `[a, b]` à `[b, a]` et rendrait
+  # `changed` sur une écriture qui ne change rien, **par intermittence**. Une
+  # idempotence intermittente est pire qu'une non-idempotence franche : elle
+  # passe les contrôles la plupart du temps (#290).
   #
   # `set` et non un tri : la comparaison conserve les multiplicités, donc un
   # certificat listé deux fois reste distinct d'un certificat listé une fois.
@@ -231,8 +244,10 @@ operations:
       certificate_ids:
         comparison: set
         reason: >-
-          L'API rend cette liste dans un ordre différent de celui qu'elle
-          accepte. Mesuré contre le compte réel le 8 septembre 2026 : envoyé
-          `[a, b]` à `UpdateFrontend`, rendu `[b, a]` par `GetFrontend`, deux
-          fois et de façon stable. Comparer dans l'ordre rendrait le module non
-          idempotent quoi qu'affiche `changed`.
+          L'API ne garantit pas l'ordre de cette liste. Mesuré contre le compte
+          réel sur trois transcriptions : le 8 septembre 2026, `GetFrontend`
+          rendait `[b, a]` pour un `[a, b]` écrit ; le 16 septembre, un run l'a
+          inversé dès la création et un autre l'a conservé de bout en bout.
+          L'ordre est stable dans un run et varie d'un run à l'autre. Comparer
+          dans l'ordre rendrait le module non idempotent par intermittence, ce
+          qui passe les contrôles la plupart du temps.

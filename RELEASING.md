@@ -27,6 +27,33 @@ explicitly, and the collection README already announces it.
 A release with no fragment is refused: a version that describes no change gives
 nobody a reason to upgrade.
 
+## Proving the real cloud first
+
+`release:check` refuses a commit that carries no proof of a real-cloud run. This
+is the one step that cannot be done at the last minute, so it comes first:
+
+```bash
+python scripts/example.py reel
+python scripts/preuve_tir.py --sceller build/example/dernier-reel.json
+```
+
+The run creates real, billed resources and destroys them; the proof records what
+ran, whether anything was left behind, and **which commit it ran on**. Commit it
+with the rest. Without that last part, a proof matches any release, which is
+exactly what the gate exists to prevent.
+
+**The run stays local, and the signed tag is what seals the proof.** Producing it
+in CI would earn a provenance attestation nobody can forge, and would cost two
+things worth more here: the Scaleway secret key, which can create billed
+resources, would live in the repository's secrets; and diagnosing on the spot
+would be gone, when every network defect this stack has found was found by
+keeping the platform alive. The tags of this repository are signed, so a
+committed proof is covered by the tag that publishes it.
+
+It expires after thirty days. Not because the product goes stale, but because
+the API can move under a commit that has not changed: past that, run it again
+rather than republish a measurement nobody redid.
+
 ## Cutting one
 
 Everything below happens on `main`, after the pull requests are merged.

@@ -117,8 +117,38 @@ resource "scaleway_instance_server" "web" {
   security_group_id = scaleway_instance_security_group.web.id
   tags              = concat(local.tags, ["role=web", "etage=charge"])
 
+  # **Une racine locale, et c'est ce qui donne une cible à l'instantané.**
+  #
+  # Partout ailleurs ici la racine est un volume SBS, parce que c'est ce qu'un
+  # serveur moderne utilise. La conséquence mesurée est que l'API `instance/v1`
+  # ne voit aucun de ces volumes, donc ne peut en instantanéiser aucun.
+  #
+  # Un `l_ssd` détaché ne résout rien : « cannot create a RO disk from an empty
+  # disk ». Ce qu'il faut est un volume que cette API voit **et** qui porte du
+  # contenu, et une racine remplit les deux conditions sans rien ajouter à la
+  # facture : le boot l'écrit, et `l_ssd` est compris dans le type commercial.
+  #
+  # Attacher un volume vide à une machine et l'écrire depuis le playbook aurait
+  # marché aussi, et aurait demandé à Terraform de créer l'instantané après une
+  # écriture qu'il ne sait pas attendre. Une attente que rien n'observe est un
+  # `sleep` déguisé (#284).
+  #
+  # **`null` hors du cloud réel, et c'est une capacité qui manque, pas un
+  # choix.** Démarrer sur une racine locale demande une image locale, et
+  # l'émulateur n'en sert pas : `terraform apply` y échoue sur « couldn't find a
+  # local image for the given zone (fr-par-1) and commercial type (DEV1-S) ».
+  # Mesuré sur le vrai compte le 16 septembre 2026, `ubuntu_jammy` en offre bien
+  # une, compatible DEV1-S en fr-par-1 :
+  #
+  #     scw marketplace local-image list image-label=ubuntu_jammy zone=fr-par-1
+  #     -> instance_local, instance_local_snapshot, instance_sbs, instance_sbs_snapshot
+  #
+  # `null` vaut absent pour Terraform, donc la cible émulée retrouve exactement
+  # la racine qu'elle avait. Même forme que le `count` de
+  # `scaleway_instance_image.reference` : la limite est portée, pas masquée.
   root_volume {
     size_in_gb            = 10
+    volume_type           = var.endpoint == "" ? "l_ssd" : null
     delete_on_termination = true
   }
 }

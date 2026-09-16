@@ -163,10 +163,10 @@ collection stephrobert.scaleway: 69 modules written out of 75 planned
   lb_subscriber                          Manage a Scaleway Load Balancer subscriber
   lb_subscriber_info                     Gather information about Scaleway Load Balancer subscribers
   compute (inventory)                    instance, elastic_metal, apple_silicon
-  60 modules called by the example playbook out of 69 (87.0%), which is not the same as played
+  62 modules called by the example playbook out of 69 (89.9%), which is not the same as played
   70 published pages: 374/374 options and 93/93 returned keys documented
   134/134 examples copyable as is · 79/80 returned keys list their fields
-  1402 unit tests · 418 mutations proven by /falsify
+  1416 unit tests · 424 mutations proven by /falsify
   CI: 8 jobs, Générateur · collection · Image · Archive · Intégration · Plateforme d'exemple · Parcours d'accueil · Réaction sur événement
   ansible-test sanity, playbooks and inventory against the emulator:
   reported by `mise run sanity` and `mise run integration`

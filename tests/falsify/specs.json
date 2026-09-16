@@ -3343,6 +3343,54 @@
       "find": "/transcriptions/*\n!/transcriptions/releves/",
       "replace": "/transcriptions/",
       "test": "tests/unit/outillage/test_preuve_reelle.py::test_le_releve_est_suivi_par_git"
+    },
+    {
+      "name": "publication-sans-preuve-de-tir-reel",
+      "why": "**Le défaut de #96.** La séparation unité / émulateur / cloud réel était saine, et rien n'attestait par machine que *ce* commit avait passé le scénario réel. Une version pouvait partir sur Galaxy sur la foi d'un tir fait trois semaines plus tôt, sur un autre arbre, et « testé sur Scaleway » restait une phrase plutôt qu'une propriété du commit.\n\nCe qui part sur Galaxy est immuable : il n'y a pas de correction, seulement une version de plus.",
+      "file": "scripts/preuve_tir.py",
+      "find": "    if not trouvees:",
+      "replace": "    if False:",
+      "test": "tests/unit/outillage/test_preuve_tir.py::test_une_preuve_dun_autre_commit_ne_vaut_pas_pour_celui_ci"
+    },
+    {
+      "name": "artefact-demulateur-accepte-comme-preuve-reelle",
+      "why": "Les deux artefacts ont la même structure et les mêmes champs : seule la cible les distingue. Accepter celui de l'émulateur ferait passer pour une preuve du compte ce qui ne prouve que la forme d'un run, et c'est exactement la confusion qu'ADR-006 existe pour empêcher.\n\nLe fichier se lit pareil et dit autre chose : c'est la classe de défaut la plus discrète de ce dépôt.",
+      "file": "scripts/preuve_tir.py",
+      "find": "    if charge[\"cible\"] != \"reel\":",
+      "replace": "    if False:",
+      "test": "tests/unit/outillage/test_preuve_tir.py::test_un_artefact_demulateur_ne_vaut_pas_preuve"
+    },
+    {
+      "name": "verdict-de-tir-declare-au-lieu-de-derive",
+      "why": "Une preuve qui se déclare bonne toute seule ne prouve rien. Le verdict sort de ce que le run a laissé : un module en échec ou du résidu le font basculer sans que personne ait à y penser.\n\nLe figer à PASS rendrait une preuve parfaitement lisible, scellée, attestée, et fausse : la pire des trois, parce que les deux premières qualités empêchent de douter de la troisième.",
+      "file": "scripts/preuve_tir.py",
+      "find": "        \"verdict\": \"PASS\" if not echecs and residu == \"aucun\" else \"FAIL\",",
+      "replace": "        \"verdict\": \"PASS\",",
+      "test": "tests/unit/outillage/test_preuve_tir.py::test_le_verdict_se_derive_du_run_et_ne_se_declare_pas"
+    },
+    {
+      "name": "verdict-de-residu-jete-par-un-return-trop-tot",
+      "why": "**Mesuré le 16 septembre 2026, sur le compte réel.** Un tir a laissé une adresse réservée derrière lui. Le lanceur l'a vu, l'a écrit dans son artefact, l'a affiché en clair, et il est sorti en 0.\n\n`return` évalue sa valeur sur-le-champ : un `finally` qui pose ensuite `code = 1` s'exécute bien, et ne change rien à ce qui a déjà été rendu. La destruction et le contrôle de résidu se jouent tous les deux dans ce `finally`.\n\nC'est la panne la plus dangereuse de ce lanceur, parce qu'elle ressemble à un succès : un tir qui laisse des ressources facturées devient indiscernable d'un tir propre pour qui lit le code de sortie.",
+      "file": "scripts/example.py",
+      "find": "    # **Pas de `return` ici, et c'est un correctif.**",
+      "replace": "        return code\n    # **Pas de `return` ici, et c'est un correctif.**",
+      "test": "tests/unit/outillage/test_verdict_du_lanceur.py::test_le_verdict_de_la_destruction_nest_pas_court_circuite"
+    },
+    {
+      "name": "tir-reel-sans-transcription",
+      "why": "**Mesuré le 16 septembre 2026 : cinq tirs facturés sans enregistrement.** Le lanceur portait déjà la phrase « un run facturé qui ne mesure rien », dans le refus qu'il oppose à un proxy absent, et ce refus ne se déclenchait que si `--enregistrer` avait été donné. Rien n'exigeait l'option, donc rien ne tenait la phrase.\n\nTrois de ces tirs ont servi à trancher une question d'ordre d'une liste que la transcription aurait répondue du premier coup : une assertion ne rend qu'un booléen, la transcription rend ce que l'API a répondu.\n\nRemettre `demarrer_proxy` sous la condition, c'est rendre possible un tir qui coûte et ne mesure pas.",
+      "file": "scripts/example.py",
+      "find": "        if not arguments.enregistrer:\n            arguments.enregistrer = str(transcription_par_defaut(run_id))\n        proxy = demarrer_proxy(arguments.enregistrer)",
+      "replace": "        if arguments.enregistrer:\n            proxy = demarrer_proxy(arguments.enregistrer)",
+      "test": "tests/unit/outillage/test_tir_enregistre.py::test_la_cible_reelle_enregistre_sans_quon_le_demande"
+    },
+    {
+      "name": "preuve-scellee-sur-un-arbre-sale",
+      "why": "**Mesuré le 16 septembre 2026.** Une preuve a été scellée sur un arbre portant quatorze fichiers modifiés, et elle affirmait le SHA d'avant : le tir avait tourné sur autre chose que ce qu'elle nommait, et personne n'aurait pu rejouer ce qu'elle prétendait prouver.\n\n`release.py` refusait déjà de publier depuis un arbre sale, pour cette raison exacte. Le scellement ne le faisait pas, alors que c'est lui qui décide de ce que la preuve nomme.\n\nUne preuve qui désigne le mauvais commit est pire qu'une preuve absente : la porte de release la trouve, la lit, et laisse publier.",
+      "file": "scripts/preuve_tir.py",
+      "find": "    sale = _git(\"status\", \"--porcelain\")\n    if sale:",
+      "replace": "    sale = _git(\"status\", \"--porcelain\")\n    if False:",
+      "test": "tests/unit/outillage/test_preuve_tir.py::test_un_arbre_sale_ne_se_scelle_pas"
     }
   ]
 }

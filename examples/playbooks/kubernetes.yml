@@ -244,10 +244,23 @@
         # redémarrer un laisse l'autre servir, ce qui est exactement ce qu'un
         # redémarrage par vagues doit prouver. Redémarrer les deux ne prouverait
         # rien de plus et coûterait le temps d'attente deux fois.
+        #
+        # **300 s ne suffisent pas, mesuré sur deux tirs réels du 16 septembre
+        # 2026.** Le premier a vu le nœud revenir `ready` dans le délai, le
+        # second l'a laissé en `rebooting` au bout des 300 s par défaut. Ce
+        # défaut vient d'Instance, où une machine ne fait que redémarrer ; un
+        # nœud doit être drainé, redémarrer, puis **rejoindre le cluster**, et
+        # c'est cette dernière étape qui déborde.
+        #
+        # Le module a eu raison des deux fois : il observe, et il refuse de
+        # conclure quand il n'a pas vu revenir. La valeur ci-dessous est une
+        # marge, pas une durée mesurée : ce qui est mesuré est que 300 s
+        # tombent parfois du mauvais côté.
         - name: Redémarrer un nœud
           stephrobert.scaleway.k8s_node_reboot_action:
             region: "{{ region }}"
             node_id: "{{ k8s_noeuds.nodes[0].id }}"
+            wait_timeout: 900
           register: k8s_redemarre
           when: k8s_noeuds.nodes | length > 0
 

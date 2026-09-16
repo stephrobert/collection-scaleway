@@ -32,6 +32,10 @@ def _sans_bruit(monkeypatch: pytest.MonkeyPatch, collection: Any) -> None:
     # Même raison pour la porte documentaire : elle lit les modules du dépôt,
     # donc un défaut réel ajouterait un refus à chaque test qui n'en juge pas.
     monkeypatch.setattr(release.docs_quality, "mesurer", lambda: (None, []))
+    # Et pour la preuve de tir réel : elle lit `preuves/`, donc son absence
+    # ajouterait un refus partout. Ce que ce refus dit, et quand il mord, est
+    # jugé dans `test_preuve_tir.py`, où il est seul (#96).
+    monkeypatch.setattr(release.preuve_tir, "refus", lambda *_: [])
 
 
 class _Collection:

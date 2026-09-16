@@ -85,3 +85,32 @@ resource "scaleway_instance_volume" "vu_par_instance" {
   size_in_gb = 10
   tags       = local.tags
 }
+
+
+# **Un instantané que l'API Instance voit, et ce qu'il a fallu pour l'avoir.**
+#
+# Deux conditions, et la première version n'en tenait qu'une. L'instantané doit
+# porter sur un volume que `instance/v1` liste, ce qui exclut tout le stockage
+# SBS de cette stack, **et** ce volume ne doit pas être vide : « cannot create a
+# RO disk from an empty disk », mesuré sur le compte réel le 4 septembre 2026.
+#
+# Le `l_ssd` détaché ci-dessus tient la première et pas la seconde. La racine
+# `l_ssd` d'une machine web tient les deux : le boot l'écrit, et rien n'a été
+# ajouté au compte pour ça.
+#
+# **Il est pris à chaud, sur la racine d'une machine qui tourne.** C'est ce que
+# fait n'importe qui sauvegardant une machine en service, donc c'est ce que
+# l'exemple doit exercer. Si l'API le refusait, la raison remplacerait celle du
+# volume vide dans `scripts/example_coverage.py`, avec sa date (#284).
+resource "scaleway_instance_snapshot" "vu_par_instance" {
+  # Conditionné comme la racine locale dont il dépend : l'émulateur ne sert pas
+  # d'image locale, donc la machine web n'y a pas de racine `l_ssd`, donc il n'y
+  # a rien à instantanéiser pour cette API. La sortie vaut alors la chaîne vide
+  # et le playbook saute la tâche en le disant, comme il le fait déjà pour
+  # l'image d'or et pour Kapsule.
+  count = var.endpoint == "" && var.web_count > 0 ? 1 : 0
+
+  name      = "${local.prefixe}-instantane"
+  volume_id = scaleway_instance_server.web[0].root_volume[0].volume_id
+  tags      = local.tags
+}

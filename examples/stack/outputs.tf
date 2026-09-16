@@ -20,6 +20,19 @@ output "run_id" {
   value       = var.run_id
 }
 
+# **Déclarée plutôt que dérivée du nom de la zone.** `fr-par-1` donne `fr-par`
+# en coupant deux caractères, ce qui marche aujourd'hui et casse au premier
+# nommage qui diffère. C'est la supposition que ce dépôt refuse partout
+# ailleurs, et un playbook publié n'est pas l'endroit où l'introduire.
+#
+# Elle sert au nettoyage d'une réservation IPAM, dont l'API est régionale là où
+# celle des adresses Instance est zonale (#283). Emprunter `kapsule.region`
+# marcherait et lierait le nettoyage d'une adresse à la présence d'un cluster.
+output "region" {
+  description = "La région de la plateforme, pour les APIs régionales comme IPAM."
+  value       = var.region
+}
+
 output "reseau_web" {
   description = "Le réseau privé par lequel l'inventaire doit joindre le tier web."
   value       = scaleway_vpc_private_network.web.name
@@ -58,6 +71,14 @@ output "volume_instance" {
   # provider préfixe ses identifiants par `fr-par-1/`, et un module qui le
   # reçoit tel quel compose une URL que l'API refuse.
   value = reverse(split("/", scaleway_instance_volume.vu_par_instance.id))[0]
+}
+
+output "instantane_instance" {
+  description = "L'instantané que l'API Instance voit, cible de `instance_snapshot`."
+  # Dépouillée de sa portée : voir `image_doree`, qui porte la mesure. Le
+  # provider préfixe ses identifiants par `fr-par-1/`, et un module qui le
+  # reçoit tel quel compose une URL que l'API refuse.
+  value = try(reverse(split("/", scaleway_instance_snapshot.vu_par_instance[0].id))[0], "")
 }
 
 output "route_lb" {

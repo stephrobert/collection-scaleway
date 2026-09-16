@@ -33,6 +33,7 @@ import sys
 from pathlib import Path
 
 import docs_quality
+import preuve_tir
 
 from generator.ansible.collection import load_collection
 
@@ -168,6 +169,15 @@ def controler(tag: str | None) -> list[str]:
                 "    Un lecteur de Galaxy doit comprendre le module depuis sa seule page.\n"
                 "    `python scripts/docs_quality.py` les nomme un par un."
             )
+
+    # **« Testé sur Scaleway » doit être une propriété du commit.** La séparation
+    # unité / émulateur / cloud réel était saine, et rien n'attestait par machine
+    # que *ce* commit avait passé le scénario réel : une version pouvait partir
+    # sur la foi d'un tir fait trois semaines plus tôt, sur un autre arbre (#96).
+    #
+    # Au même rang que l'arbre sale et le changelog absent, et pour la même
+    # raison : ce qui part sur Galaxy est immuable.
+    refus.extend(preuve_tir.refus(_git("rev-parse", "HEAD")))
 
     fragments = fragments_en_attente(collection.path)
     if fragments:
