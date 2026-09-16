@@ -3343,6 +3343,30 @@
       "find": "/transcriptions/*\n!/transcriptions/releves/",
       "replace": "/transcriptions/",
       "test": "tests/unit/outillage/test_preuve_reelle.py::test_le_releve_est_suivi_par_git"
+    },
+    {
+      "name": "publication-sans-preuve-de-tir-reel",
+      "why": "**Le défaut de #96.** La séparation unité / émulateur / cloud réel était saine, et rien n'attestait par machine que *ce* commit avait passé le scénario réel. Une version pouvait partir sur Galaxy sur la foi d'un tir fait trois semaines plus tôt, sur un autre arbre, et « testé sur Scaleway » restait une phrase plutôt qu'une propriété du commit.\n\nCe qui part sur Galaxy est immuable : il n'y a pas de correction, seulement une version de plus.",
+      "file": "scripts/preuve_tir.py",
+      "find": "    if not trouvees:",
+      "replace": "    if False:",
+      "test": "tests/unit/outillage/test_preuve_tir.py::test_une_preuve_dun_autre_commit_ne_vaut_pas_pour_celui_ci"
+    },
+    {
+      "name": "artefact-demulateur-accepte-comme-preuve-reelle",
+      "why": "Les deux artefacts ont la même structure et les mêmes champs : seule la cible les distingue. Accepter celui de l'émulateur ferait passer pour une preuve du compte ce qui ne prouve que la forme d'un run, et c'est exactement la confusion qu'ADR-006 existe pour empêcher.\n\nLe fichier se lit pareil et dit autre chose : c'est la classe de défaut la plus discrète de ce dépôt.",
+      "file": "scripts/preuve_tir.py",
+      "find": "    if charge[\"cible\"] != \"reel\":",
+      "replace": "    if False:",
+      "test": "tests/unit/outillage/test_preuve_tir.py::test_un_artefact_demulateur_ne_vaut_pas_preuve"
+    },
+    {
+      "name": "verdict-de-tir-declare-au-lieu-de-derive",
+      "why": "Une preuve qui se déclare bonne toute seule ne prouve rien. Le verdict sort de ce que le run a laissé : un module en échec ou du résidu le font basculer sans que personne ait à y penser.\n\nLe figer à PASS rendrait une preuve parfaitement lisible, scellée, attestée, et fausse : la pire des trois, parce que les deux premières qualités empêchent de douter de la troisième.",
+      "file": "scripts/preuve_tir.py",
+      "find": "        \"verdict\": \"PASS\" if not echecs and residu == \"aucun\" else \"FAIL\",",
+      "replace": "        \"verdict\": \"PASS\",",
+      "test": "tests/unit/outillage/test_preuve_tir.py::test_le_verdict_se_derive_du_run_et_ne_se_declare_pas"
     }
   ]
 }
