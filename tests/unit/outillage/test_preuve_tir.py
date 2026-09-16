@@ -44,6 +44,10 @@ def _artefact(chemin: Path, **reste: object) -> Path:
     return chemin
 
 
+def _lire_preuve(chemin: Path) -> preuve_tir.Preuve:
+    return preuve_tir._lire(chemin)
+
+
 def _preuve(dossier: Path, **reste: object) -> Path:
     charge = {
         "commit": SHA,
@@ -225,24 +229,25 @@ def test_une_preuve_ne_peut_pas_vivre_dans_le_commit_quelle_atteste(
     assert preuve_tir.refus(SHA, aujourdhui="2026-09-16") == []
 
 
-def test_un_ancetre_qui_change_autre_chose_que_la_preuve_est_refuse(
+def test_une_archive_differente_est_refusee(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Le décalage ne doit pas devenir une porte dérobée.
 
-    Un commit d'écart qui touche le code est un arbre différent de celui qui a
-    tourné, et la preuve ne parle plus de ce qu'on publie.
-
-    **Le jugement se fait dans un dépôt jetable**, parce que la question est
-    « que contient ce diff » et qu'y répondre demande de vrais commits. Patcher
-    la fonction aurait rendu le test vert quoi qu'elle fasse, ce qui est
-    exactement ce que la mutation a montré.
+    Un commit d'écart qui change un module publie autre chose que ce qui a
+    tourné. La comparaison porte sur l'identifiant de l'arbre, qui se relit sans
+    historique : comparer deux commits exigeait que les deux existent, et un
+    commit de branche squashée n'est atteignable depuis rien. La release 0.8.0
+    est passée en local et a été refusée en CI pour cette seule raison.
     """
     depot = tmp_path / "depot"
     depot.mkdir()
-    lancer = lambda *a: subprocess.run(  # noqa: E731
-        ["git", *a], cwd=depot, capture_output=True, check=True
-    )
+
+    def lancer(*args: str) -> str:
+        return subprocess.run(
+            ["git", *args], cwd=depot, capture_output=True, text=True, check=True
+        ).stdout.strip()
+
     lancer("init", "-q")
     lancer("config", "user.email", "t@t")
     lancer("config", "user.name", "t")
@@ -250,32 +255,26 @@ def test_un_ancetre_qui_change_autre_chose_que_la_preuve_est_refuse(
     (depot / "ansible_collections" / "module.py").write_text("x = 1\n", encoding="utf-8")
     lancer("add", "-A")
     lancer("commit", "-qm", "socle")
-    socle = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=depot, capture_output=True, text=True, check=True
-    ).stdout.strip()
 
     monkeypatch.setattr(preuve_tir, "ROOT", depot)
+    arbre = lancer("rev-parse", "HEAD:ansible_collections")
+    dossier = tmp_path / "preuves"
+    prouve = _lire_preuve(_preuve(dossier, arbre_publie=arbre))
 
-    # Un commit qui n'ajoute qu'une preuve : l'archive publiée ne bouge pas.
+    # Un commit qui n'ajoute qu'une preuve : l'arbre publié ne bouge pas.
     (depot / "preuves").mkdir()
     (depot / "preuves" / "tir.json").write_text("{}", encoding="utf-8")
     lancer("add", "-A")
     lancer("commit", "-qm", "la preuve")
-    avec_preuve = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=depot, capture_output=True, text=True, check=True
-    ).stdout.strip()
 
-    assert preuve_tir._meme_archive_publiee(socle, avec_preuve)
+    assert preuve_tir._meme_archive_publiee(prouve, lancer("rev-parse", "HEAD"))
 
-    # Un commit qui touche un module : ce qu'on publierait n'est plus ce qui a tourné.
+    # Un commit qui touche un module : ce qu'on publierait a changé.
     (depot / "ansible_collections" / "module.py").write_text("x = 2\n", encoding="utf-8")
     lancer("add", "-A")
     lancer("commit", "-qm", "du code")
-    avec_code = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=depot, capture_output=True, text=True, check=True
-    ).stdout.strip()
 
-    assert not preuve_tir._meme_archive_publiee(socle, avec_code), (
+    assert not preuve_tir._meme_archive_publiee(prouve, lancer("rev-parse", "HEAD")), (
         "un commit qui change l'archive publiée a été accepté : un utilisateur "
         "installerait autre chose que ce qui a tourné."
     )

@@ -105,6 +105,7 @@ class Preuve:
     residu: str
     modules_joues: int
     empreinte: str
+    arbre_publie: str
     fichier: Path
 
 
@@ -120,6 +121,7 @@ def _lire(chemin: Path) -> Preuve:
         residu=str(charge["residu"]),
         modules_joues=int(charge.get("modules_joues", 0)),
         empreinte=str(charge.get("empreinte", "")),
+        arbre_publie=str(charge.get("arbre_publie", "")),
         fichier=chemin,
     )
 
@@ -188,6 +190,17 @@ def sceller(artefact: Path, commit: str | None = None) -> Path:
         "modules_en_echec": echecs,
         "run_id": str(charge["run_id"]),
         "empreinte": "sha256:" + hashlib.sha256(artefact.read_bytes()).hexdigest(),
+        # **L'identifiant de l'arbre publié, et non un SHA de commit à
+        # comparer.** Comparer deux commits demande que les deux existent :
+        # un commit de branche squashée puis supprimée n'est atteignable
+        # depuis rien, donc absent du clone de la CI, et la preuve devenait
+        # invérifiable là où elle compte. Mesuré le 16 septembre 2026, sur la
+        # release 0.8.0 : verte en local, refusée en CI.
+        #
+        # Deux arbres identiques ont le même identifiant : celui-ci se relit
+        # sans historique, et dit exactement ce que la preuve promet, à savoir
+        # que ce qui est publié est ce qui a tourné.
+        "arbre_publie": _git("rev-parse", f"{sha}:{PUBLIE.rstrip('/')}"),
     }
 
     PREUVES.mkdir(parents=True, exist_ok=True)
@@ -216,41 +229,37 @@ def sceller(artefact: Path, commit: str | None = None) -> Path:
 PUBLIE = "ansible_collections/"
 
 
-def _meme_archive_publiee(ancetre: str, commit: str) -> bool:
-    """Ces deux commits publieraient-ils exactement la même archive ?
+def _meme_archive_publiee(preuve: Preuve, commit: str) -> bool:
+    """L'archive publiée est-elle celle qui a tourné ?
 
-    **Une preuve ne peut pas être dans le commit qu'elle atteste.** Le tir se
-    joue sur un arbre propre, la preuve nomme ce commit-là, et la commiter en
-    crée forcément un autre : exiger qu'elle désigne HEAD, c'est demander
-    quelque chose d'impossible, et la garde se serait fait désactiver dans le
-    mois.
+    **Une preuve ne peut pas vivre dans le commit qu'elle atteste** : le tir se
+    joue sur un arbre propre, et la commiter en crée un autre. Exiger qu'elle
+    désigne HEAD demandait l'impossible, et une garde impossible à satisfaire se
+    fait désactiver dans le mois.
 
-    Le décalage admis est donc celui-ci : **l'archive publiée est identique**
-    entre le commit prouvé et celui qu'on publie. Ce qu'un utilisateur
-    installera est alors exactement ce qui a tourné contre le compte.
+    La comparaison porte donc sur l'**identifiant de l'arbre publié**. Deux
+    arbres identiques ont le même identifiant : si celui de la preuve est celui
+    de HEAD, ce qu'un utilisateur installera est exactement ce qui a tourné.
 
-    **L'ancestralité n'est pas exigée, et c'est une correction.** Elle l'était,
-    et elle interdisait le squash-merge : le commit prouvé vit sur la branche,
-    le commit publié est celui que la fusion écrase, et le premier n'est jamais
-    ancêtre du second. La porte refusait donc toute release fusionnée ainsi,
-    c'est-à-dire toutes celles de ce dépôt.
-
-    Elle n'apportait rien de plus : si les deux archives sont identiques, ce qui
-    est publié a été joué, et l'ordre des commits n'y change rien.
+    **Et il se relit sans historique.** La version d'avant comparait deux
+    commits, ce qui exige que les deux existent : un commit de branche squashée
+    puis supprimée n'est atteignable depuis rien, donc absent du clone de la CI.
+    La release 0.8.0 est passée en local et a été refusée en CI pour cette
+    seule raison.
     """
-    if not ancetre or ancetre == commit:
+    if preuve.commit == commit:
         return True
-    # **Une commande qui n'a pas pu répondre ne prouve rien.** Un commit inconnu
-    # du dépôt fait échouer `git diff` ; lire cet échec comme « les archives sont
-    # identiques » accepterait n'importe quelle preuve étrangère.
-    compare = subprocess.run(
-        ["git", "diff", "--name-only", ancetre, commit, "--", PUBLIE],
+    if not preuve.arbre_publie:
+        return False
+    ici = subprocess.run(
+        ["git", "rev-parse", f"{commit}:{PUBLIE.rstrip('/')}"],
         cwd=ROOT,
         capture_output=True,
         text=True,
         check=False,
     )
-    return compare.returncode == 0 and not compare.stdout.strip()
+    # Une commande qui n'a pas pu répondre ne prouve rien.
+    return ici.returncode == 0 and ici.stdout.strip() == preuve.arbre_publie
 
 
 def pour(commit: str) -> Preuve:
@@ -263,8 +272,7 @@ def pour(commit: str) -> Preuve:
     trouvees = [
         preuve
         for chemin in sorted(PREUVES.glob("tir-*.json"))
-        if (preuve := _lire(chemin)).commit == commit
-        or _meme_archive_publiee(preuve.commit, commit)
+        if (preuve := _lire(chemin)).commit == commit or _meme_archive_publiee(preuve, commit)
     ]
     if not trouvees:
         raise PreuveTirError(
