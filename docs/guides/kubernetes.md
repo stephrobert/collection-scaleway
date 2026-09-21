@@ -299,7 +299,7 @@ this table is read out of it, never written by hand. It separates what this
 collection emitted from what Terraform emitted, by user agent.
 
 <!-- compteurs:preuve-kapsule:début, produits par scripts/readme_counters.py -->
-| module | run of 2026-09-16 |
+| module | run of 2026-09-21 |
 |---|---|
 | `k8s_cluster` | reached |
 | `k8s_cluster_acl_action` | reached |
