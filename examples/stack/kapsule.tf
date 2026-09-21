@@ -71,6 +71,21 @@ resource "scaleway_k8s_cluster" "mesure" {
   # Terraform ne détruit pas**. Un réseau créé implicitement survivrait au
   # `destroy` sans que rien ne le nomme, et c'est la définition d'un résidu.
   private_network_id = scaleway_vpc_private_network.kapsule[0].id
+
+  # **Deux valeurs, et leur ordre est la mesure.** `k8s_cluster` compare cette
+  # liste **dans l'ordre**, comme `admission_plugins` et `feature_gates`, et
+  # personne n'a vérifié que l'API le conserve. `certificate_ids` a montré
+  # qu'elle ne le garantit pas : écrit `[a, b]`, relu `[b, a]` le 8 septembre
+  # 2026, conservé le 16, inversé à la création un tir plus tôt.
+  #
+  # Si l'ordre n'est pas tenu ici non plus, `k8s_cluster` rend `changed` sur une
+  # écriture qui ne change rien, par intermittence, ce qui passe les contrôles
+  # la plupart du temps (#290, #278).
+  #
+  # Des noms, pas des adresses : un SAN de certificat ne crée rien, ne coûte
+  # rien et ne touche pas aux nœuds. C'est la seule des trois listes qu'on peut
+  # déclarer sans redéployer le plan de contrôle.
+  apiserver_cert_sans = ["premier.exemple.invalid", "second.exemple.invalid"]
 }
 
 # Le réseau du cluster, déclaré ici pour que la destruction l'emporte.

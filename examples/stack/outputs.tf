@@ -130,6 +130,11 @@ output "certificat_backend" {
 output "kapsule" {
   description = "Le cluster et son pool, quand la cible est le cloud réel."
   value = {
+    # **L'ordre demandé, pour que le playbook mesure ce que l'API en fait.**
+    # Une liste écrite ici et relue là-bas est la seule façon de savoir si
+    # l'ordre tient : le playbook ne peut pas deviner ce que Terraform a
+    # envoyé, et le recopier à la main serait une seconde source (#290).
+    cert_sans = try(scaleway_k8s_cluster.mesure[0].apiserver_cert_sans, [])
     # **Dépouillés de leur portée, ici et pas dans le playbook.** Le provider
     # préfixe ses identifiants par la région, `fr-par/<uuid>` : passé tel quel à
     # un module, ça compose une URL que l'API refuse, avec un 404 qui vient du

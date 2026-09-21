@@ -304,3 +304,61 @@
           ansible.builtin.assert:
             that: k8s_jeton is changed
             quiet: true
+
+        # ---- L'ordre d'une liste, mesuré et non supposé (#290, #278) -------
+        #
+        # **`k8s_cluster` compare `apiserver_cert_sans` dans l'ordre**, comme
+        # `admission_plugins` et `feature_gates`, et personne n'avait vérifié
+        # que l'API le conserve. `certificate_ids` a montré qu'elle ne le
+        # garantit pas : écrit `[a, b]`, relu `[b, a]` le 8 septembre 2026,
+        # conservé le 16, et inversé dès la création un tir plus tôt.
+        #
+        # Si l'ordre n'est pas tenu ici non plus, le module rend `changed` sur
+        # une écriture qui ne change rien, **par intermittence** : une
+        # idempotence intermittente passe les contrôles la plupart du temps, ce
+        # qui est pire qu'une non-idempotence franche.
+        #
+        # La mesure ne coûte rien : la stack a écrit la liste à la création, la
+        # sortie porte l'ordre demandé, et il ne reste qu'à lire.
+        - name: Ce que l'API rend de la liste que la création a envoyée
+          stephrobert.scaleway.k8s_cluster_info:
+            region: "{{ region }}"
+            cluster_id: "{{ cluster }}"
+          register: k8s_relu_une
+
+        - name: La relire, pour distinguer un ordre stable d'un ordre tenu
+          stephrobert.scaleway.k8s_cluster_info:
+            region: "{{ region }}"
+            cluster_id: "{{ cluster }}"
+          register: k8s_relu_deux
+
+        # **Deux questions, et il faut les deux.** Un ordre stable entre deux
+        # lectures ne dit pas que l'ordre demandé est tenu : `certificate_ids`
+        # était stable en relecture **et** inversé par rapport à l'écriture.
+        - name: Les deux lectures rendent le même ordre
+          ansible.builtin.assert:
+            that:
+              - (k8s_relu_une.result.apiserver_cert_sans | default([]))
+                == (k8s_relu_deux.result.apiserver_cert_sans | default([]))
+            fail_msg: >-
+              deux lectures du même cluster rendent des ordres différents :
+              {{ k8s_relu_une.result.apiserver_cert_sans | default([]) }} puis
+              {{ k8s_relu_deux.result.apiserver_cert_sans | default([]) }}.
+              Comparer cette liste dans l'ordre ne peut pas être idempotent.
+            quiet: true
+
+        # Elle ne fait pas échouer : c'est une **mesure**, et le savoir vaut
+        # mieux que l'ignorer. Ce que l'API fait de l'ordre décide de la
+        # stratégie de comparaison, et cette décision se prend dans un override
+        # avec sa raison, pas dans un playbook.
+        - name: Ce que l'API a fait de l'ordre demandé
+          ansible.builtin.debug:
+            msg: >-
+              demandé {{ demande }}, rendu {{ rendu }} :
+              {{ "l'ordre est tenu" if rendu == demande
+                 else ("l'API réordonne, et `apiserver_cert_sans` doit passer en "
+                       "comparaison `set` comme `certificate_ids`") }}
+          vars:
+            demande: "{{ kapsule.cert_sans | default([]) }}"
+            rendu: "{{ k8s_relu_une.result.apiserver_cert_sans | default([]) }}"
+          when: kapsule.cert_sans | default([]) | length > 1
