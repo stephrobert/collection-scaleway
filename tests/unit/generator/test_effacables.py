@@ -86,7 +86,7 @@ def test_un_champ_effacable_est_nomme_au_runtime(widget_plan: ProductPlan) -> No
     runtime pose son témoin, et une seconde description du même type n'aurait
     servi qu'à diverger de la première.
     """
-    spec = _spec(widget_plan, "widget_widget")
+    spec = _spec(widget_plan, "widget")
 
     assert spec.nullable_params == (
         "email_config",
@@ -104,7 +104,7 @@ def test_un_champ_effacable_garde_son_type_publie(widget_plan: ProductPlan) -> N
     `validate-modules` obligeait à publier tel quel : le lecteur de la page
     voyait un type qui n'existe pas et un défaut qui n'en était pas un.
     """
-    options = _options(_spec(widget_plan, "widget_widget"))
+    options = _options(_spec(widget_plan, "widget"))
 
     assert options["secret_token"].type == "str"
     assert options["protected"].type == "bool"
@@ -122,7 +122,7 @@ def test_la_page_dit_la_valeur_vide_du_type(widget_plan: ProductPlan) -> None:
     La valeur à écrire dépend du type, et la page l'écrit littéralement plutôt
     que de parler de « la valeur vide » : un lecteur copie ce qu'il voit.
     """
-    options = _options(_spec(widget_plan, "widget_widget"))
+    options = _options(_spec(widget_plan, "widget"))
 
     assert 'write `secret_token: ""`' in " ".join(options["secret_token"].description)
     assert "write `tags: []`" in " ".join(options["tags"].description)
@@ -140,7 +140,7 @@ def test_la_page_refuse_de_promettre_un_effacement_impossible(
     Écrire « pour effacer, mettre `false` » serait promettre un effacement que
     l'API ne fait pas : `false` est une valeur, pas une absence.
     """
-    texte = " ".join(_options(_spec(widget_plan, "widget_widget"))["protected"].description)
+    texte = " ".join(_options(_spec(widget_plan, "widget"))["protected"].description)
 
     assert "bool has no empty value" in texte
     assert "cannot clear it" in texte
@@ -153,7 +153,7 @@ def test_la_page_dit_partout_que_null_est_refuse(widget_plan: ProductPlan) -> No
     Un lecteur qui écrit `null` en attendant un effacement doit le lire sur la
     page, pas le découvrir sur un module qui échoue.
     """
-    options = _options(_spec(widget_plan, "widget_widget"))
+    options = _options(_spec(widget_plan, "widget"))
 
     for nom in ("secret_token", "protected", "tags", "email_config", "webhook_config"):
         assert "Setting it to null is refused" in " ".join(options[nom].description), nom
@@ -168,7 +168,7 @@ def test_un_champ_non_effacable_ne_recoit_rien(widget_plan: ProductPlan) -> None
     contrat de laboratoire a reçu `label` pour que le contre-exemple existe
     encore.
     """
-    option = _options(_spec(widget_plan, "widget_widget"))["label"]
+    option = _options(_spec(widget_plan, "widget"))["label"]
 
     assert option.type == "str"
     assert option.default is None

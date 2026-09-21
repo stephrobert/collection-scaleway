@@ -1,0 +1,155 @@
+# Décisions humaines sur l'API VPC v2.
+#
+# **Ce produit se classe presque tout seul.** Ses verbes sont techniques, donc
+# les règles mécaniques rangent son cycle de vie sans qu'on ait à écrire quoi
+# que ce soit, et il ne sort aucun UNKNOWN. Ce fichier
+# ne corrige donc pas une classification défaillante : il tranche ce qu'aucune
+# règle ne peut trancher, la **ressource** sur laquelle une opération porte.
+#
+# **Le défaut est celui que `CLAUDE.md` nomme : la dérivation ne regarde qu'une
+# extrémité du chemin.** Le dernier segment d'un chemin d'action est le nom de
+# l'action, pas celui de la chose : `/vpcs/{vpc_id}/enable-routing` donne
+# `vpc_enable_routing`, `/private-networks/{id}/enable-dhcp` donne
+# `private_network_enable_dhcp`. `RebootNode` a fixé le précédent sur k8s, et la
+# conséquence y est décrite : l'attente cherche la lecture unitaire de la
+# ressource, et une ressource qui nomme l'action n'en a aucune.
+#
+# **Le préfixe répété, lui, ne se corrige pas ici.** `vpc_vpc_info`,
+# `vpc_vpc_connector` et leurs voisins venaient de la concaténation
+# `<produit>_<ressource>`, et une règle de nommage les a tous corrigés d'un coup
+# (`generator/ansible/mapping.py`). Un override par nom pour une correction
+# unique et mécanique aurait été le contraire de ce que ce répertoire est.
+#
+# La clé est celle que l'IR calcule (`<produit>.<version>.<Ressource>.<OperationId>`),
+# et `reason` est obligatoire dès qu'on change une classification.
+
+operations:
+
+  # --- L'ACL d'un VPC est un objet, pas une collection de règles ------------
+  #
+  # Le chemin finit par `acl-rules`, donc la dérivation conclut `vpc_acl_rule`
+  # et le module s'appelait `vpc_acl_rule_info`. Ce nom promet la lecture d'une
+  # règle, et ce n'est pas ce que l'opération rend.
+  #
+  # **Le schéma de réponse tranche, et il est vérifiable** :
+  # `scaleway.vpc.v2.GetAclResponse` porte `rules` **et** `default_policy`. Ce
+  # qui se lit est l'ACL du VPC, règles et politique par défaut ensemble ; il
+  # n'existe aucun chemin pour lire une règle seule, et aucun identifiant de
+  # règle nulle part dans le contrat.
+  #
+  # Un opérateur qui cherche « quelle est la politique par défaut de ce VPC »
+  # ne pense pas à un module nommé d'après une règle.
+  vpc.v2.VpcAclRule.GetAcl:
+    resource: acl
+    reason: >-
+      `GetAclResponse` porte `rules` et `default_policy` : l'opération rend
+      l'ACL du VPC, pas une règle, et le contrat n'expose aucune règle seule.
+
+  # Le PUT qui écrit ce que le GET lit. Il remplace l'ensemble, ce qui est
+  # d'ordinaire un motif de non-exposition, mais la doctrine vise le PUT **qui
+  # double un PATCH** : le module de gestion écrit alors la différence par le
+  # PATCH, et le PUT effacerait les champs non fournis. Ici il n'y a pas de
+  # PATCH, et `SetAcl` est la seule écriture possible de l'ACL. La liste entière
+  # est l'unité que l'API accepte.
+  vpc.v2.VpcAclRule.SetAcl:
+    resource: acl
+    reason: >-
+      écrit exactement ce que `GetAcl` lit, donc la même ressource ; le PUT est
+      la seule écriture de l'ACL, aucun PATCH ne le double.
+
+  # --- Trois actions dont le chemin nomme l'action ---------------------------
+  #
+  # Même défaut à chaque fois, et la même correction : `resource` désigne la
+  # chose, `module` garde un nom qui dit ce que l'action fait.
+  #
+  # **Le nom ne peut pas se déduire de la ressource seule.** Avec
+  # `resource: vpc`, le nom dérivé serait `vpc_action`, qui ne dit pas laquelle,
+  # et deux actions sur une même ressource se retrouveraient sous un seul nom.
+  # C'est la raison pour laquelle `k8s_node_reboot_action` est écrit à la main.
+  vpc.v2.VpcEnableRouting.EnableRouting:
+    resource: vpc
+    module: vpc_enable_routing_action
+    reason: >-
+      le dernier segment du chemin nomme l'action ; la ressource sur laquelle
+      elle porte est le VPC, dont `GetVPC` est la lecture unitaire.
+
+  vpc.v2.PrivateNetworkEnableDhcp.EnableDHCP:
+    resource: private_network
+    module: vpc_private_network_enable_dhcp_action
+    reason: >-
+      même dérivation fautive qu'`EnableRouting` : la chose est le réseau
+      privé, que `GetPrivateNetwork` lit.
+
+  # L'accès privé Object Storage se règle par deux actions opposées sur la même
+  # ressource. Les deux modules doivent donc être nommés à la main : `enable` et
+  # `disable` partagent la ressource, et un nom dérivé les confondrait.
+  vpc.v2.ObjectStoragePrivateAccessEnable.EnableObjectStoragePrivateAccess:
+    resource: object_storage_private_access
+    module: vpc_object_storage_private_access_enable_action
+    reason: >-
+      « Enable Object Storage private access for a VPC » : la ressource est
+      l'accès privé, pas le verbe qui termine le chemin.
+
+  vpc.v2.ObjectStoragePrivateAccessDisable.DisableObjectStoragePrivateAccess:
+    resource: object_storage_private_access
+    module: vpc_object_storage_private_access_disable_action
+    reason: >-
+      l'inverse de l'activation, sur la même ressource ; le nom reste explicite
+      parce que la ressource seule ne dirait pas lequel des deux sens.
+
+  # --- Un exemple que le contrat porte, et que le générateur ne lit pas -----
+  #
+  # **Ce n'est pas une décision, c'est un pansement, et il faut le dire.** Le
+  # contrat déclare `example: "1.2.3.4/32"` sur ce champ ; la valeur écrite ici
+  # en est la copie, pas un choix. `_example_value` annonce pourtant tirer sa
+  # valeur « du contrat quand il la porte » : c'est faux aujourd'hui, l'IR ne
+  # porte aucun champ `example` et le parser n'en lit aucun. Mesuré sur les
+  # contrats générés, un paramètre sur dix en déclare un, et tous sont perdus.
+  #
+  # Sans cette ligne, l'exemple publié porte `source: <source>`, que
+  # `docs:quality` refuse à juste titre : un exemple qui ne se copie pas
+  # n'apprend rien.
+  #
+  # **Ce qui rendra cette entrée inutile** : que le parser lise les exemples du
+  # contrat. Ce jour-là elle se supprime, et rien ne le signalera tout seul -
+  # le contrôle d'orphelins sait dire qu'une `description` d'override est
+  # devenue inutile, il ne le sait pas encore d'un `example`.
+  vpc.v2.IngressRule.UpdateIngressRule:
+    parameters:
+      source:
+        example: 1.2.3.4/32
+        reason: >-
+          recopie l'`example` que le contrat déclare pour ce champ, parce que le
+          parser ne lit pas encore les exemples ; sans elle l'exemple publié
+          porte `<source>`, qui ne se copie pas.
+
+  # --- Relier un réseau privé à l'accès privé relève de Terraform ------------
+  #
+  # **La paire était coupée en deux, et personne ne l'avait vue.**
+  # `DeletePrivateNetworkObjectStoragePrivateAccess` était déjà écartée par la
+  # règle mécanique `Delete*`, pendant que son symétrique `Add*` restait une
+  # ACTION exposée. La collection savait donc délier ce qu'elle ne savait pas
+  # relier, ce qui n'est pas une frontière mais un accident de vocabulaire :
+  # Scaleway a nommé l'une `Delete` et l'autre `Add`.
+  #
+  # La doctrine ne laisse pas le choix, et c'est celle qui vient d'écarter
+  # `AttachIP` et `DetachIP` sur IPAM : *une opération qui crée, supprime ou
+  # **relie** des ressources n'a pas sa place ici*. Le contrat décrit bien une
+  # liaison : « Add a Private Network to the Object Storage private access ».
+  #
+  # C'est aussi ce qui répond au nom illisible
+  # `vpc_object_storage_private_access_private_network_action` : la bonne
+  # réponse à un nom qu'on ne sait pas écrire est souvent que le module ne doit
+  # pas exister.
+  vpc.v2.ObjectStoragePrivateAccessPrivateNetwork.AddPrivateNetworkObjectStoragePrivateAccess:
+    generation: lifecycle
+    reason: >-
+      « Add a Private Network to the Object Storage private access » : relie
+      deux ressources, comme `AttachIP`, et son symétrique `Delete...` est déjà
+      écarté par la règle mécanique.
+
+  vpc.v2.ObjectStoragePrivateAccessPrivateNetwork.SetPrivateNetworksObjectStoragePrivateAccess:
+    generation: lifecycle
+    reason: >-
+      remplace la liste entière des réseaux privés associés, donc relie et délie
+      en un appel : la même frontière que `Add...`, à l'échelle de l'ensemble.

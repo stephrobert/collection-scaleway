@@ -1,0 +1,789 @@
+{
+  "service": "ipam",
+  "version": "v1",
+  "title": "IPAM API",
+  "description": "IPAM is an **IP** **A**ddress **M**anagement tool for Scaleway's ecosystem.",
+  "source": "ipam.v1.yml",
+  "enums": [
+    {
+      "name": "scaleway.ipam.v1.ListIPsRequest.OrderBy",
+      "values": [
+        "created_at_desc",
+        "created_at_asc",
+        "updated_at_desc",
+        "updated_at_asc",
+        "attached_at_desc",
+        "attached_at_asc",
+        "ip_address_desc",
+        "ip_address_asc",
+        "mac_address_desc",
+        "mac_address_asc"
+      ],
+      "default": "created_at_desc"
+    },
+    {
+      "name": "scaleway.ipam.v1.Resource.Type",
+      "values": [
+        "unknown_type",
+        "custom",
+        "instance_server",
+        "instance_ip",
+        "instance_private_nic",
+        "lb_server",
+        "fip_ip",
+        "vpc_gateway",
+        "vpc_gateway_network",
+        "k8s_node",
+        "k8s_cluster",
+        "rdb_instance",
+        "redis_cluster",
+        "baremetal_server",
+        "baremetal_private_nic",
+        "llm_deployment",
+        "mgdb_instance",
+        "apple_silicon_server",
+        "apple_silicon_private_nic",
+        "serverless_container",
+        "serverless_function",
+        "vpn_gateway",
+        "ddl_datalab",
+        "kafka_cluster",
+        "bgp_endpoint",
+        "scbl_sedb_cluster",
+        "dtwh_deployment",
+        "sedb_cluster",
+        "msgq_cluster",
+        "edge_vpc_endpoint",
+        "dviz_cluster",
+        "nats_cluster"
+      ],
+      "default": "unknown_type"
+    }
+  ],
+  "objects": [
+    {
+      "name": "scaleway.ipam.v1.IP",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "IP ID. (UUID format)"
+        },
+        {
+          "name": "srn",
+          "type": "string",
+          "description": "The SRN of the IP."
+        },
+        {
+          "name": "address",
+          "type": "string",
+          "description": "IPv4 or IPv6 address in CIDR notation. (IP network)"
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "description": "Scaleway Project the IP belongs to. (UUID format)"
+        },
+        {
+          "name": "is_ipv6",
+          "type": "boolean",
+          "description": "Defines whether the IP is an IPv6 (false = IPv4)."
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date the IP was reserved. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date the IP was last modified. (RFC 3339 format)"
+        },
+        {
+          "name": "source",
+          "type": "object",
+          "description": "Source pool where the IP was reserved in."
+        },
+        {
+          "name": "resource",
+          "type": "object",
+          "description": "Resource which the IP is attached to."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Tags for the IP."
+        },
+        {
+          "name": "reverses",
+          "type": "array",
+          "item_type": "object",
+          "description": "Array of reverses associated with the IP."
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "Region of the IP."
+        },
+        {
+          "name": "zone",
+          "type": "string",
+          "description": "Zone of the IP, if zonal."
+        }
+      ]
+    }
+  ],
+  "glossary": {
+    "attached": "Defines whether to filter only for IPs which are attached to a resource.",
+    "created_at": "Date the IP was reserved. (RFC 3339 format)",
+    "from_resource": "Custom resource currently attached to the IP.",
+    "hostname": "Reverse domain name.",
+    "ip_id": "IP ID. (UUID format)",
+    "is_ipv6": "Defines whether the IP is an IPv6 (false = IPv4).",
+    "order_by": "Sort order of the returned IPs.",
+    "organization_id": "Organization ID to filter for. Only IPs belonging to this Organization will be returned. (UUID format)",
+    "page": "Page number to return, from the paginated results.",
+    "page_size": "Maximum number of IPs to return per page.",
+    "private_network_id": "Private Network the IP lives in if the IP is a private IP.\nThis source is specific.",
+    "project_id": "Scaleway Project the IP belongs to. (UUID format)",
+    "region": "Region of the IP.",
+    "regional": "Defines whether the IP is a public regional IP.\nThis source is global.",
+    "resource": "Resource which the IP is attached to.",
+    "resource_id": "Resource ID to filter for. Only IPs attached to this resource will be returned. (UUID format)",
+    "resource_ids": "Resource IDs to filter for. Only IPs attached to at least one of these resources will be returned.",
+    "resource_name": "Attached resource name to filter for, only IPs attached to a resource with this string within their name will be returned.",
+    "resource_type": "Resource type to filter for. Only IPs attached to this type of resource will be returned.",
+    "resource_types": "Resource types to filter for. Only IPs attached to these types of resources will be returned.",
+    "reverses": "Array of reverses associated with the IP.",
+    "source": "Source pool where the IP was reserved in.",
+    "srn": "The SRN of the IP.",
+    "subnet_id": "Private Network subnet the IP lives in if the IP is a private IP in a Private Network.\nThis source is specific.",
+    "tags": "Tags for the IP.",
+    "to_resource": "Custom resource to be attached to the IP.",
+    "type": "Type of resource the IP is attached to.",
+    "updated_at": "Date the IP was last modified. (RFC 3339 format)",
+    "vpc_id": "VPC ID to filter for.\nOnly IPs owned by resources in this VPC will be returned.",
+    "zonal": "Zone the IP lives in if the IP is a public zoned IP.\nThis source is global.",
+    "zone": "Zone of the IP, if zonal."
+  },
+  "operations": [
+    {
+      "key": "ipam.v1.IpAttach.AttachIP",
+      "id": "AttachIP",
+      "service": "ipam",
+      "version": "v1",
+      "resource": "ip_attach",
+      "http_method": "POST",
+      "path": "/ipam/v1/regions/{region}/ips/{ip_id}/attach",
+      "scope": "region",
+      "summary": "Attach private IP to custom resource",
+      "description": "Attach an existing reserved private IP from a Private Network subnet to a custom, named resource via its MAC address. An example of a custom resource is a virtual machine hosted on an Elastic Metal server. Do not use this method for attaching IP addresses to standard Scaleway resources as it will fail - see the relevant product API for an equivalent method.",
+      "tags": [
+        "IPs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "ip_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "IP ID. (UUID format)"
+        },
+        {
+          "name": "resource",
+          "type": "object",
+          "required": true,
+          "location": "body",
+          "description": "Custom resource to be attached to the IP.",
+          "ref": "scaleway.ipam.v1.CustomResource"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.ipam.v1.IP",
+        "payload_schema": "scaleway.ipam.v1.IP"
+      }
+    },
+    {
+      "key": "ipam.v1.Ip.BookIP",
+      "id": "BookIP",
+      "service": "ipam",
+      "version": "v1",
+      "resource": "ip",
+      "http_method": "POST",
+      "path": "/ipam/v1/regions/{region}/ips",
+      "scope": "region",
+      "summary": "Reserve a new IP",
+      "description": "Reserve a new IP from the specified source. Currently IPs can only be reserved from a Private Network.",
+      "tags": [
+        "IPs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "Scaleway Project in which to create the IP.\nWhen creating an IP in a Private Network, the Project must match the Private Network's Project. (UUID format)"
+        },
+        {
+          "name": "source",
+          "type": "object",
+          "required": true,
+          "location": "body",
+          "description": "Source in which to reserve the IP. Not all sources are available for reservation.",
+          "ref": "scaleway.ipam.v1.Source"
+        },
+        {
+          "name": "is_ipv6",
+          "type": "boolean",
+          "required": false,
+          "location": "body",
+          "description": "Request an IPv6 instead of an IPv4."
+        },
+        {
+          "name": "address",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Request this specific IP address in the specified source pool.\nThe requested address should not include the subnet mask (/suffix). Note that only the Private Network source allows you to pick a specific IP. If the requested IP is already reserved, then the call will fail. (IP address)",
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Tags for the IP.",
+          "item_type": "string"
+        },
+        {
+          "name": "resource",
+          "type": "object",
+          "required": false,
+          "location": "body",
+          "description": "Custom resource to attach to the IP being reserved. An example of a custom resource is a virtual machine hosted on an Elastic Metal server. Do not use this for attaching IP addresses to standard Scaleway resources, as it will fail - instead, see the relevant product API for an equivalent method.",
+          "ref": "scaleway.ipam.v1.CustomResource"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.ipam.v1.IP",
+        "payload_schema": "scaleway.ipam.v1.IP"
+      }
+    },
+    {
+      "key": "ipam.v1.IpDetach.DetachIP",
+      "id": "DetachIP",
+      "service": "ipam",
+      "version": "v1",
+      "resource": "ip_detach",
+      "http_method": "POST",
+      "path": "/ipam/v1/regions/{region}/ips/{ip_id}/detach",
+      "scope": "region",
+      "summary": "Detach private IP from a custom resource",
+      "description": "Detach a private IP from a custom resource. An example of a custom resource is a virtual machine hosted on an Elastic Metal server. Do not use this method for detaching IP addresses from standard Scaleway resources (e.g. Instances, Load Balancers) as it will fail - see the relevant product API for an equivalent method.",
+      "tags": [
+        "IPs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "ip_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "IP ID. (UUID format)"
+        },
+        {
+          "name": "resource",
+          "type": "object",
+          "required": true,
+          "location": "body",
+          "description": "Custom resource currently attached to the IP.",
+          "ref": "scaleway.ipam.v1.CustomResource"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.ipam.v1.IP",
+        "payload_schema": "scaleway.ipam.v1.IP"
+      }
+    },
+    {
+      "key": "ipam.v1.Ip.GetIP",
+      "id": "GetIP",
+      "service": "ipam",
+      "version": "v1",
+      "resource": "ip",
+      "http_method": "GET",
+      "path": "/ipam/v1/regions/{region}/ips/{ip_id}",
+      "scope": "region",
+      "summary": "Get an IP",
+      "description": "Retrieve details of an existing IP, specified by its IP ID.",
+      "tags": [
+        "IPs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "ip_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "IP ID. (UUID format)"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.ipam.v1.IP",
+        "payload_schema": "scaleway.ipam.v1.IP"
+      }
+    },
+    {
+      "key": "ipam.v1.Ip.ListIPs",
+      "id": "ListIPs",
+      "service": "ipam",
+      "version": "v1",
+      "resource": "ip",
+      "http_method": "GET",
+      "path": "/ipam/v1/regions/{region}/ips",
+      "scope": "region",
+      "summary": "List existing IPs",
+      "description": "List existing IPs in the specified region using various filters. For example, you can filter for IPs within a specified Private Network, or for public IPs within a specified Project. By default, the IPs returned in the list are ordered by creation date in ascending order, though this can be modified via the order_by field.",
+      "tags": [
+        "IPs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "order_by",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Sort order of the returned IPs.",
+          "enum_name": "scaleway.ipam.v1.ListIPsRequest.OrderBy",
+          "enum_values": [
+            "created_at_desc",
+            "created_at_asc",
+            "updated_at_desc",
+            "updated_at_asc",
+            "attached_at_desc",
+            "attached_at_asc",
+            "ip_address_desc",
+            "ip_address_asc",
+            "mac_address_desc",
+            "mac_address_asc"
+          ],
+          "default": "created_at_desc",
+          "ref": "scaleway.ipam.v1.ListIPsRequest.OrderBy"
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Page number to return, from the paginated results.",
+          "format": "int32"
+        },
+        {
+          "name": "page_size",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Maximum number of IPs to return per page.",
+          "format": "uint32"
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Project ID to filter for. Only IPs belonging to this Project will be returned. (UUID format)"
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "VPC ID to filter for.\nOnly IPs owned by resources in this VPC will be returned."
+        },
+        {
+          "name": "attached",
+          "type": "boolean",
+          "required": false,
+          "location": "query",
+          "description": "Defines whether to filter only for IPs which are attached to a resource."
+        },
+        {
+          "name": "resource_name",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Attached resource name to filter for, only IPs attached to a resource with this string within their name will be returned."
+        },
+        {
+          "name": "resource_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Resource ID to filter for. Only IPs attached to this resource will be returned. (UUID format)"
+        },
+        {
+          "name": "resource_ids",
+          "type": "array",
+          "required": false,
+          "location": "query",
+          "description": "Resource IDs to filter for. Only IPs attached to at least one of these resources will be returned.",
+          "item_type": "string"
+        },
+        {
+          "name": "resource_type",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Resource type to filter for. Only IPs attached to this type of resource will be returned.",
+          "enum_name": "scaleway.ipam.v1.Resource.Type",
+          "enum_values": [
+            "unknown_type",
+            "custom",
+            "instance_server",
+            "instance_ip",
+            "instance_private_nic",
+            "lb_server",
+            "fip_ip",
+            "vpc_gateway",
+            "vpc_gateway_network",
+            "k8s_node",
+            "k8s_cluster",
+            "rdb_instance",
+            "redis_cluster",
+            "baremetal_server",
+            "baremetal_private_nic",
+            "llm_deployment",
+            "mgdb_instance",
+            "apple_silicon_server",
+            "apple_silicon_private_nic",
+            "serverless_container",
+            "serverless_function",
+            "vpn_gateway",
+            "ddl_datalab",
+            "kafka_cluster",
+            "bgp_endpoint",
+            "scbl_sedb_cluster",
+            "dtwh_deployment",
+            "sedb_cluster",
+            "msgq_cluster",
+            "edge_vpc_endpoint",
+            "dviz_cluster",
+            "nats_cluster"
+          ],
+          "default": "unknown_type",
+          "ref": "scaleway.ipam.v1.Resource.Type"
+        },
+        {
+          "name": "resource_types",
+          "type": "array",
+          "required": false,
+          "location": "query",
+          "description": "Resource types to filter for. Only IPs attached to these types of resources will be returned.",
+          "item_type": "enum"
+        },
+        {
+          "name": "mac_address",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "MAC address to filter for. Only IPs attached to a resource with this MAC address will be returned."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "query",
+          "description": "Tags to filter for, only IPs with one or more matching tags will be returned.",
+          "item_type": "string"
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Organization ID to filter for. Only IPs belonging to this Organization will be returned. (UUID format)"
+        },
+        {
+          "name": "is_ipv6",
+          "type": "boolean",
+          "required": false,
+          "location": "query",
+          "description": "Defines whether to filter only for IPv4s or IPv6s."
+        },
+        {
+          "name": "ip_ids",
+          "type": "array",
+          "required": false,
+          "location": "query",
+          "description": "IP IDs to filter for. Only IPs with these UUIDs will be returned.",
+          "item_type": "string"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.ipam.v1.ListIPsResponse",
+        "payload_field": "ips",
+        "payload_schema": "scaleway.ipam.v1.IP",
+        "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
+      }
+    },
+    {
+      "key": "ipam.v1.IpMove.MoveIP",
+      "id": "MoveIP",
+      "service": "ipam",
+      "version": "v1",
+      "resource": "ip_move",
+      "http_method": "POST",
+      "path": "/ipam/v1/regions/{region}/ips/{ip_id}/move",
+      "scope": "region",
+      "summary": "Move private IP to a custom resource",
+      "description": "Move an existing reserved private IP from one custom resource (e.g. a virtual machine hosted on an Elastic Metal server) to another custom resource. This will detach it from the first resource, and attach it to the second. Do not use this method for moving IP addresses between standard Scaleway resources (e.g. Instances, Load Balancers) as it will fail - see the relevant product API for an equivalent method.",
+      "tags": [
+        "IPs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "ip_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "IP ID. (UUID format)"
+        },
+        {
+          "name": "from_resource",
+          "type": "object",
+          "required": true,
+          "location": "body",
+          "description": "Custom resource currently attached to the IP.",
+          "ref": "scaleway.ipam.v1.CustomResource"
+        },
+        {
+          "name": "to_resource",
+          "type": "object",
+          "required": false,
+          "location": "body",
+          "description": "Custom resource to be attached to the IP.",
+          "ref": "scaleway.ipam.v1.CustomResource"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.ipam.v1.IP",
+        "payload_schema": "scaleway.ipam.v1.IP"
+      }
+    },
+    {
+      "key": "ipam.v1.Ip.ReleaseIP",
+      "id": "ReleaseIP",
+      "service": "ipam",
+      "version": "v1",
+      "resource": "ip",
+      "http_method": "DELETE",
+      "path": "/ipam/v1/regions/{region}/ips/{ip_id}",
+      "scope": "region",
+      "summary": "Release an IP",
+      "description": "Release an IP not currently attached to a resource, and returns it to the available IP pool.",
+      "tags": [
+        "IPs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "ip_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "IP ID. (UUID format)"
+        }
+      ]
+    },
+    {
+      "key": "ipam.v1.IpSetRelease.ReleaseIPSet",
+      "id": "ReleaseIPSet",
+      "service": "ipam",
+      "version": "v1",
+      "resource": "ip_set_release",
+      "http_method": "POST",
+      "path": "/ipam/v1/regions/{region}/ip-sets/release",
+      "scope": "region",
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "ip_ids",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "(UUID format)",
+          "item_type": "string"
+        }
+      ]
+    },
+    {
+      "key": "ipam.v1.Ip.UpdateIP",
+      "id": "UpdateIP",
+      "service": "ipam",
+      "version": "v1",
+      "resource": "ip",
+      "http_method": "PATCH",
+      "path": "/ipam/v1/regions/{region}/ips/{ip_id}",
+      "scope": "region",
+      "summary": "Update an IP",
+      "description": "Update parameters including tags of the specified IP.",
+      "tags": [
+        "IPs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "ip_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "IP ID. (UUID format)"
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Tags for the IP.",
+          "nullable": true
+        },
+        {
+          "name": "reverses",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Array of reverse domain names associated with an IP in the subnet of the current IP.",
+          "item_type": "object"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.ipam.v1.IP",
+        "payload_schema": "scaleway.ipam.v1.IP"
+      }
+    }
+  ],
+  "warnings": [
+    "UpdateIP.tags : tableau sans `items`, type des éléments inconnu"
+  ]
+}

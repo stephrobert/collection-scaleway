@@ -2,10 +2,61 @@
 
 from __future__ import annotations
 
-from generator.ir.enums import GenerationMode, OperationKind, Scope
-from generator.ir.models import ApiService
+import pytest
+
+from generator.ir.enums import GenerationMode, HTTPMethod, OperationKind, Scope
+from generator.ir.models import ApiOperation, ApiService
 from generator.overrides.loader import OverrideSet
-from generator.plan import ProductPlan, plan_service
+from generator.plan import ModulesEnCollision, ProductPlan, plan_service
+
+
+def _lecture(resource: str, operation_id: str) -> ApiOperation:
+    """Une lecture minimale, juste de quoi que le plan la classe en INFO."""
+    return ApiOperation(
+        id=operation_id,
+        service="vpc",
+        version="v2",
+        resource=resource,
+        http_method=HTTPMethod.GET,
+        path=f"/vpc/v2/{resource}s",
+        scope=Scope.REGION,
+    )
+
+
+def test_deux_ressources_sous_un_meme_nom_de_module_sont_refusees() -> None:
+    """La déduplication du préfixe rend `X` et `<produit>_X` atteignables.
+
+    Tant que le nom valait `<produit>_<ressource>`, deux ressources distinctes ne
+    pouvaient pas se rencontrer. Depuis qu'il se déduplique, elles le peuvent, et
+    le générateur écrirait deux fois le même fichier, le second effaçant le
+    premier sans un mot. Le cas n'est pas théorique : `lb` porte déjà `backend`
+    et `lb_backend`, aujourd'hui sans module l'une comme l'autre.
+    """
+    service = ApiService(
+        name="vpc",
+        version="v2",
+        operations=(_lecture("connector", "ListConnectors"), _lecture("vpc_connector", "GetVPC")),
+    )
+    with pytest.raises(ModulesEnCollision) as capture:
+        plan_service(service, OverrideSet(source=None))
+
+    assert capture.value.module == "vpc_connector_info"
+    assert capture.value.resources == ("connector", "vpc_connector")
+
+
+def test_plusieurs_operations_sur_une_meme_ressource_partagent_leur_module() -> None:
+    """Le cas voisin, et c'est le cas normal : `GetVPC` et `ListVPCs` sont un module.
+
+    La garde porte sur deux **ressources** sous un nom, jamais sur deux
+    opérations : la confondre avec celle-ci ferait échouer tout produit réel.
+    """
+    service = ApiService(
+        name="vpc",
+        version="v2",
+        operations=(_lecture("vpc", "ListVPCs"), _lecture("vpc", "GetVPC")),
+    )
+    plan = plan_service(service, OverrideSet(source=None))
+    assert sorted(plan.modules()) == ["vpc_info"]
 
 
 def test_une_couverture_sans_operation_day2_est_indefinie() -> None:
@@ -72,8 +123,13 @@ def test_chaque_classe_est_comptee_meme_a_zero(widget_plan: ProductPlan) -> None
 
 
 def test_un_module_regroupe_ses_operations(widget_plan: ProductPlan) -> None:
+    """Le contrat de laboratoire nomme sa ressource comme son produit.
+
+    Il portait donc le défaut du préfixe répété avant `vpc`, et cette attente
+    disait `widget_widget_info` sans que personne y voie autre chose qu'un nom.
+    """
     modules = widget_plan.modules()
-    assert {plan.operation.id for plan in modules["widget_widget_info"]} == {
+    assert {plan.operation.id for plan in modules["widget_info"]} == {
         "GetWidget",
         "ListWidgets",
     }

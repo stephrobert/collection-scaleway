@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 DOCUMENTATION = r"""
-module: widget_widget_info
+module: widget_info
 short_description: Gather information about Scaleway Widgets
 version_added: 9.9.9
 description:
@@ -61,16 +61,16 @@ EXAMPLES = r"""
 # walking every page rather than returning the first one in silence.
 
 - name: Get a widget
-  lab.widget.widget_widget_info:
+  lab.widget.widget_info:
     zone: fr-par-1
     widget_id: 11111111-2222-3333-4444-555555555555
   register: result
 - name: List widgets
-  lab.widget.widget_widget_info:
+  lab.widget.widget_info:
     zone: fr-par-1
   register: result
 - name: Filter Scaleway Widgets by state
-  lab.widget.widget_widget_info:
+  lab.widget.widget_info:
     zone: fr-par-1
     state: running
   register: result

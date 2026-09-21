@@ -1060,7 +1060,16 @@ ACRONYMES: dict[str, str] = {
     "url": "URL",
     "urls": "URLs",
     "cpu": "CPU",
+    # **Un sigle entre ici avec son pluriel, ou il ressort capitalisé de
+    # travers.** `vpc` était déclaré seul : `_pluriel` appelait `pluralize`, qui
+    # rend `vpcs`, ne le trouvait pas dans cette table et retombait sur la règle
+    # générale, qui ne remet une capitale qu'à l'initiale. La collection
+    # publiait donc « Gather information about Scaleway Vpcs » à côté de
+    # « Manage a Scaleway VPC », deux casses pour un mot sur deux pages
+    # voisines. C'est le défaut déjà corrigé pour `ip`, reparu sur le sigle
+    # suivant parce que rien ne le mesurait.
     "vpc": "VPC",
+    "vpcs": "VPCs",
     "uuid": "UUID",
 }
 

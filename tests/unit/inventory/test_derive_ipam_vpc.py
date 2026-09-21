@@ -1,9 +1,10 @@
 """La jointure lit-elle encore des champs que l'API déclare, par des méthodes que le SDK porte ?
 
-L'inventaire dynamique appelle six APIs. Deux, `instance.v1` et `lb.v1`, ont un
-contrat versionné, un golden et un rapport strict. Les quatre autres n'avaient
-rien, et ce sont pourtant `ipam.v1` et `vpc.v2` qui portent la jointure donnant
-son adresse privée à chaque machine.
+L'inventaire dynamique appelle six APIs, et ce sont `ipam.v1` et `vpc.v2` qui
+portent la jointure donnant son adresse privée à chaque machine. Elles étaient
+versionnées sous `suivis/` pour ce seul motif ; depuis #258 elles sont générées
+comme les autres, et ce contrôle ne change pas pour autant : il porte sur ce que
+la jointure lit, pas sur le statut du produit.
 
 Le défaut est silencieux par construction : `discovery.py` lit ces champs par
 `getattr(objet, "nom", None)`, donc un champ renommé en amont ne lève pas, il
@@ -13,7 +14,7 @@ MAC et **aucune adresse**, et l'inventaire un parc muet.
 Trois contrôles, et le troisième est celui qui empêche les deux autres de
 vieillir :
 
-* chaque champ déclaré ici existe dans le contrat versionné, `suivis/` ;
+* chaque champ déclaré ici existe dans le contrat versionné ;
 * chaque méthode que la jointure appelle existe dans le SDK installé ;
 * le code ne lit **rien** que cette déclaration n'ait prévu.
 
@@ -35,7 +36,7 @@ import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SUIVIS = REPO_ROOT / "specs" / "scaleway" / "suivis"
+SPECS = REPO_ROOT / "specs" / "scaleway"
 DISCOVERY = (
     REPO_ROOT
     / "ansible_collections/stephrobert/scaleway/plugins/module_utils/inventory/discovery.py"
@@ -120,8 +121,28 @@ def _tout_ce_que_la_jointure_lit() -> set[tuple[str, str]]:
 # --- la dérive de l'API -----------------------------------------------------
 
 
+def _contrat(nom: str) -> Path:
+    """Le contrat, qu'il soit généré ou seulement suivi.
+
+    **Le statut d'un produit n'est pas l'affaire de ce fichier.** Le chemin était
+    codé en dur sur `suivis/`, et la promotion d'ipam et de vpc a fait échouer
+    cinq contrôles sur un `FileNotFoundError` - c'est-à-dire sur le harnais, pas
+    sur le sujet. Ce que ces contrôles mesurent est le contenu du contrat, et il
+    dit la même chose des deux côtés.
+    """
+    for base in (SPECS, SPECS / "suivis"):
+        chemin = base / f"{nom}.yml"
+        if chemin.is_file():
+            return chemin
+    raise AssertionError(
+        f"contrat `{nom}` introuvable, ni généré ni suivi. Cherché dans "
+        f"{SPECS.relative_to(REPO_ROOT)} et son sous-répertoire `suivis`. "
+        "Lancer `mise run sync:api`, ou retirer sa ligne de `products.txt`."
+    )
+
+
 def _proprietes(contrat: str, schema_court: str) -> set[str]:
-    document = yaml.safe_load((SUIVIS / f"{contrat}.yml").read_text(encoding="utf-8"))
+    document = yaml.safe_load(_contrat(contrat).read_text(encoding="utf-8"))
     schemas: dict[str, Any] = document["components"]["schemas"]
     cles = [nom for nom in schemas if nom.rsplit(".", 1)[-1] == schema_court]
     if len(cles) != 1:

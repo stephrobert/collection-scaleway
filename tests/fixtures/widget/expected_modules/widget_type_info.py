@@ -7,33 +7,28 @@
 # Do not edit manually.
 #
 # Contrat    : tests/fixtures/widget/input/widget.v1.yml
-# Opérations : ListWidgetGizmos
+# Opérations : ListWidgetTypes
 # Régénérer  : mise run generate
 
 from __future__ import annotations
 
 DOCUMENTATION = r"""
-module: widget_widget_gizmo_info
-short_description: Gather information about Scaleway Widget gizmos
+module: widget_type_info
+short_description: Gather information about Scaleway Widget types
 version_added: 9.9.9
 description:
-- List the gizmos of a widget
+- Lister les types de widgets, sous forme de map.
 author:
 - Contrat de laboratoire (@lab)
 options:
   zone:
     description:
-    - Not documented by the Scaleway API contract.
+    - The zone you want to target
     type: str
     required: true
     choices:
     - fr-par-1
     - nl-ams-1
-  widget_id:
-    description:
-    - Not documented by the Scaleway API contract.
-    type: str
-    required: true
 attributes:
   check_mode:
     description: This module only reads, so check mode changes nothing about how it runs.
@@ -49,37 +44,29 @@ EXAMPLES = r"""
 # This module only reads: it never changes anything, and check mode
 # is native.
 
-- name: List the gizmos of a widget
-  lab.widget.widget_widget_gizmo_info:
+- name: List widget types
+  lab.widget.widget_type_info:
     zone: fr-par-1
-    widget_id: 11111111-2222-3333-4444-555555555555
   register: result
 """
 
 RETURN = r"""
-widgets:
+types:
   description:
-  - List the gizmos of a widget
+  - Lister les types de widgets, sous forme de map.
   returned: success
-  type: list
-  elements: dict
+  type: dict
   contains:
-    id:
+    type_name:
       description:
-      - Unique ID of the widget.
+      - Name of the widget type.
       returned: when the API returns it
       type: str
-    name:
+    gizmo_capacity:
       description:
-      - Name of the widget.
+      - How many gizmos this type carries.
       returned: when the API returns it
-      type: str
-    tags:
-      description:
-      - Tags of the widget.
-      returned: when the API returns it
-      type: list
-      elements: str
+      type: int
 """
 
 from ansible.module_utils.basic import AnsibleModule  # noqa: E402
@@ -98,7 +85,6 @@ MODULE_ARGUMENT_SPEC = {
         "required": True,
         "choices": ["fr-par-1", "nl-ams-1"],
     },
-    "widget_id": {"type": "str", "required": True},
 }
 
 #: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
@@ -108,16 +94,13 @@ ARGUMENT_SPEC.update(MODULE_ARGUMENT_SPEC)
 
 #: Ce que le module exécute, et les décisions que le générateur a prises.
 MODULE = InfoModule(
-    list_operation=Operation(
-        id="ListWidgetGizmos",
+    get_operation=Operation(
+        id="ListWidgetTypes",
         method="GET",
-        path="/widget/v1/zones/{zone}/widgets/{widget_id}/gizmos",
-        path_params=("zone", "widget_id"),
+        path="/widget/v1/zones/{zone}/widget-types",
+        path_params=("zone",),
         query_params=(),
-        payload_field="widgets",
-        is_list=True,
-        page_param="page",
-        per_page_param="page_size",
+        payload_field="types",
         retry="safe",
     ),
 )

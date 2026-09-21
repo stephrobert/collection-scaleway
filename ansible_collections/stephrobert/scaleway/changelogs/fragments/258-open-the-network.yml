@@ -1,0 +1,31 @@
+---
+minor_changes:
+  - The collection now covers VPC and IPAM, the two APIs the dynamic inventory
+    already calls on every run. Until now, reading what the inventory reads
+    meant writing ``uri:`` tasks by hand against the Scaleway API.
+  - >-
+    ``vpc_info``, ``vpc_private_network_info``, ``vpc_subnet_info`` and
+    ``vpc_acl_info`` answer the questions the inventory raises: which private
+    network lost its DHCP or its default route propagation, and what the VPC
+    access control list actually holds.
+  - >-
+    ``ipam_ip_info`` lists reserved addresses with the ``resource`` field that
+    says what each one is attached to, so an address attached to nothing is now
+    visible from a playbook. ``ipam_ip`` writes its tags and reverse records.
+  - >-
+    ``vpc_id``, ``private_network_id`` and ``vpc_connector_id`` are now
+    resolvable by name. A playbook can name a VPC or a private network instead
+    of carrying a UUID.
+  - Module names no longer repeat the product name. A resource named after its
+    own service used to produce ``vpc_vpc_info`` and ``vpc_vpc_connector``; the
+    naming rule now yields ``vpc_info`` and ``vpc_connector``. No previously
+    published module changes name, since no resource of the earlier products is
+    named after its service.
+bugfixes:
+  - The generator ran every product against API version ``v1``, ignoring the
+    version its own index declares. It went unnoticed while every generated
+    product was ``v1``; the first product on ``v2`` stopped generation with a
+    missing contract.
+  - The grouped module reference kept a single module per resource and class,
+    so a second action on the same resource silently replaced the first on a
+    page that presents itself as exhaustive.

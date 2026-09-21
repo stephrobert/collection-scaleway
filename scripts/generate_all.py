@@ -51,9 +51,18 @@ def main() -> int:
         for drapeau in ("--module", module)
     ]
 
+    # **La version se passe, elle ne se redevine pas.** Elle était lue puis
+    # jetée, et `generate` retombait sur son défaut `v1` : tant que tous les
+    # produits générés étaient en v1, les deux valeurs coïncidaient et rien ne
+    # le disait. `vpc v2` est le premier à les séparer, et la génération
+    # s'arrêtait sur `contrat absent : specs/scaleway/vpc.v1.yml` - un produit
+    # connu de l'index et inconnu de la génération.
     pire = 0
-    for produit, _version in produits:
-        pire = max(pire, generator_main(["generate", produit, *restriction]))
+    for produit, version in produits:
+        pire = max(
+            pire,
+            generator_main(["generate", produit, "--api-version", version, *restriction]),
+        )
 
     # La table de résolution est fondue entre tous les contrats générés, donc
     # elle s'écrit une fois, après eux. Un identifiant revendiqué par deux

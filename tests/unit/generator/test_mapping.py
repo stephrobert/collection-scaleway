@@ -86,6 +86,30 @@ def test_le_nom_du_module_depend_de_la_classe(kind: OperationKind, attendu: str 
     assert module_name("instance", "server", kind) == attendu
 
 
+def test_le_prefixe_du_produit_ne_se_repete_pas_dans_le_nom_du_module() -> None:
+    """`vpc` nomme une de ses ressources comme lui, et `vpc_vpc_info` en sortait.
+
+    Les trois premiers produits n'ont jamais pris la concaténation crue en
+    défaut ; `vpc` est le premier, sur huit noms d'un coup.
+    """
+    assert module_name("vpc", "vpc", OperationKind.INFO) == "vpc_info"
+    assert module_name("vpc", "vpc", OperationKind.MANAGE) == "vpc"
+    assert module_name("vpc", "vpc_connector", OperationKind.INFO) == "vpc_connector_info"
+    assert module_name("vpc", "vpc_acl_rule", OperationKind.MANAGE) == "vpc_acl_rule"
+
+
+def test_la_deduplication_exige_le_separateur_et_non_les_lettres() -> None:
+    """Le cas voisin, celui qui ne doit pas bouger.
+
+    Une ressource qui commence par les mêmes lettres que le produit sans que le
+    produit y soit un mot entier n'est pas un préfixe répété : la couper
+    produirait un nom qui ne désigne plus rien.
+    """
+    assert module_name("lb", "lbs", OperationKind.INFO) == "lb_lbs_info"
+    assert module_name("lb", "load_balancer", OperationKind.INFO) == "lb_load_balancer_info"
+    assert module_name("instance", "server", OperationKind.INFO) == "instance_server_info"
+
+
 def test_aucun_verbe_http_dans_un_nom_de_module() -> None:
     """`instance_get_server` est exactement ce que le projet refuse de produire."""
     for kind in (OperationKind.INFO, OperationKind.ACTION, OperationKind.MANAGE):

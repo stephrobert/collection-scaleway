@@ -208,6 +208,34 @@ def build_plan(
     return plan_service(service, overrides)
 
 
+class ModulesEnCollision(Exception):
+    """Deux ressources distinctes portent le même nom de module.
+
+    **La déduplication du préfixe rend ce cas possible, donc il se garde.** Tant
+    que le nom valait `<produit>_<ressource>`, il était injectif : deux
+    ressources différentes ne pouvaient pas se rencontrer. En retirant le
+    préfixe redondant, `<produit>_X` et `X` arrivent au même nom, et le
+    générateur écrirait deux fois le même fichier - le second écrasant le
+    premier, sans que rien ne le dise.
+
+    Lever plutôt que choisir, pour la raison qui fait lever `UnmappedType` : le
+    générateur ne devine pas. Le nom qui tranche est une décision humaine, et
+    elle s'écrit dans un override `module:` avec sa raison.
+
+    Mesuré : aucune collision sur les contrats générés, ni avant ni après la
+    règle. Cette garde est là pour ce que l'amont ajoutera.
+    """
+
+    def __init__(self, module: str, resources: Sequence[str]) -> None:
+        noms = ", ".join(sorted(resources))
+        super().__init__(
+            f"le module {module!r} serait écrit pour plusieurs ressources ({noms}). "
+            "Trancher le nom par un override `module:` sur l'une d'elles."
+        )
+        self.module = module
+        self.resources = tuple(sorted(resources))
+
+
 def plan_service(service: ApiService, overrides: OverrideSet) -> ProductPlan:
     """Applique classification et overrides à un service déjà parsé."""
     plans: list[OperationPlan] = []
@@ -243,9 +271,29 @@ def plan_service(service: ApiService, overrides: OverrideSet) -> ProductPlan:
             )
         )
 
+    _refuser_les_collisions(plans)
+
     return ProductPlan(
         service=service,
         operations=tuple(plans),
         overrides=overrides,
         orphan_overrides=overrides.orphans(service),
     )
+
+
+def _refuser_les_collisions(plans: Sequence[OperationPlan]) -> None:
+    """Lève dès qu'un nom de module désigne plus d'une ressource.
+
+    Plusieurs opérations par module est le cas normal : `GetVPC` et `ListVPCs`
+    alimentent tous deux `vpc_info`. Ce qui se refuse est plus étroit, et c'est
+    la seule chose que la déduplication puisse casser : **deux ressources**
+    derrière un même nom.
+    """
+    par_module: dict[str, set[str]] = {}
+    for plan in plans:
+        if plan.module is None:
+            continue
+        par_module.setdefault(plan.module, set()).add(plan.resource)
+    for module, resources in sorted(par_module.items()):
+        if len(resources) > 1:
+            raise ModulesEnCollision(module, sorted(resources))

@@ -176,6 +176,13 @@ second run reports no change.
 | `instance_volume_info` | Gather information about Scaleway Instance volumes |
 | `instance_volume_type_info` | Gather information about Scaleway Instance volume types |
 
+### Ipam (2 modules)
+
+| module | what it does |
+|---|---|
+| `ipam_ip` | Manage a Scaleway IPAM IP |
+| `ipam_ip_info` | Gather information about Scaleway IPAM IPs |
+
 ### K8S (19 modules)
 
 | module | what it does |
@@ -226,6 +233,28 @@ second run reports no change.
 | `lb_route_info` | Gather information about Scaleway Load Balancer routes |
 | `lb_subscriber` | Manage a Scaleway Load Balancer subscriber |
 | `lb_subscriber_info` | Gather information about Scaleway Load Balancer subscribers |
+
+### Vpc (17 modules)
+
+| module | what it does |
+|---|---|
+| `vpc` | Manage a Scaleway VPC |
+| `vpc_acl_info` | Gather information about Scaleway VPC ACLs |
+| `vpc_connector` | Manage a Scaleway VPC connector |
+| `vpc_connector_info` | Gather information about Scaleway VPC connectors |
+| `vpc_connector_subnet_overlap_info` | Gather information about Scaleway VPC connector subnet overlaps |
+| `vpc_enable_routing_action` | Perform an action on a Scaleway VPC |
+| `vpc_info` | Gather information about Scaleway VPCs |
+| `vpc_ingress_rule` | Manage a Scaleway VPC ingress rule |
+| `vpc_ingress_rule_info` | Gather information about Scaleway VPC ingress rules |
+| `vpc_object_storage_private_access_disable_action` | Perform an action on a Scaleway VPC object storage private access |
+| `vpc_object_storage_private_access_enable_action` | Perform an action on a Scaleway VPC object storage private access |
+| `vpc_private_network` | Manage a Scaleway VPC private network |
+| `vpc_private_network_enable_dhcp_action` | Perform an action on a Scaleway VPC private network |
+| `vpc_private_network_info` | Gather information about Scaleway VPC private networks |
+| `vpc_route` | Manage a Scaleway VPC route |
+| `vpc_route_info` | Gather information about Scaleway VPC routes |
+| `vpc_subnet_info` | Gather information about Scaleway VPC subnets |
 
 ### Inventory plugins
 

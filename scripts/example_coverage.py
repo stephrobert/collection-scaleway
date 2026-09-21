@@ -190,6 +190,156 @@ SANS_CIBLE: dict[str, SansCible] = {
         revoir_en="0.9.0",
         issue=279,
     ),
+    # --- Le lot réseau -------------------------------------------------------
+    #
+    # Une partie des modules d'ipam et de vpc n'a pas de cible dans la stack
+    # actuelle, et les obstacles ne sont pas de même nature : une action
+    # irréversible, une ressource que la stack ne déclare pas, un identifiant
+    # qu'aucune opération de liste ne permet de découvrir. Les confondre ferait
+    # croire qu'un seul geste les lèverait tous.
+    "vpc_enable_routing_action": SansCible(
+        raison=(
+            "active le routage entre réseaux privés d'un VPC, et le contrat le dit "
+            "sans ambiguïté : « Note that you will not be able to deactivate it "
+            "afterwards ». **L'exercer n'est donc pas une lecture déguisée, c'est un "
+            "aller simple.** La stack ne peut pas l'offrir comme cible : son VPC "
+            "porte déjà `enable_routing = true`, posé par Terraform parce que toute "
+            "la topologie en dépend - c'est lui qui permet au bastion de joindre les "
+            "tiers. L'appel serait donc un non-changement, et `MigrateLb` a mesuré "
+            "sur ce même compte qu'un non-changement peut rendre 400. "
+            "**Ce qui fermerait la ligne** : un second VPC déclaré sans routage et "
+            "détruit avec la plateforme, dont l'irréversibilité ne survivrait pas au "
+            "run. C'est une extension de stack, pas une décision de facture."
+        ),
+        preuve="stack",
+        revoir_en="0.10.0",
+        issue=258,
+    ),
+    "vpc_private_network_enable_dhcp_action": SansCible(
+        raison=(
+            "même aller simple que le routage, et le contrat emploie la même phrase : "
+            "« Note that you will not be able to deactivate it afterwards ». Les trois "
+            "réseaux privés de la stack déclarent un sous-réseau, donc le DHCP y est "
+            "déjà géré et l'appel serait un non-changement. "
+            "**Ce qui fermerait la ligne** : un réseau privé créé sans DHCP pour ce "
+            "seul exercice, et détruit avec la plateforme."
+        ),
+        preuve="stack",
+        revoir_en="0.10.0",
+        issue=258,
+    ),
+    "vpc_connector": SansCible(
+        raison=(
+            "gère un connecteur de VPC, que la stack ne déclare pas. Le provider "
+            "Terraform sait le faire - `scaleway_vpc_connector` existe en 2.81.0, "
+            "mesuré dans le binaire téléchargé - donc l'obstacle est bien la stack et "
+            "non l'amont. **Ce qui fermerait la ligne** : un `scaleway_vpc_connector` "
+            "dans `network.tf` et sa sortie, à condition de savoir ce qu'il facture "
+            "pendant la durée du run."
+        ),
+        preuve="stack",
+        revoir_en="0.10.0",
+        issue=258,
+    ),
+    "vpc_connector_info": SansCible(
+        raison=(
+            "lit les connecteurs de VPC, et la stack n'en déclare aucun. La lecture "
+            "renverrait une liste vide, ce qui passerait au vert sans rien mesurer : "
+            "c'est exactement le genre de couverture que ce contrôle existe pour "
+            "refuser. **Ce qui fermerait la ligne** : la même ressource que "
+            "`vpc_connector` attend."
+        ),
+        preuve="stack",
+        revoir_en="0.10.0",
+        issue=258,
+    ),
+    "vpc_connector_subnet_overlap_info": SansCible(
+        raison=(
+            "liste les chevauchements de sous-réseaux **d'un connecteur donné**, donc "
+            "il lui faut un identifiant de connecteur qu'aucune ressource de la stack "
+            "ne produit. **Ce qui fermerait la ligne** : la même ressource, plus un "
+            "second réseau dont la plage chevauche celle d'un réseau connecté, sans "
+            "quoi la réponse serait vide et ne prouverait rien."
+        ),
+        preuve="stack",
+        revoir_en="0.10.0",
+        issue=258,
+    ),
+    "vpc_ingress_rule": SansCible(
+        raison=(
+            "gère une règle d'entrée, que la stack ne déclare pas : son filtrage passe "
+            "par `scaleway_vpc_acl`, qui est un autre objet. Le provider déclare "
+            "`scaleway_vpc_ingress_rule` en 2.81.0, mesuré. **Ce qui fermerait la "
+            "ligne** : une règle d'entrée dans `network.tf`, et de quoi vérifier "
+            "qu'elle filtre vraiment - ce que l'émulateur ne peut pas montrer, "
+            "puisqu'il n'applique pas les ACL de VPC."
+        ),
+        preuve="stack",
+        revoir_en="0.10.0",
+        issue=258,
+    ),
+    "vpc_ingress_rule_info": SansCible(
+        raison=(
+            "lit les règles d'entrée, et la stack n'en déclare aucune : la liste "
+            "reviendrait vide. **Ce qui fermerait la ligne** : la même ressource que "
+            "`vpc_ingress_rule` attend."
+        ),
+        preuve="stack",
+        revoir_en="0.10.0",
+        issue=258,
+    ),
+    "vpc_route": SansCible(
+        raison=(
+            "écrit une route de VPC, désignée par son identifiant. **Et cet "
+            "identifiant ne peut venir d'aucun module** : `vpc.v2` expose `CreateRoute`, "
+            "`GetRoute`, `UpdateRoute` et `DeleteRoute`, mais **aucune opération de "
+            "liste**, mesuré sur le contrat. Le playbook n'écrit aucun identifiant à la "
+            "main, donc il n'a aucun moyen d'en obtenir un. **Ce qui fermerait la "
+            "ligne** : un `scaleway_vpc_route` dans la stack et sa sortie, qui est le "
+            "seul chemin possible tant que l'amont n'expose pas de liste."
+        ),
+        preuve="stack",
+        revoir_en="0.10.0",
+        issue=258,
+    ),
+    "vpc_route_info": SansCible(
+        raison=(
+            "même obstacle que `vpc_route`, et il tient au contrat plutôt qu'à la "
+            "stack : le module ne porte que `GetRoute`, qui exige un identifiant, et "
+            "rien dans `vpc.v2` ne permet de le découvrir. **Ce qui fermerait la "
+            "ligne** : la même sortie Terraform, ou une opération de liste en amont."
+        ),
+        preuve="stack",
+        revoir_en="0.10.0",
+        issue=258,
+    ),
+    "vpc_object_storage_private_access_enable_action": SansCible(
+        raison=(
+            "active l'intégration Object Storage d'un VPC. Contrairement au routage et "
+            "au DHCP, elle est **réversible** - `Disable` existe - donc la paire "
+            "pourrait s'exercer sur le VPC de la stack sans rien y laisser. Ce qui "
+            "manque n'est donc pas une ressource, c'est une mesure : le provider "
+            "Terraform ne déclare rien pour cette intégration en 2.81.0, personne n'a "
+            "observé ce que l'activation facture, et `private_network_ids` est un "
+            "filtre optionnel dont on ignore si l'API accepte l'appel sans lui. "
+            "**Ce qui fermerait la ligne** : un tir réel qui mesure ces trois points, "
+            "et la paire enable/disable encadrée d'un `always`."
+        ),
+        preuve="reel",
+        revoir_en="0.10.0",
+        issue=258,
+    ),
+    "vpc_object_storage_private_access_disable_action": SansCible(
+        raison=(
+            "désactive ce que le module précédent active : les deux se lèvent ensemble "
+            "ou pas du tout. Les exercer séparément laisserait un VPC dans un état que "
+            "la stack ne décrit pas, et `destroy` partirait sur autre chose que ce "
+            "qu'il croit détruire."
+        ),
+        preuve="reel",
+        revoir_en="0.10.0",
+        issue=258,
+    ),
 }
 
 

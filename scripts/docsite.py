@@ -204,14 +204,24 @@ def write_reference_page() -> str:
     ecrits = set(expected_modules())
     for produit, version in expected_products():
         plan = build_plan(produit, version, spec_root=ROOT / "specs" / "scaleway")
-        par_ressource: dict[str, dict[OperationKind, str]] = {}
+        # **Une liste par classe, et non un module.** La table associait un seul
+        # nom à chaque couple (ressource, classe), donc un second module de même
+        # ressource et de même classe effaçait le premier - silencieusement, dans
+        # une page qui se présente comme exhaustive. Le cas n'existait pas tant
+        # qu'aucune ressource ne portait deux actions : `vpc` en porte deux sur
+        # son accès privé Object Storage, `enable` et `disable`, et la page
+        # publiait la seconde seule. C'est
+        # `test_tout_module_livre_figure_dans_la_reference` qui l'a dit.
+        par_ressource: dict[str, dict[OperationKind, list[str]]] = {}
         for nom, items in plan.modules().items():
             # Un module porte plusieurs opérations, `GetServer` et `ListServers`
             # par exemple, et toutes partagent sa ressource et sa classe : la
             # première suffit, et c'est le plan qui les a nommées.
             if nom not in ecrits or not items:
                 continue
-            par_ressource.setdefault(items[0].resource, {})[items[0].kind] = nom
+            par_ressource.setdefault(items[0].resource, {}).setdefault(items[0].kind, []).append(
+                nom
+            )
 
         lignes.append(f"## {plan.service.title or produit}")
         lignes.append("")
@@ -219,12 +229,11 @@ def write_reference_page() -> str:
             lignes.append(f"### {ressource.replace('_', ' ')}")
             lignes.append("")
             for classe, verbe in _CLASSES:
-                module = par_ressource[ressource].get(classe)
-                if module is None:
-                    continue
-                lignes.append(
-                    f"- {{ansplugin}}`{module} <stephrobert.scaleway.{module}#module>` -- {verbe}"
-                )
+                for module in sorted(par_ressource[ressource].get(classe, ())):
+                    lignes.append(
+                        f"- {{ansplugin}}`{module} "
+                        f"<stephrobert.scaleway.{module}#module>` -- {verbe}"
+                    )
             lignes.append("")
 
     (SITE_SRC / "guides").mkdir(parents=True, exist_ok=True)

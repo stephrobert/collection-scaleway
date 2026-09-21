@@ -8,8 +8,10 @@ d'ici à la génération suivante plutôt que de rester une promesse.
 Contrats lus :
 
     specs/scaleway/instance.v1.yml
+    specs/scaleway/ipam.v1.yml
     specs/scaleway/k8s.v1.yml
     specs/scaleway/lb.v1.yml
+    specs/scaleway/vpc.v2.yml
 """
 
 from __future__ import annotations
@@ -218,6 +220,37 @@ RESOLUTIONS: dict[str, ResourceLookup] = {
         scope=("cluster_id",),
         filters_by_name=True,
     ),
+    "private_network_id": ResourceLookup(
+        parameter="private_network_id",
+        service="vpc",
+        schema="scaleway.vpc.v2.PrivateNetwork",
+        operation=Operation(
+            id="ListPrivateNetworks",
+            method="GET",
+            path="/vpc/v2/regions/{region}/private-networks",
+            path_params=("region",),
+            query_params=(
+                "order_by",
+                "page",
+                "page_size",
+                "name",
+                "tags",
+                "organization_id",
+                "project_id",
+                "private_network_ids",
+                "vpc_id",
+                "dhcp_enabled",
+                "object_storage_private_access_enabled",
+            ),
+            payload_field="private_networks",
+            is_list=True,
+            page_param="page",
+            per_page_param="page_size",
+            retry="safe",
+        ),
+        scope=(),
+        filters_by_name=True,
+    ),
     "security_group_id": ResourceLookup(
         parameter="security_group_id",
         service="instance",
@@ -354,6 +387,66 @@ RESOLUTIONS: dict[str, ResourceLookup] = {
         scope=(),
         filters_by_name=True,
     ),
+    "vpc_connector_id": ResourceLookup(
+        parameter="vpc_connector_id",
+        service="vpc",
+        schema="scaleway.vpc.v2.VPCConnector",
+        operation=Operation(
+            id="ListVPCConnectors",
+            method="GET",
+            path="/vpc/v2/regions/{region}/vpc-connectors",
+            path_params=("region",),
+            query_params=(
+                "order_by",
+                "page",
+                "page_size",
+                "name",
+                "tags",
+                "organization_id",
+                "project_id",
+                "vpc_id",
+                "target_vpc_id",
+                "status",
+            ),
+            payload_field="vpc_connectors",
+            is_list=True,
+            page_param="page",
+            per_page_param="page_size",
+            retry="safe",
+        ),
+        scope=(),
+        filters_by_name=True,
+    ),
+    "vpc_id": ResourceLookup(
+        parameter="vpc_id",
+        service="vpc",
+        schema="scaleway.vpc.v2.VPC",
+        operation=Operation(
+            id="ListVPCs",
+            method="GET",
+            path="/vpc/v2/regions/{region}/vpcs",
+            path_params=("region",),
+            query_params=(
+                "order_by",
+                "page",
+                "page_size",
+                "name",
+                "tags",
+                "organization_id",
+                "project_id",
+                "is_default",
+                "routing_enabled",
+                "object_storage_private_access_enabled",
+            ),
+            payload_field="vpcs",
+            is_list=True,
+            page_param="page",
+            per_page_param="page_size",
+            retry="safe",
+        ),
+        scope=(),
+        filters_by_name=True,
+    ),
 }
 
 #: Ce que les contrats ne permettent pas de résoudre, **avec sa raison**.
@@ -364,9 +457,10 @@ UNRESOLVABLE: dict[str, str] = {
         "aucun schéma nommé Acl n'est rendu par une opération de liste ; lb le résout, un autre produit ne le peut pas : lequel n'est pas décidable "
         "depuis le nom seul. `service=lb` le dit"
     ),
-    "ip_id": "Ip ne porte pas de champ name dans le contrat",
+    "ip_id": "IP ne porte pas de champ name dans le contrat ; Ip ne porte pas de champ name dans le contrat",
     "private_nic_id": "PrivateNIC ne porte pas de champ name dans le contrat",
-    "route_id": "Route ne porte pas de champ name dans le contrat",
+    "route_id": "Route ne porte pas de champ name dans le contrat ; aucun schéma nommé Route n'est rendu par une opération de liste",
+    "rule_id": "aucun schéma nommé Rule n'est rendu par une opération de liste",
     "security_group_rule_id": "SecurityGroupRule ne porte pas de champ name dans le contrat",
 }
 
