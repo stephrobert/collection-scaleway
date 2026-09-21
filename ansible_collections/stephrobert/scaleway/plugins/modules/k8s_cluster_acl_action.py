@@ -87,6 +87,11 @@ rules:
       - ID of the ACL rule. (UUID format)
       returned: when the API returns it
       type: str
+    srn:
+      description:
+      - The SRN of the ACL rule.
+      returned: when the API returns it
+      type: str
     ip:
       description:
       - IP subnet to allow. (IP network)

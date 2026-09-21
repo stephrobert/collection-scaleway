@@ -321,6 +321,11 @@ resource:
         Defaults to 15 minutes, up to 1 hour. (in seconds)
       returned: when the API returns it
       type: str
+    srn:
+      description:
+      - The SRN of the pool.
+      returned: when the API returns it
+      type: str
     region:
       description:
       - Cluster region of the pool.

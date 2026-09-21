@@ -257,6 +257,9 @@ components:
           type: string
           description: ID of the ACL rule. (UUID format)
           example: 6170692e-7363-616c-6577-61792e636f6d
+        srn:
+          type: string
+          description: The SRN of the ACL rule.
         ip:
           type:
           - string
@@ -280,6 +283,7 @@ components:
           description: Region of the ACL rule.
       x-properties-order:
       - id
+      - srn
       - ip
       - scaleway_ranges
       - description
@@ -360,6 +364,9 @@ components:
         id:
           type: string
           description: Cluster ID.
+        srn:
+          type: string
+          description: The SRN of the cluster.
         type:
           type: string
           description: Cluster type.
@@ -477,6 +484,7 @@ components:
           example: 1.2.3.4
       x-properties-order:
       - id
+      - srn
       - type
       - name
       - status
@@ -667,6 +675,9 @@ components:
         name:
           type: string
           description: Cluster type name.
+        srn:
+          type: string
+          description: The SRN of the cluster type.
         availability:
           description: Cluster type availability.
           $ref: '#/components/schemas/scaleway.k8s.v1.ClusterType.Availability'
@@ -704,6 +715,7 @@ components:
           description: The region of the cluster type.
       x-properties-order:
       - name
+      - srn
       - availability
       - max_nodes
       - commitment_delay
@@ -1136,6 +1148,13 @@ components:
       x-properties-order:
       - max_unavailable
       - max_surge
+    scaleway.k8s.v1.GetClusterKubeConfigRequest.Endpoint:
+      type: string
+      enum:
+      - unknown_endpoint
+      - public
+      - vpc
+      default: unknown_endpoint
     scaleway.k8s.v1.ListClusterACLRulesResponse:
       type: object
       properties:
@@ -1329,6 +1348,9 @@ components:
         id:
           type: string
           description: Node ID.
+        srn:
+          type: string
+          description: The SRN of the node.
         pool_id:
           type: string
           description: Pool ID of the node.
@@ -1369,6 +1391,7 @@ components:
           example: "2022-03-22T12:34:56.123456Z"
       x-properties-order:
       - id
+      - srn
       - pool_id
       - cluster_id
       - provider_id
@@ -1555,6 +1578,9 @@ components:
             and `terminationGracePeriodSeconds`. Defaults to 15 minutes, up to 1 hour.
             (in seconds)
           example: 2.5s
+        srn:
+          type: string
+          description: The SRN of the pool.
         region:
           type: string
           description: Cluster region of the pool.
@@ -1590,6 +1616,7 @@ components:
       - startup_taints
       - error_message
       - max_termination_grace_period
+      - srn
       - region
     scaleway.k8s.v1.Pool.Status:
       type: string
@@ -1863,6 +1890,9 @@ components:
         name:
           type: string
           description: Name of the Kubernetes version.
+        srn:
+          type: string
+          description: The SRN of the version.
         label:
           type: string
           description: Label of the Kubernetes version.
@@ -1935,6 +1965,7 @@ components:
           additionalProperties: true
       x-properties-order:
       - name
+      - srn
       - label
       - region
       - available_cnis
@@ -2829,6 +2860,11 @@ paths:
         description: Hide the legacy token from the kubeconfig.
         schema:
           type: boolean
+      - in: query
+        name: endpoint
+        description: 'Which endpoint to use to reach the APIServer (default: public).'
+        schema:
+          $ref: '#/components/schemas/scaleway.k8s.v1.GetClusterKubeConfigRequest.Endpoint'
       responses:
         "200":
           description: ""
