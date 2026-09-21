@@ -75,6 +75,11 @@ versions:
       - Name of the Kubernetes version.
       returned: when the API returns it
       type: str
+    srn:
+      description:
+      - The SRN of the version.
+      returned: when the API returns it
+      type: str
     label:
       description:
       - Label of the Kubernetes version.

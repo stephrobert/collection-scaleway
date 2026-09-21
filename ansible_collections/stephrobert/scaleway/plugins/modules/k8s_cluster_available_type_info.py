@@ -71,6 +71,11 @@ cluster_types:
       - Cluster type name.
       returned: when the API returns it
       type: str
+    srn:
+      description:
+      - The SRN of the cluster type.
+      returned: when the API returns it
+      type: str
     availability:
       description:
       - Cluster type availability.

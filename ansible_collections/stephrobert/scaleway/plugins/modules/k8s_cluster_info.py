@@ -129,6 +129,11 @@ result:
       - Cluster ID.
       returned: when the API returns it
       type: str
+    srn:
+      description:
+      - The SRN of the cluster.
+      returned: when the API returns it
+      type: str
     type:
       description:
       - Cluster type.
@@ -287,6 +292,11 @@ clusters:
     id:
       description:
       - Cluster ID.
+      returned: when the API returns it
+      type: str
+    srn:
+      description:
+      - The SRN of the cluster.
       returned: when the API returns it
       type: str
     type:

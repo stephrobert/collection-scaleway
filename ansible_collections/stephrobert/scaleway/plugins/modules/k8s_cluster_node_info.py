@@ -117,6 +117,11 @@ nodes:
       - Node ID.
       returned: when the API returns it
       type: str
+    srn:
+      description:
+      - The SRN of the node.
+      returned: when the API returns it
+      type: str
     pool_id:
       description:
       - Pool ID of the node.

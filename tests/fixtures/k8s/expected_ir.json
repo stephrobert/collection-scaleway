@@ -50,6 +50,15 @@
       "default": "unknown_resiliency"
     },
     {
+      "name": "scaleway.k8s.v1.GetClusterKubeConfigRequest.Endpoint",
+      "values": [
+        "unknown_endpoint",
+        "public",
+        "vpc"
+      ],
+      "default": "unknown_endpoint"
+    },
+    {
       "name": "scaleway.k8s.v1.ListClustersRequest.OrderBy",
       "values": [
         "created_at_asc",
@@ -159,6 +168,11 @@
           "description": "ID of the ACL rule. (UUID format)"
         },
         {
+          "name": "srn",
+          "type": "string",
+          "description": "The SRN of the ACL rule."
+        },
+        {
           "name": "ip",
           "type": "string",
           "description": "IP subnet to allow. (IP network)"
@@ -187,6 +201,11 @@
           "name": "id",
           "type": "string",
           "description": "Cluster ID."
+        },
+        {
+          "name": "srn",
+          "type": "string",
+          "description": "The SRN of the cluster."
         },
         {
           "name": "type",
@@ -344,6 +363,11 @@
           "description": "Cluster type name."
         },
         {
+          "name": "srn",
+          "type": "string",
+          "description": "The SRN of the cluster type."
+        },
+        {
           "name": "availability",
           "type": "enum",
           "description": "Cluster type availability."
@@ -397,6 +421,11 @@
           "name": "id",
           "type": "string",
           "description": "Node ID."
+        },
+        {
+          "name": "srn",
+          "type": "string",
+          "description": "The SRN of the node."
         },
         {
           "name": "pool_id",
@@ -592,6 +621,11 @@
           "description": "Maximum amount of time before the API forces the drain and deletion of a `deleting` node. It overrides pods `PodDisruptionBudget` and `terminationGracePeriodSeconds`. Defaults to 15 minutes, up to 1 hour. (in seconds)"
         },
         {
+          "name": "srn",
+          "type": "string",
+          "description": "The SRN of the pool."
+        },
+        {
           "name": "region",
           "type": "string",
           "description": "Cluster region of the pool."
@@ -615,6 +649,11 @@
           "name": "name",
           "type": "string",
           "description": "Name of the Kubernetes version."
+        },
+        {
+          "name": "srn",
+          "type": "string",
+          "description": "The SRN of the version."
         },
         {
           "name": "label",
@@ -729,6 +768,7 @@
     "enable": "Defines whether auto upgrade is enabled for the cluster.",
     "enabled": "Defines whether auto upgrade is enabled for the cluster.",
     "end_of_life_at": "Date from which any remaining clusters on this version will begin to be forcibly upgraded to the next minor version. (RFC 3339 format)",
+    "endpoint": "Which endpoint to use to reach the APIServer (default: public).",
     "estimator": "Type of resource estimator to be used in scale up.",
     "expander": "Kubernetes autoscaler strategy to fit pods into nodes, see https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md#what-are-expanders for details.",
     "expendable_pods_priority_cutoff": "Pods with priority below cutoff will be expendable. They can be killed without any consideration during scale down and they won't cause scale up. Pods with null priority (PodPriority disabled) are non expendable.",
@@ -1526,6 +1566,21 @@
           "required": false,
           "location": "query",
           "description": "Hide the legacy token from the kubeconfig."
+        },
+        {
+          "name": "endpoint",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Which endpoint to use to reach the APIServer (default: public).",
+          "enum_name": "scaleway.k8s.v1.GetClusterKubeConfigRequest.Endpoint",
+          "enum_values": [
+            "unknown_endpoint",
+            "public",
+            "vpc"
+          ],
+          "default": "unknown_endpoint",
+          "ref": "scaleway.k8s.v1.GetClusterKubeConfigRequest.Endpoint"
         }
       ],
       "response": {

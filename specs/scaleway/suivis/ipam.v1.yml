@@ -143,6 +143,9 @@ components:
           type: string
           description: IP ID. (UUID format)
           example: 6170692e-7363-616c-6577-61792e636f6d
+        srn:
+          type: string
+          description: The SRN of the IP.
         address:
           type: string
           description: IPv4 or IPv6 address in CIDR notation. (IP network)
@@ -192,6 +195,7 @@ components:
           description: Zone of the IP, if zonal.
       x-properties-order:
       - id
+      - srn
       - address
       - project_id
       - is_ipv6

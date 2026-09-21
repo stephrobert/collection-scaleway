@@ -837,86 +837,6 @@ components:
       name: X-Auth-Token
       type: apiKey
 paths:
-  /apple-silicon-internal/v1alpha1/zones/{zone}/runner-configuration-status:
-    patch:
-      operationId: UpdateRunnerConfigurationStatus
-      parameters:
-      - in: path
-        name: zone
-        description: The zone you want to target
-        required: true
-        schema:
-          type: string
-          enum:
-          - fr-par-3
-      responses:
-        "200":
-          description: ""
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.UpdateRunnerConfigurationStatusResponse'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                runner_errors:
-                  type: object
-                  properties:
-                    <runner_errorKey>:
-                      type: string
-                  additionalProperties: true
-              x-properties-order:
-              - runner_errors
-      security:
-      - scaleway: []
-      x-codeSamples:
-      - lang: cURL
-        source: |-
-          curl -X PATCH \
-            -H "X-Auth-Token: $SCW_SECRET_KEY" \
-            -H "Content-Type: application/json" \
-            -d '{"runner_errors":{"<runner_errorKey>":"string"}}' \
-            "https://api.scaleway.com/apple-silicon-internal/v1alpha1/zones/{zone}/runner-configuration-status"
-      - lang: HTTPie
-        source: |-
-          http PATCH "https://api.scaleway.com/apple-silicon-internal/v1alpha1/zones/{zone}/runner-configuration-status" \
-            X-Auth-Token:$SCW_SECRET_KEY \
-            runner_errors:='{"<runner_errorKey>":"string"}'
-  /apple-silicon-internal/v1alpha1/zones/{zone}/user-configuration:
-    get:
-      operationId: GetUserConfiguration
-      parameters:
-      - in: path
-        name: zone
-        description: The zone you want to target
-        required: true
-        schema:
-          type: string
-          enum:
-          - fr-par-3
-      responses:
-        "200":
-          description: ""
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.UserConfiguration'
-      security:
-      - scaleway: []
-      x-codeSamples:
-      - lang: cURL
-        source: |-
-          curl -X GET \
-            -H "X-Auth-Token: $SCW_SECRET_KEY" \
-            "https://api.scaleway.com/apple-silicon-internal/v1alpha1/zones/{zone}/user-configuration"
-      - lang: HTTPie
-        source: |-
-          http GET "https://api.scaleway.com/apple-silicon-internal/v1alpha1/zones/{zone}/user-configuration" \
-            X-Auth-Token:$SCW_SECRET_KEY
   /apple-silicon/v1alpha1/zones/{zone}/batch-create-servers:
     post:
       tags:
@@ -1204,6 +1124,55 @@ paths:
         source: |-
           http GET "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/os/{os_id}" \
             X-Auth-Token:$SCW_SECRET_KEY
+  /apple-silicon/v1alpha1/zones/{zone}/runner-configuration-status:
+    patch:
+      operationId: UpdateRunnerConfigurationStatus
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.UpdateRunnerConfigurationStatusResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                runner_errors:
+                  type: object
+                  properties:
+                    <runner_errorKey>:
+                      type: string
+                  additionalProperties: true
+              x-properties-order:
+              - runner_errors
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X PATCH \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"runner_errors":{"<runner_errorKey>":"string"}}' \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/runner-configuration-status"
+      - lang: HTTPie
+        source: |-
+          http PATCH "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/runner-configuration-status" \
+            X-Auth-Token:$SCW_SECRET_KEY \
+            runner_errors:='{"<runner_errorKey>":"string"}'
   /apple-silicon/v1alpha1/zones/{zone}/runners:
     get:
       tags:
@@ -2012,3 +1981,34 @@ paths:
           http POST "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/servers/{server_id}/reinstall" \
             X-Auth-Token:$SCW_SECRET_KEY \
             enable_kext:=false
+  /apple-silicon/v1alpha1/zones/{zone}/user-configuration:
+    get:
+      operationId: GetUserConfiguration
+      parameters:
+      - in: path
+        name: zone
+        description: The zone you want to target
+        required: true
+        schema:
+          type: string
+          enum:
+          - fr-par-3
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/scaleway.apple_silicon.v1alpha1.UserConfiguration'
+      security:
+      - scaleway: []
+      x-codeSamples:
+      - lang: cURL
+        source: |-
+          curl -X GET \
+            -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/user-configuration"
+      - lang: HTTPie
+        source: |-
+          http GET "https://api.scaleway.com/apple-silicon/v1alpha1/zones/{zone}/user-configuration" \
+            X-Auth-Token:$SCW_SECRET_KEY
