@@ -1419,19 +1419,39 @@
         vpc_id: "{{ vpc_plateforme.id }}"
       register: reseaux_prives
 
-    # Trois, parce que `network.tf` en déclare trois : gestion, web et app. Une
-    # assertion sur la forme de la réponse passerait sur un VPC vide.
-    - name: Les trois réseaux privés que la stack déclare, et ce qu'ils portent
+    # **Nommer les réseaux attendus, et non les compter.** Un compte de réseaux
+    # privés dépend de la cible : `kapsule.tf` déclare un quatrième réseau sous
+    # `count = local.kapsule`, qui vaut zéro dès qu'un `endpoint` est fourni.
+    # L'exercice en voit donc trois contre l'émulateur et quatre sur le cloud
+    # réel, et une assertion sur le total échoue sur la seule cible qui compte.
+    #
+    # **L'étiquette ne les distingue pas**, et c'était l'hypothèse évidente : la
+    # transcription du tir montre les quatre portant `exemple`, parce que les
+    # quatre sont déclarés par la stack. Ce n'est pas le cas des machines, où
+    # `exemple` sépare bien ce que la stack crée des nœuds que Kapsule
+    # maintient. Deux ressources voisines, deux règles différentes.
+    #
+    # Ce qui se vérifie ici est donc la topologie que l'inventaire traverse :
+    # gestion, web et app, chacune avec son sous-réseau.
+    - name: Les trois réseaux privés de la topologie sont là, chacun avec son sous-réseau
       ansible.builtin.assert:
         that:
-          - reseaux_prives.private_networks | length == 3
-          - reseaux_prives.private_networks | map(attribute='subnets') | select | list | length == 3
+          - attendus | difference(rendus) | length == 0
+          - de_topologie | map(attribute='subnets') | select | list | length == 3
           - reseaux_prives is not changed
         fail_msg: >-
-          {{ reseaux_prives.private_networks | length }} réseau(x) privé(s) au
-          lieu de 3, ou l'un d'eux sans sous-réseau. C'est la topologie que
+          réseaux privés manquants : {{ attendus | difference(rendus) | join(', ') }}
+          (rendus : {{ rendus | join(', ') }}). C'est la topologie que
           l'inventaire traverse pour donner son adresse privée à chaque machine.
         quiet: true
+      vars:
+        attendus:
+          - "{{ prefixe }}-gestion"
+          - "{{ prefixe }}-web"
+          - "{{ prefixe }}-app"
+        rendus: "{{ reseaux_prives.private_networks | map(attribute='name') | list }}"
+        de_topologie: "{{ reseaux_prives.private_networks
+          | selectattr('name', 'in', attendus) | list }}"
 
     - name: Les sous-réseaux du VPC
       stephrobert.scaleway.vpc_subnet_info:
@@ -1483,9 +1503,17 @@
         vpc_id: "{{ vpc_plateforme.id }}"
       register: adresses_ipam
 
-    # C'est exactement la jointure de l'inventaire : chaque carte réseau privée
-    # d'une machine a une réservation IPAM, et `resource` est ce qui la rattache.
-    - name: Chaque adresse réservée dit à quelle ressource elle est rattachée
+    # C'est la jointure de l'inventaire : chaque carte réseau privée d'une
+    # machine a une réservation IPAM, et `resource` est ce qui la rattache.
+    #
+    # **Toutes ne sont pas rattachées, et c'est le sujet plutôt qu'un défaut.**
+    # Mesuré dans la transcription du tir réel : la plupart des adresses portent
+    # un `resource`, et quelques-unes valent `null`, réservées sans être posées
+    # sur quoi que ce soit. C'est exactement la question que l'issue pose - une
+    # adresse réservée que rien n'utilise reste facturée - donc l'assertion
+    # vérifie que la jointure **fonctionne**, pas qu'elle soit totale. Exiger
+    # l'inverse ferait rougir l'exercice sur une situation normale.
+    - name: La jointure de l'inventaire tient, et les adresses non posées se voient
       ansible.builtin.assert:
         that:
           - adresses_ipam.ips | length > 0
@@ -1493,9 +1521,9 @@
           - adresses_ipam is not changed
         fail_msg: >-
           {{ adresses_ipam.ips | default([]) | length }} adresse(s) réservée(s),
-          dont {{ rattachees | length }} rattachée(s) à une ressource. Une
-          réservation sans `resource` est une adresse que l'inventaire ne sait
-          rattacher à aucune machine.
+          dont {{ rattachees | length }} rattachée(s) à une ressource. Aucune
+          rattachée veut dire que `resource` a cessé d'être rempli, et
+          l'inventaire rendrait alors un parc sans adresses privées.
         quiet: true
       vars:
         rattachees: "{{ adresses_ipam.ips | default([])
