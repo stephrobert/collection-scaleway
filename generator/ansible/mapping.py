@@ -89,10 +89,23 @@ def module_name(product: str, resource: str, kind: OperationKind) -> str | None:
 
     Le nom suit `<produit>_<ressource>[_info|_action]` et ne contient jamais un
     verbe HTTP : `instance_server_info`, jamais `instance_get_server`.
+
+    **Le préfixe ne se répète pas.** Les trois premiers produits n'ont jamais
+    nommé une ressource comme leur service, donc la concaténation crue n'a
+    jamais été prise en défaut ; `vpc` est le premier où elle l'est, et elle
+    produisait `vpc_vpc_info`, `vpc_vpc_connector` et six autres. Un opérateur
+    n'écrit pas `vpc_vpc`, et un nom qu'on doit expliquer est un nom faux.
+
+    La règle porte sur le service et la ressource, jamais sur une opération en
+    particulier : c'est ce qui en fait une règle plutôt qu'une liste d'overrides.
+    Mesuré sur les contrats générés, elle ne déplace aucun nom hors de `vpc` :
+    nulle part ailleurs une ressource ne commence par le nom de son service.
     """
     suffix = _MODULE_SUFFIX.get(kind)
     if suffix is None:
         return None
+    if resource == product or resource.startswith(f"{product}_"):
+        return f"{resource}{suffix}"
     return f"{product}_{resource}{suffix}"
 
 

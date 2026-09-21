@@ -52,8 +52,8 @@ def _produits() -> list[tuple[str, str]]:
     return sorted(VendoredSpecSource(root=SPECS).available())
 
 
-def _actions() -> list[tuple[str, object, tuple[str, ...]]]:
-    """Chaque module d'action livré, avec les paramètres de son chemin."""
+def _actions() -> list[tuple[str, object, tuple[str, ...], frozenset[str]]]:
+    """Chaque module d'action livré, les paramètres de son chemin, et son corps."""
     trouvees = []
     collection = load_collection()
     for produit, version in _produits():
@@ -63,16 +63,23 @@ def _actions() -> list[tuple[str, object, tuple[str, ...]]]:
             if spec.kind is not OperationKind.ACTION:
                 continue
             operation = spec.action_operation
-            trouvees.append((spec.name, spec, tuple(operation.path_params)))
+            # `body_params` est la liste que le runtime enverra dans le corps :
+            # la recalculer depuis l'IR donnerait une seconde source, libre de
+            # diverger de celle que le module utilise vraiment.
+            trouvees.append(
+                (spec.name, spec, tuple(operation.path_params), frozenset(operation.body_params))
+            )
     return trouvees
 
 
 CAS = _actions()
 
 
-@pytest.mark.parametrize(("nom", "spec", "chemin"), CAS, ids=[nom for nom, _, _ in CAS])
+@pytest.mark.parametrize(
+    ("nom", "spec", "chemin", "corps_declare"), CAS, ids=[nom for nom, _, _, _ in CAS]
+)
 def test_une_action_publie_un_exemple_qui_demontre(
-    nom: str, spec: object, chemin: tuple[str, ...]
+    nom: str, spec: object, chemin: tuple[str, ...], corps_declare: frozenset[str]
 ) -> None:
     """Un exemple qui ne porte que le chemin déclenche une opération vide.
 
@@ -82,14 +89,27 @@ def test_une_action_publie_un_exemple_qui_demontre(
     **Une action sans aucun paramètre de corps est hors de ce contrôle**, et
     c'est légitime : `RebootNode` redémarre, le chemin dit tout, et il n'y a
     rien à démontrer de plus.
+
+    **Le corps, et non tout ce qui n'est pas le chemin.** C'est ce que l'énoncé
+    annonçait depuis le début, et ce que le calcul ne faisait pas : il comptait
+    aussi les filtres de requête. Tant qu'aucune action n'en portait, les deux
+    lectures donnaient le même verdict ; `EnableObjectStoragePrivateAccess` est
+    la première à les séparer, avec un `private_network_ids` optionnel qui
+    **restreint** une action que le chemin décrit entièrement. Exiger qu'un
+    exemple le porte reviendrait à demander une démonstration de ce que
+    l'opération fait déjà sans lui.
+
+    Mesuré avant de restreindre : toutes les actions des produits déjà livrés
+    portent leurs paramètres dans le corps, donc aucune ne sort du contrôle par
+    cette précision. `tests/falsify/specs.json` le tient par une mutation.
     """
     options = {option.name for option in spec.options}  # type: ignore[attr-defined]
-    corps = options - set(chemin) - {"region", "zone"}
+    corps = (options & corps_declare) - set(chemin) - {"region", "zone"}
     if not corps:
         return
 
     for exemple in spec.examples:  # type: ignore[attr-defined]
-        portes = set(exemple.parameters) - set(chemin) - {"region", "zone"}
+        portes = (set(exemple.parameters) & corps_declare) - set(chemin) - {"region", "zone"}
         assert portes, (
             f"`{nom}` publie un exemple qui ne porte que son chemin, alors "
             f"qu'il accepte {sorted(corps)}. Une opération déclenchée sans "

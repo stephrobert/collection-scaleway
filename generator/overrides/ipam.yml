@@ -1,0 +1,92 @@
+# Décisions humaines sur l'API IPAM v1.
+#
+# **Ce produit ne se classe pas tout seul, et la raison est nommable.** Les six
+# règles mécaniques du classifieur reconnaissent des verbes techniques :
+# `Create*`, `Delete*`, `Get*`, `List*`, `Update*`, `Set*`. IPAM n'en emploie
+# aucun pour son cycle de vie. Ses verbes sont métier - on *réserve* une adresse,
+# on la *libère*, on l'*attache* - et le classifieur ne connaît pas ce
+# vocabulaire. Résultat mesuré avant ce fichier : tout le cycle de vie du
+# produit classé ACTION, et `ReleaseIP` en UNKNOWN.
+#
+# **Six overrides et non une règle.** Élargir `_DELETE_VERBS` à `release`
+# attraperait ici les deux bonnes opérations, et ailleurs tout ce qui publie une
+# version. Les verbes sont hétérogènes, ils tiennent à un seul produit, et une
+# règle qui les couvrirait tous couvrirait autre chose. Le coût est une entrée
+# par opération ; le prix d'une règle trop large est une opération écartée en
+# silence chez un produit que personne ne relit.
+#
+# Ce qui reste après ce fichier est exactement ce que la collection sert :
+# `ipam_ip_info` lit, `ipam_ip` écrit les tags et les enregistrements inverses.
+#
+# La clé est celle que l'IR calcule (`<produit>.<version>.<Ressource>.<OperationId>`),
+# et `reason` est obligatoire dès qu'on change une classification.
+
+operations:
+
+  # --- Réserver et libérer, c'est-à-dire créer et supprimer -----------------
+  #
+  # Le contrat le dit en toutes lettres, et c'est sa phrase qui tranche plutôt
+  # qu'une lecture du nom : « Reserve a new IP from the specified source ». Une
+  # adresse réservée est une ressource qui n'existait pas, qui se facture, et
+  # que Terraform déclare (`scaleway_ipam_ip`). La frontière du dépôt ne laisse
+  # aucune marge ici.
+  ipam.v1.Ip.BookIP:
+    generation: lifecycle
+    reason: >-
+      « Reserve a new IP from the specified source » : l'opération crée une
+      ressource facturée que Terraform déclare, et créer relève de Terraform.
+
+  # `ReleaseIP` est l'UNKNOWN du produit, et il l'est pour une raison précise :
+  # le verbe `release` n'est dans aucune liste, et la méthode DELETE n'a de
+  # règle que pour `delete` et `destroy`. Aucune règle ne s'applique, donc le
+  # classifieur ne tranche pas - ce qui est le comportement voulu.
+  #
+  # **L'override ne le fait pas tomber, il le décide.** La différence se lit
+  # dans la raison : ce n'est pas « on ne sait pas quoi en faire », c'est
+  # « supprime une ressource, donc Terraform ».
+  ipam.v1.Ip.ReleaseIP:
+    generation: lifecycle
+    reason: >-
+      DELETE qui « returns it to the available IP pool » : c'est la suppression
+      de la réservation créée par `BookIP`, donc le périmètre de Terraform.
+
+  # Le pluriel ne change pas la nature de l'opération. Le contrat ne porte ici
+  # ni résumé ni description - c'est la seule opération du produit dans ce cas -
+  # donc la décision s'appuie sur le chemin et sur la symétrie avec `ReleaseIP`.
+  ipam.v1.IpSetRelease.ReleaseIPSet:
+    generation: lifecycle
+    reason: >-
+      libère un ensemble d'adresses, soit `ReleaseIP` appliqué à plusieurs :
+      même suppression, même frontière.
+
+  # --- Attacher, détacher, déplacer : relier deux ressources ----------------
+  #
+  # La doctrine du dépôt écarte ce qui **relie**, au même titre que ce qui crée
+  # et ce qui supprime. `AttachServerVolume` a fixé le précédent sur Instance.
+  #
+  # Le contrat renforce la décision plutôt que de la contredire : ces trois
+  # opérations ne valent que pour une ressource *custom*, hors du catalogue
+  # Scaleway, et la description le dit deux fois - « Do not use this method for
+  # attaching IP addresses to standard Scaleway resources as it will fail ».
+  # Un module Day-2 qui échouerait sur tout ce que la collection sait lire
+  # n'aurait pas d'utilisateur.
+  ipam.v1.IpAttach.AttachIP:
+    generation: lifecycle
+    reason: >-
+      relie une adresse réservée à une ressource par son adresse MAC ; relier
+      deux ressources relève de Terraform, et le contrat restreint l'opération
+      aux ressources hors catalogue Scaleway.
+
+  ipam.v1.IpDetach.DetachIP:
+    generation: lifecycle
+    reason: >-
+      l'inverse d'`AttachIP`, et la même frontière : une paire attacher/détacher
+      se range d'un seul côté, sinon la collection délie ce qu'elle ne sait pas
+      relier.
+
+  ipam.v1.IpMove.MoveIP:
+    generation: lifecycle
+    reason: >-
+      « This will detach it from the first resource, and attach it to the
+      second » : c'est `DetachIP` puis `AttachIP`, décrit comme tel par le
+      contrat, donc écarté pour la même raison.

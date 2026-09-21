@@ -14,9 +14,14 @@ fichier publié, qui est ce qu'on cherche à protéger ici.
 
 from __future__ import annotations
 
+import re
+
 from generator.ansible.collection import Collection
-from generator.ansible.models import AnsibleModuleSpec, build_module_specs
-from generator.plan import ProductPlan
+from generator.ansible.models import ACRONYMES, AnsibleModuleSpec, build_module_specs
+from generator.plan import ProductPlan, build_plan
+from generator.source.base import VendoredSpecSource
+
+from .conftest import INSTANCE_SPECS
 
 
 def _specs(plan: ProductPlan, collection: Collection) -> dict[str, AnsibleModuleSpec]:
@@ -104,3 +109,34 @@ def test_un_exemple_ne_porte_pas_didentifiant_doperation(instance_plan, collecti
     ]
     assert fautifs == [], f"exemples nommés par le contrat : {fautifs}"
     assert specs["instance_dashboard_info"].examples[0].name == "Read a Scaleway Instance dashboard"
+
+
+def test_aucun_sigle_ne_sort_capitalise_de_travers(collection) -> None:
+    """Un sigle déclaré sans son pluriel ressort « Vpcs », et rien ne le disait.
+
+    `_pluriel` demande son pluriel à `pluralize`, qui rend une forme minuscule,
+    puis cherche cette forme dans la table des sigles. Absente, elle retombe sur
+    la règle générale, qui ne remet une capitale qu'à l'initiale. La collection
+    a donc publié « Gather information about Scaleway Vpcs » à côté de « Manage
+    a Scaleway VPC ».
+
+    **Le contrôle porte sur les phrases publiées, pas sur la table.** Exiger que
+    chaque sigle y porte son pluriel obligerait à inventer « TLSs » et « DNSs »,
+    qui ne s'écrivent nulle part. Ce qui compte est qu'aucune phrase ne sorte
+    avec la mauvaise casse, et c'est mesurable sur ce que la collection publie.
+
+    Il porte sur **tous** les produits générés : le défaut naît du sigle suivant,
+    pas du dernier corrigé, et une fixture par produit l'aurait manqué.
+    """
+    fautives = {forme.capitalize() for forme in ACRONYMES.values() if forme.capitalize() != forme}
+    assert fautives, "la table ne porte aucun sigle : le contrôle ne mesure plus rien"
+
+    defauts: list[str] = []
+    for produit, version in sorted(VendoredSpecSource(root=INSTANCE_SPECS).available()):
+        plan = build_plan(produit, version, spec_root=INSTANCE_SPECS)
+        for nom, spec in _specs(plan, collection).items():
+            for fautive in sorted(fautives):
+                if re.search(rf"\b{re.escape(fautive)}\b", spec.short_description):
+                    defauts.append(f"{nom} : « {spec.short_description} » porte « {fautive} »")
+
+    assert defauts == [], "\n".join(defauts)

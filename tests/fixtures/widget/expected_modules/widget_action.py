@@ -1,0 +1,139 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+# Copyright: (c) Contrat de laboratoire (@lab)
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+# This file is generated.
+# Do not edit manually.
+#
+# Contrat    : tests/fixtures/widget/input/widget.v1.yml
+# Opérations : WidgetAction
+# Régénérer  : mise run generate
+
+from __future__ import annotations
+
+DOCUMENTATION = r"""
+module: widget_action
+short_description: Perform an action on a Scaleway Widget
+version_added: 9.9.9
+description:
+- Perform an action on a widget
+author:
+- Contrat de laboratoire (@lab)
+options:
+  zone:
+    description:
+    - Not documented by the Scaleway API contract.
+    type: str
+    required: true
+    choices:
+    - fr-par-1
+    - nl-ams-1
+  widget_id:
+    description:
+    - Not documented by the Scaleway API contract.
+    type: str
+    required: true
+  action:
+    description:
+    - Action to perform on the widget.
+    type: str
+    choices:
+    - poweron
+    - poweroff
+    - reboot
+attributes:
+  check_mode:
+    description: In check mode the module reports the action it would trigger and sends nothing,
+      without even building an API client.
+    support: full
+  diff_mode:
+    description: An action is a trigger rather than a state, so there is no before and after
+      to compare.
+    support: none
+extends_documentation_fragment:
+- lab.widget.scaleway
+"""
+
+EXAMPLES = r"""
+# An action is a trigger, not a state: running this a second time
+# reports `changed` again, and that is correct. Idempotence is the
+# business of the management modules.
+
+- name: Poweron the Widget
+  lab.widget.widget_action:
+    zone: fr-par-1
+    widget_id: 11111111-2222-3333-4444-555555555555
+    action: poweron
+  register: result
+- name: Poweroff the Widget
+  lab.widget.widget_action:
+    zone: fr-par-1
+    widget_id: 11111111-2222-3333-4444-555555555555
+    action: poweroff
+  register: result
+- name: Reboot the Widget
+  lab.widget.widget_action:
+    zone: fr-par-1
+    widget_id: 11111111-2222-3333-4444-555555555555
+    action: reboot
+  register: result
+"""
+
+RETURN = r"""
+action:
+  description:
+  - The action that was requested.
+  returned: always
+  type: str
+"""
+
+from ansible.module_utils.basic import AnsibleModule  # noqa: E402
+
+from ansible_collections.lab.widget.plugins.module_utils.scaleway import (  # noqa: E402
+    ActionModule,
+    Operation,
+    run_action_module,
+    scaleway_argument_spec,
+)
+
+#: Options propres au module, traduites depuis le contrat.
+MODULE_ARGUMENT_SPEC = {
+    "zone": {
+        "type": "str",
+        "required": True,
+        "choices": ["fr-par-1", "nl-ams-1"],
+    },
+    "widget_id": {"type": "str", "required": True},
+    "action": {
+        "type": "str",
+        "choices": ["poweron", "poweroff", "reboot"],
+    },
+}
+
+#: Les paramètres communs viennent du runtime : un module ne les redéclare pas.
+ARGUMENT_SPEC: dict = {}
+ARGUMENT_SPEC.update(scaleway_argument_spec())
+ARGUMENT_SPEC.update(MODULE_ARGUMENT_SPEC)
+
+#: Ce que le module exécute, et les décisions que le générateur a prises.
+MODULE = ActionModule(
+    operation=Operation(
+        id="WidgetAction",
+        method="POST",
+        path="/widget/v1/zones/{zone}/widgets/{widget_id}/action",
+        path_params=("zone", "widget_id"),
+        query_params=(),
+        body_params=("action",),
+    ),
+    action_parameter="action",
+)
+
+
+def main() -> None:
+    module = AnsibleModule(argument_spec=ARGUMENT_SPEC, supports_check_mode=True)
+    run_action_module(module, MODULE)
+
+
+if __name__ == "__main__":
+    main()

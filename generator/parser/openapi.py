@@ -135,7 +135,16 @@ def parse_document(spec: SpecDocument) -> ApiService:
     if "paths" not in document:
         raise ParseError(f"{spec.path} ne déclare aucun chemin")
 
-    schemas: dict[str, Any] = _mapping(_mapping(document).get("components")).get("schemas", {})
+    # **`_mapping` jusqu'au dernier niveau, et pas seulement aux deux premiers.**
+    # `.get("schemas", {})` ne protège que de la clé **absente** : `schemas:`
+    # déclaré sans valeur rend `None`, et ce `None` traversait tout le parser
+    # jusqu'à `_deref`, qui l'appelait comme un mapping et levait un
+    # `AttributeError` au lieu d'un refus. C'est exactement la distinction que
+    # la docstring de `_mapping` énonce, oubliée à l'étage où elle comptait.
+    # Trouvé par `fuzz:smoke`, sur la mutation « valeur nulle ».
+    schemas: dict[str, Any] = _mapping(
+        _mapping(_mapping(document).get("components")).get("schemas")
+    )
     warnings: list[str] = []
 
     contraintes = dict.fromkeys(CONTRAINTES_CHERCHEES, 0)

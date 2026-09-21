@@ -191,3 +191,39 @@ def test_une_description_qui_nest_pas_une_chaine_vaut_une_absence() -> None:
     service = _parse(document)
     parametre = service.operations[0].parameters[0]
     assert parametre.description is None
+
+
+def test_une_section_de_schemas_declaree_sans_valeur_ne_casse_pas_le_parser() -> None:
+    """`schemas:` vide vaut `None`, et ce `None` traversait tout le parser.
+
+    `_mapping` existe pour cette distinction, et il était appliqué à `document`
+    et à `components` mais pas à `schemas` : `.get("schemas", {})` ne protège
+    que de la clé **absente**. Le `None` arrivait jusqu'à `_deref`, qui
+    l'appelait comme un mapping et levait `AttributeError: 'NoneType' object
+    has no attribute 'get'` - un plantage, là où ce fichier promet un refus.
+
+    Trouvé par `fuzz:smoke` sur la mutation « valeur nulle », et sur `lb.v1`,
+    donc sur un contrat livré et non sur un cas de laboratoire.
+    """
+    document = _contrat()
+    document["components"]["schemas"] = None
+
+    with pytest.raises(ParseError) as erreur:
+        _parse(document)
+    assert "ListThingsResponse" in str(erreur.value)
+
+
+def test_une_section_components_declaree_sans_valeur_est_refusee_de_meme() -> None:
+    """Le cas voisin, un cran plus haut, que `_mapping` couvrait déjà.
+
+    Il est écrit à côté du précédent parce que c'est leur **égalité** qui
+    compte : les deux formes disent « aucun schéma », et le parser doit les
+    traiter pareil. Tant qu'un seul des deux étages était protégé, elles
+    produisaient un refus d'un côté et un plantage de l'autre.
+    """
+    document = _contrat()
+    document["components"] = None
+
+    with pytest.raises(ParseError) as erreur:
+        _parse(document)
+    assert "ListThingsResponse" in str(erreur.value)

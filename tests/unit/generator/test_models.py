@@ -61,7 +61,7 @@ def test_le_selecteur_nest_pas_obligatoire_mais_la_zone_lest(instance_plan: Prod
 
 
 def test_un_module_sans_liste_na_pas_de_selecteur(widget_plan: ProductPlan) -> None:
-    spec = _spec(widget_plan, "widget_widget_gizmo_info")
+    spec = _spec(widget_plan, "widget_gizmo_info")
     assert spec.list_operation is not None
     assert spec.get_operation is None
     assert spec.selector is None
@@ -187,7 +187,7 @@ def test_les_descriptions_viennent_du_contrat(instance_plan: ProductPlan) -> Non
 
 def test_une_description_absente_est_dite_absente(widget_plan: ProductPlan) -> None:
     """Le contrat de laboratoire ne décrit pas `widget_id`, et on ne l'invente pas."""
-    spec = _spec(widget_plan, "widget_widget_info")
+    spec = _spec(widget_plan, "widget_info")
     identifiant = next(option for option in spec.options if option.name == "widget_id")
     assert identifiant.description == (UNDOCUMENTED,)
     assert any("widget_id" in limite for limite in spec.limits)
@@ -497,7 +497,7 @@ def test_un_etat_attendu_hors_du_contrat_est_refuse(instance_plan: ProductPlan) 
 
 def test_un_module_daction_sans_override_expose_le_contrat(widget_plan: ProductPlan) -> None:
     """Sans arbitrage, le module prend l'enum tel quel et n'attend rien."""
-    spec = _spec(widget_plan, "widget_widget_action")
+    spec = _spec(widget_plan, "widget_action")
     action = next(option for option in spec.options if option.name == "action")
     assert action.choices == ("poweron", "poweroff", "reboot")
     assert spec.wait_states == ()

@@ -48,7 +48,7 @@ def _rendu(plan: ProductPlan, module: str) -> str:
 
 def test_deux_rendus_produisent_le_meme_octet(widget_plan: ProductPlan) -> None:
     """Règle 6 du projet : même contrat, même sortie, octet pour octet."""
-    assert _rendu(widget_plan, "widget_widget_info") == _rendu(widget_plan, "widget_widget_info")
+    assert _rendu(widget_plan, "widget_info") == _rendu(widget_plan, "widget_info")
 
 
 def test_le_rendu_est_identique_au_golden(widget_plan: ProductPlan) -> None:
@@ -67,7 +67,7 @@ def test_le_golden_contient_tous_les_modules_rendables(widget_plan: ProductPlan)
 
 
 def test_un_fichier_produit_dit_quil_est_produit(widget_plan: ProductPlan) -> None:
-    assert GENERATED_HEADER in _rendu(widget_plan, "widget_widget_info")
+    assert GENERATED_HEADER in _rendu(widget_plan, "widget_info")
 
 
 def test_le_module_ne_porte_aucune_logique(widget_plan: ProductPlan) -> None:
@@ -77,7 +77,7 @@ def test_le_module_ne_porte_aucune_logique(widget_plan: ProductPlan) -> None:
     `main` ne fait que deux choses. Une logique qui s'inviterait dans le
     template ferait immédiatement grossir ce compte.
     """
-    arbre = ast.parse(_rendu(widget_plan, "widget_widget_info"))
+    arbre = ast.parse(_rendu(widget_plan, "widget_info"))
     fonctions = [n.name for n in ast.walk(arbre) if isinstance(n, ast.FunctionDef)]
     assert fonctions == ["main"]
 
@@ -88,7 +88,7 @@ def test_le_module_ne_porte_aucune_logique(widget_plan: ProductPlan) -> None:
 
 def test_la_documentation_produite_est_du_yaml_relisible(widget_plan: ProductPlan) -> None:
     """`ansible-test sanity` le dirait aussi, mais bien plus tard."""
-    module = ast.parse(_rendu(widget_plan, "widget_widget_info"))
+    module = ast.parse(_rendu(widget_plan, "widget_info"))
     blocs = {
         cible.id: noeud.value.value
         for noeud in module.body
@@ -97,15 +97,15 @@ def test_la_documentation_produite_est_du_yaml_relisible(widget_plan: ProductPla
         if isinstance(cible, ast.Name)
     }
     documentation = yaml.safe_load(blocs["DOCUMENTATION"])
-    assert documentation["module"] == "widget_widget_info"
+    assert documentation["module"] == "widget_info"
     assert set(documentation["options"]) == {"zone", "widget_id", "state"}
-    assert yaml.safe_load(blocs["EXAMPLES"])[0]["lab.widget.widget_widget_info"]["zone"]
+    assert yaml.safe_load(blocs["EXAMPLES"])[0]["lab.widget.widget_info"]["zone"]
     assert yaml.safe_load(blocs["RETURN"])["widgets"]["type"] == "list"
 
 
 def test_la_documentation_decrit_ce_que_le_module_accepte(widget_plan: ProductPlan) -> None:
     """La preuve de la source unique, faite sur le fichier produit lui-même."""
-    rendu = _rendu(widget_plan, "widget_widget_info")
+    rendu = _rendu(widget_plan, "widget_info")
     module = ast.parse(rendu)
     documentation = None
     argument_spec = None
@@ -124,7 +124,7 @@ def test_la_documentation_decrit_ce_que_le_module_accepte(widget_plan: ProductPl
 
 
 def test_un_module_sans_liste_ne_declare_pas_de_selecteur(widget_plan: ProductPlan) -> None:
-    rendu = _rendu(widget_plan, "widget_widget_gizmo_info")
+    rendu = _rendu(widget_plan, "widget_gizmo_info")
     assert "selector=" not in rendu
     assert "list_operation=" in rendu
     assert "get_operation=" not in rendu
@@ -174,8 +174,8 @@ def test_un_litteral_long_se_deplie_et_reste_relisible() -> None:
 def test_une_triple_quote_dans_la_documentation_est_refusee(widget_plan: ProductPlan) -> None:
     """Elle fermerait le bloc `r\"\"\"` et casserait le fichier produit."""
     spec = build_module_spec(
-        "widget_widget_info",
-        widget_plan.modules()["widget_widget_info"],
+        "widget_info",
+        widget_plan.modules()["widget_info"],
         widget_plan.service,
         LAB_COLLECTION,
     )

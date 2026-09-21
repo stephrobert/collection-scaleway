@@ -1,0 +1,2911 @@
+{
+  "service": "vpc",
+  "version": "v2",
+  "title": "VPC API",
+  "description": "VPC allows you to build your own **V**irtual **P**rivate **C**loud on top of Scaleway’s shared public cloud.",
+  "source": "vpc.v2.yml",
+  "enums": [
+    {
+      "name": "scaleway.vpc.v2.AclRule.Protocol",
+      "values": [
+        "ANY",
+        "TCP",
+        "UDP",
+        "ICMP"
+      ],
+      "default": "ANY"
+    },
+    {
+      "name": "scaleway.vpc.v2.Action",
+      "values": [
+        "unknown_action",
+        "accept",
+        "drop"
+      ],
+      "default": "unknown_action"
+    },
+    {
+      "name": "scaleway.vpc.v2.ListIngressRulesRequest.OrderBy",
+      "values": [
+        "created_at_asc",
+        "created_at_desc",
+        "source_asc",
+        "source_desc",
+        "prefix_len_asc",
+        "prefix_len_desc"
+      ],
+      "default": "created_at_asc"
+    },
+    {
+      "name": "scaleway.vpc.v2.ListPrivateNetworksRequest.OrderBy",
+      "values": [
+        "created_at_asc",
+        "created_at_desc",
+        "name_asc",
+        "name_desc"
+      ],
+      "default": "created_at_asc"
+    },
+    {
+      "name": "scaleway.vpc.v2.ListSubnetOverlapsRequest.OrderBy",
+      "values": [
+        "subnet_asc",
+        "subnet_desc",
+        "target_subnet_asc",
+        "target_subnet_desc"
+      ],
+      "default": "subnet_asc"
+    },
+    {
+      "name": "scaleway.vpc.v2.ListSubnetsRequest.OrderBy",
+      "values": [
+        "created_at_asc",
+        "created_at_desc"
+      ],
+      "default": "created_at_asc"
+    },
+    {
+      "name": "scaleway.vpc.v2.ListVPCConnectorsRequest.OrderBy",
+      "values": [
+        "created_at_asc",
+        "created_at_desc",
+        "name_asc",
+        "name_desc"
+      ],
+      "default": "created_at_asc"
+    },
+    {
+      "name": "scaleway.vpc.v2.ListVPCsRequest.OrderBy",
+      "values": [
+        "created_at_asc",
+        "created_at_desc",
+        "name_asc",
+        "name_desc"
+      ],
+      "default": "created_at_asc"
+    },
+    {
+      "name": "scaleway.vpc.v2.RouteType",
+      "values": [
+        "unknown_route_type",
+        "subnet",
+        "default",
+        "custom",
+        "interlink",
+        "s2s_vpn"
+      ],
+      "default": "unknown_route_type"
+    },
+    {
+      "name": "scaleway.vpc.v2.VPCConnectorStatus",
+      "values": [
+        "unknown_vpc_connector_status",
+        "orphan",
+        "peered",
+        "conflict"
+      ],
+      "default": "unknown_vpc_connector_status"
+    }
+  ],
+  "objects": [
+    {
+      "name": "scaleway.vpc.v2.AclRule",
+      "fields": [
+        {
+          "name": "protocol",
+          "type": "enum",
+          "description": "Protocol to which this rule applies."
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "description": "Source IP range to which this rule applies (CIDR notation with subnet mask). (IP network)"
+        },
+        {
+          "name": "src_port_low",
+          "type": "integer",
+          "description": "Starting port of the source port range to which this rule applies (inclusive)."
+        },
+        {
+          "name": "src_port_high",
+          "type": "integer",
+          "description": "Ending port of the source port range to which this rule applies (inclusive)."
+        },
+        {
+          "name": "destination",
+          "type": "string",
+          "description": "Destination IP range to which this rule applies (CIDR notation with subnet mask). (IP network)"
+        },
+        {
+          "name": "dst_port_low",
+          "type": "integer",
+          "description": "Starting port of the destination port range to which this rule applies (inclusive)."
+        },
+        {
+          "name": "dst_port_high",
+          "type": "integer",
+          "description": "Ending port of the destination port range to which this rule applies (inclusive)."
+        },
+        {
+          "name": "action",
+          "type": "enum",
+          "description": "Policy to apply to the packet."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Rule description."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.vpc.v2.IngressRule",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "ID of the ingress rule. (UUID format)"
+        },
+        {
+          "name": "srn",
+          "type": "string",
+          "description": "The SRN of the ingress rule."
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "description": "ID of the VPC this rule belongs to. (UUID format)"
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date the ingress rule was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date the ingress rule was last modified. (RFC 3339 format)"
+        },
+        {
+          "name": "is_ipv6",
+          "type": "boolean",
+          "description": "Whether this rule applies to IPv4 or IPv6 traffic."
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "description": "Source network to apply this rule on. (IP network)"
+        },
+        {
+          "name": "nexthop_resource_ip",
+          "type": "string",
+          "description": "IP of the local resource to redirect ingress traffic to. (IP address)"
+        },
+        {
+          "name": "nexthop_private_network_id",
+          "type": "string",
+          "description": "ID of the Private Network the destination resource is in. (UUID format)"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Description of this ingress rule."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Tags of this ingress rule."
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "description": "Scaleway Organization the ingress rule belongs to. (UUID format)"
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "description": "Scaleway Project the ingress rule belongs to. (UUID format)"
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "Region of the ingress rule."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.vpc.v2.ListSubnetOverlapsResponse.SubnetOverlap",
+      "fields": [
+        {
+          "name": "subnet_id",
+          "type": "string",
+          "description": "(UUID format)"
+        },
+        {
+          "name": "subnet",
+          "type": "string",
+          "description": "(IP network)"
+        },
+        {
+          "name": "target_subnet_id",
+          "type": "string",
+          "description": "(UUID format)"
+        },
+        {
+          "name": "target_subnet",
+          "type": "string",
+          "description": "(IP network)"
+        }
+      ]
+    },
+    {
+      "name": "scaleway.vpc.v2.PrivateNetwork",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Private Network ID. (UUID format)"
+        },
+        {
+          "name": "srn",
+          "type": "string",
+          "description": "The SRN of the private network."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Private Network name."
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "description": "Scaleway Organization the Private Network belongs to. (UUID format)"
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "description": "Scaleway Project the Private Network belongs to. (UUID format)"
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "Region in which the Private Network is available."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Tags of the Private Network."
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date the Private Network was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date the Private Network was last modified. (RFC 3339 format)"
+        },
+        {
+          "name": "subnets",
+          "type": "array",
+          "item_type": "object",
+          "description": "Private Network subnets."
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "description": "VPC the Private Network belongs to. (UUID format)"
+        },
+        {
+          "name": "dhcp_enabled",
+          "type": "boolean",
+          "description": "Defines whether managed DHCP is enabled for this Private Network."
+        },
+        {
+          "name": "default_route_propagation_enabled",
+          "type": "boolean",
+          "description": "Defines whether default v4 and v6 routes are propagated for this Private Network."
+        },
+        {
+          "name": "has_object_storage_private_access",
+          "type": "boolean",
+          "description": "Defines whether this Private Network is enabled for Object Storage private access."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.vpc.v2.Route",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Route ID. (UUID format)"
+        },
+        {
+          "name": "srn",
+          "type": "string",
+          "description": "The SRN of the route."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "description": "Route description."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Tags of the Route."
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "description": "VPC the Route belongs to. (UUID format)"
+        },
+        {
+          "name": "destination",
+          "type": "string",
+          "description": "Destination of the Route. (IP network)"
+        },
+        {
+          "name": "nexthop_resource_id",
+          "type": "string",
+          "description": "ID of the nexthop resource. (UUID format)"
+        },
+        {
+          "name": "nexthop_private_network_id",
+          "type": "string",
+          "description": "ID of the nexthop private network. (UUID format)"
+        },
+        {
+          "name": "nexthop_vpc_connector_id",
+          "type": "string",
+          "description": "ID of the nexthop VPC connector. (UUID format)"
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date the Route was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date the Route was last modified. (RFC 3339 format)"
+        },
+        {
+          "name": "is_read_only",
+          "type": "boolean",
+          "description": "Defines whether the route can be modified or deleted by the user."
+        },
+        {
+          "name": "type",
+          "type": "enum",
+          "description": "Type of the Route."
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "Region of the Route."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.vpc.v2.Subnet",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "ID of the subnet. (UUID format)"
+        },
+        {
+          "name": "srn",
+          "type": "string",
+          "description": "The SRN of the subnet."
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Subnet creation date. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Subnet last modification date. (RFC 3339 format)"
+        },
+        {
+          "name": "subnet",
+          "type": "string",
+          "description": "Subnet CIDR. (IP network)"
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "description": "Scaleway Project the subnet belongs to. (UUID format)"
+        },
+        {
+          "name": "private_network_id",
+          "type": "string",
+          "description": "Private Network the subnet belongs to. (UUID format)"
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "description": "VPC the subnet belongs to. (UUID format)"
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "Region in which the Subnet can be used."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.vpc.v2.VPC",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "VPC ID. (UUID format)"
+        },
+        {
+          "name": "srn",
+          "type": "string",
+          "description": "The SRN of the VPC."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "VPC name."
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "description": "Scaleway Organization the VPC belongs to. (UUID format)"
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "description": "Scaleway Project the VPC belongs to. (UUID format)"
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "Region of the VPC."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Tags for the VPC."
+        },
+        {
+          "name": "is_default",
+          "type": "boolean",
+          "description": "Defines whether the VPC is the default one for its Project."
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date the VPC was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date the VPC was last modified. (RFC 3339 format)"
+        },
+        {
+          "name": "private_network_count",
+          "type": "integer",
+          "description": "Number of Private Networks within this VPC."
+        },
+        {
+          "name": "routing_enabled",
+          "type": "boolean",
+          "description": "Defines whether the VPC routes traffic between its Private Networks."
+        },
+        {
+          "name": "custom_routes_propagation_enabled",
+          "type": "boolean",
+          "description": "Defines whether the VPC advertises custom routes between its Private Networks."
+        },
+        {
+          "name": "transitivity_enabled",
+          "type": "boolean",
+          "description": "Defines whether the VPC allows packets from peered VPCs to transit through."
+        },
+        {
+          "name": "object_storage_private_access_enabled",
+          "type": "boolean",
+          "description": "Defines whether the Object Storage private access is enabled for the VPC."
+        }
+      ]
+    },
+    {
+      "name": "scaleway.vpc.v2.VPCConnector",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "VPC connector ID. (UUID format)"
+        },
+        {
+          "name": "srn",
+          "type": "string",
+          "description": "The SRN of the VPC connector."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "VPC connector name."
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "description": "Scaleway Organization the VPC connector belongs to. (UUID format)"
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "description": "Scaleway Project the VPC connector belongs to. (UUID format)"
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "description": "VPC the VPC connector belongs to (origin VPC). (UUID format)"
+        },
+        {
+          "name": "target_vpc_id",
+          "type": "string",
+          "description": "VPC with which the VPC connector is peered (target VPC). (UUID format)"
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "description": "Status of the VPC connector."
+        },
+        {
+          "name": "peer_info",
+          "type": "object",
+          "description": "Peer info of target VPC. Available when status is Peered."
+        },
+        {
+          "name": "region",
+          "type": "string",
+          "description": "Region of the VPC connector."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "item_type": "string",
+          "description": "Tags for the VPC connector."
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "description": "Date the VPC connector was created. (RFC 3339 format)"
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "description": "Date the VPC connector was last modified. (RFC 3339 format)"
+        }
+      ]
+    }
+  ],
+  "glossary": {
+    "action": "Policy to apply to the packet.",
+    "custom_routes_propagation_enabled": "Defines whether the VPC advertises custom routes between its Private Networks.",
+    "default_policy": "Action to take for packets which do not match any rules.",
+    "default_route_propagation_enabled": "Defines whether default v4 and v6 routes are propagated for this Private Network.",
+    "dhcp_enabled": "Defines whether managed DHCP is enabled for this Private Network.",
+    "dst_port_high": "Ending port of the destination port range to which this rule applies (inclusive).",
+    "dst_port_low": "Starting port of the destination port range to which this rule applies (inclusive).",
+    "enable_routing": "Enable routing between Private Networks in the VPC.",
+    "enable_transitivity": "Enable packets from peered VPCs to transit through this VPC.",
+    "has_object_storage_private_access": "Defines whether this Private Network is enabled for Object Storage private access.",
+    "is_default": "Defines whether the VPC is the default one for its Project.",
+    "is_ipv6": "Whether this rule applies to IPv4 or IPv6 traffic.",
+    "is_read_only": "Defines whether the route can be modified or deleted by the user.",
+    "nexthop_resource_id": "ID of the nexthop resource. (UUID format)",
+    "nexthop_resource_ip": "IP of the local resource to redirect ingress traffic to. (IP address)",
+    "nexthop_vpc_connector_id": "ID of the nexthop VPC connector. (UUID format)",
+    "object_storage_private_access_enabled": "Defines whether the Object Storage private access is enabled for the VPC.",
+    "page": "Page number to return, from the paginated results.",
+    "peer_info": "Peer info of target VPC. Available when status is Peered.",
+    "private_network_count": "Number of Private Networks within this VPC.",
+    "private_network_id": "Private Network the subnet belongs to. (UUID format)",
+    "private_network_ids": "IDs of the Private Networks associated with the Object Storage private access.",
+    "protocol": "Protocol to which this rule applies.",
+    "route_id": "Route ID. (UUID format)",
+    "routing_enabled": "Defines whether the VPC routes traffic between its Private Networks.",
+    "rules": "List of Network ACL rules.",
+    "src_port_high": "Ending port of the source port range to which this rule applies (inclusive).",
+    "src_port_low": "Starting port of the source port range to which this rule applies (inclusive).",
+    "status": "Status of the VPC connector.",
+    "subnet_id": "(UUID format)",
+    "subnet_ids": "Subnet IDs to filter for. Only subnets matching the specified IDs will be returned.",
+    "subnets": "Private Network subnets.",
+    "target_subnet": "(IP network)",
+    "target_subnet_id": "(UUID format)",
+    "target_vpc_id": "VPC with which the VPC connector is peered (target VPC). (UUID format)",
+    "transitivity_enabled": "Defines whether the VPC allows packets from peered VPCs to transit through.",
+    "type": "Type of the Route."
+  },
+  "operations": [
+    {
+      "key": "vpc.v2.ObjectStoragePrivateAccessPrivateNetwork.AddPrivateNetworkObjectStoragePrivateAccess",
+      "id": "AddPrivateNetworkObjectStoragePrivateAccess",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "object_storage_private_access_private_network",
+      "http_method": "POST",
+      "path": "/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/private-networks",
+      "scope": "region",
+      "summary": "Add a Private Network to an Object Storage private access",
+      "description": "Add a Private Network to the Object Storage private access to enable Object Storage integration for its resources.",
+      "tags": [
+        "Object Storage private access"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the VPC containing the Object Storage private access. (UUID format)"
+        },
+        {
+          "name": "private_network_id",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "ID of the Private Network to add to the Object Storage private access. (UUID format)"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.AddPrivateNetworkObjectStoragePrivateAccessResponse",
+        "payload_field": "private_network_ids",
+        "is_list": true
+      }
+    },
+    {
+      "key": "vpc.v2.IngressRule.CreateIngressRule",
+      "id": "CreateIngressRule",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "ingress_rule",
+      "http_method": "POST",
+      "path": "/vpc/v2/regions/{region}/ingress-rules",
+      "scope": "region",
+      "summary": "Create an ingress rule",
+      "description": "Create an ingress rule in the specified region.",
+      "tags": [
+        "Ingress Rules"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "ID of the VPC this rule will belong to. (UUID format)"
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "Source network to match ingress traffic on. Can be IPv6 or IPv4. (IP network)"
+        },
+        {
+          "name": "nexthop_resource_ip",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "IP of the local resource to redirect ingress traffic to. IP version must be consistent with the source network. (IP address)"
+        },
+        {
+          "name": "nexthop_private_network_id",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "ID of the Private Network the destination resource is in. (UUID format)"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Description for this ingress rule.",
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Tags for this ingress rule.",
+          "item_type": "string"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.IngressRule",
+        "payload_schema": "scaleway.vpc.v2.IngressRule"
+      }
+    },
+    {
+      "key": "vpc.v2.PrivateNetwork.CreatePrivateNetwork",
+      "id": "CreatePrivateNetwork",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "private_network",
+      "http_method": "POST",
+      "path": "/vpc/v2/regions/{region}/private-networks",
+      "scope": "region",
+      "summary": "Create a Private Network",
+      "description": "Create a new Private Network. Once created, you can attach Scaleway resources which are in the same region.",
+      "tags": [
+        "Private Networks"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "Name for the Private Network."
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "Scaleway Project in which to create the Private Network. (UUID format)"
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Tags for the Private Network.",
+          "item_type": "string"
+        },
+        {
+          "name": "subnets",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Private Network subnets CIDR. (IP network)",
+          "item_type": "string"
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "VPC in which to create the Private Network. (UUID format)",
+          "nullable": true
+        },
+        {
+          "name": "default_route_propagation_enabled",
+          "type": "boolean",
+          "required": false,
+          "location": "body",
+          "description": "Defines whether default v4 and v6 routes are propagated for this Private Network."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.PrivateNetwork",
+        "payload_schema": "scaleway.vpc.v2.PrivateNetwork"
+      }
+    },
+    {
+      "key": "vpc.v2.Route.CreateRoute",
+      "id": "CreateRoute",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "route",
+      "http_method": "POST",
+      "path": "/vpc/v2/regions/{region}/routes",
+      "scope": "region",
+      "summary": "Create a Route",
+      "description": "Create a new custom Route.",
+      "tags": [
+        "Routes"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Route description."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Tags of the Route.",
+          "item_type": "string"
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "VPC the Route belongs to. (UUID format)"
+        },
+        {
+          "name": "destination",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Destination of the Route. (IP network)"
+        },
+        {
+          "name": "nexthop_resource_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "ID of the nexthop resource. (UUID format)",
+          "nullable": true
+        },
+        {
+          "name": "nexthop_private_network_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "ID of the nexthop private network. (UUID format)",
+          "nullable": true
+        },
+        {
+          "name": "nexthop_vpc_connector_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "ID of the nexthop VPC Connector. (UUID format)",
+          "nullable": true
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.Route",
+        "payload_schema": "scaleway.vpc.v2.Route"
+      }
+    },
+    {
+      "key": "vpc.v2.Vpc.CreateVPC",
+      "id": "CreateVPC",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "vpc",
+      "http_method": "POST",
+      "path": "/vpc/v2/regions/{region}/vpcs",
+      "scope": "region",
+      "summary": "Create a VPC",
+      "description": "Create a new VPC in the specified region.",
+      "tags": [
+        "VPCs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "Name for the VPC."
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "Scaleway Project in which to create the VPC. (UUID format)"
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Tags for the VPC.",
+          "item_type": "string"
+        },
+        {
+          "name": "enable_routing",
+          "type": "boolean",
+          "required": false,
+          "location": "body",
+          "description": "Enable routing between Private Networks in the VPC."
+        },
+        {
+          "name": "enable_transitivity",
+          "type": "boolean",
+          "required": false,
+          "location": "body",
+          "description": "Enable packets from peered VPCs to transit through this VPC."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.VPC",
+        "payload_schema": "scaleway.vpc.v2.VPC"
+      }
+    },
+    {
+      "key": "vpc.v2.VpcConnector.CreateVPCConnector",
+      "id": "CreateVPCConnector",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "vpc_connector",
+      "http_method": "POST",
+      "path": "/vpc/v2/regions/{region}/vpc-connectors",
+      "scope": "region",
+      "summary": "Create a VPC connector",
+      "description": "Create a new VPC connector in the specified region.",
+      "tags": [
+        "VPC Connectors"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "location": "body",
+          "description": "Name for the VPC connector."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Tags for the VPC connector.",
+          "item_type": "string"
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "VPC ID to filter for. Only connectors belonging to this VPC will be returned. (UUID format)"
+        },
+        {
+          "name": "target_vpc_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Target VPC ID to filter for. Only connectors belonging to this target VPC will be returned. (UUID format)"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.VPCConnector",
+        "payload_schema": "scaleway.vpc.v2.VPCConnector"
+      }
+    },
+    {
+      "key": "vpc.v2.IngressRule.DeleteIngressRule",
+      "id": "DeleteIngressRule",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "ingress_rule",
+      "http_method": "DELETE",
+      "path": "/vpc/v2/regions/{region}/ingress-rules/{rule_id}",
+      "scope": "region",
+      "summary": "Delete an ingress rule",
+      "description": "Delete an ingress rule specified by its ingress rule ID.",
+      "tags": [
+        "Ingress Rules"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "rule_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the ingress rule to delete. (UUID format)"
+        }
+      ]
+    },
+    {
+      "key": "vpc.v2.PrivateNetwork.DeletePrivateNetwork",
+      "id": "DeletePrivateNetwork",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "private_network",
+      "http_method": "DELETE",
+      "path": "/vpc/v2/regions/{region}/private-networks/{private_network_id}",
+      "scope": "region",
+      "summary": "Delete a Private Network",
+      "description": "Delete an existing Private Network. Note that you must first detach all resources from the network, in order to delete it.",
+      "tags": [
+        "Private Networks"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "private_network_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Private Network ID. (UUID format)"
+        }
+      ]
+    },
+    {
+      "key": "vpc.v2.ObjectStoragePrivateAccessPrivateNetwork.DeletePrivateNetworkObjectStoragePrivateAccess",
+      "id": "DeletePrivateNetworkObjectStoragePrivateAccess",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "object_storage_private_access_private_network",
+      "http_method": "DELETE",
+      "path": "/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/private-networks/{private_network_id}",
+      "scope": "region",
+      "summary": "Remove a Private Network from an Object Storage private access",
+      "description": "Remove a Private Network from the Object Storage private access to disable Object Storage integration for its resources.",
+      "tags": [
+        "Object Storage private access"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the VPC containing the Object Storage private access. (UUID format)"
+        },
+        {
+          "name": "private_network_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the Private Network to remove from the Object Storage private access. (UUID format)"
+        }
+      ]
+    },
+    {
+      "key": "vpc.v2.Route.DeleteRoute",
+      "id": "DeleteRoute",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "route",
+      "http_method": "DELETE",
+      "path": "/vpc/v2/regions/{region}/routes/{route_id}",
+      "scope": "region",
+      "summary": "Delete a Route",
+      "description": "Delete a Route specified by its Route ID.",
+      "tags": [
+        "Routes"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "route_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Route ID. (UUID format)"
+        }
+      ]
+    },
+    {
+      "key": "vpc.v2.Vpc.DeleteVPC",
+      "id": "DeleteVPC",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "vpc",
+      "http_method": "DELETE",
+      "path": "/vpc/v2/regions/{region}/vpcs/{vpc_id}",
+      "scope": "region",
+      "summary": "Delete a VPC",
+      "description": "Delete a VPC specified by its VPC ID.",
+      "tags": [
+        "VPCs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "VPC ID. (UUID format)"
+        }
+      ]
+    },
+    {
+      "key": "vpc.v2.VpcConnector.DeleteVPCConnector",
+      "id": "DeleteVPCConnector",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "vpc_connector",
+      "http_method": "DELETE",
+      "path": "/vpc/v2/regions/{region}/vpc-connectors/{vpc_connector_id}",
+      "scope": "region",
+      "summary": "Delete a VPC connector",
+      "description": "Delete a VPC connector specified by its VPC connector ID.",
+      "tags": [
+        "VPC Connectors"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_connector_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "VPC connector ID. (UUID format)"
+        }
+      ]
+    },
+    {
+      "key": "vpc.v2.ObjectStoragePrivateAccessDisable.DisableObjectStoragePrivateAccess",
+      "id": "DisableObjectStoragePrivateAccess",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "object_storage_private_access_disable",
+      "http_method": "POST",
+      "path": "/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/disable",
+      "scope": "region",
+      "summary": "Disable Object Storage private access",
+      "description": "Disable Object Storage private access for a VPC.",
+      "tags": [
+        "Object Storage private access"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the VPC for which to disable Object Storage private access. (UUID format)"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.VPC",
+        "payload_schema": "scaleway.vpc.v2.VPC"
+      }
+    },
+    {
+      "key": "vpc.v2.PrivateNetworkEnableDhcp.EnableDHCP",
+      "id": "EnableDHCP",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "private_network_enable_dhcp",
+      "http_method": "POST",
+      "path": "/vpc/v2/regions/{region}/private-networks/{private_network_id}/enable-dhcp",
+      "scope": "region",
+      "summary": "Enable DHCP on a Private Network",
+      "description": "Enable DHCP managed on an existing Private Network. Note that you will not be able to deactivate it afterwards.",
+      "tags": [
+        "Private Networks"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "private_network_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Private Network ID. (UUID format)"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.PrivateNetwork",
+        "payload_schema": "scaleway.vpc.v2.PrivateNetwork"
+      }
+    },
+    {
+      "key": "vpc.v2.ObjectStoragePrivateAccessEnable.EnableObjectStoragePrivateAccess",
+      "id": "EnableObjectStoragePrivateAccess",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "object_storage_private_access_enable",
+      "http_method": "POST",
+      "path": "/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/enable",
+      "scope": "region",
+      "summary": "Enable Object Storage private access",
+      "description": "Enable Object Storage private access for a VPC.",
+      "tags": [
+        "Object Storage private access"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the VPC for which to enable Object Storage private access. (UUID format)"
+        },
+        {
+          "name": "private_network_ids",
+          "type": "array",
+          "required": false,
+          "location": "query",
+          "description": "IDs of the Private Networks for which to enable Object Storage private access.",
+          "item_type": "string"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.VPC",
+        "payload_schema": "scaleway.vpc.v2.VPC"
+      }
+    },
+    {
+      "key": "vpc.v2.VpcEnableRouting.EnableRouting",
+      "id": "EnableRouting",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "vpc_enable_routing",
+      "http_method": "POST",
+      "path": "/vpc/v2/regions/{region}/vpcs/{vpc_id}/enable-routing",
+      "scope": "region",
+      "summary": "Enable routing on a VPC",
+      "description": "Enable routing on an existing VPC. Note that you will not be able to deactivate it afterwards.",
+      "tags": [
+        "VPCs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "VPC ID. (UUID format)"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.VPC",
+        "payload_schema": "scaleway.vpc.v2.VPC"
+      }
+    },
+    {
+      "key": "vpc.v2.VpcAclRule.GetAcl",
+      "id": "GetAcl",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "vpc_acl_rule",
+      "http_method": "GET",
+      "path": "/vpc/v2/regions/{region}/vpcs/{vpc_id}/acl-rules",
+      "scope": "region",
+      "summary": "Get ACL Rules for VPC",
+      "description": "Retrieve a list of ACL rules for a VPC, specified by its VPC ID.",
+      "tags": [
+        "Network ACLs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the Network ACL's VPC. (UUID format)"
+        },
+        {
+          "name": "is_ipv6",
+          "type": "boolean",
+          "required": true,
+          "location": "query",
+          "description": "Defines whether this set of ACL rules is for IPv6 (false = IPv4). Each Network ACL can have rules for only one IP type."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.GetAclResponse",
+        "payload_field": "rules",
+        "payload_schema": "scaleway.vpc.v2.AclRule",
+        "is_list": true
+      }
+    },
+    {
+      "key": "vpc.v2.IngressRule.GetIngressRule",
+      "id": "GetIngressRule",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "ingress_rule",
+      "http_method": "GET",
+      "path": "/vpc/v2/regions/{region}/ingress-rules/{rule_id}",
+      "scope": "region",
+      "summary": "Get an ingress rule",
+      "description": "Retrieve details of an existing ingress rule, specified by its ingress rule ID.",
+      "tags": [
+        "Ingress Rules"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "rule_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the ingress rule to return. (UUID format)"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.IngressRule",
+        "payload_schema": "scaleway.vpc.v2.IngressRule"
+      }
+    },
+    {
+      "key": "vpc.v2.PrivateNetwork.GetPrivateNetwork",
+      "id": "GetPrivateNetwork",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "private_network",
+      "http_method": "GET",
+      "path": "/vpc/v2/regions/{region}/private-networks/{private_network_id}",
+      "scope": "region",
+      "summary": "Get a Private Network",
+      "description": "Retrieve information about an existing Private Network, specified by its Private Network ID. Its full details are returned in the response object.",
+      "tags": [
+        "Private Networks"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "private_network_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Private Network ID. (UUID format)"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.PrivateNetwork",
+        "payload_schema": "scaleway.vpc.v2.PrivateNetwork"
+      }
+    },
+    {
+      "key": "vpc.v2.Route.GetRoute",
+      "id": "GetRoute",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "route",
+      "http_method": "GET",
+      "path": "/vpc/v2/regions/{region}/routes/{route_id}",
+      "scope": "region",
+      "summary": "Get a Route",
+      "description": "Retrieve details of an existing Route, specified by its Route ID.",
+      "tags": [
+        "Routes"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "route_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Route ID. (UUID format)"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.Route",
+        "payload_schema": "scaleway.vpc.v2.Route"
+      }
+    },
+    {
+      "key": "vpc.v2.Vpc.GetVPC",
+      "id": "GetVPC",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "vpc",
+      "http_method": "GET",
+      "path": "/vpc/v2/regions/{region}/vpcs/{vpc_id}",
+      "scope": "region",
+      "summary": "Get a VPC",
+      "description": "Retrieve details of an existing VPC, specified by its VPC ID.",
+      "tags": [
+        "VPCs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "VPC ID. (UUID format)"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.VPC",
+        "payload_schema": "scaleway.vpc.v2.VPC"
+      }
+    },
+    {
+      "key": "vpc.v2.VpcConnector.GetVPCConnector",
+      "id": "GetVPCConnector",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "vpc_connector",
+      "http_method": "GET",
+      "path": "/vpc/v2/regions/{region}/vpc-connectors/{vpc_connector_id}",
+      "scope": "region",
+      "summary": "Get a VPC connector",
+      "description": "Retrieve details of an existing VPC connector, specified by its VPC connector ID.",
+      "tags": [
+        "VPC Connectors"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_connector_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "VPC connector ID. (UUID format)"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.VPCConnector",
+        "payload_schema": "scaleway.vpc.v2.VPCConnector"
+      }
+    },
+    {
+      "key": "vpc.v2.IngressRule.ListIngressRules",
+      "id": "ListIngressRules",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "ingress_rule",
+      "http_method": "GET",
+      "path": "/vpc/v2/regions/{region}/ingress-rules",
+      "scope": "region",
+      "summary": "List ingress rules",
+      "description": "List existing ingress rules in the specified region.",
+      "tags": [
+        "Ingress Rules"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "order_by",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Sort order of the returned ingress rules.",
+          "enum_name": "scaleway.vpc.v2.ListIngressRulesRequest.OrderBy",
+          "enum_values": [
+            "created_at_asc",
+            "created_at_desc",
+            "source_asc",
+            "source_desc",
+            "prefix_len_asc",
+            "prefix_len_desc"
+          ],
+          "default": "created_at_asc",
+          "ref": "scaleway.vpc.v2.ListIngressRulesRequest.OrderBy"
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Page number to return, from the paginated results.",
+          "format": "int32"
+        },
+        {
+          "name": "page_size",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Maximum number of ingress rules to return per page.",
+          "format": "uint32"
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "ID of the VPC to filter for. (UUID format)"
+        },
+        {
+          "name": "nexthop_resource_ip",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Next hop IP to filter for. (IP address)"
+        },
+        {
+          "name": "nexthop_private_network_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Next hop Private Network ID to filter for. Only ingress rules with this Private Network as next hop will be returned. (UUID format)"
+        },
+        {
+          "name": "is_ipv6",
+          "type": "boolean",
+          "required": false,
+          "location": "query",
+          "description": "Whether to return only IPv4 or IPv6 ingress rules."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "query",
+          "description": "Tags to filter for. Only ingress rules with one or more matching tags will be returned.",
+          "item_type": "string"
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Organization ID to filter for. Only ingress rules belonging to this Organization will be returned. (UUID format)"
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Project ID to filter for. Only ingress rules belonging to this Project will be returned. (UUID format)"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.ListIngressRulesResponse",
+        "payload_field": "rules",
+        "payload_schema": "scaleway.vpc.v2.IngressRule",
+        "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
+      }
+    },
+    {
+      "key": "vpc.v2.PrivateNetwork.ListPrivateNetworks",
+      "id": "ListPrivateNetworks",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "private_network",
+      "http_method": "GET",
+      "path": "/vpc/v2/regions/{region}/private-networks",
+      "scope": "region",
+      "summary": "List Private Networks",
+      "description": "List existing Private Networks in the specified region. By default, the Private Networks returned in the list are ordered by creation date in ascending order, though this can be modified via the order_by field.",
+      "tags": [
+        "Private Networks"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "order_by",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Sort order of the returned Private Networks.",
+          "enum_name": "scaleway.vpc.v2.ListPrivateNetworksRequest.OrderBy",
+          "enum_values": [
+            "created_at_asc",
+            "created_at_desc",
+            "name_asc",
+            "name_desc"
+          ],
+          "default": "created_at_asc",
+          "ref": "scaleway.vpc.v2.ListPrivateNetworksRequest.OrderBy"
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Page number to return, from the paginated results.",
+          "format": "int32"
+        },
+        {
+          "name": "page_size",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Maximum number of Private Networks to return per page.",
+          "format": "uint32"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Name to filter for. Only Private Networks with names containing this string will be returned."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "query",
+          "description": "Tags to filter for. Only Private Networks with one or more matching tags will be returned.",
+          "item_type": "string"
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Organization ID to filter for. Only Private Networks belonging to this Organization will be returned. (UUID format)"
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Project ID to filter for. Only Private Networks belonging to this Project will be returned. (UUID format)"
+        },
+        {
+          "name": "private_network_ids",
+          "type": "array",
+          "required": false,
+          "location": "query",
+          "description": "Private Network IDs to filter for. Only Private Networks with one of these IDs will be returned.",
+          "item_type": "string"
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "VPC ID to filter for. Only Private Networks belonging to this VPC will be returned. (UUID format)"
+        },
+        {
+          "name": "dhcp_enabled",
+          "type": "boolean",
+          "required": false,
+          "location": "query",
+          "description": "DHCP status to filter for. When true, only Private Networks with managed DHCP enabled will be returned."
+        },
+        {
+          "name": "object_storage_private_access_enabled",
+          "type": "boolean",
+          "required": false,
+          "location": "query",
+          "description": "Filter by whether Object Storage private access is enabled. When set, only matching Private Networks will be returned."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.ListPrivateNetworksResponse",
+        "payload_field": "private_networks",
+        "payload_schema": "scaleway.vpc.v2.PrivateNetwork",
+        "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
+      }
+    },
+    {
+      "key": "vpc.v2.VpcConnectorSubnetOverlap.ListSubnetOverlaps",
+      "id": "ListSubnetOverlaps",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "vpc_connector_subnet_overlap",
+      "http_method": "GET",
+      "path": "/vpc/v2/regions/{region}/vpc-connectors/{vpc_connector_id}/subnet-overlaps",
+      "scope": "region",
+      "summary": "List subnet overlaps",
+      "description": "List subnet overlaps between the VPCs on both sides of a connector, or for a specific subnet if specified.",
+      "tags": [
+        "VPC Connectors"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_connector_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "VPC Peering connector ID. (UUID format)"
+        },
+        {
+          "name": "order_by",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Sort order of the returned Subnet overlaps.",
+          "enum_name": "scaleway.vpc.v2.ListSubnetOverlapsRequest.OrderBy",
+          "enum_values": [
+            "subnet_asc",
+            "subnet_desc",
+            "target_subnet_asc",
+            "target_subnet_desc"
+          ],
+          "default": "subnet_asc",
+          "ref": "scaleway.vpc.v2.ListSubnetOverlapsRequest.OrderBy"
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Page number to return, from the paginated results.",
+          "format": "int32"
+        },
+        {
+          "name": "page_size",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Maximum number of Subnet overlaps to return per page.",
+          "format": "uint32"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.ListSubnetOverlapsResponse",
+        "payload_field": "subnet_overlaps",
+        "payload_schema": "scaleway.vpc.v2.ListSubnetOverlapsResponse.SubnetOverlap",
+        "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
+      }
+    },
+    {
+      "key": "vpc.v2.Subnet.ListSubnets",
+      "id": "ListSubnets",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "subnet",
+      "http_method": "GET",
+      "path": "/vpc/v2/regions/{region}/subnets",
+      "scope": "region",
+      "summary": "List subnets",
+      "description": "List any Private Network's subnets. See ListPrivateNetworks to list a specific Private Network's subnets.",
+      "tags": [
+        "Subnets"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "order_by",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Sort order of the returned subnets.",
+          "enum_name": "scaleway.vpc.v2.ListSubnetsRequest.OrderBy",
+          "enum_values": [
+            "created_at_asc",
+            "created_at_desc"
+          ],
+          "default": "created_at_asc",
+          "ref": "scaleway.vpc.v2.ListSubnetsRequest.OrderBy"
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Page number to return, from the paginated results.",
+          "format": "int32"
+        },
+        {
+          "name": "page_size",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Maximum number of Private Networks to return per page.",
+          "format": "uint32"
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Organization ID to filter for. Only subnets belonging to this Organization will be returned. (UUID format)"
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Project ID to filter for. Only subnets belonging to this Project will be returned. (UUID format)"
+        },
+        {
+          "name": "subnet_ids",
+          "type": "array",
+          "required": false,
+          "location": "query",
+          "description": "Subnet IDs to filter for. Only subnets matching the specified IDs will be returned.",
+          "item_type": "string"
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "VPC ID to filter for. Only subnets belonging to this VPC will be returned. (UUID format)"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.ListSubnetsResponse",
+        "payload_field": "subnets",
+        "payload_schema": "scaleway.vpc.v2.Subnet",
+        "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
+      }
+    },
+    {
+      "key": "vpc.v2.VpcConnector.ListVPCConnectors",
+      "id": "ListVPCConnectors",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "vpc_connector",
+      "http_method": "GET",
+      "path": "/vpc/v2/regions/{region}/vpc-connectors",
+      "scope": "region",
+      "summary": "List VPC connectors",
+      "description": "List existing VPC connectors in the specified region.",
+      "tags": [
+        "VPC Connectors"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "order_by",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Sort order of the returned VPC connectors.",
+          "enum_name": "scaleway.vpc.v2.ListVPCConnectorsRequest.OrderBy",
+          "enum_values": [
+            "created_at_asc",
+            "created_at_desc",
+            "name_asc",
+            "name_desc"
+          ],
+          "default": "created_at_asc",
+          "ref": "scaleway.vpc.v2.ListVPCConnectorsRequest.OrderBy"
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Page number to return, from the paginated results.",
+          "format": "int32"
+        },
+        {
+          "name": "page_size",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Maximum number of VPC connectors to return per page.",
+          "format": "uint32"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Name to filter for. Only connectors with names containing this string will be returned."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "query",
+          "description": "Tags to filter for. Only connectors with one or more matching tags will be returned.",
+          "item_type": "string"
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Organization ID to filter for. Only connectors belonging to this Organization will be returned. (UUID format)"
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Project ID to filter for. Only connectors belonging to this Project will be returned. (UUID format)"
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "VPC ID to filter for. Only connectors belonging to this VPC will be returned. (UUID format)"
+        },
+        {
+          "name": "target_vpc_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Target VPC ID to filter for. Only connectors belonging to this target VPC will be returned. (UUID format)"
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Status of the VPC connector.",
+          "enum_name": "scaleway.vpc.v2.VPCConnectorStatus",
+          "enum_values": [
+            "unknown_vpc_connector_status",
+            "orphan",
+            "peered",
+            "conflict"
+          ],
+          "default": "unknown_vpc_connector_status",
+          "ref": "scaleway.vpc.v2.VPCConnectorStatus"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.ListVPCConnectorsResponse",
+        "payload_field": "vpc_connectors",
+        "payload_schema": "scaleway.vpc.v2.VPCConnector",
+        "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
+      }
+    },
+    {
+      "key": "vpc.v2.Vpc.ListVPCs",
+      "id": "ListVPCs",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "vpc",
+      "http_method": "GET",
+      "path": "/vpc/v2/regions/{region}/vpcs",
+      "scope": "region",
+      "summary": "List VPCs",
+      "description": "List existing VPCs in the specified region.",
+      "tags": [
+        "VPCs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "order_by",
+          "type": "enum",
+          "required": false,
+          "location": "query",
+          "description": "Sort order of the returned VPCs.",
+          "enum_name": "scaleway.vpc.v2.ListVPCsRequest.OrderBy",
+          "enum_values": [
+            "created_at_asc",
+            "created_at_desc",
+            "name_asc",
+            "name_desc"
+          ],
+          "default": "created_at_asc",
+          "ref": "scaleway.vpc.v2.ListVPCsRequest.OrderBy"
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Page number to return, from the paginated results.",
+          "format": "int32"
+        },
+        {
+          "name": "page_size",
+          "type": "integer",
+          "required": false,
+          "location": "query",
+          "description": "Maximum number of VPCs to return per page.",
+          "format": "uint32"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Name to filter for. Only VPCs with names containing this string will be returned."
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "query",
+          "description": "Tags to filter for. Only VPCs with one or more matching tags will be returned.",
+          "item_type": "string"
+        },
+        {
+          "name": "organization_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Organization ID to filter for. Only VPCs belonging to this Organization will be returned. (UUID format)"
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": false,
+          "location": "query",
+          "description": "Project ID to filter for. Only VPCs belonging to this Project will be returned. (UUID format)"
+        },
+        {
+          "name": "is_default",
+          "type": "boolean",
+          "required": false,
+          "location": "query",
+          "description": "Defines whether to filter only for VPCs which are the default one for their Project."
+        },
+        {
+          "name": "routing_enabled",
+          "type": "boolean",
+          "required": false,
+          "location": "query",
+          "description": "Defines whether to filter only for VPCs which route traffic between their Private Networks."
+        },
+        {
+          "name": "object_storage_private_access_enabled",
+          "type": "boolean",
+          "required": false,
+          "location": "query",
+          "description": "Defines whether to filter only for VPCs with Object Storage private access enabled."
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.ListVPCsResponse",
+        "payload_field": "vpcs",
+        "payload_schema": "scaleway.vpc.v2.VPC",
+        "is_list": true
+      },
+      "pagination": {
+        "page_param": "page",
+        "per_page_param": "page_size",
+        "total_count_field": "total_count"
+      }
+    },
+    {
+      "key": "vpc.v2.VpcAclRule.SetAcl",
+      "id": "SetAcl",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "vpc_acl_rule",
+      "http_method": "PUT",
+      "path": "/vpc/v2/regions/{region}/vpcs/{vpc_id}/acl-rules",
+      "scope": "region",
+      "summary": "Set VPC ACL rules",
+      "description": "Set the list of ACL rules and the default routing policy for a VPC.",
+      "tags": [
+        "Network ACLs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the Network ACL's VPC. (UUID format)"
+        },
+        {
+          "name": "rules",
+          "type": "array",
+          "required": true,
+          "location": "body",
+          "description": "List of Network ACL rules.",
+          "item_type": "object"
+        },
+        {
+          "name": "is_ipv6",
+          "type": "boolean",
+          "required": true,
+          "location": "body",
+          "description": "Defines whether this set of ACL rules is for IPv6 (false = IPv4). Each Network ACL can have rules for only one IP type."
+        },
+        {
+          "name": "default_policy",
+          "type": "enum",
+          "required": true,
+          "location": "body",
+          "description": "Action to take for packets which do not match any rules.",
+          "enum_name": "scaleway.vpc.v2.Action",
+          "enum_values": [
+            "unknown_action",
+            "accept",
+            "drop"
+          ],
+          "default": "unknown_action",
+          "ref": "scaleway.vpc.v2.Action"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.SetAclResponse",
+        "payload_field": "rules",
+        "payload_schema": "scaleway.vpc.v2.AclRule",
+        "is_list": true
+      }
+    },
+    {
+      "key": "vpc.v2.ObjectStoragePrivateAccessPrivateNetwork.SetPrivateNetworksObjectStoragePrivateAccess",
+      "id": "SetPrivateNetworksObjectStoragePrivateAccess",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "object_storage_private_access_private_network",
+      "http_method": "PUT",
+      "path": "/vpc/v2/regions/{region}/object-storage-private-access/{vpc_id}/private-networks",
+      "scope": "region",
+      "summary": "Set Object Storage private access Private Networks",
+      "description": "Set the Private Networks associated with the Object Storage private access to enable Object Storage integration for their resources.",
+      "tags": [
+        "Object Storage private access"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the VPC containing the Object Storage private access. (UUID format)"
+        },
+        {
+          "name": "private_network_ids",
+          "type": "array",
+          "required": true,
+          "location": "body",
+          "description": "IDs of the Private Networks to associate with the Object Storage private access.",
+          "item_type": "string"
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.SetPrivateNetworksObjectStoragePrivateAccessResponse",
+        "payload_field": "private_network_ids",
+        "is_list": true
+      }
+    },
+    {
+      "key": "vpc.v2.IngressRule.UpdateIngressRule",
+      "id": "UpdateIngressRule",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "ingress_rule",
+      "http_method": "PATCH",
+      "path": "/vpc/v2/regions/{region}/ingress-rules/{rule_id}",
+      "scope": "region",
+      "summary": "Update an ingress rule",
+      "description": "Update an ingress rule specified by its ingress rule ID.",
+      "tags": [
+        "Ingress Rules"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "rule_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "ID of the ingress rule to update. (UUID format)"
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Source network to match ingress traffic on. Can be IPv4 or IPv6. (IP network)",
+          "nullable": true
+        },
+        {
+          "name": "nexthop_resource_ip",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "IP of the local resource to redirect ingress traffic to. IP version must be consistent with the source network. (IP address)",
+          "nullable": true
+        },
+        {
+          "name": "nexthop_private_network_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "ID of the Private Network the destination resource is in. (UUID format)",
+          "nullable": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Description to set for this ingress rule.",
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Tags to set for this ingress rule.",
+          "nullable": true
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.IngressRule",
+        "payload_schema": "scaleway.vpc.v2.IngressRule"
+      }
+    },
+    {
+      "key": "vpc.v2.PrivateNetwork.UpdatePrivateNetwork",
+      "id": "UpdatePrivateNetwork",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "private_network",
+      "http_method": "PATCH",
+      "path": "/vpc/v2/regions/{region}/private-networks/{private_network_id}",
+      "scope": "region",
+      "summary": "Update Private Network",
+      "description": "Update parameters (such as name or tags) of an existing Private Network, specified by its Private Network ID.",
+      "tags": [
+        "Private Networks"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "private_network_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Private Network ID. (UUID format)"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Name for the Private Network.",
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Tags for the Private Network.",
+          "nullable": true
+        },
+        {
+          "name": "default_route_propagation_enabled",
+          "type": "boolean",
+          "required": false,
+          "location": "body",
+          "description": "Defines whether default v4 and v6 routes are propagated for this Private Network.",
+          "nullable": true
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.PrivateNetwork",
+        "payload_schema": "scaleway.vpc.v2.PrivateNetwork"
+      }
+    },
+    {
+      "key": "vpc.v2.Route.UpdateRoute",
+      "id": "UpdateRoute",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "route",
+      "http_method": "PATCH",
+      "path": "/vpc/v2/regions/{region}/routes/{route_id}",
+      "scope": "region",
+      "summary": "Update Route",
+      "description": "Update parameters of the specified Route.",
+      "tags": [
+        "Routes"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "route_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "Route ID. (UUID format)"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Route description.",
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Tags of the Route.",
+          "nullable": true
+        },
+        {
+          "name": "destination",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Destination of the Route. (IP network)",
+          "nullable": true
+        },
+        {
+          "name": "nexthop_resource_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "ID of the nexthop resource. (UUID format)",
+          "nullable": true
+        },
+        {
+          "name": "nexthop_private_network_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "ID of the nexthop private network. (UUID format)",
+          "nullable": true
+        },
+        {
+          "name": "nexthop_vpc_connector_id",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "ID of the nexthop VPC connector. (UUID format)",
+          "nullable": true
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.Route",
+        "payload_schema": "scaleway.vpc.v2.Route"
+      }
+    },
+    {
+      "key": "vpc.v2.Vpc.UpdateVPC",
+      "id": "UpdateVPC",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "vpc",
+      "http_method": "PATCH",
+      "path": "/vpc/v2/regions/{region}/vpcs/{vpc_id}",
+      "scope": "region",
+      "summary": "Update VPC",
+      "description": "Update parameters including name and tags of the specified VPC.",
+      "tags": [
+        "VPCs"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "VPC ID. (UUID format)"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Name for the VPC.",
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Tags for the VPC.",
+          "nullable": true
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.VPC",
+        "payload_schema": "scaleway.vpc.v2.VPC"
+      }
+    },
+    {
+      "key": "vpc.v2.VpcConnector.UpdateVPCConnector",
+      "id": "UpdateVPCConnector",
+      "service": "vpc",
+      "version": "v2",
+      "resource": "vpc_connector",
+      "http_method": "PATCH",
+      "path": "/vpc/v2/regions/{region}/vpc-connectors/{vpc_connector_id}",
+      "scope": "region",
+      "summary": "Update VPC connector",
+      "description": "Update parameters including name and tags of the specified VPC connector.",
+      "tags": [
+        "VPC Connectors"
+      ],
+      "parameters": [
+        {
+          "name": "region",
+          "type": "enum",
+          "required": true,
+          "location": "path",
+          "description": "The region you want to target",
+          "enum_values": [
+            "fr-par",
+            "it-mil",
+            "nl-ams",
+            "pl-waw"
+          ]
+        },
+        {
+          "name": "vpc_connector_id",
+          "type": "string",
+          "required": true,
+          "location": "path",
+          "description": "VPC connector ID. (UUID format)"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "location": "body",
+          "description": "Name for the VPC connector.",
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "type": "array",
+          "required": false,
+          "location": "body",
+          "description": "Tags for the VPC connector.",
+          "nullable": true
+        }
+      ],
+      "response": {
+        "schema": "scaleway.vpc.v2.VPCConnector",
+        "payload_schema": "scaleway.vpc.v2.VPCConnector"
+      }
+    }
+  ],
+  "warnings": [
+    "UpdateIngressRule.tags : tableau sans `items`, type des éléments inconnu",
+    "UpdatePrivateNetwork.tags : tableau sans `items`, type des éléments inconnu",
+    "UpdateRoute.tags : tableau sans `items`, type des éléments inconnu",
+    "UpdateVPC.tags : tableau sans `items`, type des éléments inconnu",
+    "UpdateVPCConnector.tags : tableau sans `items`, type des éléments inconnu"
+  ]
+}

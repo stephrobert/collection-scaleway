@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 DOCUMENTATION = r"""
-module: widget_widget
+module: widget
 short_description: Manage a Scaleway Widget
 version_added: 9.9.9
 description:
@@ -101,14 +101,14 @@ EXAMPLES = r"""
 # not touch.
 
 - name: Update a Scaleway Widget
-  lab.widget.widget_widget:
+  lab.widget.widget:
     zone: fr-par-1
     widget_id: 11111111-2222-3333-4444-555555555555
     tags:
     - production
   register: result
 - name: Preview the change on a Scaleway Widget without writing
-  lab.widget.widget_widget:
+  lab.widget.widget:
     zone: fr-par-1
     widget_id: 11111111-2222-3333-4444-555555555555
     tags:

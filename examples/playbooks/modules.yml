@@ -1370,6 +1370,186 @@
             quiet: true
           when: adresse.json.ip.id | default('') | length > 0
 
+    # ---- Le réseau, que l'inventaire traverse à chaque exécution ----------
+    #
+    # **Ces modules ferment un trou que ce playbook portait lui-même.** Le bloc
+    # IPAM ci-dessus libère ses réservations par `ansible.builtin.uri`, en
+    # recomposant l'URL et l'en-tête d'authentification à la main, parce que la
+    # collection n'offrait rien pour IPAM ni pour VPC. L'inventaire dynamique,
+    # lui, appelle ces deux APIs à chaque exécution : elles portent la jointure
+    # qui donne son adresse privée à chaque machine.
+    #
+    # La question d'exploitation qu'elles ouvrent est celle que l'issue pose :
+    # quelle adresse réservée n'est rattachée à rien, quel réseau privé a perdu
+    # son DHCP ou sa propagation de route par défaut. Les champs qui répondent
+    # sont ceux que ces lectures rendent, et les assertions ci-dessous portent
+    # sur ce que la stack Terraform décide, jamais sur la forme des réponses.
+
+    - name: Les VPC de la région
+      stephrobert.scaleway.vpc_info:
+        region: "{{ region }}"
+      register: vpcs
+
+    # Le VPC de la plateforme se désigne par son étiquette et son préfixe, comme
+    # les machines plus haut : un compte peut en porter d'autres, et le VPC par
+    # défaut d'un projet en est un.
+    - name: La stack a son VPC, et il porte le routage dont la topologie dépend
+      ansible.builtin.assert:
+        that:
+          - le_notre | length == 1
+          - (le_notre | first).routing_enabled
+          - vpcs is not changed
+        fail_msg: >-
+          {{ le_notre | length }} VPC au lieu d'un seul, ou routage inactif.
+          `network.tf` déclare `enable_routing = true`, et c'est lui qui permet
+          au bastion de joindre les tiers : sans lui la plateforme ne route pas.
+        quiet: true
+      vars:
+        le_notre: "{{ vpcs.vpcs | selectattr('name', 'search', prefixe)
+          | selectattr('tags', 'contains', 'exemple') | list }}"
+
+    - name: Retenir le VPC de la plateforme
+      ansible.builtin.set_fact:
+        vpc_plateforme: "{{ vpcs.vpcs | selectattr('name', 'search', prefixe)
+          | selectattr('tags', 'contains', 'exemple') | first }}"
+
+    - name: Les réseaux privés de ce VPC
+      stephrobert.scaleway.vpc_private_network_info:
+        region: "{{ region }}"
+        vpc_id: "{{ vpc_plateforme.id }}"
+      register: reseaux_prives
+
+    # Trois, parce que `network.tf` en déclare trois : gestion, web et app. Une
+    # assertion sur la forme de la réponse passerait sur un VPC vide.
+    - name: Les trois réseaux privés que la stack déclare, et ce qu'ils portent
+      ansible.builtin.assert:
+        that:
+          - reseaux_prives.private_networks | length == 3
+          - reseaux_prives.private_networks | map(attribute='subnets') | select | list | length == 3
+          - reseaux_prives is not changed
+        fail_msg: >-
+          {{ reseaux_prives.private_networks | length }} réseau(x) privé(s) au
+          lieu de 3, ou l'un d'eux sans sous-réseau. C'est la topologie que
+          l'inventaire traverse pour donner son adresse privée à chaque machine.
+        quiet: true
+
+    - name: Les sous-réseaux du VPC
+      stephrobert.scaleway.vpc_subnet_info:
+        region: "{{ region }}"
+        vpc_id: "{{ vpc_plateforme.id }}"
+      register: sous_reseaux
+
+    # Les trois plages de `network.tf`, et l'API doit les rendre telles quelles.
+    - name: Les sous-réseaux rendus sont ceux que la stack a demandés
+      ansible.builtin.assert:
+        that:
+          - declarees | difference(rendues) | length == 0
+          - sous_reseaux is not changed
+        fail_msg: >-
+          l'API ne rend pas les plages déclarées : manquantes
+          {{ declarees | difference(rendues) | join(', ') }}.
+        quiet: true
+      vars:
+        declarees: ['10.10.0.0/24', '10.20.0.0/24', '10.30.0.0/24']
+        rendues: "{{ sous_reseaux.subnets | map(attribute='subnet') | list }}"
+
+    # `is_ipv6` est obligatoire et n'a pas de défaut : l'ACL d'un VPC est
+    # déclarée par famille d'adresses, et `network.tf` n'écrit que celle d'IPv4.
+    - name: L'ACL IPv4 du VPC
+      stephrobert.scaleway.vpc_acl_info:
+        region: "{{ region }}"
+        vpc_id: "{{ vpc_plateforme.id }}"
+        is_ipv6: false
+      register: acl_vpc
+
+    # **L'émulateur n'applique pas les ACL de VPC**, mais il en sert la lecture :
+    # ce qui se mesure ici est que la collection rend ce que l'API a stocké, pas
+    # que le filtrage marche. Le second ne se prouve que sur le cloud réel, et
+    # c'est le trafic de `verifier.yml` qui s'en charge.
+    - name: L'ACL rendue est celle que la stack a écrite
+      ansible.builtin.assert:
+        that:
+          - acl_vpc.rules | length > 0
+          - acl_vpc is not changed
+        fail_msg: >-
+          l'ACL du VPC ne porte aucune règle, alors que `network.tf` en écrit
+          une liste en refus par défaut. Une ACL vide laisserait tout passer.
+        quiet: true
+      when: acl_vpc.api_type | default('') != 'not_emulated'
+
+    - name: Les adresses réservées que l'IPAM porte pour ce VPC
+      stephrobert.scaleway.ipam_ip_info:
+        region: "{{ region }}"
+        vpc_id: "{{ vpc_plateforme.id }}"
+      register: adresses_ipam
+
+    # C'est exactement la jointure de l'inventaire : chaque carte réseau privée
+    # d'une machine a une réservation IPAM, et `resource` est ce qui la rattache.
+    - name: Chaque adresse réservée dit à quelle ressource elle est rattachée
+      ansible.builtin.assert:
+        that:
+          - adresses_ipam.ips | length > 0
+          - rattachees | length > 0
+          - adresses_ipam is not changed
+        fail_msg: >-
+          {{ adresses_ipam.ips | default([]) | length }} adresse(s) réservée(s),
+          dont {{ rattachees | length }} rattachée(s) à une ressource. Une
+          réservation sans `resource` est une adresse que l'inventaire ne sait
+          rattacher à aucune machine.
+        quiet: true
+      vars:
+        rattachees: "{{ adresses_ipam.ips | default([])
+          | selectattr('resource', 'defined') | select('truthy') | list }}"
+
+    # ---- Les mêmes ressources, réécrites à l'identique --------------------
+    #
+    # Un module de gestion qui relit, compare et n'écrit que la différence ne
+    # doit rien changer quand on lui redonne l'état courant. Les trois modules
+    # ci-dessous sont les seuls du lot réseau à avoir une cible dans cette
+    # stack ; les autres sont déclarés sans cible, avec leur raison, dans
+    # `scripts/example_coverage.py`.
+
+    - name: Réécrire le VPC avec ce qu'il porte déjà
+      stephrobert.scaleway.vpc:
+        region: "{{ region }}"
+        vpc_id: "{{ vpc_plateforme.id }}"
+        name: "{{ vpc_plateforme.name }}"
+        tags: "{{ vpc_plateforme.tags }}"
+      register: repris_vpc
+      failed_when: repris_vpc.failed | default(false)
+        and repris_vpc.api_type | default('') != 'not_emulated'
+
+    - name: Réécrire un réseau privé avec ce qu'il porte déjà
+      stephrobert.scaleway.vpc_private_network:
+        region: "{{ region }}"
+        private_network_id: "{{ premier_reseau.id }}"
+        name: "{{ premier_reseau.name }}"
+        tags: "{{ premier_reseau.tags }}"
+        default_route_propagation_enabled: "{{ premier_reseau.default_route_propagation_enabled }}"
+      register: repris_reseau_prive
+      failed_when: repris_reseau_prive.failed | default(false)
+        and repris_reseau_prive.api_type | default('') != 'not_emulated'
+      vars:
+        premier_reseau: "{{ reseaux_prives.private_networks
+          | sort(attribute='name') | first }}"
+      when: reseaux_prives.private_networks | default([]) | length > 0
+
+    # `reverses` est passé tel quel : c'est une liste d'objets, et le module la
+    # compare comme telle. Le lui redonner est ce qui prouve qu'il ne réécrit
+    # pas un enregistrement inverse à chaque passage.
+    - name: Réécrire une adresse réservée avec ce qu'elle porte déjà
+      stephrobert.scaleway.ipam_ip:
+        region: "{{ region }}"
+        ip_id: "{{ premiere_adresse.id }}"
+        tags: "{{ premiere_adresse.tags }}"
+        reverses: "{{ premiere_adresse.reverses }}"
+      register: repris_adresse_ipam
+      failed_when: repris_adresse_ipam.failed | default(false)
+        and repris_adresse_ipam.api_type | default('') != 'not_emulated'
+      vars:
+        premiere_adresse: "{{ adresses_ipam.ips | sort(attribute='id') | first }}"
+      when: adresses_ipam.ips | default([]) | length > 0
+
     # ---- La route du frontend --------------------------------------------
 
     - name: Réécrire la route à l'identique

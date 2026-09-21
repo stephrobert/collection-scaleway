@@ -113,7 +113,7 @@ operations:
         reason: transposé de la description que porte ListWidgets
 """,
     )
-    option = _option(widget_service, tmp_path, "widget_widget_info", "widget_id")
+    option = _option(widget_service, tmp_path, "widget_info", "widget_id")
     assert option.description == ("UUID of the widget.",)
 
 
@@ -136,7 +136,7 @@ operations:
         reason: tentative de recouvrement, que le générateur doit ignorer
 """,
     )
-    option = _option(widget_service, tmp_path, "widget_widget_info", "state")
+    option = _option(widget_service, tmp_path, "widget_info", "state")
     assert option.description != ("Ce texte ne doit jamais sortir.",)
 
 

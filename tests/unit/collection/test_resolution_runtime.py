@@ -276,6 +276,10 @@ def test_la_table_generee_s_importe_et_porte_ce_que_les_contrats_declarent(
     """Un fichier qui s'analyse syntaxiquement n'est pas un fichier qui s'exécute."""
     from ansible_collections.stephrobert.scaleway.plugins.module_utils import resolution
 
+    # `private_network_id`, `vpc_id` et `vpc_connector_id` sont arrivés avec le
+    # lot réseau, et ce n'est pas un détail de table : l'inventaire dynamique
+    # traversait déjà ces deux APIs, mais rien ne permettait de désigner un VPC
+    # ou un réseau privé **par son nom** dans un playbook. Il fallait un UUID.
     assert set(resolution.RESOLUTIONS) == {
         "backend_id",
         "certificate_id",
@@ -286,11 +290,14 @@ def test_la_table_generee_s_importe_et_porte_ce_que_les_contrats_declarent(
         "node_id",
         "placement_group_id",
         "pool_id",
+        "private_network_id",
         "security_group_id",
         "server_id",
         "snapshot_id",
         "subscriber_id",
         "volume_id",
+        "vpc_connector_id",
+        "vpc_id",
     }
     backend = resolution.RESOLUTIONS["backend_id"]
     assert backend.operation.id == "ListBackends"
@@ -307,16 +314,31 @@ def test_les_refus_de_la_table_portent_leur_raison(collection_root: Path) -> Non
         "ip_id",
         "private_nic_id",
         "route_id",
+        "rule_id",
         "security_group_rule_id",
     }
-    # `acl_id` est refusé pour une autre raison que les trois autres : le Load
+    # `acl_id` est refusé pour une autre raison que les autres : le Load
     # Balancer le résout et Kubernetes ne le peut pas, donc le nom désigne deux
     # choses et laquelle n'est pas décidable.
+    #
+    # **Trois causes et non deux, depuis le lot réseau.** Cette boucle exigeait
+    # « ne porte pas de champ name » de tout refus sauf `acl_id`, et `rule_id`
+    # l'a démentie : la règle d'entrée d'un VPC n'est rendue par aucune
+    # opération de liste, ce qui est un obstacle différent d'un schéma sans
+    # `name`. Les deux se disent, et le contrôle porte sur ce qu'un refus doit
+    # être - intelligible - plutôt que sur l'unique cause qu'on connaissait.
+    CAUSES = (
+        "ne porte pas de champ name",
+        "n'est rendu par une opération de liste",
+    )
     for nom, raison in resolution.UNRESOLVABLE.items():
         if nom == "acl_id":
             assert "n'est pas décidable depuis le nom" in raison
             continue  # sa raison est double, et l'autre moitié est testée à part
-        assert "ne porte pas de champ name" in raison
+        assert any(cause in raison for cause in CAUSES), (
+            f"`{nom}` est refusé sans nommer de cause connue : {raison!r}. "
+            "Un refus muet enverrait chercher une faute de frappe dans un nom correct."
+        )
 
 
 def test_un_nom_que_deux_produits_revendiquent_ne_se_resout_pas() -> None:
