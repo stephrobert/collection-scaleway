@@ -51,3 +51,4 @@ Code says the **current** invariant. This directory says what happened.
 | [ADR-022](022-a-product-is-adopted-behind-the-official-collection.md) | A product is adopted behind the official collection rather than opposite it: they create it, we operate it, and what they serve well is named |
 | [ADR-023](023-a-product-is-known-to-every-seam-or-declared-absent.md) | A product is known to every seam that consumes what it produces, or its absence is declared with what would close it |
 | [ADR-024](024-a-run-is-recorded-extracted-and-the-extract-is-versioned.md) | A run is recorded, the recording is extracted, and the extract is versioned and sealed on it: what a run exercised is derived into published blocks rather than written by hand |
+| [ADR-025](025-a-versioned-milestone-is-not-a-roadmap.md) | A versioned milestone holds only what the version depends on: candidate products and continuous work live in unversioned reservoirs until promoted |
